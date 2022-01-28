@@ -2144,6 +2144,7 @@ namespace dd
     };
 
     std::vector<eval_info> eval_infos(_nclasses);
+    float overlap_threshold = 0.5; // TODO: parameter
 
     for (int j = 0; j < pred_bbox_count; ++j)
       {
@@ -2164,10 +2165,17 @@ namespace dd
           bboxes_acc[j][3],
         };
 
-        bool found = false;
+        bool has_cls = false;
+        float overlap_max = -1.0;
+        int bmax = -1;
 
         for (int k = 0; k < targ_bbox_count; ++k)
           {
+            if (targ_labels_acc[k] != cls)
+              continue;
+            else
+              has_cls = true;
+
             if (!match_used[k])
               {
                 std::vector<double> targ_bbox{
@@ -2177,27 +2185,33 @@ namespace dd
                   targ_bboxes_acc[k][3],
                 };
 
-                if (bbox_utils::iou(bbox, targ_bbox) > 0.5
-                    && targ_labels_acc[k] == cls)
+                float overlap = bbox_utils::iou(bbox, targ_bbox);
+                if (overlap > overlap_max)
                   {
-                    match_used[k] = true;
-                    found = true;
-
-                    eval_infos[cls].tp_d.push_back(score);
-                    eval_infos[cls].tp_i.push_back(1);
-                    eval_infos[cls].fp_d.push_back(score);
-                    eval_infos[cls].fp_i.push_back(0);
-                    break;
+                    overlap_max = overlap;
+                    bmax = k;
                   }
               }
           }
 
-        if (!found)
+        if (has_cls)
           {
-            eval_infos[cls].tp_d.push_back(score);
-            eval_infos[cls].tp_i.push_back(0);
-            eval_infos[cls].fp_d.push_back(score);
-            eval_infos[cls].fp_i.push_back(1);
+            if (bmax != -1 && !match_used[bmax]
+                && overlap_max >= overlap_threshold)
+              {
+                match_used[bmax] = true;
+                eval_infos[cls].tp_d.push_back(score);
+                eval_infos[cls].tp_i.push_back(1);
+                eval_infos[cls].fp_d.push_back(score);
+                eval_infos[cls].fp_i.push_back(0);
+              }
+            else
+              {
+                eval_infos[cls].tp_d.push_back(score);
+                eval_infos[cls].tp_i.push_back(0);
+                eval_infos[cls].fp_d.push_back(score);
+                eval_infos[cls].fp_i.push_back(1);
+              }
           }
       }
 
