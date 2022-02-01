@@ -1587,7 +1587,7 @@ namespace dd
                         bbox[2]
                             = std::min(static_cast<double>(cols - 1), bbox[2]);
                         bbox[3]
-                            = std::min(static_cast<double>(cols - 1), bbox[3]);
+                            = std::min(static_cast<double>(rows - 1), bbox[3]);
 
                         APIData ad_bbox;
                         ad_bbox.add("xmin", bbox[0]);
