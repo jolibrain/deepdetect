@@ -877,6 +877,9 @@ namespace dd
             _logger->warn("image db file {} with {} records", testdbname,
                           _db_testbatchsize);
           }
+        else
+          throw InputConnectorBadParamException(
+              "missing test file for object detector training");
         return 0;
       }
 
@@ -914,7 +917,9 @@ namespace dd
 
     // read test lines as needed
     if (filelists.size() < 2)
-      return 0;
+      throw InputConnectorBadParamException(
+          "missing test file for object detector training");
+
     std::ifstream tin(filelists.at(1));
     if (!tin.is_open())
       throw InputConnectorBadParamException("failed opening testing data file "
