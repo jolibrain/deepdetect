@@ -52,7 +52,7 @@ function (DOWNLOAD_DATASET _NAME _URL _WORKDIR _DEST _IN)
       else()
         execute_process(
           WORKING_DIRECTORY ${_WORKDIR}
-          COMMAND ${CMAKE_COMMAND} -E tar xvf ${_DEST}
+          COMMAND ${CMAKE_COMMAND} -E tar xf ${_DEST}
           RESULT_VARIABLE _UNCOMPRESS_RESULT
         )
       endif()
@@ -489,7 +489,7 @@ if (USE_CAFFE2)
     endif ()
     if (_UNTAR AND NOT EXISTS ${_FINAL_PATH}) # Untar
       message(STATUS "Extracting Caffe2 ${_MODEL} ${_FILE}")
-      execute_process(COMMAND tar xvzf ${_LOCAL_PATH})
+      execute_process(COMMAND tar xzf ${_LOCAL_PATH})
       execute_process(COMMAND mv ${_FILE} ${_FINAL_PATH})
     endif ()
   endfunction (ASSERT_EXISTS)
