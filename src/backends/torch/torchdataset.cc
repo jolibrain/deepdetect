@@ -787,6 +787,16 @@ namespace dd
         bboxes.push_back(target_to_tensor(bbox));
       }
 
+    // allow for no bbox (pure negative sample) with an empty tensor
+    // XXX: yolox only, that discards 0 boxes internally
+    if (bboxes.empty())
+      {
+        std::vector<double> empty_bbox = { 0.0, 0.0, 0.0, 0.0 };
+        bboxes.push_back(target_to_tensor(empty_bbox));
+        int cls = 0;
+        classes.push_back(target_to_tensor(cls));
+      }
+
     // add image
     add_image_batch(dimg._imgs[0], height, width,
                     { torch::stack(bboxes), torch::cat(classes) });
