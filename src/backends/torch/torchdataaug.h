@@ -286,6 +286,8 @@ namespace dd
     void augment_with_segmap(cv::Mat &src, cv::Mat &tgt);
 
     void augment_test(cv::Mat &src);
+    void augment_test_with_bbox(cv::Mat &src,
+                                std::vector<torch::Tensor> &targets);
     void augment_test_with_segmap(cv::Mat &src, cv::Mat &tgt);
 
   protected:
@@ -299,6 +301,10 @@ namespace dd
                          const int &rot);
     bool applyCrop(cv::Mat &src, CropParams &cp, int &crop_x, int &crop_y,
                    const bool &sample = true);
+    void applyCropBBox(std::vector<std::vector<float>> &bboxes,
+                       std::vector<int> &classes, const CropParams &cp,
+                       const float &img_width, const float &img_height,
+                       const float &crop_x, const float &crop_y);
     void applyCutout(cv::Mat &src, CutoutParams &cp,
                      const bool &store_rparams = false);
     void applyGeometry(cv::Mat &src, GeometryParams &cp,

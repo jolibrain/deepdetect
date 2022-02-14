@@ -20,6 +20,7 @@
  */
 
 #include "torchdataaug.h"
+#include "torchdataset.h"
 
 namespace dd
 {
@@ -67,8 +68,10 @@ namespace dd
                                        std::vector<torch::Tensor> &targets)
   {
     torch::Tensor t = targets[0];
+    torch::Tensor c = targets[1]; // classes
     int nbbox = t.size(0);
     std::vector<std::vector<float>> bboxes;
+    std::vector<int> classes;
     for (int bb = 0; bb < nbbox; ++bb)
       {
         std::vector<float> bbox;
@@ -77,6 +80,7 @@ namespace dd
             bbox.push_back(t[bb][d].item<float>());
           }
         bboxes.push_back(bbox); // add (xmin, ymin, xmax, ymax)
+        classes.push_back(c[bb].item<int>());
       }
 
     bool mirror = applyMirror(src);
@@ -89,6 +93,15 @@ namespace dd
       {
         applyRotateBBox(bboxes, static_cast<float>(src.cols),
                         static_cast<float>(src.rows), rot);
+      }
+    int crop_x = 0;
+    int crop_y = 0;
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y);
+    if (cropped)
+      {
+        applyCropBBox(bboxes, classes, _crop_params,
+                      static_cast<float>(src.cols),
+                      static_cast<float>(src.rows), crop_x, crop_y);
       }
     applyCutout(src, _cutout_params);
     GeometryParams geoparams = _geometry_params;
@@ -109,15 +122,75 @@ namespace dd
 
     // replacing the initial bboxes with the transformed ones.
     nbbox = bboxes.size();
-    for (int bb = 0; bb < nbbox; ++bb)
+    if (!cropped)
       {
-        for (int d = 0; d < 4; ++d)
+        for (int bb = 0; bb < nbbox; ++bb)
           {
-            t[bb][d] = bboxes.at(bb).at(d);
+            for (int d = 0; d < 4; ++d)
+              {
+                t[bb][d] = bboxes.at(bb).at(d);
+              }
           }
+      }
+    else
+      {
+        std::vector<torch::Tensor> tbboxes;
+        std::vector<torch::Tensor> tclasses;
+        for (int bb = 0; bb < nbbox; ++bb)
+          {
+            std::vector<double> fbbox(bboxes.at(bb).begin(),
+                                      bboxes.at(bb).end());
+            TorchDataset td;
+            tbboxes.push_back(td.target_to_tensor(fbbox));
+            tclasses.push_back(td.target_to_tensor(classes.at(bb)));
+          }
+        targets = { torch::stack(tbboxes), torch::cat(tclasses) };
       }
     applyNoise(src);
     applyDistort(src);
+  }
+
+  void TorchImgRandAugCV::augment_test_with_bbox(
+      cv::Mat &src, std::vector<torch::Tensor> &targets)
+  {
+    torch::Tensor t = targets[0];
+    torch::Tensor c = targets[1]; // classes
+    int nbbox = t.size(0);
+    std::vector<std::vector<float>> bboxes;
+    std::vector<int> classes;
+    for (int bb = 0; bb < nbbox; ++bb)
+      {
+        std::vector<float> bbox;
+        for (int d = 0; d < 4; ++d)
+          {
+            bbox.push_back(t[bb][d].item<float>());
+          }
+        bboxes.push_back(bbox); // add (xmin, ymin, xmax, ymax)
+        classes.push_back(c[bb].item<int>());
+      }
+    int crop_x = 0;
+    int crop_y = 0;
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y);
+    if (cropped)
+      {
+        applyCropBBox(bboxes, classes, _crop_params,
+                      static_cast<float>(src.cols),
+                      static_cast<float>(src.rows), crop_x, crop_y);
+
+        // replacing the initial bboxes with the transformed ones.
+        std::vector<torch::Tensor> tbboxes;
+        std::vector<torch::Tensor> tclasses;
+        nbbox = bboxes.size();
+        for (int bb = 0; bb < nbbox; ++bb)
+          {
+            std::vector<double> fbbox(bboxes.at(bb).begin(),
+                                      bboxes.at(bb).end());
+            TorchDataset td;
+            tbboxes.push_back(td.target_to_tensor(fbbox));
+            tclasses.push_back(td.target_to_tensor(classes.at(bb)));
+          }
+        targets = { torch::stack(tbboxes), torch::cat(tclasses) };
+      }
   }
 
   void TorchImgRandAugCV::augment_with_segmap(cv::Mat &src, cv::Mat &tgt)
@@ -290,6 +363,44 @@ namespace dd
     cv::Mat dst = src(crop).clone();
     src = dst;
     return true;
+  }
+
+  void TorchImgRandAugCV::applyCropBBox(
+      std::vector<std::vector<float>> &bboxes, std::vector<int> &classes,
+      const CropParams &cp, const float &img_width, const float &img_height,
+      const float &crop_x, const float &crop_y)
+  {
+    // apply crop to bboxes.
+    std::vector<std::vector<float>> nbboxes;
+    std::vector<int> nclasses;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+
+        if (bbox[2] < crop_x
+            || bbox[0] > crop_x + cp._crop_size) // xmax < cropx or xmin >
+                                                 // crop_x + crop_size
+          continue;                              // no bbox
+        if (bbox[3] < crop_y
+            || bbox[1] > crop_y + cp._crop_size) // ymax < cropy || ymin >
+                                                 // cropy + crop_size
+          continue;                              // no bbox
+
+        std::vector<float> nbox;
+        nbox.push_back(std::max(0.f, bbox[0] - crop_x)); // xmin = xmin-crop_x
+        nbox.push_back(std::max(0.f, bbox[1] - crop_y));
+        nbox.push_back(std::min(img_width, bbox[2] - crop_x));
+        nbox.push_back(std::min(img_height, bbox[3] - crop_y));
+        nbboxes.push_back(nbox);
+        nclasses.push_back(classes.at(i));
+      }
+    if (nbboxes.empty())
+      {
+        nbboxes.push_back({ 0.0, 0.0, 0.0, 0.0 });
+        nclasses.push_back(0);
+      }
+    bboxes = nbboxes;
+    classes = nclasses;
   }
 
   void TorchImgRandAugCV::applyCutout(cv::Mat &src, CutoutParams &cp,
@@ -498,8 +609,8 @@ namespace dd
     cv::Mat lambda
         = (sample ? cv::getPerspectiveTransform(inputQuad, outputQuad)
                   : cp._lambda);
-    int inter_flag
-        = cv::INTER_NEAREST; //(sample ? cv::INTER_LINEAR : cv::INTER_NEAREST);
+    int inter_flag = cv::INTER_NEAREST; //(sample ? cv::INTER_LINEAR :
+                                        // cv::INTER_NEAREST);
     int border_mode = (cp._geometry_pad_mode == 1 ? cv::BORDER_CONSTANT
                                                   : cv::BORDER_REPLICATE);
     cv::warpPerspective(src_enlarged, src, lambda, src.size(), inter_flag,
