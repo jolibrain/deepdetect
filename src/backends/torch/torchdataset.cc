@@ -548,9 +548,9 @@ namespace dd
                     // cropping requires test set 'augmentation'
                     if (_bbox)
                       {
-                        // no cropping yet with bboxes
+                        _img_rand_aug_cv.augment_test_with_bbox(bgr, t);
                       }
-                    if (_segmentation)
+                    else if (_segmentation)
                       _img_rand_aug_cv.augment_test_with_segmap(bgr,
                                                                 bw_target);
                     else
