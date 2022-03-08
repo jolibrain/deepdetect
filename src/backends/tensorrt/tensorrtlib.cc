@@ -874,21 +874,22 @@ namespace dd
         if (_bbox)
           {
             int results_height = _top_k;
+            const float *outr = _floatOut.data();
 
             // preproc yolox
+            std::vector<float> yolo_out;
             if (_template == "yolox")
               {
-                _floatOut = yolo_utils::parse_yolo_output(
+                yolo_out = yolo_utils::parse_yolo_output(
                     _floatOut, num_processed, results_height, _nclasses,
                     inputc._width, inputc._height);
+                outr = yolo_out.data();
               };
 
             const int det_size = 7;
-            const float *outr = _floatOut.data();
 
             for (int j = 0; j < num_processed; j++)
               {
-
                 int k = 0;
                 std::vector<double> probs;
                 std::vector<std::string> cats;
