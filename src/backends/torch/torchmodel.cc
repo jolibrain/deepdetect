@@ -255,43 +255,39 @@ namespace dd
     rapidjson::Document d_model;
     d_model.Parse<rapidjson::kParseNanAndInfFlag>(model_sstr.str().c_str());
 
-    // apply changes
-    bool config_update = false;
+    //- repository
+    d_config["model"]["repository"].SetString(target_repo.c_str(),
+                                              d_config.GetAllocator());
+
     //- crop_size
-    try
+    auto d_input = d_config["parameters"]["input"].GetObject();
+    auto d_mllib = d_config["parameters"]["mllib"].GetObject();
+    if (d_mllib.HasMember("crop_size"))
       {
-        int crop_size = d_model["parameters"]["mllib"]["crop_size"].GetInt();
-        if (crop_size > 0)
+        try
           {
-            d_config["parameters"]["input"]["width"].SetInt(crop_size);
-            d_config["parameters"]["input"]["height"].SetInt(crop_size);
+            int crop_size
+                = d_model["parameters"]["mllib"]["crop_size"].GetInt();
+            if (crop_size > 0)
+              {
+                d_config["parameters"]["input"]["width"].SetInt(crop_size);
+                d_config["parameters"]["input"]["height"].SetInt(crop_size);
+              }
           }
-        config_update = true;
-      }
-    catch (RapidjsonException &e)
-      {
-        config_update = false;
+        catch (RapidjsonException &e)
+          {
+          }
       }
     //- db
     try
       {
-        auto d_input = d_config["parameters"]["input"].GetObject();
         if (d_input.HasMember("db"))
           d_input["db"].SetBool(false);
-        auto d_mllib = d_config["parameters"]["mllib"].GetObject();
         if (d_mllib.HasMember("db"))
           d_input["db"].SetBool(false);
-        config_update = true;
       }
     catch (RapidjsonException &e)
       {
-        config_update |= false;
-      }
-
-    if (!config_update)
-      {
-        logger->warn("no update required to config.json");
-        return;
       }
 
     // save updated config.json
