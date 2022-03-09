@@ -115,8 +115,7 @@ namespace dd
     nvinfer1::DataType _datatype = nvinfer1::DataType::kFLOAT;
     int _max_batch_size = 48;
     size_t _max_workspace_size = 1 << 30; // 1GB
-    int _top_k
-        = 200; // top_k parameters in ssd in dede templates, can be overriden
+    int _results_height = -1;
     std::string _engineFileName = "TRTengine";
     bool _readEngine = true;
     bool _writeEngine = true;

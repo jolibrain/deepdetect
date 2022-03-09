@@ -39,13 +39,13 @@ namespace dd
     bool findInputDimensions(const std::string &source, int &width,
                              int &height);
     int findNClasses(const std::string source, bool bbox);
-    int findTopK(const std::string source);
+    int findBBoxCount(const std::string source);
     bool isRefinedet(const std::string source);
   }
 
   namespace onnx_proto
   {
-    int findTopK(const std::string &source, const std::string &out_name);
+    int findBBoxCount(const std::string &source, const std::string &out_name);
   }
 
   bool TRTReadProtoFromTextFile(const char *filename,

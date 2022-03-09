@@ -94,7 +94,7 @@ namespace dd
     _datatype = tl._datatype;
     _max_batch_size = tl._max_batch_size;
     _max_workspace_size = tl._max_workspace_size;
-    _top_k = tl._top_k;
+    _results_height = tl._results_height;
     _builder = tl._builder;
     _builderc = tl._builderc;
     _engineFileName = tl._engineFileName;
@@ -201,9 +201,6 @@ namespace dd
             "a net_tensorRT.proto or net_tensorRT.onnx file in repository"
             + this->_mlmodel._repo);
       }
-
-    if (ad.has("topk"))
-      _top_k = ad.get("topk").get<int>();
 
     if (ad.has("template"))
       {
@@ -553,9 +550,11 @@ namespace dd
         if (_bbox)
           {
             if (this->_mlmodel.is_onnx_source())
-              _top_k = onnx_proto::findTopK(this->_mlmodel._model, out_blob);
+              _results_height
+                  = onnx_proto::findBBoxCount(this->_mlmodel._model, out_blob);
             else if (!this->_mlmodel._def.empty())
-              _top_k = caffe_proto::findTopK(this->_mlmodel._def);
+              _results_height
+                  = caffe_proto::findBBoxCount(this->_mlmodel._def);
           }
 
         if (_nclasses <= 0)
@@ -677,8 +676,8 @@ namespace dd
 
                 _outputIndex1 = _engine->getBindingIndex("keep_count");
                 _buffers.resize(3);
-                int det_out_size = _max_batch_size * _top_k * _dims.d[2];
-                // int det_out_size = _max_batch_size * _top_k * 7;
+                int det_out_size
+                    = _max_batch_size * _results_height * _dims.d[2];
                 _floatOut.resize(det_out_size);
                 _keepCount.resize(_max_batch_size);
                 if (inputc._bw)
@@ -873,7 +872,9 @@ namespace dd
 
         if (_bbox)
           {
-            int results_height = _top_k;
+            int top_k = _results_height;
+            if (output_params->top_k > 0)
+              top_k = output_params->top_k;
             const float *outr = _floatOut.data();
 
             // preproc yolox
@@ -881,7 +882,7 @@ namespace dd
             if (_template == "yolox")
               {
                 yolo_out = yolo_utils::parse_yolo_output(
-                    _floatOut, num_processed, results_height, _nclasses,
+                    _floatOut, num_processed, _results_height, _nclasses,
                     inputc._width, inputc._height);
                 outr = yolo_out.data();
               };
@@ -913,7 +914,7 @@ namespace dd
                 bool leave = false;
                 int curi = -1;
 
-                while (true && k < results_height)
+                while (true && k < top_k)
                   {
                     if (!_need_nms && output_params->best_bbox > 0
                         && bboxes.size() >= static_cast<size_t>(
