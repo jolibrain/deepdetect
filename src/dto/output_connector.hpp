@@ -47,6 +47,7 @@ namespace dd
       DTO_FIELD(Int32, best_bbox) = -1;
       DTO_FIELD(Float32, nms_threshold) = 0.45;
       DTO_FIELD(Vector<String>, confidences);
+      DTO_FIELD(Int32, top_k) = -1;
 
       DTO_FIELD_INFO(image)
       {

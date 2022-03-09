@@ -97,7 +97,7 @@ namespace dd
       return -1;
     }
 
-    int findTopK(const std::string source)
+    int findBBoxCount(const std::string source)
     {
       caffe::NetParameter net;
       if (!TRTReadProtoFromTextFile(source.c_str(), &net))
@@ -193,7 +193,7 @@ namespace dd
   namespace onnx_proto
   {
     // https://github.com/onnx/onnx/blob/master/onnx/onnx.proto
-    int findTopK(const std::string &source, const std::string &out_name)
+    int findBBoxCount(const std::string &source, const std::string &out_name)
     {
       onnx::ModelProto net;
       if (!TRTReadProtoFromBinaryFile(source.c_str(), &net))
