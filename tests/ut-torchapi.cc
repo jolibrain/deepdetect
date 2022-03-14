@@ -45,8 +45,11 @@ static std::string not_found_str
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
 static std::string detect_repo = "../examples/torch/fasterrcnn_torch/";
 static std::string seg_repo = "../examples/torch/deeplabv3_torch/";
+// static std::string detect_train_repo_fasterrcnn
+//= "../examples/torch/fasterrcnn_train_torch";
+// below special version w/ workaroud jit bug in torch 1.11
 static std::string detect_train_repo_fasterrcnn
-    = "../examples/torch/fasterrcnn_train_torch";
+    = "../examples/torch/fasterrcnn_train_torch111";
 static std::string detect_train_repo_yolox
     = "../examples/torch/yolox_train_torch";
 static std::string resnet50_train_repo
@@ -91,9 +94,9 @@ static std::string bert_train_data
     = "../examples/torch/bert_training_torch_140_transformers_251/data/";
 
 static std::string fasterrcnn_train_data
-    = "../examples/torch/fasterrcnn_train_torch/train.txt";
+    = "../examples/torch/fasterrcnn_train_torch111/train.txt";
 static std::string fasterrcnn_test_data
-    = "../examples/torch/fasterrcnn_train_torch/test.txt";
+    = "../examples/torch/fasterrcnn_train_torch111/test.txt";
 
 static std::string sinus = "../examples/all/sinus/";
 

@@ -981,7 +981,7 @@ namespace dd
                       std::string key = e.key().toStringRef();
                       if (!e.value().isTensor())
                         continue;
-                      auto val_t = e.value().toTensor();
+                      const torch::Tensor &val_t = e.value().toTensor();
 
                       // all scalar values are considered as metrics
                       if (val_t.numel() != 1)

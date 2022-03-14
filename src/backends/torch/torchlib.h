@@ -27,6 +27,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include <torch/torch.h>
 #pragma GCC diagnostic pop
 
