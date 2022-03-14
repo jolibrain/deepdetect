@@ -32,8 +32,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
-#pragma GCC diagnostic pop
 #include <torch/script.h>
+#pragma GCC diagnostic pop
 
 #include <google/protobuf/message.h>
 #include "dd_spdlog.h"

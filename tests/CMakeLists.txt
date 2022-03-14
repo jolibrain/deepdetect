@@ -413,13 +413,21 @@ if (USE_TORCH)
     "fasterrcnn_torch.tar.gz"
     "fasterrcnn_torch"
     )
+  # below special version with woraround for jit bug in torch 1..1
   DOWNLOAD_DATASET(
     "Torchvision training Faster RCNN model & cars dataset"
-    "https://www.deepdetect.com/dd/examples/torch/fasterrcnn_train_torch_bs2.tar.gz"
+    "https://www.deepdetect.com/dd/examples/torch/fasterrcnn_train_torch111_bs2.tar.gz"
     "examples/torch"
-    "fasterrcnn_train_torch_bs2.tar.gz"
-    "fasterrcnn_train_torch"
+    "fasterrcnn_train_torch111_bs2.tar.gz"
+    "fasterrcnn_train_torch111"
     )
+  # DOWNLOAD_DATASET(
+  #   "Torchvision training Faster RCNN model & cars dataset"
+  #   "https://www.deepdetect.com/dd/examples/torch/fasterrcnn_train_torch_bs2.tar.gz"
+  #   "examples/torch"
+  #   "fasterrcnn_train_torch_bs2.tar.gz"
+  #   "fasterrcnn_train_torch"
+  #   )
   DOWNLOAD_DATASET(
     "Torchvision training YoloX Model"
     "https://www.deepdetect.com/dd/examples/torch/yolox_train_torch.tar.gz"

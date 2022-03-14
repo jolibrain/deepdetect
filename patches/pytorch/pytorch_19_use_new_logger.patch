@@ -1,5 +1,5 @@
 diff --git a/c10/CMakeLists.txt b/c10/CMakeLists.txt
-index 3d2d4352ff..5a430dc020 100644
+index 23a0e024d3..9db323a93b 100644
 --- a/c10/CMakeLists.txt
 +++ b/c10/CMakeLists.txt
 @@ -15,6 +15,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -23,10 +23,10 @@ index a1e4fd8ce1..e8859608e6 100644
  #cmakedefine C10_USE_NUMA
  #cmakedefine C10_USE_MSVC_STATIC_RUNTIME
 diff --git a/c10/util/Logging.cpp b/c10/util/Logging.cpp
-index 3de6623cf3..dad592fc6c 100644
+index cd456d6fa1..b9551cc623 100644
 --- a/c10/util/Logging.cpp
 +++ b/c10/util/Logging.cpp
-@@ -174,6 +174,15 @@ C10_DEFINE_int32(v, 0, "Equivalent to glog verbose");
+@@ -175,6 +175,21 @@ C10_DEFINE_int32(v, 0, "Equivalent to glog verbose");
  C10_DEFINE_bool(logtostderr, false, "Equivalent to glog logtostderr");
  #endif // !defined(c10_USE_GLOG)
  
@@ -38,17 +38,26 @@ index 3de6623cf3..dad592fc6c 100644
 +void UpdateLoggingLevelsFromFlags() {}
 +
 +} // namespace c10
++
++C10_DEFINE_int(
++    caffe2_log_level,
++    0,
++    "The minimum log level that caffe2 will output.");
++
 +#else
  #ifdef C10_USE_GLOG
  
  // Provide easy access to the above variables, regardless whether GLOG is
-@@ -359,3 +368,4 @@ MessageLogger::~MessageLogger() {
+@@ -384,6 +399,7 @@ MessageLogger::~MessageLogger() {
  } // namespace c10
  
  #endif // !C10_USE_GLOG
 +#endif // !C10_USE_DDLOG
+ 
+ namespace c10 {
+ namespace detail {
 diff --git a/c10/util/Logging.h b/c10/util/Logging.h
-index fd78a21fc5..6c7f1692bb 100644
+index e2ed61de60..4fb72f3ccf 100644
 --- a/c10/util/Logging.h
 +++ b/c10/util/Logging.h
 @@ -22,11 +22,15 @@
