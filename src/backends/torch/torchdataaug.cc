@@ -60,7 +60,7 @@ namespace dd
   {
     int crop_x = 0;
     int crop_y = 0;
-    applyCrop(src, _crop_params, crop_x, crop_y);
+    applyCrop(src, _crop_params, crop_x, crop_y, true, true);
   }
 
   void
@@ -170,7 +170,7 @@ namespace dd
       }
     int crop_x = 0;
     int crop_y = 0;
-    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y);
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y, true, true);
     if (cropped)
       {
         applyCropBBox(bboxes, classes, _crop_params,
@@ -222,7 +222,7 @@ namespace dd
   {
     int crop_x = 0;
     int crop_y = 0;
-    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y);
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y, true, true);
     if (cropped)
       applyCrop(tgt, _crop_params, crop_x, crop_y, false);
   }
@@ -346,7 +346,8 @@ namespace dd
   }
 
   bool TorchImgRandAugCV::applyCrop(cv::Mat &src, CropParams &cp, int &crop_x,
-                                    int &crop_y, const bool &sample)
+                                    int &crop_y, const bool &sample,
+                                    const bool &test)
   {
     if (cp._crop_size <= 0)
       return false;
@@ -355,8 +356,16 @@ namespace dd
       {
 #pragma omp critical
         {
-          crop_x = cp._uniform_int_crop_x(_rnd_gen);
-          crop_y = cp._uniform_int_crop_y(_rnd_gen);
+          if (test)
+            {
+              crop_x = cp._uniform_int_crop_x(_rnd_test_gen);
+              crop_y = cp._uniform_int_crop_y(_rnd_test_gen);
+            }
+          else
+            {
+              crop_x = cp._uniform_int_crop_x(_rnd_gen);
+              crop_y = cp._uniform_int_crop_y(_rnd_gen);
+            }
         }
       }
     cv::Rect crop(crop_x, crop_y, cp._crop_size, cp._crop_size);

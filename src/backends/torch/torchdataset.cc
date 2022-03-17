@@ -513,7 +513,9 @@ namespace dd
               has_data = true;
             }
 
+            // all data for one example
             std::vector<torch::Tensor> d;
+            // all targets for one example
             std::vector<torch::Tensor> t;
 
             if (!_image)
@@ -522,6 +524,19 @@ namespace dd
                 std::stringstream targetstream(targets);
                 torch::load(d, datastream);
                 torch::load(t, targetstream);
+
+                for (unsigned int i = 0; i < d.size(); ++i)
+                  {
+                    while (i >= data.size())
+                      data.emplace_back();
+                    data.at(i).push_back(d[i]);
+                  }
+                for (unsigned int i = 0; i < t.size(); ++i)
+                  {
+                    while (i >= target.size())
+                      target.emplace_back();
+                    target.at(i).push_back(t[i]);
+                  }
               }
             else
               {
@@ -533,52 +548,74 @@ namespace dd
                                    inputc->_bw, inputc->width(),
                                    inputc->height());
 
-                // data augmentation can apply here, with OpenCV
-                if (!_test)
+                int samples = 1;
+
+                if (_test && _img_rand_aug_cv._crop_params._crop_size > 0)
+                  samples = _img_rand_aug_cv._crop_params._test_crop_samples;
+
+                while (samples > 0)
                   {
-                    if (_bbox)
-                      _img_rand_aug_cv.augment_with_bbox(bgr, t);
-                    else if (_segmentation)
-                      _img_rand_aug_cv.augment_with_segmap(bgr, bw_target);
-                    else
-                      _img_rand_aug_cv.augment(bgr);
-                  }
-                else
-                  {
-                    // cropping requires test set 'augmentation'
-                    if (_bbox)
+                    cv::Mat bgr_sample = bgr.clone();
+                    cv::Mat bw_target_sample;
+                    std::vector<torch::Tensor> d_sample = d;
+                    std::vector<torch::Tensor> t_sample = t;
+                    if (_segmentation)
+                      bw_target_sample = bw_target.clone();
+
+                    // data augmentation can apply here, with OpenCV
+                    if (!_test)
                       {
-                        _img_rand_aug_cv.augment_test_with_bbox(bgr, t);
+                        if (_bbox)
+                          _img_rand_aug_cv.augment_with_bbox(bgr_sample,
+                                                             t_sample);
+                        else if (_segmentation)
+                          _img_rand_aug_cv.augment_with_segmap(
+                              bgr_sample, bw_target_sample);
+                        else
+                          _img_rand_aug_cv.augment(bgr_sample);
                       }
-                    else if (_segmentation)
-                      _img_rand_aug_cv.augment_test_with_segmap(bgr,
-                                                                bw_target);
                     else
-                      _img_rand_aug_cv.augment_test(bgr);
+                      {
+                        // cropping requires test set 'augmentation'
+                        if (_bbox)
+                          {
+                            _img_rand_aug_cv.augment_test_with_bbox(bgr_sample,
+                                                                    t_sample);
+                          }
+                        else if (_segmentation)
+                          _img_rand_aug_cv.augment_test_with_segmap(
+                              bgr_sample, bw_target_sample);
+                        else
+                          _img_rand_aug_cv.augment_test(bgr_sample);
+                      }
+
+                    torch::Tensor imgt = image_to_tensor(
+                        bgr_sample, bgr_sample.rows, bgr_sample.cols);
+                    d_sample.push_back(imgt);
+
+                    if (_segmentation)
+                      {
+                        at::Tensor targett_seg = image_to_tensor(
+                            bw_target_sample, bw_target_sample.rows,
+                            bw_target_sample.cols, true);
+                        t_sample.push_back(targett_seg);
+                      }
+
+                    --samples;
+
+                    for (unsigned int i = 0; i < d_sample.size(); ++i)
+                      {
+                        while (i >= data.size())
+                          data.emplace_back();
+                        data.at(i).push_back(d_sample[i]);
+                      }
+                    for (unsigned int i = 0; i < t_sample.size(); ++i)
+                      {
+                        while (i >= target.size())
+                          target.emplace_back();
+                        target.at(i).push_back(t_sample[i]);
+                      }
                   }
-
-                torch::Tensor imgt = image_to_tensor(bgr, bgr.rows, bgr.cols);
-                d.push_back(imgt);
-
-                if (_segmentation)
-                  {
-                    at::Tensor targett_seg = image_to_tensor(
-                        bw_target, bw_target.rows, bw_target.cols, true);
-                    t.push_back(targett_seg);
-                  }
-              }
-
-            for (unsigned int i = 0; i < d.size(); ++i)
-              {
-                while (i >= data.size())
-                  data.emplace_back();
-                data.at(i).push_back(d[i]);
-              }
-            for (unsigned int i = 0; i < t.size(); ++i)
-              {
-                while (i >= target.size())
-                  target.emplace_back();
-                target.at(i).push_back(t[i]);
               }
           }
 

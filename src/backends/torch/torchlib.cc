@@ -642,6 +642,9 @@ namespace dd
                 int crop_size = ad_mllib.get("crop_size").get<int>();
                 crop_params
                     = CropParams(crop_size, inputc.width(), inputc.height());
+                if (ad_mllib.has("test_crop_samples"))
+                  crop_params._test_crop_samples
+                      = ad_mllib.get("test_crop_samples").get<int>();
                 this->_logger->info("crop_size : {}", crop_size);
               }
             CutoutParams cutout_params;
@@ -1854,6 +1857,9 @@ namespace dd
     APIData ad_bbox;
     APIData ad_out = ad.getobj("parameters").getobj("output");
     int nclasses = _masked_lm ? inputc.vocab_size() : _nclasses;
+
+    // reset data aug test random generator
+    dataset._img_rand_aug_cv.reset_rnd_test_gen();
 
     // confusion matrix is irrelevant to masked_lm training
     if (_masked_lm && ad_out.has("measure"))
