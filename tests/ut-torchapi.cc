@@ -1063,7 +1063,23 @@ TEST(torchapi, service_publish_trained_model)
   ASSERT_TRUE(fileops::file_exists(published_repo + "/checkpoint-1.pt"));
   ASSERT_TRUE(fileops::file_exists(published_repo + "/best_model.txt"));
   ASSERT_TRUE(fileops::file_exists(published_repo + "/model.json"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/config.json"));
   ASSERT_FALSE(fileops::file_exists(published_repo + "/resnet50.pt"));
+
+  // Check on published model configuration
+  std::string config_path = published_repo + "/config.json";
+  std::ifstream ifs_config(config_path.c_str(), std::ios::binary);
+  ASSERT_TRUE(ifs_config.is_open());
+  std::stringstream config_sstr;
+  config_sstr << ifs_config.rdbuf();
+  ifs_config.close();
+  rapidjson::Document d_config;
+  d_config.Parse<rapidjson::kParseNanAndInfFlag>(config_sstr.str().c_str());
+  auto d_config_input = d_config["parameters"]["input"].GetObject();
+  ASSERT_TRUE(d_config_input.HasMember("width"));
+  ASSERT_TRUE(d_config_input["width"].GetInt() == 224);
+  ASSERT_TRUE(d_config_input.HasMember("height"));
+  ASSERT_TRUE(d_config_input["height"].GetInt() == 224);
 
   // Clean up train repo
   std::unordered_set<std::string> lfiles;
