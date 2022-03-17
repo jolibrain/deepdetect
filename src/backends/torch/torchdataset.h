@@ -585,7 +585,7 @@ namespace dd
     bool _segmentation = false;  /**< whether a segmentation dataset. */
     std::vector<std::string> _dbFullNames;
     std::vector<std::string> _datasets_names;
-    bool _test = false; /**< wheater a test set */
+    bool _test = false; /**< whether a test set */
 
   protected:
     bool _db = false;

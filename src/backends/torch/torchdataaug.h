@@ -29,6 +29,8 @@
 #pragma GCC diagnostic pop
 #include <random>
 
+#define DATAAUG_TEST_SEED 23124534
+
 namespace dd
 {
   class ImgAugParams
@@ -79,6 +81,7 @@ namespace dd
     int _crop_size = -1;
     std::uniform_int_distribution<int> _uniform_int_crop_x;
     std::uniform_int_distribution<int> _uniform_int_crop_y;
+    int _test_crop_samples = 1; /**< number of sampled crops (at test time). */
   };
 
   class CutoutParams : public ImgAugParams
@@ -280,10 +283,16 @@ namespace dd
           _cutout_params._img_width = _crop_params._crop_size;
           _cutout_params._img_height = _crop_params._crop_size;
         }
+      reset_rnd_test_gen();
     }
 
     ~TorchImgRandAugCV()
     {
+    }
+
+    void reset_rnd_test_gen()
+    {
+      _rnd_test_gen = std::default_random_engine(DATAAUG_TEST_SEED);
     }
 
     void augment(cv::Mat &src);
@@ -305,7 +314,7 @@ namespace dd
                          const float &img_width, const float &img_height,
                          const int &rot);
     bool applyCrop(cv::Mat &src, CropParams &cp, int &crop_x, int &crop_y,
-                   const bool &sample = true);
+                   const bool &sample = true, const bool &test = false);
     void applyCropBBox(std::vector<std::vector<float>> &bboxes,
                        std::vector<int> &classes, const CropParams &cp,
                        const float &img_width, const float &img_height,
@@ -347,8 +356,8 @@ namespace dd
     void applyDistortHue(cv::Mat &src);
     void applyDistortOrderChannel(cv::Mat &src);
 
-  private:
-    // augmentation options & parameter
+  public:
+    // augmentation options & parameters
     bool _mirror = false;
     bool _rotate = false;
 
@@ -360,6 +369,8 @@ namespace dd
 
     // random generators
     std::default_random_engine _rnd_gen;
+    std::default_random_engine
+        _rnd_test_gen; /**< test time, seeded generator. */
     std::uniform_real_distribution<float>
         _uniform_real_1; /**< random real uniform between 0 and 1. */
     std::bernoulli_distribution _bernouilli;
