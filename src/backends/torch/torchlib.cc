@@ -481,8 +481,8 @@ namespace dd
   {
     if (metric_name == "eucll" || metric_name == "delta_score_0.1"
         || metric_name == "L1_mean_error")
-      return (v2 > v1);
-    return (v1 > v2);
+      return (v2 >= v1);
+    return (v1 >= v2);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
