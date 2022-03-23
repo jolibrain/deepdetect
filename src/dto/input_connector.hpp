@@ -64,12 +64,26 @@ namespace dd
       DTO_FIELD(Float64, test_split);
       DTO_FIELD(Vector<Float32>, mean);
       DTO_FIELD(Vector<Float32>, std);
-      DTO_FIELD(Any, scale); // bool for csv/csvts , float for img
+      DTO_FIELD(Any, scale); // bool for csv/csvts, float for img
       DTO_FIELD(Boolean, scaled);
       DTO_FIELD(Int32, scale_min);
       DTO_FIELD(Int32, scale_max);
       DTO_FIELD(Boolean, keep_orig);
       DTO_FIELD(String, interp);
+
+      DTO_FIELD_INFO(bbox)
+      {
+        info->description = "[training] true if data contains a bbox dataset";
+      }
+      DTO_FIELD(Boolean, bbox);
+
+      // CSVTS Input Connector
+      DTO_FIELD_INFO(continuation)
+      {
+        info->description
+            = "true if this call is the continuation of the previous one";
+      }
+      DTO_FIELD(Boolean, continuation) = false;
 
       // image resizing on GPU
 #ifdef USE_CUDA_CV

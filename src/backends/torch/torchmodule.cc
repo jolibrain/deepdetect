@@ -252,21 +252,13 @@ namespace dd
   void TorchModule::post_transform_predict(
       const std::string tmpl, const APIData &template_params,
       const TInputConnectorStrategy &inputc, const TorchModel &tmodel,
-      const torch::Device &device, const APIData &ad)
+      const torch::Device &device,
+      const oatpp::Object<DTO::ServicePredict> &pred_dto)
   {
     post_transform(tmpl, template_params, inputc, tmodel, device);
 
     if (_graph)
-      {
-        if (ad.getobj("parameters").getobj("input").has("continuation")
-            && ad.getobj("parameters")
-                   .getobj("input")
-                   .get("continuation")
-                   .get<bool>())
-          _graph->lstm_continues(true);
-        else
-          _graph->lstm_continues(false);
-      }
+      _graph->lstm_continues(pred_dto->parameters->input->continuation);
   }
 
   c10::IValue TorchModule::forward(std::vector<c10::IValue> source,
@@ -583,7 +575,8 @@ namespace dd
   template void TorchModule::post_transform_predict(
       const std::string tmpl, const APIData &template_params,
       const ImgTorchInputFileConn &inputc, const TorchModel &tmodel,
-      const torch::Device &device, const APIData &ad);
+      const torch::Device &device,
+      const oatpp::Object<DTO::ServicePredict> &pred_dto);
 
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
@@ -598,7 +591,8 @@ namespace dd
   template void TorchModule::post_transform_predict(
       const std::string tmpl, const APIData &template_params,
       const VideoTorchInputFileConn &inputc, const TorchModel &tmodel,
-      const torch::Device &device, const APIData &ad);
+      const torch::Device &device,
+      const oatpp::Object<DTO::ServicePredict> &pred_dto);
 
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
@@ -613,7 +607,8 @@ namespace dd
   template void TorchModule::post_transform_predict(
       const std::string tmpl, const APIData &template_params,
       const TxtTorchInputFileConn &inputc, const TorchModel &tmodel,
-      const torch::Device &device, const APIData &ad);
+      const torch::Device &device,
+      const oatpp::Object<DTO::ServicePredict> &pred_dto);
 
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
@@ -628,5 +623,6 @@ namespace dd
   template void TorchModule::post_transform_predict(
       const std::string tmpl, const APIData &template_params,
       const CSVTSTorchInputFileConn &inputc, const TorchModel &tmodel,
-      const torch::Device &device, const APIData &ad);
+      const torch::Device &device,
+      const oatpp::Object<DTO::ServicePredict> &pred_dto);
 }

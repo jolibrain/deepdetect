@@ -124,7 +124,7 @@ namespace dd
     /**
      * \brief if db already exists
      */
-    bool has_to_create_db(const APIData &ad, double tsplit);
+    bool has_to_create_db(const std::vector<std::string> &uris, double tsplit);
 
     /**
      * \brief holder for mlm data generation (defined in txtinputconn)
@@ -267,11 +267,11 @@ namespace dd
       _test_datasets._test = true;
     }
 
-    void fillup_parameters(const APIData &ad_input)
+    void fillup_parameters(oatpp::Object<DTO::InputConnector> input_params)
     {
-      ImgInputFileConn::fillup_parameters(ad_input);
-      if (ad_input.has("bbox"))
-        _bbox = ad_input.get("bbox").get<bool>();
+      ImgInputFileConn::fillup_parameters(input_params);
+      if (input_params->bbox != nullptr)
+        _bbox = input_params->bbox;
       _dataset._bbox = _bbox;
       _test_datasets._bbox = _bbox;
     }
@@ -316,7 +316,17 @@ namespace dd
     /**
      * \brief read data given apiData
      */
-    void transform(const APIData &ad);
+    void transform(const APIData &ad)
+    {
+      oatpp::Object<DTO::ServicePredict> predict_dto
+          = ad.createSharedDTO<DTO::ServicePredict>();
+      transform(predict_dto);
+    }
+
+    /**
+     * \brief read data based on input call DTO
+     */
+    void transform(oatpp::Object<DTO::ServicePredict> predict_dto);
 
   private:
     bool _bbox = false;
@@ -454,6 +464,16 @@ namespace dd
     void transform(const APIData &ad);
 
     /**
+     * \brief read data based on input call DTO
+     */
+    void transform(oatpp::Object<DTO::ServicePredict> predict_dto)
+    {
+      // XXX: Requires TxtConnector DTO support
+      (void)predict_dto;
+      throw InputConnectorInternalException("Not supported yet");
+    }
+
+    /**
      * \brief genrate MLM self supervised data
      */
     TorchBatch generate_masked_lm_batch(const TorchBatch &example);
@@ -540,6 +560,16 @@ namespace dd
      * \brief read data wrt apidata
      */
     void transform(const APIData &ad);
+
+    /**
+     * \brief read data based on input call DTO
+     */
+    void transform(oatpp::Object<DTO::ServicePredict> predict_dto)
+    {
+      // XXX: Requires CSVTSConnector DTO support
+      (void)predict_dto;
+      throw InputConnectorInternalException("Not supported yet");
+    }
 
     /**
      * \brief read datadim from read data

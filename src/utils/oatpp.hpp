@@ -39,6 +39,25 @@ namespace dd
     oatpp::UnorderedFields<oatpp::Any>
     dtoToUFields(const oatpp::Void &polymorph);
 
+    template <class S, class D>
+    inline std::vector<D> dtoVecToVec(oatpp::Vector<S> dto_vec)
+    {
+      std::vector<D> vec;
+      for (auto v : *dto_vec)
+        vec.push_back(v);
+      return vec;
+    }
+
+    template <>
+    std::vector<std::string> inline dtoVecToVec<oatpp::String>(
+        oatpp::Vector<oatpp::String> dto_vec)
+    {
+      std::vector<std::string> vec;
+      for (auto v : *dto_vec)
+        vec.push_back(v->std_str());
+      return vec;
+    }
+
     void dtoToJDoc(const oatpp::Void &polymorph, JDoc &jdoc,
                    bool ignore_null = true);
     void dtoToJVal(const oatpp::Void &polymorph, JDoc &jdoc, JVal &jval,

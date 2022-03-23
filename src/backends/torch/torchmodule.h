@@ -161,12 +161,11 @@ namespace dd
      * \brief hook called after inputConnector::transform(data) during predict
      */
     template <class TInputConnectorStrategy>
-    void post_transform_predict(const std::string tmpl,
-                                const APIData &template_params,
-                                const TInputConnectorStrategy &inputc,
-                                const TorchModel &tmodel,
-                                const torch::Device &device,
-                                const APIData &ad);
+    void post_transform_predict(
+        const std::string tmpl, const APIData &template_params,
+        const TInputConnectorStrategy &inputc, const TorchModel &tmodel,
+        const torch::Device &device,
+        const oatpp::Object<DTO::ServicePredict> &pred_dto);
 
     /**
      * \brief see torch::module::to

@@ -1279,91 +1279,85 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-               TMLModel>::predict(const APIData &ad, APIData &out)
+               TMLModel>::predict(const APIData &ad_in, APIData &out)
   {
-    int64_t predict_batch_size = 1;
-    APIData params = ad.getobj("parameters");
-    APIData output_params = params.getobj("output");
-    std::string extract_layer;
+    oatpp::Object<DTO::ServicePredict> predict_dto;
+
+    // XXX: until everything is DTO, we consider the two cases:
+    // - either ad embeds a DTO, so we just have to retrieve it
+    // - or it's an APIData that must be converted to DTO
+    if (ad_in.has("dto"))
+      {
+        // cast to ServicePredict...
+        auto any = ad_in.get("dto").get<oatpp::Any>();
+        predict_dto = oatpp::Object<DTO::ServicePredict>(
+            std::static_pointer_cast<typename DTO::ServicePredict>(any->ptr));
+      }
+    else
+      {
+        predict_dto = ad_in.createSharedDTO<DTO::ServicePredict>();
+
+        if (ad_in.has("chain") && ad_in.get("chain").get<bool>())
+          predict_dto->_chain = true;
+        if (ad_in.has("data_raw_img"))
+          predict_dto->_data_raw_img
+              = ad_in.get("data_raw_img").get<std::vector<cv::Mat>>();
+        if (ad_in.has("ids"))
+          predict_dto->_ids = ad_in.get("ids").get<std::vector<std::string>>();
+        if (ad_in.has("meta_uris"))
+          predict_dto->_meta_uris
+              = ad_in.get("meta_uris").get<std::vector<std::string>>();
+        if (ad_in.has("index_uris"))
+          predict_dto->_index_uris
+              = ad_in.get("index_uris").get<std::vector<std::string>>();
+      }
+
+    auto params = predict_dto->parameters;
+    auto input_params = params->input;
+    auto output_params = params->output;
+    auto mllib_params = params->mllib;
+
+    int64_t predict_batch_size = mllib_params->net->test_batch_size;
+    std::string extract_layer = mllib_params->extract_layer->std_str();
+
     bool extract_last = false;
-    std::string forward_method;
+    if (extract_layer == "last")
+      extract_last = true;
+    std::string forward_method = mllib_params->forward_method->std_str();
 
-    bool bbox = _bbox;
-    double confidence_threshold = 0.0;
+    std::string dt = mllib_params->datatype->std_str();
+    if (dt == "fp32")
+      _dtype = torch::kFloat32;
+    else if (dt == "fp16")
+      {
+        if (_main_device == torch::Device("cpu"))
+          throw MLLibBadParamException(
+              "fp16 inference can be done only on GPU");
+        _dtype = torch::kFloat16;
+      }
+    else if (dt == "fp64")
+      _dtype = torch::kFloat64;
+    else
+      throw MLLibBadParamException("unknown datatype " + dt);
+
+    // TODO add a comment on the PR
+    bool bbox = output_params->bbox;
+    double confidence_threshold = output_params->confidence_threshold;
+
     int best_count = _nclasses;
-    int best_bbox = -1;
+    if (output_params->best != nullptr)
+      best_count = output_params->best;
+
+    int best_bbox = output_params->best_bbox;
+
     std::vector<std::string> confidences;
-
-    if (params.has("mllib"))
+    if (output_params->confidences != nullptr)
       {
-        APIData ad_mllib = params.getobj("mllib");
-        if (ad_mllib.has("net"))
-          {
-            APIData ad_net = ad_mllib.getobj("net");
-            if (ad_net.has("test_batch_size"))
-              predict_batch_size = ad_net.get("test_batch_size").get<int>();
-          }
-        if (ad_mllib.has("extract_layer"))
-          {
-            extract_layer = ad_mllib.get("extract_layer").get<std::string>();
-            if (extract_layer == "last")
-              extract_last = true;
-          }
-        if (ad_mllib.has("forward_method"))
-          forward_method = ad_mllib.get("forward_method").get<std::string>();
-
-        if (ad_mllib.has("datatype"))
-          {
-            std::string dt = ad_mllib.get("datatype").get<std::string>();
-            if (dt == "fp32")
-              _dtype = torch::kFloat32;
-            else if (dt == "fp16")
-              {
-                if (_main_device == torch::Device("cpu"))
-                  throw MLLibBadParamException(
-                      "fp16 inference can be done only on GPU");
-                _dtype = torch::kFloat16;
-              }
-            else if (dt == "fp64")
-              _dtype = torch::kFloat64;
-            else
-              throw MLLibBadParamException("unknown datatype " + dt);
-          }
+        for (oatpp::String conf : *output_params->confidences)
+          confidences.push_back(conf->std_str());
       }
 
-    if (output_params.has("bbox") && output_params.get("bbox").get<bool>())
-      {
-        bbox = true;
-      }
-    if (output_params.has("confidence_threshold"))
-      {
-        try
-          {
-            confidence_threshold
-                = output_params.get("confidence_threshold").get<double>();
-          }
-        catch (std::exception &e)
-          {
-            // try from int
-            confidence_threshold = static_cast<double>(
-                output_params.get("confidence_threshold").get<int>());
-          }
-      }
-    if (output_params.has("best"))
-      {
-        best_count = output_params.get("best").get<int>();
-      }
-    if (output_params.has("best_bbox"))
-      {
-        best_bbox = output_params.get("best_bbox").get<int>();
-      }
-    if (output_params.has("confidences"))
-      {
-        confidences
-            = output_params.get("confidences").get<std::vector<std::string>>();
-      }
-
-    bool lstm_continuation = false;
+    bool lstm_continuation = input_params->continuation;
     TInputConnectorStrategy inputc(this->_inputc);
 
     this->_stats.transform_start();
@@ -1371,17 +1365,19 @@ namespace dd
     outputc._best = best_count;
     try
       {
-        inputc.transform(ad);
-        _module.post_transform_predict(_template, _template_params, inputc,
-                                       this->_mlmodel, _main_device, ad);
-        if (ad.getobj("parameters").getobj("input").has("continuation")
-            && ad.getobj("parameters")
-                   .getobj("input")
-                   .get("continuation")
-                   .get<bool>())
-          lstm_continuation = true;
+        if (std::is_same<TInputConnectorStrategy,
+                         ImgTorchInputFileConn>::value)
+          {
+            inputc.transform(predict_dto);
+          }
         else
-          lstm_continuation = false;
+          {
+            // XXX: torchinputconn does not fully support DTOs yet
+            inputc.transform(ad_in);
+          }
+        _module.post_transform_predict(_template, _template_params, inputc,
+                                       this->_mlmodel, _main_device,
+                                       predict_dto);
       }
     catch (...)
       {
@@ -1404,10 +1400,10 @@ namespace dd
         throw MLLibBadParamException("unknown extract layer " + extract_layer);
       }
 
-    if (output_params.has("measure"))
+    if (!output_params->measure->empty())
       {
         APIData meas_out;
-        test(ad, inputc, inputc._dataset, 1, meas_out);
+        test(ad_in, inputc, inputc._dataset, 1, meas_out);
         meas_out.erase("iteration");
         meas_out.erase("train_loss");
         out.add("measure", meas_out.getobj("measure"));
@@ -1810,7 +1806,7 @@ namespace dd
                         static_cast<MLModel *>(&this->_mlmodel));
       }
 
-    if (ad.has("chain") && ad.get("chain").get<bool>())
+    if (predict_dto->_chain)
       {
         if (std::is_same<TInputConnectorStrategy,
                          ImgTorchInputFileConn>::value)
