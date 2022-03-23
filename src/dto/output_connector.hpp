@@ -56,6 +56,18 @@ namespace dd
       };
       DTO_FIELD(Boolean, image) = false;
 
+      DTO_FIELD_INFO(measure)
+      {
+        info->description
+            = "Output measures requested, from acc: accuracy, acc-k: top-k "
+              "accuracy, replace k with number (e.g. acc-5), f1: f1, "
+              "precision and recall, mcll: multi-class log loss, auc: area "
+              "under the curve, cmdiag: diagonal of confusion matrix "
+              "(requires f1), cmfull: full confusion matrix (requires f1), "
+              "mcc: Matthews correlation coefficient";
+      }
+      DTO_FIELD(Vector<String>, measure) = Vector<String>::createShared();
+
       /* output unsupervised predict */
       DTO_FIELD_INFO(binarized)
       {

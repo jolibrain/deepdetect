@@ -23,6 +23,7 @@
 #include "torchinputconns.h"
 
 #include "utils/utils.hpp"
+#include "utils/oatpp.hpp"
 
 namespace dd
 {
@@ -77,13 +78,12 @@ namespace dd
     _dataset.db_finalize();
   }
 
-  bool TorchInputInterface::has_to_create_db(const APIData &ad,
-                                             double test_split)
+  bool
+  TorchInputInterface::has_to_create_db(const std::vector<std::string> &uris,
+                                        double test_split)
   {
     bool rebuild = false;
     // here force db paths manually if given at call time
-    std::vector<std::string> uris
-        = ad.get("data").get<std::vector<std::string>>();
 
     if (uris.size() >= 1)
       {
@@ -247,13 +247,14 @@ namespace dd
     _logger->info("Read {} lines in image & files {}", line_num, listfilePath);
   }
 
-  void ImgTorchInputFileConn::transform(const APIData &ad)
+  void ImgTorchInputFileConn::transform(
+      oatpp::Object<DTO::ServicePredict> predict_dto)
   {
     if (!_train)
       {
         try
           {
-            ImgInputFileConn::transform(ad);
+            ImgInputFileConn::transform(predict_dto);
           }
         catch (InputConnectorBadParamException &e)
           {
@@ -274,19 +275,15 @@ namespace dd
     else // if (!_train)
       {
         // This must be done since we don't call ImgInputFileConn::transform
-        if (ad.has("parameters")) // overriding default parameters
-          {
-            APIData ad_param = ad.getobj("parameters");
-            if (ad_param.has("input"))
-              {
-                fillup_parameters(ad_param.getobj("input"));
-              }
-          }
+        fillup_parameters(predict_dto->parameters->input);
         set_train_dataset_seed(_seed);
 
         // Read all parsed files and create tensor datasets
+        auto data_vec = oatpp_utils::dtoVecToVec<oatpp::String, std::string>(
+            predict_dto->data);
         bool createDb
-            = _db && TorchInputInterface::has_to_create_db(ad, _test_split);
+            = _db
+              && TorchInputInterface::has_to_create_db(data_vec, _test_split);
         bool shouldLoad = !_db || createDb;
 
         if (shouldLoad)
@@ -296,7 +293,7 @@ namespace dd
             // Get files paths
             try
               {
-                get_data(ad);
+                get_data(predict_dto);
               }
             catch (InputConnectorBadParamException &e)
               {
@@ -675,7 +672,8 @@ namespace dd
 
         if (_db)
           {
-            if (TorchInputInterface::has_to_create_db(ad, _test_split))
+            auto data_vec = ad.get("data").get<std::vector<std::string>>();
+            if (TorchInputInterface::has_to_create_db(data_vec, _test_split))
               {
                 double save_ts = _test_split;
                 _test_split = 0.0;

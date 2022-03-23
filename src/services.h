@@ -1070,7 +1070,29 @@ namespace dd
 
     // =====
     //
-    // Chains with DTO input
+    // with DTO input
+
+    oatpp::Object<DTO::PredictBody>
+    predict(const std::string &sname,
+            const oatpp::Object<DTO::ServicePredict> &predict_dto)
+    {
+      APIData pred_in;
+      pred_in.add("dto", predict_dto);
+      APIData pred_out;
+      predict(pred_in, sname, pred_out);
+
+      if (pred_out.has("dto"))
+        {
+          auto dto = pred_out.get("dto")
+                         .get<oatpp::Any>()
+                         .retrieve<oatpp::Object<DTO::PredictBody>>();
+          return dto;
+        }
+      else
+        {
+          return pred_out.createSharedDTO<DTO::PredictBody>();
+        }
+    }
 
     int chain_service(const std::string &cname,
                       const std::shared_ptr<spdlog::logger> &chain_logger,

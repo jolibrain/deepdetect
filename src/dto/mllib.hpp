@@ -34,6 +34,17 @@ namespace dd
   {
 #include OATPP_CODEGEN_BEGIN(DTO) ///< Begin DTO codegen section
 
+    class Net : public oatpp::DTO
+    {
+      DTO_INIT(Net, DTO)
+
+      DTO_FIELD_INFO(test_batch_size)
+      {
+        info->description = "Testing batch size";
+      }
+      DTO_FIELD(Int32, test_batch_size) = 1;
+    };
+
     class MLLib : public oatpp::DTO
     {
       DTO_INIT(MLLib, DTO /* extends */)
@@ -98,9 +109,9 @@ namespace dd
 
       DTO_FIELD_INFO(datatype)
       {
-        info->description = "fp16 or fp32";
+        info->description
+            = "Datatype used at prediction time. fp16 or fp32 or fp64 (torch)";
       };
-
       DTO_FIELD(String, datatype) = "fp32";
 
       DTO_FIELD_INFO(extract_layer)
@@ -109,8 +120,9 @@ namespace dd
             = "Returns tensor values from an intermediate layer. If set to "
               "'last', returns the values from last layer.";
       }
+      DTO_FIELD(String, extract_layer) = "";
 
-      DTO_FIELD(String, extract_layer);
+      DTO_FIELD(Object<Net>, net) = Net::createShared();
 
       // =====
       // Libtorch options
@@ -150,6 +162,15 @@ namespace dd
                             "are listed in the Model Templates section.";
       };
       DTO_FIELD(UnorderedFields<Any>, template_params);
+
+      // Libtorch predict options
+      DTO_FIELD_INFO(forward_method)
+      {
+        info->description
+            = "Executes a custom function from within a traced/JIT model, "
+              "instead of the standard forward()";
+      }
+      DTO_FIELD(String, forward_method) = "";
 
       // =====
       // NCNN Options
