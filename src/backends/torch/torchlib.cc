@@ -481,8 +481,8 @@ namespace dd
   {
     if (metric_name == "eucll" || metric_name == "delta_score_0.1"
         || metric_name == "L1_mean_error")
-      return (v2 > v1);
-    return (v1 > v2);
+      return (v2 >= v1);
+    return (v1 >= v2);
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -981,7 +981,7 @@ namespace dd
                       std::string key = e.key().toStringRef();
                       if (!e.value().isTensor())
                         continue;
-                      auto val_t = e.value().toTensor();
+                      const torch::Tensor &val_t = e.value().toTensor();
 
                       // all scalar values are considered as metrics
                       if (val_t.numel() != 1)

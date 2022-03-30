@@ -45,8 +45,11 @@ static std::string not_found_str
 static std::string incept_repo = "../examples/torch/resnet50_torch/";
 static std::string detect_repo = "../examples/torch/fasterrcnn_torch/";
 static std::string seg_repo = "../examples/torch/deeplabv3_torch/";
+// static std::string detect_train_repo_fasterrcnn
+//= "../examples/torch/fasterrcnn_train_torch";
+// below special version w/ workaroud jit bug in torch 1.11
 static std::string detect_train_repo_fasterrcnn
-    = "../examples/torch/fasterrcnn_train_torch";
+    = "../examples/torch/fasterrcnn_train_torch111";
 static std::string detect_train_repo_yolox
     = "../examples/torch/yolox_train_torch";
 static std::string resnet50_train_repo
@@ -91,9 +94,9 @@ static std::string bert_train_data
     = "../examples/torch/bert_training_torch_140_transformers_251/data/";
 
 static std::string fasterrcnn_train_data
-    = "../examples/torch/fasterrcnn_train_torch/train.txt";
+    = "../examples/torch/fasterrcnn_train_torch111/train.txt";
 static std::string fasterrcnn_test_data
-    = "../examples/torch/fasterrcnn_train_torch/test.txt";
+    = "../examples/torch/fasterrcnn_train_torch111/test.txt";
 
 static std::string sinus = "../examples/all/sinus/";
 
@@ -1063,7 +1066,23 @@ TEST(torchapi, service_publish_trained_model)
   ASSERT_TRUE(fileops::file_exists(published_repo + "/checkpoint-1.pt"));
   ASSERT_TRUE(fileops::file_exists(published_repo + "/best_model.txt"));
   ASSERT_TRUE(fileops::file_exists(published_repo + "/model.json"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/config.json"));
   ASSERT_FALSE(fileops::file_exists(published_repo + "/resnet50.pt"));
+
+  // Check on published model configuration
+  std::string config_path = published_repo + "/config.json";
+  std::ifstream ifs_config(config_path.c_str(), std::ios::binary);
+  ASSERT_TRUE(ifs_config.is_open());
+  std::stringstream config_sstr;
+  config_sstr << ifs_config.rdbuf();
+  ifs_config.close();
+  rapidjson::Document d_config;
+  d_config.Parse<rapidjson::kParseNanAndInfFlag>(config_sstr.str().c_str());
+  auto d_config_input = d_config["parameters"]["input"].GetObject();
+  ASSERT_TRUE(d_config_input.HasMember("width"));
+  ASSERT_TRUE(d_config_input["width"].GetInt() == 224);
+  ASSERT_TRUE(d_config_input.HasMember("height"));
+  ASSERT_TRUE(d_config_input["height"].GetInt() == 224);
 
   // Clean up train repo
   std::unordered_set<std::string> lfiles;

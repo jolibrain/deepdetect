@@ -260,18 +260,17 @@ namespace dd
                                               d_config.GetAllocator());
 
     //- crop_size
-    auto d_input = d_config["parameters"]["input"].GetObject();
-    auto d_mllib = d_config["parameters"]["mllib"].GetObject();
-    if (d_mllib.HasMember("crop_size"))
+    auto d_config_input = d_config["parameters"]["input"].GetObject();
+    auto d_model_mllib = d_model["parameters"]["mllib"].GetObject();
+    if (d_model_mllib.HasMember("crop_size"))
       {
         try
           {
-            int crop_size
-                = d_model["parameters"]["mllib"]["crop_size"].GetInt();
+            int crop_size = d_model_mllib["crop_size"].GetInt();
             if (crop_size > 0)
               {
-                d_config["parameters"]["input"]["width"].SetInt(crop_size);
-                d_config["parameters"]["input"]["height"].SetInt(crop_size);
+                d_config_input["width"].SetInt(crop_size);
+                d_config_input["height"].SetInt(crop_size);
               }
           }
         catch (RapidjsonException &e)
@@ -281,10 +280,10 @@ namespace dd
     //- db
     try
       {
-        if (d_input.HasMember("db"))
-          d_input["db"].SetBool(false);
-        if (d_mllib.HasMember("db"))
-          d_input["db"].SetBool(false);
+        if (d_config_input.HasMember("db"))
+          d_config_input["db"].SetBool(false);
+        if (d_model_mllib.HasMember("db"))
+          d_model_mllib["db"].SetBool(false);
       }
     catch (RapidjsonException &e)
       {
