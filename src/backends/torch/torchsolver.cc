@@ -287,7 +287,6 @@ namespace dd
         size_t end = sstate.rfind(".");
         int it = std::stoi(sstate.substr(start, end - start));
         _logger->info("Restarting optimization from iter {}", it);
-        _logger->info("loading " + sstate);
         try
           {
             torch::load(*_optimizer, sstate, device);
@@ -315,6 +314,8 @@ namespace dd
             "Optimizer not created at resume time, this means that there are "
             "no param.solver api data");
       }
+
+    int it = 0;
     // reload solver if asked for and set it value accordingly
     if (ad_mllib.has("resume") && ad_mllib.get("resume").get<bool>())
       {
@@ -328,7 +329,7 @@ namespace dd
         else
           try
             {
-              return load(mlmodel._sstate, main_device);
+              it = load(mlmodel._sstate, main_device);
             }
           catch (std::exception &e)
             {
@@ -385,7 +386,7 @@ namespace dd
       }
 
     override_options();
-    return 0;
+    return it;
   }
 
   void TorchSolver::override_options()
