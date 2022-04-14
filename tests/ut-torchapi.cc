@@ -1713,7 +1713,7 @@ TEST(torchapi, service_train_object_detection_fasterrcnn)
           "type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_size\":2,"
           "\"test_batch_size\":2},\"resume\":false,\"mirror\":true,\"rotate\":"
           "true,\"crop_size\":224,"
-          "\"cutout\":0.1,\"geometry\":{\"prob\":0.1,\"persp_horizontal\":"
+          "\"cutout\":0.5,\"geometry\":{\"prob\":0.1,\"persp_horizontal\":"
           "true,\"persp_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
           "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
           "\"prob\":0."

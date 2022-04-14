@@ -275,6 +275,11 @@ namespace dd
           _uniform_real_1(0.0, 1.0), _bernouilli(0.5),
           _uniform_int_rotate(0, 3)
     {
+      if (_crop_params._crop_size > 0)
+        {
+          _cutout_params._img_width = _crop_params._crop_size;
+          _cutout_params._img_height = _crop_params._crop_size;
+        }
     }
 
     ~TorchImgRandAugCV()
