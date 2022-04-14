@@ -250,7 +250,11 @@ namespace dd
               }
             _builderc->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
             _builderc->setDLACore(_dla);
-            _builderc->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
+            _builderc->setFlag(
+                nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
+            _builderc->setFlag(nvinfer1::BuilderFlag::kDIRECT_IO);
+            _builderc->setFlag(
+                nvinfer1::BuilderFlag::kREJECT_EMPTY_ALGORITHMS);
           }
       }
     else

@@ -25,6 +25,12 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#include "src/onnx.pb.h"
+#pragma GCC diagnostic pop
+
 namespace dd
 {
   namespace caffe_proto
@@ -53,6 +59,6 @@ namespace dd
   bool TRTWriteProtoToTextFile(const google::protobuf::Message &proto,
                                const char *filename);
   bool TRTReadProtoFromBinaryFile(const char *filename,
-                                  google::protobuf::Message *proto);
+                                  onnx::ModelProto *proto);
 }
 #endif
