@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvcr.io/nvidia/tensorrt:21.07-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:22.03-py3 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -133,7 +133,7 @@ RUN cd /opt/deepdetect/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -
 -D BUILD_opencv_cudacodec=ON \
 -D WITH_CUDNN=ON \
 -D OPENCV_DNN_CUDA=OFF \
--D CUDA_ARCH_BIN=6.1 \
+-D CUDA_ARCH_BIN="6.1 7.5 8.6" \
 -D WITH_V4L=ON \
 -D WITH_QT=OFF \
 -D WITH_OPENGL=ON \
@@ -162,7 +162,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvcr.io/nvidia/tensorrt:21.07-py3 AS runtime
+FROM nvcr.io/nvidia/tensorrt:22.03-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 

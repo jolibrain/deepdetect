@@ -1,21 +1,8 @@
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index a18cbd0..dbbad0b 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -57,7 +57,7 @@ option(BUILD_PLUGINS "Build TensorRT plugin" ON)
- option(BUILD_PARSERS "Build TensorRT parsers" ON)
- option(BUILD_SAMPLES "Build TensorRT samples" ON)
- 
--set(CMAKE_CXX_STANDARD 11)
-+set(CMAKE_CXX_STANDARD 14)
- set(CMAKE_CXX_STANDARD_REQUIRED ON)
- set(CMAKE_CXX_EXTENSIONS OFF)
- set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations ${CMAKE_CXX_FLAGS} -DBUILD_SYSTEM=cmake_oss")
 diff --git a/parsers/caffe/CMakeLists.txt b/parsers/caffe/CMakeLists.txt
-index 6d900ed..491c242 100644
+index 74fd358..bfca717 100644
 --- a/parsers/caffe/CMakeLists.txt
 +++ b/parsers/caffe/CMakeLists.txt
-@@ -52,7 +52,7 @@ target_include_directories(${SHARED_TARGET}
+@@ -53,7 +53,7 @@ target_include_directories(${SHARED_TARGET}
  
  set_target_properties(${SHARED_TARGET}
      PROPERTIES
@@ -24,7 +11,7 @@ index 6d900ed..491c242 100644
      CXX_STANDARD_REQUIRED YES
      CXX_EXTENSIONS NO
      ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-@@ -102,7 +102,7 @@ target_include_directories(${STATIC_TARGET}
+@@ -103,7 +103,7 @@ target_include_directories(${STATIC_TARGET}
  
  set_target_properties(${STATIC_TARGET}
      PROPERTIES
@@ -33,43 +20,3 @@ index 6d900ed..491c242 100644
      CXX_STANDARD_REQUIRED YES
      CXX_EXTENSIONS NO
      ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-diff --git a/plugin/CMakeLists.txt b/plugin/CMakeLists.txt
-index 806c3ad..e3803bd 100644
---- a/plugin/CMakeLists.txt
-+++ b/plugin/CMakeLists.txt
-@@ -106,7 +106,7 @@ target_include_directories(${SHARED_TARGET}
- )
- 
- set_target_properties(${SHARED_TARGET} PROPERTIES
--    CXX_STANDARD "11"
-+    CXX_STANDARD "14"
-     CXX_STANDARD_REQUIRED "YES"
-     CXX_EXTENSIONS "NO"
-     ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-@@ -120,7 +120,7 @@ set_target_properties(${SHARED_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POST
- 
- set_target_properties(${SHARED_TARGET} PROPERTIES VERSION ${TRT_VERSION} SOVERSION ${TRT_SOVERSION} )
- 
--set_property(TARGET ${SHARED_TARGET} PROPERTY CUDA_STANDARD 11)
-+set_property(TARGET ${SHARED_TARGET} PROPERTY CUDA_STANDARD 14)
- 
- target_link_libraries(${SHARED_TARGET}
-     ${CUBLAS_LIB}
-@@ -146,7 +146,7 @@ target_include_directories(${STATIC_TARGET}
- )
- 
- set_target_properties(${STATIC_TARGET} PROPERTIES
--    CXX_STANDARD "11"
-+    CXX_STANDARD "14"
-     CXX_STANDARD_REQUIRED "YES"
-     CXX_EXTENSIONS "NO"
-     ARCHIVE_OUTPUT_DIRECTORY "${TRT_OUT_DIR}"
-@@ -160,7 +160,7 @@ set_target_properties(${STATIC_TARGET} PROPERTIES DEBUG_POSTFIX ${TRT_DEBUG_POST
- 
- set_target_properties(${STATIC_TARGET} PROPERTIES VERSION ${TRT_VERSION} SOVERSION ${TRT_SOVERSION} )
- 
--set_property(TARGET ${STATIC_TARGET} PROPERTY CUDA_STANDARD 11)
-+set_property(TARGET ${STATIC_TARGET} PROPERTY CUDA_STANDARD 14)
- 
- #########################################################################################
- 

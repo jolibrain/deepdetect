@@ -943,9 +943,9 @@ if (USE_TENSORRT)
   endif()
 
   if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
-    message(FATAL_ERROR "Could not find TensorRT ${TENSORRT_LIB_DIR}/libnvinfer.so.8, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
+    message(FATAL_ERROR "Could not find TensorRT ${TRTTESTDIR}/libnvinfer.so.8, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
   else()
-    message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so")
+    message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so.8")
   endif()
 
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
@@ -953,8 +953,8 @@ if (USE_TENSORRT)
 
     if (NOT TENSORRT_VERSION)
         if (EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
-            set(TENSORRT_VERSION 21.08)
-            message(STATUS "Found TensorRT libraries version 8.x")
+            set(TENSORRT_VERSION 22.03)
+            message(STATUS "Found TensorRT libraries version 8")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
         endif()
@@ -975,7 +975,6 @@ if (USE_TENSORRT)
 	set(TRT_PATCHES
       ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
       ${TRT_PATCHES_PATH}/0003-c++14.patch
-      ${TRT_PATCHES_PATH}/0008-cuda13.patch
       ${TRT_PATCHES_PATH}/0009-fix_compil_order.patch
       ${TRT_PATCHES_PATH}/0010-fix_plugin_detect.patch
       )

@@ -15,35 +15,10 @@ index f9c9455..ea2a06e 100644
      bool isNormalized;
      bool isBatchAgnostic{true};
 diff --git a/parsers/caffe/caffeParser/caffeParser.cpp b/parsers/caffe/caffeParser/caffeParser.cpp
-index 2c12cc2..fa4be59 100644
+index 76bbc97..a30ce55 100644
 --- a/parsers/caffe/caffeParser/caffeParser.cpp
 +++ b/parsers/caffe/caffeParser/caffeParser.cpp
-@@ -155,7 +155,8 @@ std::vector<nvinfer1::PluginField> CaffeParser::parsePriorBoxParam(const trtcaff
-     return f;
- }
- 
--std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const trtcaffe::LayerParameter& msg, CaffeWeightFactory& /*weightFactory*/, BlobNameToTensor& /*tensors*/)
-+std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(
-+    const trtcaffe::LayerParameter& msg, CaffeWeightFactory& /*weightFactory*/, BlobNameToTensor& /*tensors*/)
- {
-     std::vector<nvinfer1::PluginField> f;
-     const trtcaffe::DetectionOutputParameter& p = msg.detection_output_param();
-@@ -177,7 +178,7 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const
-     *numClasses = p.num_classes();
-     f.emplace_back("numClasses", numClasses, PluginFieldType::kINT32, 1);
- 
--    //nms
-+    // nms
-     int* topK = allocMemory<int32_t>();
-     *topK = nmsp.top_k();
-     f.emplace_back("topK", topK, PluginFieldType::kINT32, 1);
-@@ -190,17 +191,24 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const
-     *confidenceThreshold = p.confidence_threshold();
-     f.emplace_back("confidenceThreshold", confidenceThreshold, PluginFieldType::kFLOAT32, 1);
- 
--    //nms
-+    // nms
-     auto* nmsThreshold = allocMemory<float>();
+@@ -195,12 +195,19 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const
      *nmsThreshold = nmsp.nms_threshold();
      f.emplace_back("nmsThreshold", nmsThreshold, PluginFieldType::kFLOAT32, 1);
  
@@ -65,17 +40,6 @@ index 2c12cc2..fa4be59 100644
  
      // confSigmoid = false for Caffe
      int* confSigmoid = allocMemory<int32_t>();
-@@ -224,9 +232,7 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const
-         *codeType = static_cast<int>(plugin::CodeTypeSSD::CENTER_SIZE);
-         break;
-     case trtcaffe::PriorBoxParameter::CORNER: // CORNER is default
--    default:
--        *codeType = static_cast<int>(plugin::CodeTypeSSD::CORNER);
--        break;
-+    default: *codeType = static_cast<int>(plugin::CodeTypeSSD::CORNER); break;
-     }
-     f.emplace_back("codeType", codeType, PluginFieldType::kINT32, 1);
- 
 diff --git a/parsers/caffe/proto/trtcaffe.proto b/parsers/caffe/proto/trtcaffe.proto
 index 059f932..0ef9b6b 100644
 --- a/parsers/caffe/proto/trtcaffe.proto
@@ -90,24 +54,22 @@ index 059f932..0ef9b6b 100644
    optional bool visualize = 10 [default = false];
    // The threshold used to visualize the detection results.
 diff --git a/plugin/common/kernel.h b/plugin/common/kernel.h
-index b6e4f26..264dcf1 100644
+index f832812..85f3d7d 100644
 --- a/plugin/common/kernel.h
 +++ b/plugin/common/kernel.h
-@@ -41,9 +41,10 @@ pluginStatus_t allClassNMS(cudaStream_t stream, int num, int num_classes, int nu
+@@ -42,8 +42,9 @@ pluginStatus_t allClassNMS(cudaStream_t stream, int num, int num_classes, int nu
  
  pluginStatus_t detectionInference(cudaStream_t stream, int N, int C1, int C2, bool shareLocation,
      bool varianceEncodedInTarget, int backgroundLabelId, int numPredsPerClass, int numClasses, int topK, int keepTopK,
 -    float confidenceThreshold, float nmsThreshold, CodeTypeSSD codeType, DataType DT_BBOX, const void* locData,
 -    const void* priorData, DataType DT_SCORE, const void* confData, void* keepCount, void* topDetections,
--    void* workspace, bool isNormalized = true, bool confSigmoid = false, int scoreBits = 16, const bool isBatchAgnostic = true);
-+    float confidenceThreshold, float nmsThreshold, float objectnessScore, CodeTypeSSD codeType, DataType DT_BBOX,
-+    const void* locData, const void* priorData, DataType DT_SCORE, const void* confData, const void* arm_conf_data,
-+    const void* arm_loc_data, void* keepCount, void* topDetections, void* workspace, bool isNormalized = true,
-+    bool confSigmoid = false, int scoreBits = 16, const bool isBatchAgnostic = true);
++    float confidenceThreshold, float nmsThreshold, float objectnessScore, CodeTypeSSD codeType, DataType DT_BBOX, const void* locData,
++    const void* priorData, DataType DT_SCORE, const void* confData, const void* arm_conf_data,
++    const void* arm_loc_data, void* keepCount, void* topDetections,
+     void* workspace, bool isNormalized = true, bool confSigmoid = false, int scoreBits = 16, const bool isBatchAgnostic = true);
  
  pluginStatus_t nmsInference(cudaStream_t stream, int N, int boxesSize, int scoresSize, bool shareLocation,
-     int backgroundLabelId, int numPredsPerClass, int numClasses, int topK, int keepTopK, float scoreThreshold,
-@@ -78,13 +79,16 @@ const char* cublasGetErrorString(cublasStatus_t error);
+@@ -79,13 +80,16 @@ const char* cublasGetErrorString(cublasStatus_t error);
  pluginStatus_t permuteData(cudaStream_t stream, int nthreads, int num_classes, int num_data, int num_dim,
      DataType DT_DATA, bool confSigmoid, const void* data, void* new_data);
  
@@ -126,14 +88,13 @@ index b6e4f26..264dcf1 100644
  size_t normalizePluginWorkspaceSize(bool acrossSpatial, int C, int H, int W);
  
 diff --git a/plugin/common/kernels/decodeBBoxes.cu b/plugin/common/kernels/decodeBBoxes.cu
-index 8a689c1..0fb3f9f 100644
+index 8a689c1..087250a 100644
 --- a/plugin/common/kernels/decodeBBoxes.cu
 +++ b/plugin/common/kernels/decodeBBoxes.cu
-@@ -284,6 +284,133 @@ __launch_bounds__(nthds_per_cta)
+@@ -284,6 +284,132 @@ __launch_bounds__(nthds_per_cta)
      }
  }
  
-+
 +template <typename T_BBOX, unsigned nthds_per_cta>
 +__launch_bounds__(nthds_per_cta)
 +    __global__ void CasReg_decodeBBoxes_kernel(
@@ -263,7 +224,7 @@ index 8a689c1..0fb3f9f 100644
  template <typename T_BBOX>
  pluginStatus_t decodeBBoxes_gpu(
      cudaStream_t stream,
-@@ -297,16 +424,28 @@ pluginStatus_t decodeBBoxes_gpu(
+@@ -297,16 +423,32 @@ pluginStatus_t decodeBBoxes_gpu(
      const bool clip_bbox,
      const void* loc_data,
      const void* prior_data,
@@ -274,26 +235,34 @@ index 8a689c1..0fb3f9f 100644
      const int BS = 512;
      const int GS = (nthreads + BS - 1) / BS;
 -    decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
+-                                                           num_priors, share_location, num_loc_classes,
+-                                                           background_label_id, clip_bbox,
+-                                                           (const T_BBOX*) loc_data, (const T_BBOX*) prior_data,
+-                                                           (T_BBOX*) bbox_data, batch_agnostic);
 +    if (arm_loc_data == NULL)
-+       decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
-                                                            num_priors, share_location, num_loc_classes,
-                                                            background_label_id, clip_bbox,
-                                                            (const T_BBOX*) loc_data, (const T_BBOX*) prior_data,
-                                                            (T_BBOX*) bbox_data, batch_agnostic);
++       decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>
++         (nthreads, code_type, variance_encoded_in_target,
++          num_priors, share_location, num_loc_classes,
++          background_label_id, clip_bbox,
++          (const T_BBOX*) loc_data, (const T_BBOX*) prior_data,
++          (T_BBOX*) bbox_data, batch_agnostic);
 +    else
 +    {
-+         decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
-+            num_priors, share_location, num_loc_classes, background_label_id, clip_bbox, (const T_BBOX*) arm_loc_data,
++         decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>
++           (nthreads, code_type, variance_encoded_in_target,
++            num_priors, share_location, num_loc_classes, background_label_id, clip_bbox,
++            (const T_BBOX*) arm_loc_data,
 +            (const T_BBOX*) prior_data, (T_BBOX*) bbox_data, batch_agnostic);
-+        CasReg_decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>(nthreads, code_type, variance_encoded_in_target,
-+            num_priors, share_location, num_loc_classes, background_label_id, clip_bbox, (const T_BBOX*) loc_data,
++         CasReg_decodeBBoxes_kernel<T_BBOX, BS><<<GS, BS, 0, stream>>>
++           (nthreads, code_type, variance_encoded_in_target,
++            num_priors, share_location, num_loc_classes, background_label_id,
++            clip_bbox, (const T_BBOX*) loc_data,
 +            (const T_BBOX*) prior_data, (T_BBOX*) bbox_data);
-+
 +    }
      CSC(cudaGetLastError(), STATUS_FAILURE);
      return STATUS_SUCCESS;
  }
-@@ -323,6 +462,7 @@ typedef pluginStatus_t (*dbbFunc)(cudaStream_t,
+@@ -323,6 +465,7 @@ typedef pluginStatus_t (*dbbFunc)(cudaStream_t,
                                 const bool,
                                 const void*,
                                 const void*,
@@ -301,7 +270,7 @@ index 8a689c1..0fb3f9f 100644
                                 void*,
                                 const bool);
  
-@@ -346,9 +486,8 @@ struct dbbLaunchConfig
+@@ -346,9 +489,8 @@ struct dbbLaunchConfig
      }
  };
  
@@ -313,7 +282,7 @@ index 8a689c1..0fb3f9f 100644
  };
  
  pluginStatus_t decodeBBoxes(
-@@ -364,6 +503,7 @@ pluginStatus_t decodeBBoxes(
+@@ -364,6 +506,7 @@ pluginStatus_t decodeBBoxes(
      const DataType DT_BBOX,
      const void* loc_data,
      const void* prior_data,
@@ -321,16 +290,16 @@ index 8a689c1..0fb3f9f 100644
      void* bbox_data,
      const bool batch_agnostic)
  {
-@@ -384,6 +524,7 @@ pluginStatus_t decodeBBoxes(
+@@ -384,6 +527,7 @@ pluginStatus_t decodeBBoxes(
                                            clip_bbox,
                                            loc_data,
                                            prior_data,
-+										  arm_loc_data,
++                                          arm_loc_data,
                                            bbox_data,
                                            batch_agnostic);
          }
 diff --git a/plugin/common/kernels/detectionForward.cu b/plugin/common/kernels/detectionForward.cu
-index 886298d..b1d7d9a 100644
+index f0398eb..9e17fa2 100644
 --- a/plugin/common/kernels/detectionForward.cu
 +++ b/plugin/common/kernels/detectionForward.cu
 @@ -30,12 +30,15 @@ pluginStatus_t detectionInference(
@@ -371,17 +340,17 @@ index 886298d..b1d7d9a 100644
 -                         confData,
 -                         scores);
 +    if (arm_confData == NULL)
-+       status = permuteData(stream,
-+                                numScores,
-+                                numClasses,
-+                                numPredsPerClass,
-+                                1,
-+                                DT_SCORE,
-+                                confSigmoid,
-+                                confData,
-+                                scores);
++      status = permuteData(stream,
++                           numScores,
++                           numClasses,
++                           numPredsPerClass,
++                           1,
++                           DT_SCORE,
++                           confSigmoid,
++                           confData,
++                           scores);
 +    else
-+       status = OSPermuteData(stream,
++      status = OSPermuteData(stream,
 +							 numScores,
 +							 numClasses,
 +							 numPredsPerClass,
@@ -396,7 +365,7 @@ index 886298d..b1d7d9a 100644
      ASSERT_FAILURE(status == STATUS_SUCCESS);
  
      size_t indicesSize = detectionForwardPreNMSSize(N, C2);
-@@ -243,6 +261,8 @@ namespace plugin
+@@ -244,6 +262,8 @@ namespace plugin
      const void* priorData,
      const DataType DT_SCORE,
      const void* confData,
@@ -405,7 +374,7 @@ index 886298d..b1d7d9a 100644
      void* keepCount,
      void* topDetections,
      void* workspace,
-@@ -277,6 +297,7 @@ namespace plugin
+@@ -278,6 +298,7 @@ namespace plugin
                                        clipBBox,
                                        DT_BBOX,
                                        locData,
@@ -414,7 +383,7 @@ index 886298d..b1d7d9a 100644
                                        bboxDataRaw,
                                        isBatchAgnostic);
 diff --git a/plugin/common/kernels/permuteData.cu b/plugin/common/kernels/permuteData.cu
-index 11497c0..88b6ab0 100644
+index 06d28ef..eeee24c 100644
 --- a/plugin/common/kernels/permuteData.cu
 +++ b/plugin/common/kernels/permuteData.cu
 @@ -16,6 +16,139 @@
@@ -557,18 +526,18 @@ index 11497c0..88b6ab0 100644
  template <typename Dtype, unsigned nthds_per_cta>
  __launch_bounds__(nthds_per_cta)
      __global__ void permuteData_kernel(
-@@ -95,9 +228,8 @@ struct pdLaunchConfig
+@@ -88,8 +221,9 @@ struct pdLaunchConfig
      }
  };
  
 -static std::array<pdLaunchConfig, 2> pdLCOptions = {
--  pdLaunchConfig(DataType::kFLOAT, permuteData_gpu<float>),
--  pdLaunchConfig(DataType::kHALF, permuteData_gpu<__half>)
+-    pdLaunchConfig(DataType::kFLOAT, permuteData_gpu<float>), pdLaunchConfig(DataType::kHALF, permuteData_gpu<__half>)};
 +static std::array<pdLaunchConfig, 1> pdLCOptions = {
-+  pdLaunchConfig(DataType::kFLOAT, permuteData_gpu<float>)
- };
++    pdLaunchConfig(DataType::kFLOAT, permuteData_gpu<float>)
++};
  
- pluginStatus_t permuteData(cudaStream_t stream,
+ pluginStatus_t permuteData(cudaStream_t stream, const int nthreads, const int num_classes, const int num_data,
+     const int num_dim, const DataType DT_DATA, bool confSigmoid, const void* data, void* new_data)
 diff --git a/plugin/nmsPlugin/nmsPlugin.cpp b/plugin/nmsPlugin/nmsPlugin.cpp
 index cc1944a..3d30c19 100644
 --- a/plugin/nmsPlugin/nmsPlugin.cpp
@@ -915,7 +884,7 @@ index cc1944a..3d30c19 100644
          {
              params.confSigmoid = static_cast<int>(*(static_cast<const int*>(fields[i].data)));
 diff --git a/plugin/nmsPlugin/nmsPlugin.h b/plugin/nmsPlugin/nmsPlugin.h
-index 35b9d75..68e4a77 100644
+index 35b9d75..5229f0f 100644
 --- a/plugin/nmsPlugin/nmsPlugin.h
 +++ b/plugin/nmsPlugin/nmsPlugin.h
 @@ -32,7 +32,7 @@ class DetectionOutput : public IPluginV2Ext
@@ -927,17 +896,7 @@ index 35b9d75..68e4a77 100644
  
      DetectionOutput(const void* data, size_t length);
  
-@@ -71,7 +71,8 @@ public:
- 
-     DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const noexcept override;
- 
--    bool isOutputBroadcastAcrossBatch(int outputIndex, const bool* inputIsBroadcasted, int nbInputs) const noexcept override;
-+    bool isOutputBroadcastAcrossBatch(
-+        int outputIndex, const bool* inputIsBroadcasted, int nbInputs) const noexcept override;
- 
-     bool canBroadcastInputAcrossBatch(int inputIndex) const noexcept override;
- 
-@@ -92,13 +93,14 @@ private:
+@@ -92,13 +92,14 @@ private:
      DataType mType;
      int32_t mScoreBits;
      std::string mPluginNamespace;
@@ -953,7 +912,7 @@ index 35b9d75..68e4a77 100644
      DetectionOutputDynamic(const void* data, size_t length);
      ~DetectionOutputDynamic() override = default;
  
-@@ -137,6 +139,7 @@ private:
+@@ -137,6 +138,7 @@ private:
      DataType mType;
      int32_t mScoreBits;
      std::string mPluginNamespace;

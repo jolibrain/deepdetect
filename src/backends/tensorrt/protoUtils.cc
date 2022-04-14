@@ -255,7 +255,7 @@ namespace dd
   }
 
   bool TRTReadProtoFromBinaryFile(const char *filename,
-                                  google::protobuf::Message *proto)
+                                  onnx::ModelProto *proto)
   {
     std::ifstream input(filename, std::ios::in | std::ios::binary);
     if (!input.good())
