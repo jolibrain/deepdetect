@@ -5,7 +5,7 @@ ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=tensorrt
 ARG DEEPDETECT_DEFAULT_MODELS=true
-ARG DEEPDETECT_OPENCV4_BUILD_PATH=/opt/deepdetect/opencv/opencv-4.5.3/build
+ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.5.3/build
 #ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp
 
 # Install build dependencies
@@ -109,19 +109,21 @@ RUN for url in \
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install dataclasses typing_extensions
 
-ADD . /opt/deepdetect
-WORKDIR /opt/deepdetect/
+WORKDIR /tmp/
 
 ENV CCACHE_DIR=/ccache
 ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Install NVidia video codec
 RUN wget http://www.deepdetect.com/stuff/Video_Codec_SDK_11.1.5.zip && unzip Video_Codec_SDK_11.1.5.zip
-RUN cd Video_Codec_SDK_11.1.5 && cp Interface/* /usr/local/cuda/targets/x86_64-linux/include/ && cp Lib/linux/stubs/x86_64/* /usr/local/cuda/targets/x86_64-linux/lib/stubs/
+RUN cd Video_Codec_SDK_11.1.5 && cp Interface/* /usr/local/cuda/targets/x86_64-linux/include/ && \
+cp Lib/linux/stubs/x86_64/* /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
+cd /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
+ln -s libcuda.so libcuda.so.1 && ln -s libnvcuvid.so libnvcuvid.so.1
 
 # Build OpenCV 4 with CUDA
 RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.5.3.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.5.3.zip && unzip opencv.zip && unzip opencv_contrib.zip
-RUN cd /opt/deepdetect/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+RUN cd /tmp/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D CMAKE_INSTALL_PREFIX=/tmp/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
@@ -144,18 +146,20 @@ RUN cd /opt/deepdetect/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -
 -D OPENCV_ENABLE_NONFREE=ON \
 -D BUILD_opencv_python2=OFF \
 -D BUILD_opencv_python3=OFF \
--D OPENCV_EXTRA_MODULES_PATH=/opt/deepdetect/opencv/opencv_contrib-4.5.3/modules \
+-D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.5.3/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
 -D INSTALL_C_EXAMPLES=OFF \
 -D BUILD_EXAMPLES=OFF ..
 
-WORKDIR /opt/deepdetect/opencv/opencv-4.5.3/build
+WORKDIR /tmp/opencv/opencv-4.5.3/build
 RUN make -j20
 RUN make install
 
 # Build Deepdetect
+ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect
 ENV TERM=xterm
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs
 RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 
 # Copy libs to /tmp/libs for next build stage
@@ -165,6 +169,7 @@ RUN ./docker/get_libs.sh
 FROM nvcr.io/nvidia/tensorrt:22.03-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
+ARG DEEPDETECT_CUDA_VERSION=11.6
 
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
@@ -204,6 +209,12 @@ RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
 
 RUN useradd -ms /bin/bash dd && \
     chown -R dd:dd /opt
+
+# Copy stubs for libraries checking
+# XXX: some version of buildkit fail when copying to simlink, using cuda true path instead
+COPY --from=build /usr/local/cuda/targets/x86_64-linux/lib/stubs/libnvcuvid.so.1 /usr/local/cuda-${DEEPDETECT_CUDA_VERSION}/targets/x86_64-linux/lib/stubs/libnvcuvid.so.1
+COPY --from=build /usr/local/cuda/targets/x86_64-linux/lib/stubs/libcuda.so.1 /usr/local/cuda-${DEEPDETECT_CUDA_VERSION}/targets/x86_64-linux/lib/stubs/libcuda.so.1
+
 USER dd
 
 # Copy Deepdetect binaries from previous step
