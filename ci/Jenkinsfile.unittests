@@ -70,7 +70,6 @@ cmake .. \
     -DUSE_TENSORRT_OSS=OFF  \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 
-mkdir CMakeFiles
 touch CMakeFiles/spdlog-complete
 touch CMakeFiles/caffe_dd-complete
 touch CMakeFiles/Multicore-TSNE-complete
