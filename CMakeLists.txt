@@ -842,6 +842,9 @@ if (USE_TORCH)
   list(APPEND TORCH_INC_DIR "${TORCHVISION_LOCATION}/include/")
   list(APPEND TORCH_LIB_DIR "${TORCHVISION_LOCATION}/lib/")
   list(APPEND TORCH_LIB_DEPS torchvision)
+  message(STATUS "torch inc dir" ${TORCH_INC_DIR})
+  message(STATUS "torch lib dir" ${TORCH_LIB_DIR})
+  message(STATUS "torch lib dep" ${TORCH_LIB_DEPS})
 endif()
 
 # XGBoost
