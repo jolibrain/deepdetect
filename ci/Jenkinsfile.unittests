@@ -34,6 +34,17 @@ pipeline {
           # Create a copy on write filesystem instead of copying data
           mkdir -p build-upper build-work build
           sudo mount -t overlay overlay -o lowerdir=/var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds/${prebuilt_version}/archive/build,upperdir=$(pwd)/build-upper,workdir=$(pwd)/build-work $(pwd)/build
+          mkdir $(pwd)/build/CMakeFiles
+          touch $(pwd)/build/CMakeFiles/spdlog-complete
+          touch $(pwd)/build/CMakeFiles/caffe_dd-complete
+          touch $(pwd)/build/CMakeFiles/Multicore-TSNE-complete
+          touch $(pwd)/build/CMakeFiles/ncnn-complete
+          touch $(pwd)/build/CMakeFiles/xgboost-complete
+          touch $(pwd)/build/CMakeFiles/oatpp-complete
+          touch $(pwd)/build/CMakeFiles/oatpp-swagger-complete
+          touch $(pwd)/build/CMakeFiles/oatpp-zlib-complete
+          touch $(pwd)/build/CMakeFiles/pytorch-complete
+          touch $(pwd)/build/CMakeFiles/pytorch_vision-complete
           '''
         }
       }
@@ -53,8 +64,7 @@ export CCACHE_DIR=/ccache
 export PATH="/usr/lib/ccache/:$PATH"
 export TMPDIR=$(pwd)/build/tmp
 cd build
-
-
+ls
 cmake .. \
     -DBUILD_TESTS=ON  \
     -DBUILD_SPDLOG=ON \
@@ -69,17 +79,6 @@ cmake .. \
     -DUSE_TENSORRT=OFF  \
     -DUSE_TENSORRT_OSS=OFF  \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-
-touch CMakeFiles/spdlog-complete
-touch CMakeFiles/caffe_dd-complete
-touch CMakeFiles/Multicore-TSNE-complete
-touch CMakeFiles/ncnn-complete
-touch CMakeFiles/xgboost-complete
-touch CMakeFiles/oatpp-complete
-touch CMakeFiles/oatpp-swagger-complete
-touch CMakeFiles/oatpp-zlib-complete
-touch CMakeFiles/pytorch-complete
-touch CMakeFiles/pytorch_vision-complete
 
 make clang-format-check
 schedtool -B -n 1 -e ionice -n 1 make -j 6 spdlog caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost oatpp oatpp-swagger oatpp-zlib  # tensorrt-oss
