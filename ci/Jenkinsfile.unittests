@@ -64,7 +64,11 @@ export CCACHE_DIR=/ccache
 export PATH="/usr/lib/ccache/:$PATH"
 export TMPDIR=$(pwd)/build/tmp
 cd build
+echo pwd
+pwd
+echo ls
 ls
+echo ls /var/lib/jenkins/workspace/deepdetect_PR-1422/build/pytorch/src/pytorch/torch/include/torch/csrc/api/include/
 cmake .. \
     -DBUILD_TESTS=ON  \
     -DBUILD_SPDLOG=ON \
