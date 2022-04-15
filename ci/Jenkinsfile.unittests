@@ -34,8 +34,10 @@ pipeline {
           # Create a copy on write filesystem instead of copying data
           mkdir -p build-upper build-work build
           sudo mount -t overlay overlay -o lowerdir=/var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds/${prebuilt_version}/archive/build,upperdir=$(pwd)/build-upper,workdir=$(pwd)/build-work $(pwd)/build
+          echo 
           mkdir $(pwd)/build/CMakeFiles
           touch $(pwd)/build/CMakeFiles/pytorch-complete
+          touch $(pwd)/build/CMakeFiles/pytorch_vision-complete
           '''
         }
       }
