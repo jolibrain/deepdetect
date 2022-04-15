@@ -69,6 +69,7 @@ pwd
 echo ls
 ls
 echo ls /var/lib/jenkins/workspace/deepdetect_PR-1422/build/pytorch/src/pytorch/torch/include/torch/csrc/api/include/
+ls /var/lib/jenkins/workspace/deepdetect_PR-1422/build/pytorch/src/pytorch/torch/include/torch/csrc/api/include/
 cmake .. \
     -DBUILD_TESTS=ON  \
     -DBUILD_SPDLOG=ON \
