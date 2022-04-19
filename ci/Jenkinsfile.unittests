@@ -69,7 +69,36 @@ cmake .. \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_86,code=sm_86"
 
 make clang-format-check
-schedtool -B -n 1 -e ionice -n 1 make -j 6 spdlog caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost oatpp oatpp-swagger oatpp-zlib  # tensorrt-oss
+
+if [ -f spdlog/src/spdlog-stamp/spdlog-done ]
+then
+    touch CMakeFiles/cache_present
+fi
+
+if [ -f CMakeFiles/cache_present ]
+then
+    for lib in protobuf spdlog caffe_dd pytorch Multicore-TSNE ncnn xgboost oatpp oatpp-swagger oatpp-zlib 
+    do
+        touch "${lib}/src/${lib}-stamp/${lib}-mkdir"*
+        touch "${lib}/src/${lib}-stamp/${lib}-download"*
+        touch "${lib}/src/${lib}-stamp/${lib}-patch"*
+        touch "${lib}/src/${lib}-stamp/${lib}-update"*
+        touch "${lib}/src/${lib}-stamp/${lib}-urlinfo.txt"*
+        touch "${lib}/src/${lib}-stamp/download-${lib}.cmake"
+        touch "${lib}/src/${lib}-stamp/extract-${lib}.cmake"
+        touch "${lib}/src/${lib}-stamp/verify-${lib}.cmake"
+    done
+fi
+
+if [ -f CMakeFiles/cache_present ]
+then
+    for lib in spdlog protobuf oatpp caffe_dd Multicore-TSNE ncnn xgboost oatpp-swagger oatpp-zlib pytorch
+    do
+        touch "${lib}/src/${lib}-stamp/"*
+        touch "CMakeFiles/${lib}-complete"
+    done
+fi
+
 schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
 '''
