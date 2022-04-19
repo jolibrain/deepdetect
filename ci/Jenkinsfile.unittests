@@ -69,7 +69,27 @@ cmake .. \
     -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
 
 make clang-format-check
-schedtool -B -n 1 -e ionice -n 1 make -j 6 spdlog caffe_dd pytorch Multicore-TSNE faisslib ncnn xgboost oatpp oatpp-swagger oatpp-zlib  # tensorrt-oss
+
+# Prevent rebuilding libs if not full build
+if [ -f spdlog/src/spdlog-stamp/spdlog-done ]
+then
+    for lib in spdlog caffe_dd pytorch Multicore-TSNE ncnn xgboost oatpp oatpp-swagger oatpp-zlib 
+    do
+        touch "${lib}/src/${lib}-stamp/${lib}-install"
+        touch "${lib}/src/${lib}-stamp/${lib}-mkdir"
+        touch "${lib}/src/${lib}-stamp/${lib}-skip-update"
+        touch "${lib}/src/${lib}-stamp/${lib}-download"
+        touch "${lib}/src/${lib}-stamp/${lib}-patch"
+        touch "${lib}/tmp/${lib}-cfgcmd.txt"
+        touch "${lib}/src/${lib}-stamp/${lib}-configure"
+        touch "${lib}/src/${lib}-stamp/${lib}-build"
+        touch "${lib}/src/${lib}-stamp/${lib}-done"
+        touch "CMakeFiles/${lib}-complete"
+        touch "CMakeFiles/${lib}.dir/build.make"
+    done
+fi
+
+schedtool -B -n 1 -e ionice -n 1 make -j 6 spdlog caffe_dd pytorch pytorch_vision Multicore-TSNE faisslib ncnn xgboost oatpp oatpp-swagger oatpp-zlib  # tensorrt-oss
 schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
 '''
