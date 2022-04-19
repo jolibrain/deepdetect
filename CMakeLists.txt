@@ -133,6 +133,7 @@ if (BUILD_PROTOBUF)
     ExternalProject_Add(
         protobuf
         PREFIX protobuf
+        UPDATE_DISCONNECTED 1
         URL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
         URL_HASH SHA256=ba4bbc3e6b58d2ccfe406e616576ef48710a2aae205f463618025fc691549cfe
         SOURCE_SUBDIR cmake
@@ -143,6 +144,7 @@ if (BUILD_PROTOBUF)
         -Dprotobuf_BUILD_TESTS:BOOL=OFF
         -Dprotobuf_BUILD_EXAMPLES:BOOL=OFF
         INSTALL_COMMAND ""
+        STEP_TARGETS update configure patch
     )
     set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src)
     set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf-build/)
@@ -203,11 +205,13 @@ include_directories("${EIGEN3_INCLUDE_DIR}")
 if (BUILD_SPDLOG)
     ExternalProject_Add(
         spdlog
+        UPDATE_DISCONNECTED 1
         PREFIX spdlog
         URL https://github.com/gabime/spdlog/archive/v1.8.2.tar.gz
         URL_HASH SHA256=e20e6bd8f57e866eaf25a5417f0a38a116e537f1a77ac7b5409ca2b180cec0d5
         BUILD_IN_SOURCE true
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/spdlog/build -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        STEP_TARGETS update configure patch
     )
     set(SPDLOG_LIB_DEPS ${CMAKE_BINARY_DIR}/spdlog/build/lib/libspdlog.a)
     set(SPDLOG_LIB_DIR ${CMAKE_BINARY_DIR}/spdlog/build/lib)
@@ -344,6 +348,7 @@ if (USE_CAFFE OR USE_TORCH)
         BUILD_COMMAND make -C build -j${N}
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
+        STEP_TARGETS update configure patch
       )
 
       set(FAISS_INCLUDE_DIR ${CMAKE_BINARY_DIR}/faiss/src/faiss)
@@ -641,10 +646,13 @@ elseif(USE_CAFFE)
 
   message(STATUS "include_dirs : ${INCLUDE_DIRS}")
 
+  set(CAFFE_DD_TARBALL_HASH "bf2d6dab6bc187be349377f4baa97f867c6044186d7ad85cd72a56cd1ad30e35")
+
   ExternalProject_Add(
     caffe_dd
     PREFIX caffe_dd
     URL https://github.com/${CAFFE_DD_USER}/caffe/archive/${CAFFE_DD_BRANCH}.tar.gz
+    URL_HASH SHA256=${CAFFE_DD_TARBALL_HASH}
     CONFIGURE_COMMAND
         sh -c "\
             diff ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto/caffe.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/src/caffe.pb.cc > /dev/null 2>&1 \
@@ -667,6 +675,7 @@ elseif(USE_CAFFE)
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
     DEPENDS caffe_pb_h protobuf spdlog
+    STEP_TARGETS update configure patch
   )
 
   if (USE_HDF5)
@@ -733,6 +742,7 @@ if (USE_NCNN)
       PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
       CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
+      STEP_TARGETS update configure patch
     )
   else ()
     ExternalProject_Add(
@@ -740,9 +750,10 @@ if (USE_NCNN)
       PREFIX ncnn
       URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
       URL_HASH SHA256=${NCNN_TARBALL_HASH}
-      PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
+      PATCH_COMMAND  ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
       CMAKE_ARGS ${NCNN_BUILD_FLAGS}
       INSTALL_COMMAND ""
+      STEP_TARGETS update configure patch
       )
   endif()
 
@@ -790,6 +801,7 @@ if (USE_TORCH)
       COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || ${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA}  BUILD_CAFFE2=1 BUILD_CAFFE2_OPS=1 BUILD_CAFFE2_MOBILE=0 USE_DDLOG=1 USE_TENSORRT=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 "CMAKE_CXX_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}" "CMAKE_CUDA_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}" CMAKE_PREFIX_PATH=${PROTOBUF_LIB_DIR}/cmake MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
       INSTALL_COMMAND ""
       DEPENDS spdlog protobuf
+      STEP_TARGETS update configure patch
     )
 
     set(TORCH_LOCATION ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch)
@@ -837,6 +849,7 @@ if (USE_TORCH)
     BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh PYTORCH_VISION ${CMAKE_BINARY_DIR}/pytorch_vision ${PYTORCH_VISION_COMPLETE} src/pytorch_vision src/pytorch_vision-build ${N} "install" ${CMAKE_COMMAND} ${PYTORCH_VISION_FLAGS}
     INSTALL_COMMAND ""
     DEPENDS protobuf pytorch
+    STEP_TARGETS update configure patch
   )
 
   list(APPEND TORCH_INC_DIR "${TORCHVISION_LOCATION}/include/")
@@ -861,6 +874,7 @@ if (USE_XGBOOST)
       INSTALL_COMMAND ""
       BUILD_COMMAND ""
       CONFIGURE_COMMAND ""
+      STEP_TARGETS update configure patch
     )
     ExternalProject_Add(
       xgboost
@@ -878,6 +892,7 @@ if (USE_XGBOOST)
         -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda $CUDA_ARCH"
       INSTALL_COMMAND ""
       DEPENDS xgboost_cub
+      STEP_TARGETS update configure patch
     )
   else()
     ExternalProject_Add(
@@ -886,11 +901,13 @@ if (USE_XGBOOST)
       GIT_REPOSITORY https://github.com/dmlc/xgboost.git
       GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
       GIT_CONFIG advice.detachedHead=false
+      UPDATE_DISCONNECTED 1
       PATCH_COMMAND
         git reset --hard &&
         patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
         cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b
       INSTALL_COMMAND ""
+      STEP_TARGETS update configure patch
     )
   endif()
   set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
@@ -908,6 +925,7 @@ if (USE_TSNE)
       SOURCE_SUBDIR multicore_tsne
       CMAKE_ARGS -Wno-dev
       INSTALL_COMMAND ""
+      STEP_TARGETS update configure patch
    )
   set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
   set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE-build)
@@ -1013,11 +1031,13 @@ set(OATPP_ZLIB_VERSION "1.2.5")
 ExternalProject_Add(
     oatpp
     PREFIX oatpp
+    UPDATE_DISCONNECTED 1
     URL https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz
     URL_HASH SHA256=36276e8b23e68ece1e6093c3f06fc80e3d42a5f4e47cdeef5e7e63f36eeddaad
     BUILD_IN_SOURCE true
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
     INSTALL_COMMAND ""
+    STEP_TARGETS update configure patch
 )
 ExternalProject_Add(
     oatpp-zlib
@@ -1035,6 +1055,7 @@ ExternalProject_Add(
     BUILD_IN_SOURCE true
     INSTALL_COMMAND ""
     DEPENDS oatpp
+    STEP_TARGETS update configure patch
 )
 ExternalProject_Add(
     oatpp-swagger
@@ -1052,6 +1073,7 @@ ExternalProject_Add(
         -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
         -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
     DEPENDS oatpp
+    STEP_TARGETS update configure patch
 )
 
 # FIXME(sileht): we should copy res outside build dir and dynamically looks at runtime at different places
