@@ -134,7 +134,7 @@ RUN cd /tmp/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -D CMAKE_BUI
 -D BUILD_opencv_cudacodec=ON \
 -D WITH_CUDNN=ON \
 -D OPENCV_DNN_CUDA=OFF \
--D CUDA_ARCH_BIN=6.1 \
+-D CUDA_ARCH_BIN=6.1 7.5 8.6 \
 -D WITH_V4L=ON \
 -D WITH_QT=OFF \
 -D WITH_OPENGL=ON \
