@@ -34,7 +34,7 @@ cmake ..  \
     -DUSE_NCNN=ON  \
     -DUSE_TENSORRT=OFF  \
     -DUSE_TENSORRT_OSS=OFF  \
-    -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
+    -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_86,code=sm_86"
 schedtool -B -n 1 -e ionice -n 1 make -j 6 spdlog caffe_dd pytorch Multicore-TSNE ncnn xgboost oatpp oatpp-swagger oatpp-zlib  # tensorrt-oss
 ccache -s
 
