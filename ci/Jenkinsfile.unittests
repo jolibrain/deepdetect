@@ -88,31 +88,35 @@ then
         touch "${lib}/src/${lib}-stamp/download-${lib}.cmake"
         touch "${lib}/src/${lib}-stamp/extract-${lib}.cmake"
         touch "${lib}/src/${lib}-stamp/verify-${lib}.cmake"
+        touch "${lib}/src/${lib}-stamp/${lib}-configure" 
+        touch "${lib}/src/${lib}-stamp/${lib}-build" 
+        touch "${lib}/src/${lib}-stamp/${lib}-install" 
+        touch "${lib}/src/${lib}-stamp/${lib}-done" 
     done
 fi
 
-if [ -f CMakeFiles/cache_present ]
-then
-    for lib in spdlog protobuf oatpp caffe_dd Multicore-TSNE ncnn xgboost oatpp-swagger oatpp-zlib 
-    do
-        touch "${lib}/src/${lib}-stamp/"*
-        touch "CMakeFiles/${lib}-complete"
-    done
-fi
+# if [ -f CMakeFiles/cache_present ]
+# then
+#     for lib in spdlog protobuf oatpp caffe_dd Multicore-TSNE ncnn xgboost oatpp-swagger oatpp-zlib 
+#     do
+#         touch "${lib}/src/${lib}-stamp/"*
+#         touch "CMakeFiles/${lib}-complete"
+#     done
+# fi
 
 
 # configure everything else, considering dependencies built if cache is present
 #schedtool -B -n 1 -e ionice -n 1 make -j 1  pytorch-configure   # tensorrt-oss
 
-if [ -f CMakeFiles/cache_present ]
-# consider everything done (but pytorch_vision) if cache is present
-then
-    for lib in pytorch  
-    do
-        touch "${lib}/src/${lib}-stamp/"*
-        touch "CMakeFiles/${lib}-complete"
-    done
-fi
+# if [ -f CMakeFiles/cache_present ]
+# # consider everything done (but pytorch_vision) if cache is present
+# then
+#     for lib in pytorch  
+#     do
+#         touch "${lib}/src/${lib}-stamp/"*
+#         touch "CMakeFiles/${lib}-complete"
+#     done
+# fi
 
 # configure pytorch_vision
 # (depends on pytorch so pytorch must be fully built in order not to rebuild pytorch_vision)
