@@ -102,7 +102,7 @@ fi
 
 
 # configure everything else, considering dependencies built if cache is present
-schedtool -B -n 1 -e ionice -n 1 make -j 1  pytorch-configure faisslib  # tensorrt-oss
+#schedtool -B -n 1 -e ionice -n 1 make -j 1  pytorch-configure   # tensorrt-oss
 
 if [ -f CMakeFiles/cache_present ]
 # consider everything done (but pytorch_vision) if cache is present
