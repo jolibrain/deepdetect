@@ -116,7 +116,7 @@ fi
 
 # configure pytorch_vision
 # (depends on pytorch so pytorch must be fully built in order not to rebuild pytorch_vision)
-schedtool -B -n 1 -e ionice -n 1 make -j 1 pytorch_vision-configure
+#schedtool -B -n 1 -e ionice -n 1 make -j 1 pytorch_vision-configure
 
 #if [ -f CMakeFiles/cache_present ]
 ##consider pytorch_vision done
