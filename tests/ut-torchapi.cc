@@ -69,6 +69,16 @@ static std::string resnet50_test_cats_data
 static std::string resnet50_test_image
     = "../examples/torch/resnet50_training_torch_small/train/cats/"
       "cat.10097.jpg";
+
+static std::string resnet18_ocr_train_repo
+    = "../examples/torch/resnet18_training_torch_ocr/";
+static std::string ocr_train_data
+    = "../examples/torch/resnet18_training_torch_ocr/train.txt";
+static std::string ocr_test_data
+    = "../examples/torch/resnet18_training_torch_ocr/test.txt";
+static std::string ocr_test_image
+    = "../examples/torch/resnet18_training_torch_ocr/crops/8717_5.png";
+
 static std::string deeplabv3_train_repo
     = "../examples/torch/deeplabv3_training_torch/";
 static std::string deeplabv3_train_data
@@ -1144,6 +1154,90 @@ TEST(torchapi, service_train_image_segmentation_segformer)
   fileops::clear_directory(segformer_train_repo + "test_0.lmdb");
   fileops::remove_dir(segformer_train_repo + "train.lmdb");
   fileops::remove_dir(segformer_train_repo + "test_0.lmdb");
+}
+
+TEST(torchapi, service_train_images_ctc)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  // Create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + resnet18_ocr_train_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
+          "\"width\":112,\"height\":32,\"db\":true,\"ctc\":true},\"mllib\":{"
+          "\"template\":\"crnn\",\"finetuning\":true,\"gpu\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":"
+        + iterations_resnet50 + ",\"base_lr\":1e-4"
+        + ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
+          "interval\":200},\"net\":{\"batch_size\":32},"
+          "\"resume\":false,\"mirror\":false,\"rotate\":false,"
+          "\"geometry\":{\"prob\":0.1,\"persp_horizontal\":"
+          "false,\"persp_vertical\":false,\"zoom_in\":true,\"zoom_out\":true,"
+          "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
+          "\"prob\":0.01},\"dataloader_threads\":4},"
+          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
+          "\"output\":{\"measure\":[\"acc\"]}},\"data\":[\""
+        + ocr_train_data + "\",\"" + ocr_test_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
+  ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0) << "accuracy";
+  ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() < 8)
+      << "train loss";
+
+  // Predict
+  std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{"
+                            "\"output\":{\"best\":1,\"ctc\":true}},"
+                            "\"data\":[\""
+                            + ocr_test_image + "\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.0);
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet18_ocr_train_repo, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(resnet18_ocr_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(resnet18_ocr_train_repo + "checkpoint-"
+                                    + iterations_resnet50 + ".pt"));
+
+  fileops::clear_directory(resnet18_ocr_train_repo + "train.lmdb");
+  fileops::clear_directory(resnet18_ocr_train_repo + "test_0.lmdb");
+  fileops::remove_dir(resnet18_ocr_train_repo + "train.lmdb");
+  fileops::remove_dir(resnet18_ocr_train_repo + "test_0.lmdb");
 }
 
 TEST(torchapi, service_publish_trained_model)

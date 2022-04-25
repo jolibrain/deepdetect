@@ -247,6 +247,30 @@ namespace dd
     _logger->info("Read {} lines in image & files {}", line_num, listfilePath);
   }
 
+  void ImgTorchInputFileConn::read_image_text(
+      std::vector<std::pair<std::string, std::string>> &lfiles,
+      const std::string &listfilePath)
+  {
+    _logger->info("Reading image file & text target {}", listfilePath);
+    std::ifstream infile(listfilePath);
+    std::string line;
+    int line_num = 0;
+
+    while (std::getline(infile, line))
+      {
+        size_t pos = line.find(' ');
+        std::string filename = line.substr(0, pos);
+        std::string text;
+        if (pos != std::string::npos)
+          text = line.substr(pos + 1);
+
+        ++line_num;
+        lfiles.emplace_back(filename, text);
+      }
+    _logger->info("Read {} lines in image file & text target {}", line_num,
+                  listfilePath);
+  }
+
   void ImgTorchInputFileConn::transform(
       oatpp::Object<DTO::ServicePredict> predict_dto)
   {
@@ -491,6 +515,85 @@ namespace dd
                     _test_datasets[i].add_image_image_file(
                         lfile.first, lfile.second, _height, _width);
               }
+            else if (_ctc)
+              {
+                std::vector<std::pair<std::string, std::string>>
+                    lfiles; // labeled files
+                std::vector<std::vector<std::pair<std::string, std::string>>>
+                    tests_lfiles;
+
+                read_image_text(lfiles, _uris.at(0));
+                tests_lfiles.resize(_uris.size() - 1);
+                for (size_t i = 1; i < _uris.size(); ++i)
+                  {
+                    read_image_text(tests_lfiles[i - 1], _uris.at(i));
+                  }
+
+                if (_dataset._shuffle)
+                  shuffle_dataset<std::string>(lfiles);
+
+                bool has_test_data = false;
+                for (auto test_lfiles : tests_lfiles)
+                  if (test_lfiles.size() != 0)
+                    {
+                      has_test_data = true;
+                      break;
+                    }
+                if (_test_split > 0.0 && !has_test_data)
+                  {
+                    tests_lfiles.resize(1);
+                    split_dataset<std::string>(lfiles, tests_lfiles[0]);
+                  }
+
+                int max_ocr_length = -1;
+                for (const std::pair<std::string, std::string> &lfile : lfiles)
+                  {
+                    max_ocr_length
+                        = std::max(max_ocr_length, int(lfile.second.size()));
+                  }
+                this->_logger->info("Maximum sequence size = {}",
+                                    max_ocr_length);
+                // mapping from characters to index
+                std::unordered_map<uint32_t, int> alphabet;
+                // ctc blank character
+                alphabet[0] = 0;
+
+                for (const std::pair<std::string, std::string> &lfile : lfiles)
+                  {
+                    _dataset.add_image_text_file(lfile.first, lfile.second,
+                                                 _height, _width, alphabet,
+                                                 max_ocr_length);
+                  }
+
+                // in case of db, alloc of test sets already done in
+                // has_to_create_db
+                if (!_db)
+                  {
+                    set_test_names(tests_lfiles.size(), _uris);
+                  }
+
+                for (size_t i = 0; i < tests_lfiles.size(); ++i)
+                  for (const std::pair<std::string, std::string> &lfile :
+                       tests_lfiles[i])
+                    _test_datasets[i].add_image_text_file(
+                        lfile.first, lfile.second, _height, _height, alphabet,
+                        max_ocr_length);
+
+                // Write corresp file
+                std::ofstream correspf(_model_repo + "/" + _correspname,
+                                       std::ios::binary);
+                auto hit = alphabet.begin();
+                while (hit != alphabet.end())
+                  {
+                    // index to character
+                    correspf << (*hit).second << " " << (*hit).first
+                             << std::endl;
+                    ++hit;
+                  }
+                correspf.close();
+
+                _alphabet_size = alphabet.size();
+              }
             else // file exists, expects a list of files and targets, for
                  // regression & multi-class
               {
@@ -550,6 +653,20 @@ namespace dd
                     set_test_names(tests_lfiles.size(), _uris);
                     _test_datasets.set_list(tests_lfiles);
                   }
+              }
+          }
+        else // shouldLoad
+          {
+            if (_ctc)
+              {
+                int corresp_size = get_corresp_size();
+                if (corresp_size <= 0)
+                  {
+                    throw InputConnectorBadParamException(
+                        "found db but no valid corresp file, remove the db to "
+                        "rebuild it?");
+                  }
+                _alphabet_size = corresp_size;
               }
           }
 

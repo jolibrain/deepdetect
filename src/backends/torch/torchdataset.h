@@ -321,6 +321,18 @@ namespace dd
                             const int &width);
 
     /**
+     * \brief adds image from image filename with a text target (ocr)
+     * \param width of preprocessed image
+     * \param height of preprocessed image
+     * \param alphabet mapping between characters and logit index
+     * \param max_ocr_length maximum possible size of the sequence
+     */
+    int add_image_text_file(const std::string &fname,
+                            const std::string &target, int height, int width,
+                            std::unordered_map<uint32_t, int> &alphabet,
+                            int max_ocr_length);
+
+    /**
      * \brief turns an image into a torch::Tensor
      * \param bgr input image
      * \param height image height

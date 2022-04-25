@@ -45,7 +45,6 @@ namespace dd
                const std::shared_ptr<spdlog::logger> &logger)
         : MLModel(ad, adg, logger)
     {
-
       read_from_repository(spdlog::get("api"));
       read_corresp_file();
     }
@@ -73,11 +72,12 @@ namespace dd
         const std::shared_ptr<spdlog::logger> &logger);
 
   public:
-    std::string _traced;  /**< path of the traced part of the net. */
-    std::string _weights; /**< path of the weights of the net. */
-    std::string _sstate;  /**< current solver state to resume training */
-    std::string _proto;   /**< prototxt file generated or read as graph */
-    std::string _native;  /**< native torch net */
+    std::string _traced;       /**< path of the traced part of the net. */
+    std::string _head_weights; /**< path of the weights of the finetuned head
+                                  of the net. */
+    std::string _sstate;       /**< current solver state to resume training */
+    std::string _proto;        /**< prototxt file generated or read as graph */
+    std::string _native;       /**< native torch net */
   };
 }
 
