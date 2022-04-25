@@ -71,6 +71,12 @@ namespace dd
       };
       DTO_FIELD(Boolean, segmentation) = false;
 
+      DTO_FIELD_INFO(ctc)
+      {
+        info->description = "whether the model type is ctc";
+      };
+      DTO_FIELD(Boolean, ctc) = false;
+
       DTO_FIELD_INFO(from_repository)
       {
         info->description = "initialize model repository with checkpoint and "

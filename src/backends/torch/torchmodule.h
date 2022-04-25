@@ -33,6 +33,7 @@
 #include "torchmodel.h"
 #include "torchgraphbackend.h"
 #include "native/native_net.h"
+#include "native/templates/crnn.hpp"
 #include <torch/script.h>
 #include <torch/nn/pimpl.h>
 #if !defined(CPU_ONLY)
@@ -56,16 +57,6 @@ namespace dd
      */
     c10::IValue forward(std::vector<c10::IValue> source,
                         const std::string &forward_method = "");
-
-    /**
-     * \brief forward pass using the devices given in parameters.
-     * If more than one device is given, this method performs a multigpu
-     * forward.
-     */
-    [[deprecated("Multigpu does not need this method anymore, cf "
-                 "torchlib.cc:train()")]] c10::IValue
-    forward_on_devices(std::vector<c10::IValue> source,
-                       const std::vector<torch::Device> &devices);
 
     /**
      * \brief forward (inference) until extract_layer, return value of
@@ -98,8 +89,16 @@ namespace dd
      * \brief Add linear model at the end of module. Automatically detects size
      * of the last layer thanks to the provided example output.
      */
-    void setup_linear_layer(int nclasses,
-                            std::vector<c10::IValue> input_example);
+    void setup_linear_head(int nclasses,
+                           std::vector<c10::IValue> input_example);
+
+    /**
+     * \brief Add LSTM model at the end of module. Automatically detects input
+     * size.
+     */
+    void setup_crnn_head(const APIData &template_params,
+                         std::vector<c10::IValue> input_example,
+                         int output_size);
 
     /**
      * \brief gives all learnable parameters
@@ -203,20 +202,23 @@ namespace dd
     std::shared_ptr<NativeModule>
         _native; /**< native module : directly written in C++ */
 
-    torch::nn::Linear _linear = nullptr;
+    // heads
+    torch::nn::Linear _linear_head = nullptr;
+    std::shared_ptr<CRNN> _crnn_head = nullptr;
+
+    bool _require_linear_head = false;
+    bool _require_crnn_head = false;
+    std::string
+        _head_weights; /** < file containing the weights of the model head. */
 
     torch::Device _device;
-    torch::Dtype _dtype;
+    torch::Dtype _dtype = torch::kFloat32;
     bool _training = false; /**<true if model is in training mode */
     int _linear_in = 0;     /**<id of the input of the final linear layer */
     int _loss_id = -1; /**<id of the loss output. If >= 0, forward returns this
                           output only during training */
     bool _hidden_states = false; /**< Take BERT hidden states as input. */
 
-    bool _require_linear_layer = false;
-    std::string
-        _linear_layer_file;     /** < if require_linear_layer == true, this is
-                                    the file where the weights are stored */
     unsigned int _nclasses = 0; /**< number of classes */
     bool _finetuning = false;
 
@@ -241,19 +243,29 @@ namespace dd
     void native_model_load(const TorchModel &tmodel);
 
     /**
-     * load linear model weights from pt format
-     */
-    void linear_model_load(const TorchModel &tmodel);
-
-    /**
      * load traced net (def + weights) from  pt format
      */
     void traced_model_load(TorchModel &model);
 
     /**
+     * load linear head weights from pt format
+     */
+    void linear_head_load(const TorchModel &tmodel);
+
+    /**
      * load linear layer weights only from pt format
      */
-    void linear_layer_load();
+    void linear_head_load();
+
+    /**
+     * load linear head weights from pt format
+     */
+    void crnn_head_load(const TorchModel &tmodel);
+
+    /**
+     * load linear layer weights only from pt format
+     */
+    void crnn_head_load();
   };
 }
 #endif

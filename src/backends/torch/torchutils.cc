@@ -115,6 +115,14 @@ namespace dd
           auto &elems = output.toTuple()->elements();
           return std::vector<c10::IValue>(elems.begin(), elems.end());
         }
+      else if (output.isGenericDict())
+        {
+          auto elems = output.toGenericDict();
+          std::vector<c10::IValue> ret;
+          for (auto &e : elems)
+            ret.push_back(e.value());
+          return ret;
+        }
       else
         {
           return { output };

@@ -35,28 +35,12 @@ namespace dd
 
   void TorchModule::to(torch::Device device)
   {
-    _device = device;
-    if (_graph)
-      _graph->to(device);
-    if (_native)
-      _native->to(device);
-    if (_traced)
-      _traced->to(device);
-    if (_linear)
-      _linear->to(device);
+    to(device, _dtype);
   }
 
   void TorchModule::to(torch::Dtype dtype)
   {
-    _dtype = dtype;
-    if (_graph)
-      _graph->to(dtype);
-    if (_native)
-      _native->to(dtype);
-    if (_traced)
-      _traced->to(dtype);
-    if (_linear)
-      _linear->to(dtype);
+    to(_device, dtype);
   }
 
   void TorchModule::to(torch::Device device, torch::Dtype dtype)
@@ -69,8 +53,10 @@ namespace dd
       _native->to(device, dtype);
     if (_traced)
       _traced->to(device, dtype);
-    if (_linear)
-      _linear->to(device, dtype);
+    if (_linear_head)
+      _linear_head->to(device, dtype);
+    if (_crnn_head)
+      _crnn_head->to(device, dtype);
   }
 
   void TorchModule::proto_model_load(const TorchModel &model)
@@ -136,26 +122,49 @@ namespace dd
       }
   }
 
-  void TorchModule::linear_model_load(const TorchModel &model)
+  void TorchModule::crnn_head_load(const TorchModel &model)
   {
-    _logger->info("loading " + model._weights);
+    _logger->info("loading " + model._head_weights);
     try
       {
-        torch::load(_linear, model._weights, _device);
+        torch::load(_crnn_head, model._head_weights, _device);
       }
     catch (std::exception &e)
       {
-        _logger->error("unable to load " + model._weights);
+        _logger->error("unable to load " + model._head_weights);
         throw;
       }
   }
 
-  void TorchModule::linear_layer_load()
+  void TorchModule::linear_head_load(const TorchModel &model)
   {
-    if (!_linear_layer_file.empty())
+    _logger->info("loading " + model._head_weights);
+    try
       {
-        _logger->info("loading " + _linear_layer_file);
-        torch::load(_linear, _linear_layer_file, _device);
+        torch::load(_linear_head, model._head_weights, _device);
+      }
+    catch (std::exception &e)
+      {
+        _logger->error("unable to load " + model._head_weights);
+        throw;
+      }
+  }
+
+  void TorchModule::crnn_head_load()
+  {
+    if (!_head_weights.empty())
+      {
+        _logger->info("loading " + _head_weights);
+        torch::load(_crnn_head, _head_weights, _device);
+      }
+  }
+
+  void TorchModule::linear_head_load()
+  {
+    if (!_head_weights.empty())
+      {
+        _logger->info("loading " + _head_weights);
+        torch::load(_linear_head, _head_weights, _device);
       }
   }
 
@@ -200,8 +209,10 @@ namespace dd
                                    const torch::Device &device)
   {
     if (!_native)
-      create_native_template<TInputConnectorStrategy>(tmpl, template_params,
-                                                      inputc, tmodel, device);
+      {
+        create_native_template<TInputConnectorStrategy>(
+            tmpl, template_params, inputc, tmodel, device);
+      }
     if (_graph)
       {
         std::vector<long int> dims = inputc._dataset.datasize(0);
@@ -218,17 +229,33 @@ namespace dd
       }
     to(_device);
 
-    if (_require_linear_layer && !_linear)
+    if (_require_linear_head && !_linear_head)
       {
         try
           {
             // TODO const cast because getting an input example actually
             // *modifies* the connector (it must be reset after that)
             // -> find a way to get an example without modifying the dataset?
-            setup_linear_layer(_nclasses,
-                               const_cast<TInputConnectorStrategy &>(inputc)
-                                   .get_input_example(device));
-            _linear->to(_device);
+            setup_linear_head(_nclasses,
+                              const_cast<TInputConnectorStrategy &>(inputc)
+                                  .get_input_example(device));
+            _linear_head->to(_device);
+          }
+        catch (std::exception &e)
+          {
+            throw MLLibInternalException(std::string("Libtorch error: ")
+                                         + e.what());
+          }
+      }
+    if (_require_crnn_head && !_crnn_head)
+      {
+        try
+          {
+            setup_crnn_head(template_params,
+                            const_cast<TInputConnectorStrategy &>(inputc)
+                                .get_input_example(device),
+                            inputc._alphabet_size);
+            _crnn_head->to(_device);
           }
         catch (std::exception &e)
           {
@@ -292,8 +319,8 @@ namespace dd
 
     if (_training && _loss_id >= 0)
       {
-        // if we are in training mode and model does output the loss (eg traced
-        // detection models), then we return the loss.
+        // if we are in training mode and model does output the loss (eg
+        // traced detection models), then we return the loss.
         return source.at(_loss_id);
       }
 
@@ -308,62 +335,16 @@ namespace dd
         out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
       }
 
-    if (_linear)
-      {
-        out_val = _linear->forward(torch_utils::to_tensor_safe(out_val));
-      }
-    return out_val;
-  }
-
-  c10::IValue
-  TorchModule::forward_on_devices(std::vector<c10::IValue> source,
-                                  const std::vector<torch::Device> &devices)
-  {
-    // Normal forward if only one device
-#if !defined(CPU_ONLY)
-    if (devices.size() <= 1)
-      {
-#endif
-        if (!devices.empty())
-          to(devices[0]);
-        return forward(source);
-#if !defined(CPU_ONLY)
-      }
-#endif
-
-#if !defined(CPU_ONLY)
     // graph and native modules take only one tensor as input for now
-    if (_graph)
+    if (_linear_head)
       {
-        throw MLLibBadParamException(
-            "Multigpu is not yet supported with graphs.");
+        out_val = _linear_head->forward(torch_utils::to_tensor_safe(out_val));
       }
-    if (_native)
+    else if (_crnn_head)
       {
-        return torch::nn::parallel::data_parallel(
-            _native, torch_utils::to_tensor_safe(source[0]), devices, _device);
-      }
-    if (_traced)
-      {
-        throw MLLibBadParamException(
-            "Multigpu is not yet supported with traced models");
-      }
-    c10::IValue out_val = source.at(_linear_in);
-    if (_hidden_states)
-      {
-        // out_val is a tuple containing tensors of dimension n_batch *
-        // sequence_length * n_features We want a tensor of size n_batch *
-        // n_features from the last hidden state
-        auto &elems = out_val.toTuple()->elements();
-        out_val = elems.back().toTensor().slice(1, 0, 1).squeeze(1);
-      }
-    if (_linear)
-      {
-        out_val = torch::nn::parallel::data_parallel(
-            _linear, torch_utils::to_tensor_safe(out_val), devices, _device);
+        out_val = _crnn_head->forward(torch_utils::to_tensor_safe(out_val));
       }
     return out_val;
-#endif
   }
 
   c10::IValue TorchModule::extract(std::vector<c10::IValue> source,
@@ -436,31 +417,55 @@ namespace dd
       }
   }
 
-  void TorchModule::setup_linear_layer(int nclasses,
-                                       std::vector<c10::IValue> input_example)
+  void TorchModule::setup_linear_head(int nclasses,
+                                      std::vector<c10::IValue> input_example)
   {
-    _linear = nullptr;
+    _linear_head = nullptr;
     // First dimension is batch id
     int outdim
         = torch_utils::to_tensor_safe(forward(input_example)).sizes()[1];
-    _linear = torch::nn::Linear(outdim, nclasses);
-    linear_layer_load();
+    _linear_head = torch::nn::Linear(outdim, nclasses);
+    linear_head_load();
+  }
+
+  void TorchModule::setup_crnn_head(const APIData &template_params,
+                                    std::vector<c10::IValue> input_example,
+                                    int output_size)
+  {
+    _crnn_head = nullptr;
+
+    if (!_traced)
+      throw MLLibInternalException("No traced model");
+
+    auto outdims = torch_utils::to_tensor_safe(forward(input_example)).sizes();
+    std::stringstream ss;
+    ss << "Backbone output dimensions = " << outdims;
+    _logger->info(ss.str());
+    _crnn_head
+        = std::make_shared<CRNN>(template_params, outdims.vec(), output_size);
+    crnn_head_load();
   }
 
   std::vector<torch::Tensor> TorchModule::parameters()
   {
+    std::vector<torch::Tensor> params;
     if (_graph)
       return _graph->parameters();
-    if (_native)
+    else if (_native)
       return _native->parameters();
-    std::vector<torch::Tensor> params;
+
     if (_traced)
       torch_utils::add_parameters(_traced, params);
-    if (_linear)
+    if (_linear_head)
       {
-        auto linear_params = _linear->parameters();
+        auto linear_params = _linear_head->parameters();
         params.insert(params.end(), linear_params.begin(),
                       linear_params.end());
+      }
+    else if (_crnn_head)
+      {
+        auto crnn_params = _crnn_head->parameters();
+        params.insert(params.end(), crnn_params.begin(), crnn_params.end());
       }
     return params;
   }
@@ -469,8 +474,10 @@ namespace dd
   {
     if (_traced)
       _traced->save(model._repo + "/checkpoint-" + name + ".pt");
-    if (_linear)
-      torch::save(_linear, model._repo + "/checkpoint-" + name + ".ptw");
+    if (_linear_head)
+      torch::save(_linear_head, model._repo + "/checkpoint-" + name + ".ptw");
+    if (_crnn_head)
+      torch::save(_crnn_head, model._repo + "/checkpoint-" + name + ".ptw");
     if (_graph)
       torch::save(_graph, model._repo + "/checkpoint-" + name + ".pt");
     if (_native)
@@ -488,15 +495,16 @@ namespace dd
     if (!model._traced.empty() && model._proto.empty())
       traced_model_load(model);
 
-    if (!model._weights.empty())
+    if (!model._head_weights.empty())
       {
-        if (_linear)
+        _head_weights = model._head_weights;
+        if (_linear_head)
           {
-            linear_model_load(model);
+            linear_head_load(model);
           }
-        else if (_require_linear_layer)
+        else if (_crnn_head)
           {
-            _linear_layer_file = model._weights;
+            crnn_head_load(model);
           }
       }
     if (!model._proto.empty())
@@ -515,8 +523,10 @@ namespace dd
       _graph->eval();
     if (_traced)
       _traced->eval();
-    if (_linear)
-      _linear->eval();
+    if (_linear_head)
+      _linear_head->eval();
+    if (_crnn_head)
+      _crnn_head->eval();
     if (_native)
       _native->eval();
 
@@ -529,8 +539,10 @@ namespace dd
       _graph->train();
     if (_traced)
       _traced->train();
-    if (_linear)
-      _linear->train();
+    if (_linear_head)
+      _linear_head->train();
+    if (_crnn_head)
+      _crnn_head->train();
     if (_native)
       _native->train();
 
@@ -541,7 +553,8 @@ namespace dd
   {
     _graph = nullptr;
     _traced = nullptr;
-    _linear = nullptr;
+    _linear_head = nullptr;
+    _crnn_head = nullptr;
     _native = nullptr;
   }
 
@@ -553,7 +566,7 @@ namespace dd
         cloned->_native
             = std::dynamic_pointer_cast<NativeModule>(_native->clone(device));
       }
-    if (_linear || _graph || _traced)
+    if (_graph || _traced)
       {
         throw MLLibBadParamException(
             "MultiGPU is not supported on non cloneable models (including "

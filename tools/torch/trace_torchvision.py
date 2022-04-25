@@ -31,11 +31,14 @@ import torch
 import torchvision
 import torchvision.models as M
 from torchvision.models.segmentation.deeplabv3 import DeepLabHead
+from torchvision.models.feature_extraction import create_feature_extractor, get_graph_node_names
 
 parser = argparse.ArgumentParser(description="Trace image processing models from torchvision")
 parser.add_argument('models', type=str, nargs='*', help="Models to trace.")
 parser.add_argument('--backbone', type=str, help="Backbone for detection models")
+parser.add_argument('--extract', type=str, nargs='+', help="Which features to extract from model")
 parser.add_argument('--print-models', action='store_true', help="Print all the available models names and exit")
+parser.add_argument('--print-extract', action='store_true', help="Print all the available extractable nodes for the selected model and exit")
 parser.add_argument('--to-dd-native', action='store_true', help="Prepare the model so that the weights can be loaded on native model with dede")
 parser.add_argument('--to-onnx', action="store_true", help="If specified, export to onnx instead of jit.")
 parser.add_argument('--onnx_out', type=str, default="prob", help="Name of onnx output")
@@ -233,6 +236,13 @@ for mname in args.models:
         logging.warn("model %s is unknown and will not be exported", mname)
         continue
 
+    if args.print_extract:
+        train_nodes, eval_nodes = get_graph_node_names(model_classes[mname]())
+        print("*** Extractable layers of", mname, "***")
+        for node in train_nodes:
+            print(node)
+        continue
+
     logging.info("Exporting model %s %s", mname, "(pretrained)" if args.pretrained else "")
     detection = mname in detection_model_classes
     segmentation = mname in segmentation_model_classes
@@ -297,6 +307,13 @@ for mname in args.models:
 
         model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose, **kwargs)
 
+        if args.extract != None:
+            logging.info("Extract layers: " + ", ".join(args.extract))
+            return_nodes = {
+                layer: layer for layer in args.extract
+            }
+            model = create_feature_extractor(model, return_nodes=return_nodes)
+
         if segmentation and 'deeplabv3' in mname:
             model.classifier = DeepLabHead(2048, args.num_classes)
         
@@ -318,6 +335,7 @@ for mname in args.models:
             mname
             + ("-pretrained" if args.pretrained else "")
             + ("-" + args.backbone if args.backbone else "")
+            + ("-" + "_".join(args.extract) if args.extract else "")
             + ("-cls" + str(args.num_classes) if args.num_classes else "")
             + ".pt")
     

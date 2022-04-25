@@ -840,6 +840,53 @@ namespace dd
     return 0;
   }
 
+  int TorchDataset::add_image_text_file(
+      const std::string &fname, const std::string &target, int height,
+      int width, std::unordered_map<uint32_t, int> &alphabet,
+      int max_ocr_length)
+  {
+    at::Tensor target_tensor = torch::zeros(
+        max_ocr_length, at::TensorOptions().dtype(torch::kInt64));
+    at::Tensor target_length
+        = torch::full(1, at::Scalar(int(target.size())),
+                      at::TensorOptions().dtype(torch::kInt64));
+    int i = 0;
+
+    for (auto &c : target)
+      {
+        if (i >= max_ocr_length)
+          {
+            // can happen in test set
+            this->_logger->warn("Sequence \"{}\" is exceeding maximum ocr "
+                                "length {}. Truncating...",
+                                target, max_ocr_length);
+            break;
+          }
+        auto it = alphabet.find(c);
+
+        if (it != alphabet.end())
+          {
+            target_tensor[i] = it->second;
+          }
+        else if (!_test)
+          {
+            this->_logger->info("added {} to alphabet", c);
+            int id = alphabet.size();
+            alphabet[c] = id;
+            target_tensor[i] = id;
+          }
+        else
+          {
+            this->_logger->warn(
+                "Character {} in test set but not in train set", c);
+          }
+
+        i++;
+      }
+    add_image_file(fname, { target_tensor, target_length }, height, width);
+    return 0;
+  }
+
   at::Tensor TorchDataset::image_to_tensor(const cv::Mat &bgr,
                                            const int &height, const int &width,
                                            const bool &target)
