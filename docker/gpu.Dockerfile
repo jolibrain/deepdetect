@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvidia/cuda:11.1-cudnn8-devel-ubuntu20.04 AS build
+FROM nvidia/cuda:11.6.0-cudnn8-devel-ubuntu20.04 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
