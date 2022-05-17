@@ -257,7 +257,7 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "640,\"width\":640,\"rgb\":true},\"mllib\":{\"template\":\"yolox\","
           "\"maxBatchSize\":2,\"maxWorkspaceSize\":256,\"gpuid\":0,"
-          "\"nclasses\":80}}}";
+          "\"nclasses\":81}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -285,7 +285,7 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
   auto &preds = jd["body"]["predictions"][cat_id]["classes"];
   ASSERT_EQ(preds.Size(), 1);
   std::string cl1 = preds[0]["cat"].GetString();
-  ASSERT_EQ(cl1, "15");
+  ASSERT_EQ(cl1, "16");
   ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.9);
   auto &bbox = preds[0]["bbox"];
   ASSERT_TRUE(bbox["xmin"].GetDouble() < 50 && bbox["xmax"].GetDouble() > 200
@@ -298,7 +298,7 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
   auto &preds2 = jd["body"]["predictions"][dog_id]["classes"];
   ASSERT_EQ(preds2.Size(), 1);
   std::string cl2 = preds2[0]["cat"].GetString();
-  ASSERT_EQ(cl2, "16");
+  ASSERT_EQ(cl2, "17");
   ASSERT_TRUE(preds2[0]["prob"].GetDouble() > 0.8);
   auto &bbox2 = preds[0]["bbox"];
   ASSERT_TRUE(bbox2["xmin"].GetDouble() < 50 && bbox2["xmax"].GetDouble() > 200
