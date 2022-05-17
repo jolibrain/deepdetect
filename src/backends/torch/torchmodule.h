@@ -33,7 +33,7 @@
 #include "torchmodel.h"
 #include "torchgraphbackend.h"
 #include "native/native_net.h"
-#include "native/templates/crnn.hpp"
+#include "native/templates/crnn_head.hpp"
 #include <torch/script.h>
 #include <torch/nn/pimpl.h>
 #if !defined(CPU_ONLY)
@@ -204,7 +204,7 @@ namespace dd
 
     // heads
     torch::nn::Linear _linear_head = nullptr;
-    std::shared_ptr<CRNN> _crnn_head = nullptr;
+    CRNNHead _crnn_head = nullptr;
 
     bool _require_linear_head = false;
     bool _require_crnn_head = false;

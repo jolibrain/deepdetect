@@ -85,12 +85,15 @@ namespace dd
 
     if (tdef.find("vit") != std::string::npos)
       {
-
         return new ViT(inputc, template_params);
       }
     else if (tdef.find("visformer") != std::string::npos)
       {
         return new Visformer(inputc, template_params);
+      }
+    else if (tdef.find("crnn") != std::string::npos)
+      {
+        return new CRNN(inputc, template_params);
       }
     else if (VisionModelsFactory::is_vision_template(tdef))
       {

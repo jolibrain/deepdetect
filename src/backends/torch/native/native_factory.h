@@ -27,6 +27,7 @@
 #include "./templates/vit.h"
 #include "./templates/visformer.h"
 #include "./templates/ttransformer.h"
+#include "./templates/crnn.hpp"
 #include "../torchinputconns.h"
 #include "apidata.h"
 #include "templates/vision_models.h"
@@ -47,7 +48,8 @@ namespace dd
       if (tdef.find("nbeats") != std::string::npos
           || tdef.find("vit") != std::string::npos
           || tdef.find("visformer") != std::string::npos
-          || tdef.find("ttransformer") != std::string::npos)
+          || tdef.find("ttransformer") != std::string::npos
+          || tdef.find("crnn") != std::string::npos)
         return true;
       else if (VisionModelsFactory::is_vision_template(tdef))
         return true;
@@ -58,6 +60,13 @@ namespace dd
     {
       if (tdef.find("nbeats") != std::string::npos
           || tdef.find("ttransformer") != std::string::npos)
+        return true;
+      return false;
+    }
+
+    static bool is_ctc(const std::string &tdef)
+    {
+      if (tdef.find("crnn") != std::string::npos)
         return true;
       return false;
     }

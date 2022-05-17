@@ -441,8 +441,7 @@ namespace dd
     std::stringstream ss;
     ss << "Backbone output dimensions = " << outdims;
     _logger->info(ss.str());
-    _crnn_head
-        = std::make_shared<CRNN>(template_params, outdims.vec(), output_size);
+    _crnn_head = CRNNHead(template_params, outdims.vec(), output_size);
     crnn_head_load();
   }
 
