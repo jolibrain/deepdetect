@@ -31,7 +31,7 @@ namespace dd
       const std::shared_ptr<spdlog::logger> &logger)
   {
 
-    const std::string weights = ".ptw";
+    const std::string head_weights = ".ptw";
     const std::string native = ".npt";
     const std::string traced = ".pt";
     const std::string corresp = "corresp";
@@ -49,8 +49,8 @@ namespace dd
         return 1;
       }
 
-    std::string tracedf, weightsf, correspf, sstatef, protof, nativef;
-    int traced_t = -1, weights_t = -1, corresp_t = -1, sstate_t = -1,
+    std::string tracedf, head_weightsf, correspf, sstatef, protof, nativef;
+    int traced_t = -1, head_weights_t = -1, corresp_t = -1, sstate_t = -1,
         proto_t = -1, native_t = -1;
 
     for (const auto &file : files)
@@ -64,12 +64,12 @@ namespace dd
                 sstate_t = lm;
               }
           }
-        else if (file.find(weights) != std::string::npos)
+        else if (file.find(head_weights) != std::string::npos)
           {
-            if (weights_t < lm)
+            if (head_weights_t < lm)
               {
-                weightsf = file;
-                weights_t = lm;
+                head_weightsf = file;
+                head_weights_t = lm;
               }
           }
         else if (file.find(traced) != std::string::npos)
@@ -107,7 +107,7 @@ namespace dd
       }
 
     _traced = tracedf;
-    _weights = weightsf;
+    _head_weights = head_weightsf;
     _corresp = correspf;
     _sstate = sstatef;
     _proto = protof;

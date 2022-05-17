@@ -81,6 +81,7 @@ namespace dd
     _timeserie = tl._timeserie;
     _bbox = tl._bbox;
     _segmentation = tl._segmentation;
+    _ctc = tl._ctc;
     _loss = tl._loss;
     _template_params = tl._template_params;
     _dtype = tl._dtype;
@@ -241,6 +242,8 @@ namespace dd
     else
       throw MLLibBadParamException("unknown datatype " + dt);
 
+    _module._dtype = _dtype;
+
     // Find GPU id
     if (mllib_dto->gpu != true)
       {
@@ -276,6 +279,10 @@ namespace dd
     if (mllib_dto->segmentation)
       {
         _segmentation = true;
+      }
+    else if (mllib_dto->ctc)
+      {
+        _ctc = true;
       }
     else if (mllib_dto->nclasses != 0)
       {
@@ -316,12 +323,16 @@ namespace dd
         _bbox = true;
         _classification = false;
       }
+    else if (_template.find("crnn") != std::string::npos)
+      {
+        _ctc = true;
+      }
     else if (_template.find("recurrent") != std::string::npos
              || NativeFactory::is_timeserie(_template))
       {
         _timeserie = true;
       }
-    if (!_regression && !_timeserie && !_bbox && !_segmentation
+    if (!_regression && !_timeserie && !_bbox && !_segmentation && !_ctc
         && self_supervised.empty())
       _classification = true; // classification is default
 
@@ -336,6 +347,8 @@ namespace dd
       this->_mltype = "classification";
     else if (_segmentation)
       this->_mltype = "segmentation";
+    else if (_ctc)
+      this->_mltype = "ctc";
 
     // Create the model
     _module._device = _main_device;
@@ -374,7 +387,7 @@ namespace dd
         = ((!this->_mlmodel._traced.empty() || !this->_mlmodel._proto.empty())
            + NativeFactory::valid_template_def(_template))
           > 1;
-    if (multiple_models_found)
+    if (multiple_models_found && !_ctc)
       {
         this->_logger->error("traced: {}, proto: {}, template: {}",
                              this->_mlmodel._traced, this->_mlmodel._proto,
@@ -392,8 +405,8 @@ namespace dd
         // No allocation, use traced model in repo
         if (_classification)
           {
-            _module._linear = nn::Linear(embedding_size, _nclasses);
-            _module._linear->to(_main_device);
+            _module._linear_head = nn::Linear(embedding_size, _nclasses);
+            _module._linear_head->to(_main_device);
             _module._hidden_states = true;
             _module._linear_in = 1;
           }
@@ -411,6 +424,12 @@ namespace dd
         _module._loss_id = 0;
         _module._linear_in = 1;
       }
+    else if (_template.find("crnn") != std::string::npos)
+      {
+        _module._linear_in = 0;
+        _module._require_crnn_head = true;
+        this->_logger->info("Add CRNN head on top of the traced model");
+      }
     else if (_template == "detr")
       {
       }
@@ -423,7 +442,6 @@ namespace dd
           this->_logger->info("Model allocated during training");
         else if (NativeFactory::valid_template_def(_template))
           {
-
             _module.create_native_template<TInputConnectorStrategy>(
                 _template, _template_params, this->_inputc, this->_mlmodel,
                 _main_device);
@@ -448,7 +466,7 @@ namespace dd
 
         if (_finetuning && !_module._native)
           {
-            _module._require_linear_layer = true;
+            _module._require_linear_head = true;
             this->_logger->info("Add linear layer on top of the traced model");
           }
       }
@@ -760,8 +778,8 @@ namespace dd
       _loss = _template;
 
     TorchLoss tloss(_loss, _module.has_model_loss(), _seq_training, _timeserie,
-                    _regression, _classification, _segmentation, class_weights,
-                    _reg_weight, _module, this->_logger);
+                    _regression, _classification, _segmentation, _ctc,
+                    class_weights, _reg_weight, _module, this->_logger);
     TorchSolver tsolver(_module, tloss, this->_logger);
 
     // logging parameters
@@ -845,8 +863,8 @@ namespace dd
             r.module->train();
             r.loss = std::make_shared<TorchLoss>(
                 _loss, r.module->has_model_loss(), _seq_training, _timeserie,
-                _regression, _classification, _segmentation, class_weights,
-                _reg_weight, *r.module, this->_logger);
+                _regression, _classification, _segmentation, _ctc,
+                class_weights, _reg_weight, *r.module, this->_logger);
           }
       }
     _module.train();
@@ -944,13 +962,15 @@ namespace dd
                     throw MLLibInternalException(
                         "Batch " + std::to_string(batch_id) + ": no target");
                   }
-                Tensor y = batch.target.at(0).to(device);
+                std::vector<Tensor> targets;
+                for (auto target : batch.target)
+                  targets.push_back(target.to(device));
 
                 // Prediction
                 out_val = rank_module.forward(in_vals);
 
                 // Compute loss
-                Tensor loss = rank_tloss.loss(out_val, y, in_vals);
+                Tensor loss = rank_tloss.loss(out_val, targets, in_vals);
 
                 if (loss_divider != 1)
                   loss = loss / loss_divider;
@@ -1343,8 +1363,8 @@ namespace dd
     else
       throw MLLibBadParamException("unknown datatype " + dt);
 
-    // TODO add a comment on the PR
     bool bbox = output_params->bbox;
+    bool ctc = output_params->ctc;
     double confidence_threshold = output_params->confidence_threshold;
 
     int best_count = _nclasses;
@@ -1467,8 +1487,12 @@ namespace dd
                     output = torch::stack(outputs);
                   }
 
-                if (extract_layer.empty() && _classification && !_timeserie)
+                // XXX: why is (!_timeserie) needed here? Aren't _timeserie and
+                // _classification mutually exclusive?
+                if (extract_layer.empty() && !_timeserie && _classification)
                   output = torch::softmax(output, 1).to(cpu);
+                else if (extract_layer.empty() && !_timeserie && ctc)
+                  output = torch::softmax(output, 2).to(cpu);
                 else
                   output = output.to(cpu);
               }
@@ -1601,6 +1625,49 @@ namespace dd
                     results_ad.add("probs", probs);
                     results_ad.add("cats", cats);
                     results_ad.add("bboxes", bboxes);
+                    results_ads.push_back(results_ad);
+                  }
+              }
+            else if (ctc)
+              {
+                int timestep = output.size(0);
+                std::tuple<Tensor, Tensor> sorted_output
+                    = output.sort(2, true);
+                auto probs_acc
+                    = std::get<0>(sorted_output).accessor<float, 3>();
+                auto indices_acc
+                    = std::get<1>(sorted_output).accessor<int64_t, 3>();
+
+                for (int i = 0; i < output.size(1); ++i)
+                  {
+                    std::vector<int> pred_label_seq;
+                    int prev = output_params->blank_label;
+                    float prob = 1;
+
+                    for (int j = 0; j < timestep; ++j)
+                      {
+                        int cur = indices_acc[j][i][0];
+                        std::cout << "char: " << cur << " ("
+                                  << probs_acc[j][i][0] << ")" << std::endl;
+                        if (cur != prev && cur != output_params->blank_label)
+                          pred_label_seq.push_back(cur);
+                        prev = cur;
+                        prob *= probs_acc[j][i][0];
+                      }
+
+                    std::ostringstream oss;
+                    for (int l : pred_label_seq)
+                      oss << char(
+                          std::atoi(this->_mlmodel.get_hcorresp(l).c_str()));
+
+                    APIData results_ad;
+                    results_ad.add("uri", inputc._uris.at(results_ads.size()));
+                    results_ad.add("loss", 0.0);
+                    results_ad.add("cats",
+                                   std::vector<std::string>{ oss.str() });
+                    results_ad.add("probs", std::vector<double>{ prob });
+                    results_ad.add("nclasses", (int)_nclasses);
+                    std::cout << "predicted: " << oss.str() << std::endl;
                     results_ads.push_back(results_ad);
                   }
               }
@@ -1982,6 +2049,52 @@ namespace dd
                     targ_labels.index({ torch::indexing::Slice(start, stop) }),
                     bboxes_tensor, labels_tensor, score_tensor);
                 ad_bbox.add(std::to_string(entry_id), vbad);
+                ++entry_id;
+              }
+          }
+        else if (_ctc)
+          {
+            output = torch::softmax(output, 2).to(cpu);
+            std::tuple<Tensor, Tensor> sorted_output = output.sort(2, true);
+            auto indices_acc
+                = std::get<1>(sorted_output).accessor<int64_t, 3>();
+            at::Tensor target = batch.target.at(0).to(cpu);
+            at::Tensor target_length = batch.target.at(1).to(cpu);
+            int blank_label = 0;
+            int timestep = output.size(0);
+
+            for (int i = 0; i < output.size(1); ++i)
+              {
+                // compute best sequence
+                std::vector<int64_t> pred_label_seq;
+                int prev = blank_label;
+
+                for (int j = 0; j < timestep; ++j)
+                  {
+                    int cur = indices_acc[j][i][0];
+                    if (cur != prev && cur != blank_label)
+                      pred_label_seq.push_back(cur);
+                    prev = cur;
+                  }
+
+                // compare to target
+                torch::Tensor pred_tensor = torch::from_blob(
+                    pred_label_seq.data(), pred_label_seq.size(),
+                    at::TensorOptions(at::ScalarType::Long));
+                torch::Tensor targ_tensor = target.index(
+                    { i, torch::indexing::Slice(
+                             0, target_length[i].item<int>()) });
+
+                std::vector<double> pred_vec;
+                if (torch::equal(pred_tensor, targ_tensor))
+                  pred_vec = { 1.0, 0.0 };
+                else
+                  pred_vec = { 0.0, 1.0 };
+
+                APIData bad;
+                bad.add("pred", pred_vec);
+                bad.add("target", 0.0);
+                ad_res.add(std::to_string(entry_id), bad);
                 ++entry_id;
               }
           }

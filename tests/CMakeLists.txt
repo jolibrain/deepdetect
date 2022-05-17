@@ -429,11 +429,18 @@ if (USE_TORCH)
   #   "fasterrcnn_train_torch"
   #   )
   DOWNLOAD_DATASET(
-    "Torchvision training YoloX Model"
+    "Torch training YoloX Model"
     "https://www.deepdetect.com/dd/examples/torch/yolox_train_torch.tar.gz"
     "examples/torch"
     "yolox_train_torch.tar.gz"
     "yolox_train_torch"
+    )
+  DOWNLOAD_DATASET(
+    "Torchvision training Resnet18 backbone for OCR"
+    "https://www.deepdetect.com/dd/examples/torch/resnet18_training_torch_ocr.tar.gz"
+    "examples/torch"
+    "resnet18_training_torch_ocr.tar.gz"
+    "resnet18_training_torch_ocr"
     )
   DOWNLOAD_DATASET(
     "Torchvision inference DeepLabV3 Resnet50 model"

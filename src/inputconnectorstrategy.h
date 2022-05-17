@@ -255,6 +255,24 @@ namespace dd
       (void)out;
     }
 
+    /** returns number of lines in corresp file. If no corresp file is found,
+     * returns -1 */
+    int get_corresp_size()
+    {
+      std::string corresp_file = _model_repo + "/corresp.txt";
+      // get alphabet size
+      if (!fileops::file_exists(corresp_file))
+        return -1;
+      std::ifstream in(corresp_file);
+      if (!in.is_open())
+        return -1;
+      int nlines = 0;
+      std::string line;
+      while (getline(in, line))
+        ++nlines;
+      return nlines;
+    }
+
     bool _train = false;   /**< whether in train or predict mode. */
     bool _shuffle = false; /**< whether to shuffle the dataset, usually before
                               splitting. */

@@ -190,6 +190,7 @@ namespace dd
 
     unsigned int _ntargets
         = 0; /**< number of targets for regression / timeseries */
+    int _alphabet_size = 0; /**< alphabet size for text prediction model */
     std::unordered_map<std::string, std::pair<int, int>>
         _imgs_size; /**< image sizes, used in detection. */
 
@@ -227,7 +228,8 @@ namespace dd
      */
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
         : ImgInputFileConn(i), TorchInputInterface(i), _bbox(i._bbox),
-          _segmentation(i._segmentation), _supports_bw(i._supports_bw)
+          _segmentation(i._segmentation), _ctc(i._ctc),
+          _supports_bw(i._supports_bw)
     {
       update_dataset_parameters();
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
@@ -260,6 +262,8 @@ namespace dd
         _bbox = ad.get("bbox").get<bool>();
       else if (ad.has("segmentation"))
         _segmentation = ad.get("segmentation").get<bool>();
+      else if (ad.has("ctc"))
+        _ctc = ad.get("ctc").get<bool>();
       _dataset._bbox = _bbox;
       _dataset._segmentation = _segmentation;
       _test_datasets._bbox = _bbox;
@@ -301,6 +305,13 @@ namespace dd
         const std::string &listfilePath);
 
     /**
+     * \brief read images from txt list. Targets are strings (for OCR)
+     * */
+    void
+    read_image_text(std::vector<std::pair<std::string, std::string>> &lfiles,
+                    const std::string &listfilePath);
+
+    /**
      * \brief shuffle dataset
      */
     template <typename T>
@@ -331,6 +342,7 @@ namespace dd
   private:
     bool _bbox = false;
     bool _segmentation = false;
+    bool _ctc = false; /**< whether this is a CTC service */
 
     void update_dataset_parameters()
     {

@@ -22,21 +22,26 @@
 #include "torchloss.h"
 #pragma GCC diagnostic pop
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 namespace dd
 {
   torch::Tensor TorchLoss::reloss(c10::IValue y_pred)
   {
-    return loss(y_pred, _y, _ivx);
+    return loss(y_pred, _targets, _ivx);
   }
 
-  torch::Tensor TorchLoss::loss(c10::IValue model_out, torch::Tensor y,
+  torch::Tensor TorchLoss::loss(c10::IValue model_out,
+                                std::vector<torch::Tensor> targets,
                                 std::vector<c10::IValue> &ivx)
   {
     // blow memorize to be able to redo loss call (in case of solver.sam)
-    _y = y;
+    _targets = targets;
     _ivx = ivx;
-    torch::Tensor x = ivx[0].toTensor();
+
+    torch::Tensor x = ivx.at(0).toTensor();
+    torch::Tensor y = targets.at(0);
 
     torch::Tensor y_pred;
     torch::Tensor loss;
@@ -73,6 +78,14 @@ namespace dd
     if (_model_loss)
       {
         loss = y_pred;
+      }
+    else if (_ctc)
+      {
+        int batch_size = y_pred.size(1);
+        at::Tensor target_lengths = targets.at(1).flatten();
+        loss = torch::ctc_loss(torch::log_softmax(y_pred, 2), y,
+                               torch::full({ batch_size }, y_pred.size(0)),
+                               target_lengths, /* blank_label */ 0);
       }
     else if (_seq_training)
       {

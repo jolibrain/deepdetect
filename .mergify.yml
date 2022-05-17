@@ -7,7 +7,7 @@ defaults:
 queue_rules:
   - name: default
     conditions:
-      - "status-success=Semantic Pull Request"
+        # - "status-success=Semantic Pull Request"
       - "status-success=Jenkins - Unit tests GPU"
       - or:
         - "label!=ci:docker"
@@ -19,7 +19,7 @@ pull_request_rules:
       - "base=master"
       - "label!=process:manual-merge"
       - "#changes-requested-reviews-by=0"
-      - "status-success=Semantic Pull Request"
+        # - "status-success=Semantic Pull Request"
       - "status-success=Jenkins - Unit tests GPU"
       - or:
         - "label!=ci:docker"
