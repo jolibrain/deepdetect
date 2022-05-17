@@ -218,10 +218,12 @@ namespace dd
     if (template_params_dto != nullptr)
       {
         _template_params = lib_ad.getobj("template_params");
-        if (mllib_dto->nclasses != 0)
-          _template_params.add("nclasses",
-                               static_cast<int>(mllib_dto->nclasses));
       }
+    if (mllib_dto->nclasses != 0)
+      _template_params.add("nclasses", static_cast<int>(mllib_dto->nclasses));
+    if (mllib_dto->timesteps > 0)
+      _template_params.add("timesteps",
+                           static_cast<int>(mllib_dto->timesteps));
 
     std::string dt = mllib_dto->datatype->std_str();
     if (dt == "fp32")
@@ -280,7 +282,7 @@ namespace dd
       {
         _segmentation = true;
       }
-    else if (mllib_dto->ctc)
+    else if (mllib_dto->ctc || this->_inputc._ctc)
       {
         _ctc = true;
       }
@@ -349,6 +351,8 @@ namespace dd
       this->_mltype = "segmentation";
     else if (_ctc)
       this->_mltype = "ctc";
+
+    this->_logger->info("mlltype={}", this->_mltype);
 
     // Create the model
     _module._device = _main_device;
@@ -424,18 +428,13 @@ namespace dd
         _module._loss_id = 0;
         _module._linear_in = 1;
       }
-    else if (_template.find("crnn") != std::string::npos)
-      {
-        _module._linear_in = 0;
-        _module._require_crnn_head = true;
-        this->_logger->info("Add CRNN head on top of the traced model");
-      }
     else if (_template == "detr")
       {
       }
     else if (!_template.empty())
       {
         bool model_allocated_at_train = NativeFactory::is_timeserie(_template)
+                                        || NativeFactory::is_ctc(_template)
                                         || _template == "recurrent";
 
         if (model_allocated_at_train)
@@ -468,6 +467,15 @@ namespace dd
           {
             _module._require_linear_head = true;
             this->_logger->info("Add linear layer on top of the traced model");
+          }
+      }
+    else if (_ctc)
+      {
+        if (_finetuning && !this->_mlmodel._traced.empty())
+          {
+            _module._linear_in = 0;
+            _module._require_crnn_head = true;
+            this->_logger->info("Add CRNN head on top of the traced model");
           }
       }
 

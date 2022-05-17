@@ -160,6 +160,13 @@ namespace dd
       };
       DTO_FIELD(String, loss) = "";
 
+      DTO_FIELD_INFO(timesteps)
+      {
+        info->description
+            = "Number of output timesteps eg for ctc. -1 for auto mode.";
+      }
+      DTO_FIELD(Int32, timesteps) = -1;
+
       // TODO template parameters depends on the template, so the DTO must be
       // custom
       DTO_FIELD_INFO(template_params)

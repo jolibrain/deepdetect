@@ -90,6 +90,7 @@ if (USE_TORCH)
     backends/torch/torchinputconns.cc
     backends/torch/native/templates/nbeats.cc
     backends/torch/native/templates/vit.cc
+    backends/torch/native/templates/crnn_head.cc
     backends/torch/native/templates/crnn.cc
     backends/torch/native/templates/visformer.cc
     backends/torch/native/templates/ttransformer.cc

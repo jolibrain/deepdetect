@@ -73,7 +73,8 @@ namespace dd
     TorchInputInterface(const TorchInputInterface &i)
         : _lm_params(i._lm_params), _dataset(i._dataset),
           _test_datasets(i._test_datasets), _input_format(i._input_format),
-          _ntargets(i._ntargets), _tilogger(i._tilogger), _db(i._db)
+          _ctc(i._ctc), _ntargets(i._ntargets), _tilogger(i._tilogger),
+          _db(i._db)
     {
     }
 
@@ -105,6 +106,8 @@ namespace dd
               std::shared_ptr<spdlog::logger> logger)
     {
       _tilogger = logger;
+      if (ad_in.has("ctc"))
+        _ctc = ad_in.get("ctc").get<bool>();
       if (ad_in.has("shuffle"))
         _dataset.set_shuffle(ad_in.get("shuffle").get<bool>());
       if (ad_in.has("db"))
@@ -188,6 +191,7 @@ namespace dd
     TorchMultipleDataset _test_datasets; /**< test datasets */
     std::string _input_format;           /**< for text, "bert" or nothing */
 
+    bool _ctc = false; /**< whether this is a CTC service */
     unsigned int _ntargets
         = 0; /**< number of targets for regression / timeseries */
     int _alphabet_size = 0; /**< alphabet size for text prediction model */
@@ -228,8 +232,7 @@ namespace dd
      */
     ImgTorchInputFileConn(const ImgTorchInputFileConn &i)
         : ImgInputFileConn(i), TorchInputInterface(i), _bbox(i._bbox),
-          _segmentation(i._segmentation), _ctc(i._ctc),
-          _supports_bw(i._supports_bw)
+          _segmentation(i._segmentation), _supports_bw(i._supports_bw)
     {
       update_dataset_parameters();
       set_db_transaction_size(TORCH_IMG_TRANSACTION_SIZE);
@@ -262,8 +265,6 @@ namespace dd
         _bbox = ad.get("bbox").get<bool>();
       else if (ad.has("segmentation"))
         _segmentation = ad.get("segmentation").get<bool>();
-      else if (ad.has("ctc"))
-        _ctc = ad.get("ctc").get<bool>();
       _dataset._bbox = _bbox;
       _dataset._segmentation = _segmentation;
       _test_datasets._bbox = _bbox;
@@ -342,7 +343,6 @@ namespace dd
   private:
     bool _bbox = false;
     bool _segmentation = false;
-    bool _ctc = false; /**< whether this is a CTC service */
 
     void update_dataset_parameters()
     {
