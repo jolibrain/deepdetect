@@ -882,8 +882,8 @@ namespace dd
             if (_template == "yolox")
               {
                 yolo_out = yolo_utils::parse_yolo_output(
-                    _floatOut, num_processed, _results_height, _nclasses,
-                    inputc._width, inputc._height);
+                    _floatOut, num_processed, _results_height, _dims.d[2],
+                    _nclasses, inputc._width, inputc._height);
                 outr = yolo_out.data();
               };
 

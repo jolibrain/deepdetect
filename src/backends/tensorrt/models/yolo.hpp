@@ -18,6 +18,8 @@
 #include <vector>
 #include <algorithm>
 
+#include "mllibstrategy.h"
+
 namespace dd
 {
   namespace yolo_utils
@@ -28,13 +30,18 @@ namespace dd
      * sorted batch id | class_id | class confidence | bbox * 4*/
     static std::vector<float>
     parse_yolo_output(const std::vector<float> &model_out, size_t batch_size,
-                      size_t top_k, size_t n_classes, size_t im_width,
-                      size_t im_height)
+                      size_t top_k, size_t step, size_t n_classes,
+                      size_t im_width, size_t im_height)
     {
       std::vector<float> vals;
       vals.reserve(batch_size * top_k * 7);
-      size_t step = n_classes + 5;
       auto batch_it = model_out.begin();
+
+      if (step < n_classes + 4 || step > n_classes + 5)
+        throw MLLibBadParamException("YOLOX: wrong number of classes");
+      // model can have a background class or not, but dede always
+      // requires it. We vary the offset to take account of this.
+      int cls_offset = step - n_classes;
 
       for (size_t batch = 0; batch < batch_size; ++batch)
         {
@@ -47,7 +54,8 @@ namespace dd
               // get class id & confidence
               auto max_batch_it
                   = std::max_element(batch_it + 5, batch_it + step);
-              float cls_pred = std::distance(batch_it + 5, max_batch_it);
+              auto ref_it = batch_it + cls_offset;
+              float cls_pred = std::distance(ref_it, max_batch_it);
               float prob = *max_batch_it * (*(batch_it + 4));
 
               // convert center, dims to xyxy

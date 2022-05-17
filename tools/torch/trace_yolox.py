@@ -50,7 +50,8 @@ def main():
     from yolox.models.network_blocks import SiLU
 
     exp = get_exp(None, args.model)
-    exp.num_classes = args.num_classes
+    # dede assumes a background class absent from yolox
+    exp.num_classes = args.num_classes - 1
     logging.info("num_classes == %d" % args.num_classes)
 
     model = exp.get_model()
@@ -59,16 +60,32 @@ def main():
 
     if args.weights:
         logging.info("Load weights from %s" % args.weights)
-        try:
-            # state_dict
-            weights = torch.load(args.weights)["model"]
-        except:
-            # torchscript
-            logging.info("Detected torchscript weights")
-            weights = torch.jit.load(args.weights).state_dict()
-            weights = {k[6:] : w for k, w in weights.items()} # skip "model." prefix
 
-        model.load_state_dict(weights, strict=True)
+        def load_yolox_weights():
+            try:
+                # state_dict
+                weights = torch.load(args.weights)["model"]
+            except:
+                # torchscript
+                logging.info("Detected torchscript weights")
+                weights = torch.jit.load(args.weights).state_dict()
+                weights = {k[6:] : w for k, w in weights.items()} # skip "model." prefix
+
+            model.load_state_dict(weights, strict=True)
+
+        try:
+            load_yolox_weights()
+        except:
+            # Legacy model
+            exp.num_classes = args.num_classes
+
+            exp.model = None
+            model = exp.get_model()
+            model.eval()
+            model.head.decode_in_inference = True
+
+            load_yolox_weights()
+            logging.info("Detected yolox trained with a background class")
 
     elif args.backbone_weights:
         logging.info("Load weights from %s" % args.backbone_weights)
@@ -85,7 +102,11 @@ def main():
     if args.to_onnx:
         model = replace_module(model, nn.SiLU, SiLU)
 
-        model = YoloXWrapper_TRT(model, topk = args.top_k, raw_output = not args.use_wrapper)
+        model = YoloXWrapper_TRT(
+                model,
+                topk = args.top_k,
+                raw_output = not args.use_wrapper
+            )
         model.to(device)
         model.eval()
 
@@ -102,7 +123,7 @@ def main():
                 dynamic_axes = dynamic_axes)
     else:
         # wrap model
-        model = YoloXWrapper(model, args.num_classes, postprocess)
+        model = YoloXWrapper(model, exp.num_classes, postprocess)
         model.to(device)
         model.eval()
 
@@ -166,6 +187,8 @@ class YoloXWrapper(torch.nn.Module):
                     labels[start:stop].unsqueeze(1),
                     self.convert_targs(bboxes[start:stop])
                     ), dim=1)
+                # dd uses 0 as background class, not YOLOX
+                targ = targ - 1
                 l_targs.append(targ)
                 max_count = max(max_count, targ.shape[0])
 
@@ -190,7 +213,8 @@ class YoloXWrapper(torch.nn.Module):
                     preds.append({
                         "boxes": pred[:,:4],
                         "scores": pred[:,4]*pred[:,5],
-                        "labels": pred[:,6].to(torch.int64)
+                        # dd uses 0 as background class, not YOLOX
+                        "labels": pred[:,6].to(torch.int64) + 1
                     })
 
         return losses, preds
