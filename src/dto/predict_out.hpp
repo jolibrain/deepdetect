@@ -22,6 +22,9 @@
 #ifndef DTO_PREDICT_OUT_HPP
 #define DTO_PREDICT_OUT_HPP
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/cudaimgproc.hpp>
+
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 
