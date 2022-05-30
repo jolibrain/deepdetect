@@ -144,6 +144,14 @@ namespace dd
 
       // dlib image align
       DTO_FIELD(Int32, chip_size) = 150;
+
+      // custom action
+      DTO_FIELD_INFO(custom)
+      {
+        info->description = "[custom] parameters for custom action";
+      }
+      DTO_FIELD(UnorderedFields<Any>, custom)
+          = UnorderedFields<Any>::createShared();
     };
 
     class ChainAction : public oatpp::DTO
