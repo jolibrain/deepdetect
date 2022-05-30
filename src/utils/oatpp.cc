@@ -50,6 +50,8 @@ namespace dd
                                DTO::vectorSerialize<uint8_t>);
       ser->setSerializerMethod(DTO::DTOVector<bool>::Class::CLASS_ID,
                                DTO::vectorSerialize<bool>);
+
+      ser->getConfig()->includeNullFields = false;
       return object_mapper;
     }
 
@@ -181,6 +183,19 @@ namespace dd
             }
         }
       else if (polymorph.valueType->classId.id
+               == oatpp::data::mapping::type::__class::AbstractList::CLASS_ID
+                      .id)
+        {
+          auto list = polymorph.staticCast<oatpp::AbstractList>();
+          jval = JVal(rapidjson::kArrayType);
+          for (auto &elem : *list)
+            {
+              JVal elemJVal;
+              dtoToJVal(elem, jdoc, elemJVal, ignore_null);
+              jval.PushBack(elemJVal, jdoc.GetAllocator());
+            }
+        }
+      else if (polymorph.valueType->classId.id
                == oatpp::data::mapping::type::__class::AbstractPairList::
                       CLASS_ID.id)
         {
@@ -247,7 +262,9 @@ namespace dd
         }
       else
         {
-          throw std::runtime_error("dtoToJVal: Type not recognised");
+          std::string type_name = polymorph.valueType->classId.name;
+          throw std::runtime_error("dtoToJVal: \"" + type_name
+                                   + "\": type not recognised");
         }
     }
   }

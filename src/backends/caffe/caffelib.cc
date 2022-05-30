@@ -2815,11 +2815,37 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   int CaffeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-               TMLModel>::predict(const APIData &ad, APIData &out)
+               TMLModel>::predict(const APIData &ad_in, APIData &out)
   {
     std::lock_guard<std::mutex> lock(
         _net_mutex); // no concurrent calls since the net is not
                      // re-instantiated
+
+    APIData ad;
+    if (ad_in.has("dto"))
+      {
+        // cast to ServicePredict...
+        auto any = ad_in.get("dto").get<oatpp::Any>();
+        oatpp::Object<DTO::ServicePredict> predict_dto
+            = oatpp::Object<DTO::ServicePredict>(
+                std::static_pointer_cast<typename DTO::ServicePredict>(
+                    any->ptr));
+        ad = APIData::fromDTO<oatpp::Void>(predict_dto);
+
+        if (predict_dto->_chain)
+          {
+            ad.add("chain", predict_dto->_chain);
+            if (!predict_dto->_data_raw_img.empty())
+              ad.add("data_raw_img", predict_dto->_data_raw_img);
+            ad.add("ids", predict_dto->_ids);
+            ad.add("meta_uris", predict_dto->_meta_uris);
+            ad.add("index_uris", predict_dto->_index_uris);
+          }
+      }
+    else
+      {
+        ad = ad_in;
+      }
 
     // check for net
     if (!_net || _net->phase() == caffe::TRAIN)
