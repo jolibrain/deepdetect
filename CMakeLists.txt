@@ -980,6 +980,7 @@ if (USE_TENSORRT)
       ${TRT_PATCHES_PATH}/0003-c++14.patch
       ${TRT_PATCHES_PATH}/0009-fix_compil_order.patch
       ${TRT_PATCHES_PATH}/0010-fix_plugin_detect.patch
+      ${TRT_PATCHES_PATH}/0011-fix_plugin_makefile_cub.patch
       )
 
     # Tensorrt uses its own protobuf version (3.0.0) and this cannot be overrided

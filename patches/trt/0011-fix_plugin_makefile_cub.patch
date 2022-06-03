@@ -1,0 +1,13 @@
+diff --git a/plugin/CMakeLists.txt b/plugin/CMakeLists.txt
+index 562681f..656cf9e 100644
+--- a/plugin/CMakeLists.txt
++++ b/plugin/CMakeLists.txt
+@@ -77,7 +77,7 @@ if(BERT_GENCODES)
+     include_directories(bertQKVToContextPlugin/fused_multihead_attention/include bertQKVToContextPlugin/fused_multihead_attention_v2/include)
+ endif()
+ 
+-include_directories(common common/kernels ${CMAKE_SOURCE_DIR}/third_party)
++include_directories(common common/kernels ${CMAKE_SOURCE_DIR}/third_party ${CMAKE_SOURCE_DIR}/third_party/cub)
+ 
+ foreach(PLUGIN_ITER ${PLUGIN_LISTS})
+     include_directories(${PLUGIN_ITER})
