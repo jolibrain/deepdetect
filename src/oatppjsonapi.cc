@@ -38,7 +38,9 @@
 #include "oatpp/network/tcp/server/ConnectionProvider.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "oatpp/core/macro/component.hpp"
+#ifdef USE_OATPP_SWAGGER
 #include "oatpp-swagger/Controller.hpp"
+#endif
 
 #include "utils/oatpp.hpp"
 
@@ -342,6 +344,7 @@ namespace dd
         = DedeController::createShared(this, defaultObjectMapper);
     dedeController->addEndpointsToRouter(router);
 
+#ifdef USE_OATPP_SWAGGER
     // Initialize swagger
     auto docEndpoints = oatpp::swagger::Controller::Endpoints::createShared();
     docEndpoints->pushBackAll(dedeController->getEndpoints());
@@ -371,7 +374,7 @@ namespace dd
     auto swaggerController = std::make_shared<oatpp::swagger::Controller>(
         swaggerMapper, document, resources);
     swaggerController->addEndpointsToRouter(router);
-    // ===
+#endif
 
     auto scp = components.serverConnectionProvider.getObject();
     auto sch = components.serverConnectionHandler.getObject();

@@ -58,6 +58,7 @@ OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
 OPTION(USE_HTTP_SERVER "build cppnet-lib version of http JSON API " OFF)
 OPTION(USE_HTTP_SERVER_OATPP "build oatpp version of http JSON API" ON)
+OPTION(USE_OATPP_SWAGGER "Enable Swagger documentation endpoint" ON)
 
 # user set variables
 set(USE_OPENCV_VERSION CACHE STRING "OpenCV Version used by DeepDetect")
@@ -1047,43 +1048,53 @@ ExternalProject_Add(
     INSTALL_COMMAND ""
     DEPENDS oatpp
 )
-ExternalProject_Add(
-    oatpp-swagger
-    PREFIX oatpp-swagger
-    URL https://github.com/oatpp/oatpp-swagger/archive/${OATPP_SWAGGER_VERSION}.tar.gz
-    URL_HASH SHA256=56dd44f3b041fe432c27b52f741bb98f1ef97b3c6c4095dc8b9d76e840639ac8
-    BUILD_IN_SOURCE true
-    INSTALL_COMMAND ""
-    CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=Release
-        -DBUILD_SHARED_LIBS=OFF
-        -DOATPP_BUILD_TESTS=OFF
-        -DOATPP_INSTALL=OFF
-        -DOATPP_MODULES_LOCATION=CUSTOM
-        -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-        -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
-    DEPENDS oatpp
-)
-
-# FIXME(sileht): we should copy res outside build dir and dynamically looks at runtime at different places
-add_definitions("-DOATPP_SWAGGER_RES_PATH=\"${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/res/\"")
 
 set(OATPP_LIB_DEPS
     ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp.a
     ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src/liboatpp-zlib.a
-    ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src/liboatpp-swagger.a
     z  # zlib
 )
 include_directories(
     SYSTEM ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
     SYSTEM ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
-    SYSTEM ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
 )
 set(OATPP_INCLUDE_DIRS
     ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
     ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src
-    ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
 )
+
+if(USE_OATPP_SWAGGER)
+    ExternalProject_Add(
+        oatpp-swagger
+        PREFIX oatpp-swagger
+        URL https://github.com/oatpp/oatpp-swagger/archive/${OATPP_SWAGGER_VERSION}.tar.gz
+        URL_HASH SHA256=56dd44f3b041fe432c27b52f741bb98f1ef97b3c6c4095dc8b9d76e840639ac8
+        BUILD_IN_SOURCE true
+        INSTALL_COMMAND ""
+        CMAKE_ARGS
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=OFF
+            -DOATPP_BUILD_TESTS=OFF
+            -DOATPP_INSTALL=OFF
+            -DOATPP_MODULES_LOCATION=CUSTOM
+            -DOATPP_DIR_SRC=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+            -DOATPP_DIR_LIB=${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
+        DEPENDS oatpp
+    )
+
+    list(APPEND OATPP_LIB_DEPS
+        ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src/liboatpp-swagger.a
+    )
+    include_directories(
+        SYSTEM ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
+    )
+    list(APPEND OATPP_INCLUDE_DIRS
+        ${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/src
+    )
+    # FIXME(sileht): we should copy res outside build dir and dynamically looks at runtime at different places
+    add_definitions("-DUSE_OATPP_SWAGGER")
+    add_definitions("-DOATPP_SWAGGER_RES_PATH=\"${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/res/\"")
+endif()
 
 if (USE_HTTP_SERVER)
         ExternalProject_Add(
