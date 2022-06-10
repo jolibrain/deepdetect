@@ -34,7 +34,9 @@
 
 #include "http/access_log.hpp"
 #include "http/error_handler.hpp"
+#ifdef USE_OATPP_SWAGGER
 #include "http/swagger_component.hpp"
+#endif
 
 #include <gflags/gflags.h>
 
@@ -53,10 +55,12 @@ public:
   AppComponent(const std::shared_ptr<spdlog::logger> &logger)
       : _logger(logger){};
 
+#ifdef USE_OATPP_SWAGGER
   /**
    *  Swagger component
    */
   SwaggerComponent swaggerComponent;
+#endif
 
   /**
    * Create ObjectMapper component to serialize/deserialize DTOs in Contoller's
