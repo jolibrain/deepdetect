@@ -42,7 +42,7 @@ namespace dd
           throw ChainBadParamException(
               "This key already exists and cannot be used to reference "
               "model output: "
-              + model_name->std_str());
+              + model_name);
         (*dest)[model_name] = rhit->second;
       }
   }
@@ -51,7 +51,7 @@ namespace dd
   {
     // pre-compile models != first model
     std::vector<std::string> uris;
-    std::shared_ptr<DTO::PredictBody> first_model_out;
+    oatpp::Object<DTO::PredictBody> first_model_out;
     std::unordered_multimap<std::string, oatpp::Object<DTO::Prediction>>
         other_models_out;
     std::unordered_map<std::string, APIData>::const_iterator hit
@@ -68,8 +68,7 @@ namespace dd
                 first_model_out
                     = hit->second.get("dto")
                           .get<oatpp::Any>()
-                          .retrieve<oatpp::Object<DTO::PredictBody>>()
-                          .getPtr();
+                          .retrieve<oatpp::Object<DTO::PredictBody>>();
               }
             else
               {
@@ -81,13 +80,12 @@ namespace dd
         else
           {
             // predictions/classes or predictions/vals
-            std::shared_ptr<DTO::PredictBody> body;
+            oatpp::Object<DTO::PredictBody> body;
             if (hit->second.has("dto"))
               {
                 body = hit->second.get("dto")
                            .get<oatpp::Any>()
-                           .retrieve<oatpp::Object<DTO::PredictBody>>()
-                           .getPtr();
+                           .retrieve<oatpp::Object<DTO::PredictBody>>();
               }
             else
               {
@@ -97,7 +95,7 @@ namespace dd
 
             for (auto p : *body->predictions)
               {
-                std::string uri = p->uri->std_str();
+                std::string uri = p->uri;
                 p->uri = model_name.c_str();
                 other_models_out.insert(
                     std::pair<std::string, oatpp::Object<DTO::Prediction>>(uri,
@@ -124,7 +122,7 @@ namespace dd
 
             for (auto p : *out_body->predictions)
               {
-                std::string uri = p->uri->std_str();
+                std::string uri = p->uri;
                 p->uri = action_id.c_str();
                 other_models_out.insert(
                     std::pair<std::string, oatpp::Object<DTO::Prediction>>(uri,
@@ -142,7 +140,7 @@ namespace dd
             = oatpp_utils::dtoToUFields(pred);
 
         // chain result at uri level
-        embed_model_output(chain_pred, other_models_out, pred->uri->std_str());
+        embed_model_output(chain_pred, other_models_out, pred->uri);
 
         // chain results at prediction level
         auto classes = oatpp::Vector<oatpp::Any>::createShared();
@@ -154,7 +152,7 @@ namespace dd
 
             if (cls->class_id != nullptr)
               {
-                std::string uri = cls->class_id->std_str();
+                std::string uri = cls->class_id;
                 cls->class_id = nullptr;
                 embed_model_output(class_preds, other_models_out, uri);
               }

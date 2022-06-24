@@ -288,7 +288,7 @@ namespace dd
     /**
      * \brief converts APIData to oat++ DTO
      */
-    template <typename T> inline std::shared_ptr<T> createSharedDTO() const
+    template <typename T> inline oatpp::Object<T> createSharedDTO() const
     {
       rapidjson::Document d;
       d.SetObject();
@@ -305,9 +305,8 @@ namespace dd
 
       std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper
           = dd::oatpp_utils::createDDMapper();
-      return object_mapper
-          ->readFromString<oatpp::Object<T>>(buffer.GetString())
-          .getPtr();
+      return object_mapper->readFromString<oatpp::Object<T>>(
+          buffer.GetString());
     }
 
     template <typename T> static APIData fromDTO(const oatpp::Void &dto)

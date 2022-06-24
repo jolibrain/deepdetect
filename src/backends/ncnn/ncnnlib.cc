@@ -191,7 +191,7 @@ namespace dd
     // Extract detection or classification
     std::string out_blob;
     if (_init_dto->outputBlob != nullptr)
-      out_blob = _init_dto->outputBlob->std_str();
+      out_blob = _init_dto->outputBlob;
 
     if (out_blob.empty())
       {

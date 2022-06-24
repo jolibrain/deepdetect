@@ -94,7 +94,7 @@ TEST(dto, dto_to_json)
   // Debug help
   auto mapper = dd::oatpp_utils::createDDMapper();
   oatpp::String saved = mapper->writeToString(dto);
-  std::cout << saved->std_str() << std::endl;
+  std::cout << saved.getValue("") << std::endl;
 
   JDoc jdoc;
   dd::oatpp_utils::dtoToJDoc(dto, jdoc);

@@ -75,10 +75,10 @@ public:
     info_resp->head = dd::DTO::InfoHead::createShared();
     info_resp->head->services = {};
 
-    auto qs_status = queryParams.get("status");
+    oatpp::String qs_status = queryParams.get("status");
     bool status = false;
     if (qs_status)
-      status = boost::lexical_cast<bool>(qs_status->std_str());
+      status = boost::lexical_cast<bool>(std::string(qs_status));
 
     auto hit = _oja->_mlservices.begin();
     while (hit != _oja->_mlservices.end())
@@ -106,7 +106,7 @@ public:
   ENDPOINT("GET", "services/{service-name}", get_service,
            PATH(oatpp::String, service_name, "service-name"))
   {
-    auto janswer = _oja->service_status(service_name.get()->std_str());
+    auto janswer = _oja->service_status(service_name);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -119,8 +119,7 @@ public:
            PATH(oatpp::String, service_name, "service-name"),
            BODY_STRING(oatpp::String, service_data))
   {
-    auto janswer = _oja->service_create(service_name.get()->std_str(),
-                                        service_data.get()->std_str());
+    auto janswer = _oja->service_create(service_name, service_data);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -133,8 +132,7 @@ public:
            PATH(oatpp::String, service_name, "service-name"),
            BODY_STRING(oatpp::String, service_data))
   {
-    auto janswer = _oja->service_create(service_name.get()->std_str(),
-                                        service_data.get()->std_str());
+    auto janswer = _oja->service_create(service_name, service_data);
     return _oja->jdoc_to_response(janswer);
   }
   ENDPOINT_INFO(delete_service)
@@ -146,8 +144,7 @@ public:
            QUERIES(QueryParams, queryParams))
   {
     std::string jsonstr = _oja->uri_query_to_json(queryParams);
-    auto janswer
-        = _oja->service_delete(service_name.get()->std_str(), jsonstr);
+    auto janswer = _oja->service_delete(service_name, jsonstr);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -159,7 +156,7 @@ public:
   ENDPOINT("POST", "predict", predict,
            BODY_STRING(oatpp::String, predict_data))
   {
-    auto janswer = _oja->service_predict(predict_data.get()->std_str());
+    auto janswer = _oja->service_predict(predict_data);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -180,7 +177,7 @@ public:
   }
   ENDPOINT("POST", "train", post_train, BODY_STRING(oatpp::String, train_data))
   {
-    auto janswer = _oja->service_train(train_data.get()->std_str());
+    auto janswer = _oja->service_train(train_data);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -189,11 +186,9 @@ public:
     // Don't document PUT, it's a dup of POST, maybe deprecate it later
     info->hide = true;
   }
-  ENDPOINT("PUT", "train", put_train,
-
-           BODY_STRING(oatpp::String, train_data))
+  ENDPOINT("PUT", "train", put_train, BODY_STRING(oatpp::String, train_data))
   {
-    auto janswer = _oja->service_train(train_data.get()->std_str());
+    auto janswer = _oja->service_train(train_data);
     return _oja->jdoc_to_response(janswer);
   }
   ENDPOINT_INFO(delete_train)
@@ -215,8 +210,7 @@ public:
            PATH(oatpp::String, chain_name, "chain-name"),
            BODY_STRING(oatpp::String, chain_data))
   {
-    auto janswer = _oja->service_chain(chain_name.get()->std_str(),
-                                       chain_data.get()->std_str());
+    auto janswer = _oja->service_chain(chain_name, chain_data);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -229,8 +223,7 @@ public:
            PATH(oatpp::String, chain_name, "chain-name"),
            BODY_STRING(oatpp::String, chain_data))
   {
-    auto janswer = _oja->service_chain(chain_name.get()->std_str(),
-                                       chain_data.get()->std_str());
+    auto janswer = _oja->service_chain(chain_name, chain_data);
     return _oja->jdoc_to_response(janswer);
   }
 
@@ -247,8 +240,8 @@ public:
     try
       {
         return _oja->dto_to_response(
-            _oja->create_resource(resource_name->std_str(), resource_data),
-            201, "Created");
+            _oja->create_resource(resource_name, resource_data), 201,
+            "Created");
       }
     catch (dd::ResourceBadParamException &e)
       {
@@ -276,7 +269,7 @@ public:
   {
     try
       {
-        auto res_dto = _oja->get_resource(resource_name->std_str());
+        auto res_dto = _oja->get_resource(resource_name);
         return _oja->dto_to_response(res_dto, 200, "OK");
       }
     catch (dd::ResourceNotFoundException &e)
@@ -301,7 +294,7 @@ public:
   {
     try
       {
-        _oja->delete_resource(resource_name->std_str());
+        _oja->delete_resource(resource_name);
         return _oja->dto_to_response(dd::DTO::GenericResponse::createShared(),
                                      200, "OK");
       }
@@ -327,9 +320,8 @@ public:
            PATH(oatpp::String, stream_name, "stream-name"),
            BODY_DTO(Object<dd::DTO::Stream>, stream_data))
   {
-    return createDtoResponse(
-        Status::CODE_201,
-        _oja->create_stream(stream_name->std_str(), stream_data));
+    return createDtoResponse(Status::CODE_201,
+                             _oja->create_stream(stream_name, stream_data));
   }
 
   ENDPOINT_INFO(get_stream_info)
@@ -341,8 +333,7 @@ public:
   ENDPOINT("GET", "stream/{stream-name}", get_stream_info,
            PATH(oatpp::String, stream_name, "stream-name"))
   {
-    return _oja->dto_to_response(_oja->get_stream_info(stream_name->std_str()),
-                                 200, "");
+    return _oja->dto_to_response(_oja->get_stream_info(stream_name), 200, "");
   }
 
   ENDPOINT_INFO(delete_stream)
@@ -354,7 +345,7 @@ public:
   ENDPOINT("DELETE", "stream/{stream-name}", delete_stream,
            PATH(oatpp::String, stream_name, "stream-name"))
   {
-    int status = _oja->delete_stream(stream_name->std_str());
+    int status = _oja->delete_stream(stream_name);
     return _oja->dto_to_response(dd::DTO::GenericResponse::createShared(),
                                  status, "");
   }

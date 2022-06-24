@@ -185,11 +185,11 @@ namespace dd
 
     if (mllib_dto->from_repository != nullptr)
       {
-        this->_mlmodel.copy_to_target(mllib_dto->from_repository->std_str(),
+        this->_mlmodel.copy_to_target(mllib_dto->from_repository,
                                       this->_mlmodel._repo, this->_logger);
         this->_mlmodel.read_from_repository(this->_logger);
       }
-    _template = mllib_dto->model_template->std_str();
+    _template = mllib_dto->model_template;
 
     if (mllib_dto->gpu && !torch::cuda::is_available())
       {
@@ -208,11 +208,11 @@ namespace dd
         _nclasses = mllib_dto->ntargets;
       }
 
-    std::string self_supervised = mllib_dto->self_supervised->std_str();
+    std::string self_supervised = mllib_dto->self_supervised;
     int embedding_size = mllib_dto->embedding_size;
     bool freeze_traced = mllib_dto->freeze_traced;
     _finetuning = mllib_dto->finetuning;
-    _loss = mllib_dto->loss->std_str();
+    _loss = mllib_dto->loss;
 
     auto template_params_dto = mllib_dto->template_params;
     if (template_params_dto != nullptr)
@@ -225,7 +225,7 @@ namespace dd
       _template_params.add("timesteps",
                            static_cast<int>(mllib_dto->timesteps));
 
-    std::string dt = mllib_dto->datatype->std_str();
+    std::string dt = mllib_dto->datatype;
     if (dt == "fp32")
       {
         _dtype = torch::kFloat32;
@@ -1349,14 +1349,14 @@ namespace dd
     auto mllib_params = params->mllib;
 
     int64_t predict_batch_size = mllib_params->net->test_batch_size;
-    std::string extract_layer = mllib_params->extract_layer->std_str();
+    std::string extract_layer = mllib_params->extract_layer;
 
     bool extract_last = false;
     if (extract_layer == "last")
       extract_last = true;
-    std::string forward_method = mllib_params->forward_method->std_str();
+    std::string forward_method = mllib_params->forward_method;
 
-    std::string dt = mllib_params->datatype->std_str();
+    std::string dt = mllib_params->datatype;
     if (dt == "fp32")
       _dtype = torch::kFloat32;
     else if (dt == "fp16")
@@ -1385,7 +1385,7 @@ namespace dd
     if (output_params->confidences != nullptr)
       {
         for (oatpp::String conf : *output_params->confidences)
-          confidences.push_back(conf->std_str());
+          confidences.push_back(conf);
       }
 
     bool lstm_continuation = input_params->continuation;

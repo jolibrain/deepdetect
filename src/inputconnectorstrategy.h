@@ -222,7 +222,7 @@ namespace dd
     {
       _uris.clear();
       for (auto &uri : *pred_dto->data)
-        _uris.push_back(uri->std_str());
+        _uris.push_back(uri);
       _ids = pred_dto->_ids;
       _meta_uris = pred_dto->_meta_uris;
       _index_uris = pred_dto->_index_uris;

@@ -68,7 +68,7 @@ namespace dd
 
         static oatpp::Type *getType()
         {
-          static oatpp::Type type(CLASS_ID, nullptr, nullptr);
+          static oatpp::Type type(CLASS_ID);
           return &type;
         }
       };
@@ -80,7 +80,7 @@ namespace dd
 
         static oatpp::Type *getType()
         {
-          static oatpp::Type type(CLASS_ID, nullptr, nullptr);
+          static oatpp::Type type(CLASS_ID);
           return &type;
         }
       };
@@ -103,13 +103,13 @@ namespace dd
               deserializer
                   ->deserialize(caret,
                                 oatpp::Vector<oatpp::Int32>::Class::getType())
-                  .staticCast<oatpp::Vector<oatpp::Int32>>() });
+                  .cast<oatpp::Vector<oatpp::Int32>>() });
         }
       else
         {
           return GpuIds(VGpuIds{
               deserializer->deserialize(caret, oatpp::Int32::Class::getType())
-                  .staticCast<oatpp::Int32>() });
+                  .cast<oatpp::Int32>() });
         }
     }
 
@@ -118,7 +118,7 @@ namespace dd
                     oatpp::data::stream::ConsistentOutputStream *stream,
                     const oatpp::Void &obj)
     {
-      auto gpuid = obj.staticCast<GpuIds>();
+      auto gpuid = obj.cast<GpuIds>();
       if (gpuid->_ids.size() == 1)
         {
           oatpp::Int32 id = gpuid->_ids[0];
@@ -230,7 +230,7 @@ namespace dd
                     const oatpp::Void &obj)
     {
       (void)serializer;
-      auto vec = obj.staticCast<DTOVector<T>>();
+      auto vec = obj.cast<DTOVector<T>>();
       stream->writeCharSimple('[');
       bool first = true;
 

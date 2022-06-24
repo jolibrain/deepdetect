@@ -73,8 +73,8 @@ namespace dd
                 const std::shared_ptr<spdlog::logger> chain_logger)
         : _chain_logger(chain_logger)
     {
-      _action_id = call_dto->id->std_str();
-      _action_type = call_dto->action->type->std_str();
+      _action_id = call_dto->id;
+      _action_type = call_dto->action->type;
       _params = call_dto->action->parameters;
     }
 

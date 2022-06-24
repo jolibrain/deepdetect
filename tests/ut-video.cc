@@ -43,7 +43,7 @@ static std::string response_to_str(
   oatpp::data::stream::BufferOutputStream buf_stream;
   oatpp::data::stream::BufferOutputStream stream;
   response->send(&stream, &buf_stream, nullptr);
-  std::string response_str = stream.toString()->std_str();
+  std::string response_str = stream.toString();
   // keep body only (skip headers)
   size_t header_count = response->getHeaders().getSize();
   size_t pos = 0;

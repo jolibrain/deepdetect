@@ -641,7 +641,7 @@ namespace dd
               if (!predict_dto->data->empty())
                 {
                   for (auto &val : *predict_dto->data)
-                    data_vec.push_back(val->std_str());
+                    data_vec.push_back(val);
                 }
             }
           else
@@ -827,9 +827,9 @@ namespace dd
                 {
                   for (size_t k = 0; k < npred_classes; k++)
                     {
-                      nmeta_uris.push_back(pred->uri->std_str());
+                      nmeta_uris.push_back(pred->uri);
                       if (pred->index_uri)
-                        nindex_uris.push_back(pred->index_uri->std_str());
+                        nindex_uris.push_back(pred->index_uri);
                     }
                 }
               else // update meta uris to batch size at the current level
@@ -1103,7 +1103,7 @@ namespace dd
                       const std::string &parent_id, const int chain_pos,
                       int &npredicts)
     {
-      std::string sname = call_dto->service->std_str();
+      std::string sname = call_dto->service;
       chain_logger->info("[" + std::to_string(chain_pos)
                          + "] / executing predict on service " + sname);
 
@@ -1210,9 +1210,9 @@ namespace dd
                 {
                   for (size_t k = 0; k < npred_classes; k++)
                     {
-                      nmeta_uris.push_back(pred->uri->std_str());
+                      nmeta_uris.push_back(pred->uri);
                       if (pred->index_uri)
-                        nindex_uris.push_back(pred->index_uri->std_str());
+                        nindex_uris.push_back(pred->index_uri);
                     }
                 }
               else // update meta uris to batch size at the current level
@@ -1292,7 +1292,7 @@ namespace dd
                      oatpp::Object<DTO::ChainCall> call_dto, ChainData &cdata,
                      const int &chain_pos, const std::string &prec_pred_id)
     {
-      std::string action_type = call_dto->action->type->std_str();
+      std::string action_type = call_dto->action->type;
 
       APIData prev_data = cdata.get_model_data(prec_pred_id);
       if (!prev_data.getv("predictions").size())
@@ -1377,10 +1377,10 @@ namespace dd
           for (size_t i = 0; i < calls_vec->size(); i++)
             {
               auto call = calls_vec->at(i);
-              std::string call_id = call->id != nullptr ? call->id->std_str()
+              std::string call_id = call->id != nullptr ? std::string(call->id)
                                                         : std::to_string(i);
               std::string parent_id = call->parent_id != nullptr
-                                          ? call->parent_id->std_str()
+                                          ? std::string(call->parent_id)
                                           : prec_action_id;
 
               if (call->service != nullptr)
@@ -1398,7 +1398,7 @@ namespace dd
                   hit = um_index_uris.find(parent_id);
                   if (hit != um_index_uris.end())
                     index_uris = (*hit).second;
-                  cdata.add_model_sname(call_id, call->service->std_str());
+                  cdata.add_model_sname(call_id, call->service);
                   if (chain_service(cname, chain_logger, call, cdata, call_id,
                                     meta_uris, index_uris, parent_id, i,
                                     npredicts))

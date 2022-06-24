@@ -81,10 +81,9 @@ public:
       std::shared_ptr<oatpp::network::ServerConnectionProvider>,
       serverConnectionProvider)
   ([] {
-    return oatpp::network::tcp::server::ConnectionProvider::createShared({
-
-        oatpp::base::StrBuffer::createFromCString(FLAGS_host.c_str()),
-        static_cast<v_uint16>(FLAGS_port), oatpp::network::Address::IP_4 });
+    return oatpp::network::tcp::server::ConnectionProvider::createShared(
+        { FLAGS_host, static_cast<v_uint16>(FLAGS_port),
+          oatpp::network::Address::IP_4 });
   }());
 
   /**

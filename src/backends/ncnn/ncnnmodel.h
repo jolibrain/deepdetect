@@ -43,7 +43,7 @@ namespace dd
       auto model_dto = ad.createSharedDTO<DTO::Model>();
 
       if (model_dto->repository)
-        this->_repo = model_dto->repository->std_str();
+        this->_repo = model_dto->repository;
       read_from_repository(spdlog::get("api"));
       read_corresp_file();
     }

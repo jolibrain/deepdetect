@@ -73,9 +73,9 @@ namespace dd
       {
 
         auto req = request->getStartingLine();
-        std::string access_log = req.protocol.std_str() + " \""
-                                 + req.method.std_str() + " "
-                                 + req.path.std_str() + "\"";
+        std::string access_log = req.protocol.toString() + " \""
+                                 + req.method.toString() + " "
+                                 + req.path.toString() + "\"";
         access_log += " " + _context.service_name;
 
         auto outcode = response->getStatus().code;

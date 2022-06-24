@@ -67,7 +67,7 @@ namespace dd
     double bratio = _params->padding_ratio;
     bool save_crops = _params->save_crops;
 
-    std::string save_path = _params->save_path->std_str();
+    std::string save_path = _params->save_path;
     if (!save_path.empty())
       save_path += "/";
 
@@ -228,10 +228,10 @@ namespace dd
     std::vector<std::string> uris;
 
     // check for action parameters
-    std::string orientation = _params->orientation->std_str();
+    std::string orientation = _params->orientation;
     bool save_img = _params->save_img;
 
-    std::string save_path = _params->save_path->std_str();
+    std::string save_path = _params->save_path;
     if (!save_path.empty())
       save_path += "/";
 
@@ -318,7 +318,7 @@ namespace dd
     bool save_img = _params->save_img;
     int ref_thickness = _params->thickness;
 
-    std::string save_path = _params->save_path->std_str();
+    std::string save_path = _params->save_path;
     if (!save_path.empty())
       save_path += "/";
 
@@ -425,7 +425,7 @@ namespace dd
       }
     std::unordered_set<std::string> on_classes_us;
     for (auto s : *_params->classes)
-      on_classes_us.insert(s->std_str());
+      on_classes_us.insert(s);
     std::unordered_set<std::string>::const_iterator usit;
 
     std::vector<APIData> vad = model_out.getv("predictions");
