@@ -88,8 +88,8 @@ namespace dd
 
     for (auto &param : queryParams.getAll())
       {
-        std::string qs_key = param.first.std_str();
-        std::string qs_value = param.second.std_str();
+        std::string qs_key = param.first.toString();
+        std::string qs_value = param.second.toString();
 
         bool is_word = false;
         for (size_t i = 0; i < qs_value.size(); i++)
@@ -262,7 +262,8 @@ namespace dd
       oatpp::Void dto, const uint32_t &code, const std::string &msg,
       const uint32_t &dd_code, const std::string &dd_msg) const
   {
-    auto generic_dto = dto.staticCast<oatpp::Object<DTO::GenericResponse>>();
+    auto generic_dto
+        = oatpp_utils::staticCast<oatpp::Object<DTO::GenericResponse>>(dto);
     generic_dto->status = create_status_dto(code, msg, dd_code, dd_msg);
 
     auto json_mapper = dd::oatpp_utils::createDDMapper();
@@ -342,12 +343,12 @@ namespace dd
         = dd::oatpp_utils::createDDMapper();
     auto dedeController
         = DedeController::createShared(this, defaultObjectMapper);
-    dedeController->addEndpointsToRouter(router);
+    router->addController(dedeController);
 
 #ifdef USE_OATPP_SWAGGER
     // Initialize swagger
-    auto docEndpoints = oatpp::swagger::Controller::Endpoints::createShared();
-    docEndpoints->pushBackAll(dedeController->getEndpoints());
+    oatpp::swagger::Generator::Endpoints docEndpoints;
+    docEndpoints.append(dedeController->getEndpoints());
 
     OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::DocumentInfo>,
                     documentInfo);
@@ -373,7 +374,7 @@ namespace dd
     swaggerMapper->getDeserializer()->getConfig()->allowUnknownFields = false;
     auto swaggerController = std::make_shared<oatpp::swagger::Controller>(
         swaggerMapper, document, resources);
-    swaggerController->addEndpointsToRouter(router);
+    router->addController(swaggerController);
 #endif
 
     auto scp = components.serverConnectionProvider.getObject();

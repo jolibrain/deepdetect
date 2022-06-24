@@ -66,8 +66,8 @@ namespace dd
 
   void VideoResource::init(const oatpp::Object<DTO::Resource> &res_data)
   {
-    std::string reader_backend_str = res_data->video_backend->std_str();
-    std::string uri = res_data->source->std_str();
+    std::string reader_backend_str = res_data->video_backend;
+    std::string uri = res_data->source;
     this->_logger->info("Creating resource \"{}\" with backend \"{}\"", uri,
                         reader_backend_str);
     auto reader_backend = get_video_backend_by_name(reader_backend_str);
@@ -106,7 +106,7 @@ namespace dd
                 capture_params.push_back(req->fps);
                 this->_logger->info("Requested fps={}", req->fps);
               }
-            std::string req_fourcc = req->fourcc->std_str();
+            std::string req_fourcc = req->fourcc;
             if (req_fourcc.size() == 4)
               {
                 capture_params.push_back(cv::CAP_PROP_FOURCC);
@@ -238,6 +238,6 @@ namespace dd
       }
     else
       throw ResourceBadParamException("Unknown resource type: "
-                                      + res_data->type->std_str());
+                                      + res_data->type);
   }
 }

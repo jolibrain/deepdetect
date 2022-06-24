@@ -20,6 +20,7 @@
  */
 
 #include "oatpp.hpp"
+#include <iostream>
 
 #include "dto/ddtypes.hpp"
 
@@ -58,7 +59,7 @@ namespace dd
     oatpp::UnorderedFields<oatpp::Any>
     dtoToUFields(const oatpp::Void &polymorph)
     {
-      if (polymorph.valueType->classId.id
+      if (polymorph.getValueType()->classId.id
           != oatpp::data::mapping::type::__class::AbstractObject::CLASS_ID.id)
         {
           return nullptr;
@@ -67,7 +68,7 @@ namespace dd
       auto dispatcher
           = static_cast<const oatpp::data::mapping::type::__class::
                             AbstractObject::PolymorphicDispatcher *>(
-              polymorph.valueType->polymorphicDispatcher);
+              polymorph.getValueType()->polymorphicDispatcher);
       auto fields = dispatcher->getProperties()->getList();
       auto object = static_cast<oatpp::BaseObject *>(polymorph.get());
 
@@ -93,7 +94,7 @@ namespace dd
         {
           return;
         }
-      else if (polymorph.valueType == oatpp::Any::Class::getType())
+      else if (polymorph.getValueType() == oatpp::Any::Class::getType())
         {
           auto anyHandle
               = static_cast<oatpp::data::mapping::type::AnyHandle *>(
@@ -101,106 +102,102 @@ namespace dd
           dtoToJVal(oatpp::Void(anyHandle->ptr, anyHandle->type), jdoc, jval,
                     ignore_null);
         }
-      else if (polymorph.valueType == oatpp::String::Class::getType())
+      else if (polymorph.getValueType() == oatpp::String::Class::getType())
         {
-          auto str = polymorph.staticCast<oatpp::String>();
+          auto str = polymorph.cast<oatpp::String>();
           jval.SetString(str->c_str(), jdoc.GetAllocator());
         }
-      else if (polymorph.valueType == oatpp::Int32::Class::getType())
+      else if (polymorph.getValueType() == oatpp::Int32::Class::getType())
         {
-          int32_t i = polymorph.staticCast<oatpp::Int32>();
+          int32_t i = polymorph.cast<oatpp::Int32>();
           jval.SetInt(i);
         }
-      else if (polymorph.valueType == oatpp::UInt32::Class::getType())
+      else if (polymorph.getValueType() == oatpp::UInt32::Class::getType())
         {
-          uint32_t i = polymorph.staticCast<oatpp::UInt32>();
+          uint32_t i = polymorph.cast<oatpp::UInt32>();
           jval.SetUint(i);
         }
-      else if (polymorph.valueType == oatpp::Int64::Class::getType())
+      else if (polymorph.getValueType() == oatpp::Int64::Class::getType())
         {
-          int64_t i = polymorph.staticCast<oatpp::Int64>();
+          int64_t i = polymorph.cast<oatpp::Int64>();
           jval.SetInt64(i);
         }
-      else if (polymorph.valueType == oatpp::UInt64::Class::getType())
+      else if (polymorph.getValueType() == oatpp::UInt64::Class::getType())
         {
-          uint64_t i = polymorph.staticCast<oatpp::UInt64>();
+          uint64_t i = polymorph.cast<oatpp::UInt64>();
           jval.SetUint64(i);
         }
-      else if (polymorph.valueType == oatpp::Float32::Class::getType())
+      else if (polymorph.getValueType() == oatpp::Float32::Class::getType())
         {
-          float f = polymorph.staticCast<oatpp::Float32>();
+          float f = polymorph.cast<oatpp::Float32>();
           jval.SetFloat(f);
         }
-      else if (polymorph.valueType == oatpp::Float64::Class::getType())
+      else if (polymorph.getValueType() == oatpp::Float64::Class::getType())
         {
-          double f = polymorph.staticCast<oatpp::Float64>();
+          double f = polymorph.cast<oatpp::Float64>();
           jval.SetDouble(f);
         }
-      else if (polymorph.valueType == oatpp::Boolean::Class::getType())
+      else if (polymorph.getValueType() == oatpp::Boolean::Class::getType())
         {
-          bool b = polymorph.staticCast<oatpp::Boolean>();
+          bool b = polymorph.cast<oatpp::Boolean>();
           jval = JVal(b);
         }
-      else if (polymorph.valueType == DTO::DTOVector<double>::Class::getType())
+      else if (polymorph.getValueType()
+               == DTO::DTOVector<double>::Class::getType())
         {
-          auto vec = polymorph.staticCast<DTO::DTOVector<double>>();
+          auto vec = polymorph.cast<DTO::DTOVector<double>>();
           jval = JVal(rapidjson::kArrayType);
           for (size_t i = 0; i < vec->size(); ++i)
             {
               jval.PushBack(vec->at(i), jdoc.GetAllocator());
             }
         }
-      else if (polymorph.valueType
+      else if (polymorph.getValueType()
                == DTO::DTOVector<uint8_t>::Class::getType())
         {
-          auto vec = polymorph.staticCast<DTO::DTOVector<uint8_t>>();
+          auto vec = polymorph.cast<DTO::DTOVector<uint8_t>>();
           jval = JVal(rapidjson::kArrayType);
           for (size_t i = 0; i < vec->size(); ++i)
             {
               jval.PushBack(vec->at(i), jdoc.GetAllocator());
             }
         }
-      else if (polymorph.valueType == DTO::DTOVector<bool>::Class::getType())
+      else if (polymorph.getValueType()
+               == DTO::DTOVector<bool>::Class::getType())
         {
-          auto vec = polymorph.staticCast<DTO::DTOVector<bool>>();
+          auto vec = polymorph.cast<DTO::DTOVector<bool>>();
           jval = JVal(rapidjson::kArrayType);
           for (size_t i = 0; i < vec->size(); ++i)
             {
               jval.PushBack(JVal(bool(vec->at(i))), jdoc.GetAllocator());
             }
         }
-      else if (polymorph.valueType->classId.id
-               == oatpp::data::mapping::type::__class::AbstractVector::CLASS_ID
-                      .id)
+      else if (polymorph.getValueType()->classId.id
+                   == oatpp::data::mapping::type::__class::AbstractVector::
+                          CLASS_ID.id
+               || polymorph.getValueType()->classId.id
+                      == oatpp::data::mapping::type::__class::AbstractList::
+                             CLASS_ID.id)
         {
-          auto vec = polymorph.staticCast<oatpp::AbstractVector>();
+          auto poly_dispatch
+              = static_cast<const oatpp::data::mapping::type::__class::
+                                Collection::PolymorphicDispatcher *>(
+                  polymorph.getValueType()->polymorphicDispatcher);
           jval = JVal(rapidjson::kArrayType);
-          for (size_t i = 0; i < vec->size(); ++i)
+          for (auto it = poly_dispatch->beginIteration(polymorph);
+               !it->finished(); it->next())
             {
               JVal elemJVal;
-              dtoToJVal(vec->at(i), jdoc, elemJVal, ignore_null);
+              dtoToJVal(it->get(), jdoc, elemJVal, ignore_null);
               jval.PushBack(elemJVal, jdoc.GetAllocator());
             }
         }
-      else if (polymorph.valueType->classId.id
-               == oatpp::data::mapping::type::__class::AbstractList::CLASS_ID
-                      .id)
-        {
-          auto list = polymorph.staticCast<oatpp::AbstractList>();
-          jval = JVal(rapidjson::kArrayType);
-          for (auto &elem : *list)
-            {
-              JVal elemJVal;
-              dtoToJVal(elem, jdoc, elemJVal, ignore_null);
-              jval.PushBack(elemJVal, jdoc.GetAllocator());
-            }
-        }
-      else if (polymorph.valueType->classId.id
+      else if (polymorph.getValueType()->classId.id
                == oatpp::data::mapping::type::__class::AbstractPairList::
                       CLASS_ID.id)
         {
           jval = JVal(rapidjson::kObjectType);
-          auto fields = polymorph.staticCast<oatpp::AbstractFields>();
+          auto fields = staticCast<oatpp::AbstractFields>(polymorph);
           for (auto const &field : *fields)
             {
               JVal childJVal;
@@ -214,12 +211,12 @@ namespace dd
                   childJVal, jdoc.GetAllocator());
             }
         }
-      else if (polymorph.valueType->classId.id
+      else if (polymorph.getValueType()->classId.id
                == oatpp::data::mapping::type::__class::AbstractUnorderedMap::
                       CLASS_ID.id)
         {
           jval = JVal(rapidjson::kObjectType);
-          auto fields = polymorph.staticCast<oatpp::AbstractUnorderedFields>();
+          auto fields = staticCast<oatpp::AbstractUnorderedFields>(polymorph);
 
           for (auto const &field : *fields)
             {
@@ -234,7 +231,7 @@ namespace dd
                   childJVal, jdoc.GetAllocator());
             }
         }
-      else if (polymorph.valueType->classId.id
+      else if (polymorph.getValueType()->classId.id
                == oatpp::data::mapping::type::__class::AbstractObject::CLASS_ID
                       .id)
         {
@@ -242,7 +239,7 @@ namespace dd
           auto dispatcher
               = static_cast<const oatpp::data::mapping::type::__class::
                                 AbstractObject::PolymorphicDispatcher *>(
-                  polymorph.valueType->polymorphicDispatcher);
+                  polymorph.getValueType()->polymorphicDispatcher);
           auto fields = dispatcher->getProperties()->getList();
           auto object = static_cast<oatpp::BaseObject *>(polymorph.get());
 
@@ -262,7 +259,7 @@ namespace dd
         }
       else
         {
-          std::string type_name = polymorph.valueType->classId.name;
+          std::string type_name = polymorph.getValueType()->classId.name;
           throw std::runtime_error("dtoToJVal: \"" + type_name
                                    + "\": type not recognised");
         }

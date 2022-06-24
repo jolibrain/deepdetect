@@ -42,7 +42,7 @@ ErrorHandler::handleError(const Status &status, const oatpp::String &message,
 {
   std::string status_message = status.description;
   status_message.append(": ");
-  status_message.append(message.get()->std_str());
+  status_message.append(message);
 
   JDoc jst;
   jst.SetObject();

@@ -39,6 +39,13 @@ namespace dd
     oatpp::UnorderedFields<oatpp::Any>
     dtoToUFields(const oatpp::Void &polymorph);
 
+    template <typename Wrapper> inline Wrapper staticCast(oatpp::Void val)
+    {
+      return Wrapper(
+          std::static_pointer_cast<typename Wrapper::ObjectType>(val.getPtr()),
+          val.getValueType());
+    }
+
     template <class S, class D>
     inline std::vector<D> dtoVecToVec(oatpp::Vector<S> dto_vec)
     {
@@ -54,7 +61,7 @@ namespace dd
     {
       std::vector<std::string> vec;
       for (auto v : *dto_vec)
-        vec.push_back(v->std_str());
+        vec.push_back(v);
       return vec;
     }
 

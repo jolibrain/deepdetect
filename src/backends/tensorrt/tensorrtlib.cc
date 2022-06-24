@@ -492,8 +492,7 @@ namespace dd
     auto output_params = predict_dto->parameters->output;
 
     std::string out_blob = "prob";
-    std::string extract_layer
-        = predict_dto->parameters->mllib->extract_layer->std_str();
+    std::string extract_layer = predict_dto->parameters->mllib->extract_layer;
 
     TInputConnectorStrategy inputc(this->_inputc);
 

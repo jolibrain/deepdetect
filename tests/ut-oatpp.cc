@@ -45,7 +45,7 @@ void test_info(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(message != nullptr);
 
   rapidjson::Document d;
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("head"));
@@ -66,11 +66,11 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   auto response = client->put_services(serv.c_str(), serv_put.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
 
   rapidjson::Document d;
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -79,10 +79,10 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_services(serv.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
   d = rapidjson::Document();
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_EQ("caffe", d["body"]["mllib"]);
@@ -93,10 +93,10 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_info();
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
   d = rapidjson::Document();
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(1, d["head"]["services"].Size());
 
@@ -108,10 +108,10 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_info();
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
   d = rapidjson::Document();
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d["head"].HasMember("services"));
   ASSERT_EQ(0, d["head"]["services"].Size());
 
@@ -119,10 +119,10 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_services(serv.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 404);
   d = rapidjson::Document();
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
 }
 
 void test_train(std::shared_ptr<DedeApiTestClient> client)
@@ -140,10 +140,10 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
   rapidjson::Document d;
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -156,9 +156,9 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   response = client->post_train(train_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_TRUE(d["body"].HasMember("measure"));
 #if defined(CPU_ONLY) || defined(USE_CAFFE_CPU_ONLY)
@@ -176,9 +176,9 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   response = client->put_services(serv.c_str(), serv_put2.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -191,9 +191,9 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   response = client->post_train(train_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasMember("body"));
 
   sleep(1);
@@ -202,10 +202,10 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_services(serv.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
   d = rapidjson::Document();
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
   ASSERT_EQ("caffe", d["body"]["mllib"]);
@@ -220,7 +220,7 @@ void test_train(std::shared_ptr<DedeApiTestClient> client)
       response = client->get_train(serv.c_str(), 1, 1, 100);
       message = response->readBodyToString();
       ASSERT_TRUE(message != nullptr);
-      std::string jstr = message.get()->std_str();
+      std::string jstr = message;
       running = jstr.find("running") != std::string::npos;
       if (running)
         {
@@ -270,10 +270,10 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
   auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
   rapidjson::Document d;
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -282,9 +282,9 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
   response = client->put_services(serv2.c_str(), serv_put2.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -293,8 +293,8 @@ void test_multiservices(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_info();
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
-  std::string jstr = message.get()->std_str();
+  std::cout << "jstr=" << *message << std::endl;
+  std::string jstr = message;
   ASSERT_EQ(response->getStatusCode(), 200);
   d = rapidjson::Document();
   d.Parse<rapidjson::kParseNanAndInfFlag>(jstr.c_str());
@@ -325,10 +325,10 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
   rapidjson::Document d;
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -342,18 +342,18 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   response = client->post_train(train_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasMember("body"));
 
   // service creation
   response = client->put_services(serv2.c_str(), serv_put2.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -362,7 +362,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_info();
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::string jstr = message.get()->std_str();
+  std::string jstr = message;
   std::cout << "jstr=" << jstr << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
   d = rapidjson::Document();
@@ -380,9 +380,9 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   response = client->post_train(train_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasMember("body"));
 
   sleep(1);
@@ -391,7 +391,7 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   response = client->get_train(serv2.c_str(), 1, nullptr, nullptr);
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
 
   // get info on first training job
@@ -402,13 +402,13 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
       response = client->get_train(serv2.c_str(), 1, 1, nullptr);
       message = response->readBodyToString();
       ASSERT_TRUE(message != nullptr);
-      std::string jstr = message.get()->std_str();
+      std::string jstr = message;
       running = jstr.find("running") != std::string::npos;
       if (!running)
         {
           std::cerr << "jstr=" << jstr << std::endl;
           JDoc jd2;
-          jd2.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+          jd2.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
           ASSERT_TRUE(!jd2.HasParseError());
           ASSERT_TRUE(jd2.HasMember("status"));
           ASSERT_EQ(200, jd2["status"]["code"]);
@@ -434,9 +434,9 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   response = client->delete_train(serv.c_str(), 1);
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d.HasMember("head"));
   ASSERT_TRUE(d["head"].HasMember("status"));
   ASSERT_EQ("terminated", d["head"]["status"]);
@@ -451,9 +451,9 @@ void test_concurrency(std::shared_ptr<DedeApiTestClient> client)
   response = client->delete_train(serv2.c_str(), 1);
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d.HasMember("head"));
   ASSERT_TRUE(d["head"].HasMember("status"));
   ASSERT_EQ("terminated", d["head"]["status"]);
@@ -487,10 +487,10 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   auto response = client->put_services(serv.c_str(), serv_put2.c_str());
   auto message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
   rapidjson::Document d;
-  d.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_FALSE(d.HasParseError());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_EQ(201, d["status"]["code"].GetInt());
@@ -506,7 +506,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   response = client->post_train(train_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  jstr = message.get()->std_str();
+  jstr = message;
   std::cout << "jstr=" << jstr << std::endl;
   ASSERT_EQ(response->getStatusCode(), 201);
   JDoc jd;
@@ -533,10 +533,10 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   response = client->post_predict(predict_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
-  jstr = message.get()->std_str();
-  jd.Parse<rapidjson::kParseNanAndInfFlag>(message.get()->c_str());
+  jstr = message;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
   ASSERT_TRUE(jd.HasMember("head"));
@@ -562,7 +562,7 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   response = client->post_predict(predict_post.c_str());
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
-  std::cout << "jstr=" << message.get()->std_str() << std::endl;
+  std::cout << "jstr=" << *message << std::endl;
   ASSERT_EQ(response->getStatusCode(), 200);
 
   // remove services and trained model files

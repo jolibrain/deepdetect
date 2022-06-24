@@ -126,7 +126,7 @@ namespace dd
 #ifdef USE_FAISS
           _se = new SearchEngine<FaissSE>(dim, _repo);
           if (output_params->index_type != nullptr)
-            _se->_tse->_index_key = output_params->index_type->std_str();
+            _se->_tse->_index_key = output_params->index_type;
           if (output_params->train_samples != nullptr)
             _se->_tse->_train_samples_size = output_params->train_samples;
           if (output_params->ondisk != nullptr)

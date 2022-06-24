@@ -672,7 +672,7 @@ namespace dd
 
       // image interpolation method
       if (params->interp)
-        _interp = params->interp->std_str();
+        _interp = params->interp;
 
       // timeout
       this->set_timeout(params);
