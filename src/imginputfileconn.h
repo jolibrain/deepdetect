@@ -96,37 +96,62 @@ namespace dd
     void prepare(const cv::Mat &src, cv::Mat &dst,
                  const std::string &img_name) const
     {
+      dst = src;
+
       try
         {
-          if (_scaled)
-            scale(src, dst);
-          else if (_width == 0 || _height == 0)
+          if (_rotate != 0)
             {
-              if (_width == 0 && _height == 0)
+              if (_rotate == 90)
                 {
-                  // Do nothing and keep native resolution. May cause issues if
-                  // batched images are different resolutions
-                  dst = src;
+                  cv::transpose(dst, dst);
+                  cv::flip(dst, dst, 1);
+                }
+              else if (_rotate == 180)
+                {
+                  cv::flip(dst, dst, -1);
+                }
+              else if (_rotate == 270)
+                {
+                  cv::transpose(dst, dst);
+                  cv::flip(dst, dst, 0);
                 }
               else
+                {
+                  throw InputConnectorBadParamException(
+                      "Bad rotation value: " + std::to_string(_rotate));
+                }
+            }
+
+          if (_scaled)
+            scale(dst, dst);
+          else if (_width == 0 || _height == 0)
+            {
+              if (_width != 0 || _height != 0)
                 {
                   // Resize so that the larger dimension is set to whichever
                   // (width or height) is non-zero, maintaining aspect ratio
                   // XXX - This may cause issues if batch images are different
                   // resolutions
-                  size_t currMaxDim = std::max(src.rows, src.cols);
+                  size_t currMaxDim = std::max(dst.rows, dst.cols);
                   double scale = static_cast<double>(std::max(_width, _height))
                                  / static_cast<double>(currMaxDim);
-                  cv::resize(src, dst, cv::Size(), scale, scale,
+                  cv::resize(dst, dst, cv::Size(), scale, scale,
                              select_cv_interp());
                 }
+              // Otherwise do nothing and keep native resolution. May cause
+              // issues if batched images are different resolutions
             }
           else
             {
               // Resize normally to the specified width and height
-              cv::resize(src, dst, cv::Size(_width, _height), 0, 0,
+              cv::resize(dst, dst, cv::Size(_width, _height), 0, 0,
                          select_cv_interp());
             }
+        }
+      catch (InputConnectorBadParamException &e)
+        {
+          throw e;
         }
       catch (...)
         {
@@ -195,37 +220,62 @@ namespace dd
     void prepare_cuda(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst,
                       const std::string &img_name) const
     {
+      dst = src;
+
       try
         {
-          if (_scaled)
-            scale_cuda(src, dst);
-          else if (_width == 0 || _height == 0)
+          if (_rotate != 0)
             {
-              if (_width == 0 && _height == 0)
+              if (_rotate == 90)
                 {
-                  // Do nothing and keep native resolution. May cause issues if
-                  // batched images are different resolutions
-                  dst = src;
+                  cv::cuda::transpose(dst, dst);
+                  cv::cuda::flip(dst, dst, 1);
+                }
+              else if (_rotate == 180)
+                {
+                  cv::cuda::flip(dst, dst, -1);
+                }
+              else if (_rotate == 270)
+                {
+                  cv::cuda::transpose(dst, dst);
+                  cv::cuda::flip(dst, dst, 0);
                 }
               else
+                {
+                  throw InputConnectorBadParamException(
+                      "Bad rotation value: " + std::to_string(_rotate));
+                }
+            }
+
+          if (_scaled)
+            scale_cuda(dst, dst);
+          else if (_width == 0 || _height == 0)
+            {
+              if (_width != 0 || _height != 0)
                 {
                   // Resize so that the larger dimension is set to whichever
                   // (width or height) is non-zero, maintaining aspect ratio
                   // XXX - This may cause issues if batch images are different
                   // resolutions
-                  size_t currMaxDim = std::max(src.rows, src.cols);
+                  size_t currMaxDim = std::max(dst.rows, dst.cols);
                   double scale = static_cast<double>(std::max(_width, _height))
                                  / static_cast<double>(currMaxDim);
-                  cv::cuda::resize(src, dst, cv::Size(), scale, scale,
+                  cv::cuda::resize(dst, dst, cv::Size(), scale, scale,
                                    select_cv_interp(), *_cuda_stream);
                 }
+              // Otherwise do nothing and keep native resolution. May cause
+              // issues if batched images are different resolutions
             }
           else
             {
               // Resize normally to the specified width and height
-              cv::cuda::resize(src, dst, cv::Size(_width, _height), 0, 0,
+              cv::cuda::resize(dst, dst, cv::Size(_width, _height), 0, 0,
                                select_cv_interp(), *_cuda_stream);
             }
+        }
+      catch (InputConnectorBadParamException &e)
+        {
+          throw e;
         }
       catch (...)
         {
@@ -533,6 +583,7 @@ namespace dd
     bool _scaled = false;
     int _scale_min = 600;
     int _scale_max = 1000;
+    int _rotate = 0;
     bool _keep_orig = false;
     bool _b64 = false;
     std::string _interp = "cubic";
@@ -667,6 +718,9 @@ namespace dd
           _scale_max = params->scale_max;
         }
 
+      if (params->rotate)
+        _rotate = params->rotate;
+
       // whether to keep original image (for chained ops, e.g. cropping)
       _keep_orig |= params->keep_orig;
 
@@ -697,6 +751,7 @@ namespace dd
       dimg._scaled = _scaled;
       dimg._scale_min = _scale_min;
       dimg._scale_max = _scale_max;
+      dimg._rotate = _rotate;
       dimg._keep_orig = _keep_orig;
       dimg._interp = _interp;
 #ifdef USE_CUDA_CV
@@ -1105,6 +1160,7 @@ namespace dd
     bool _scaled = false;
     int _scale_min = 600;
     int _scale_max = 1000;
+    int _rotate = 0; /**< rotate the input image of 90, 180 or 270 degrees. */
     bool _keep_orig = false;
     std::string _interp = "cubic";
 #ifdef USE_CUDA_CV

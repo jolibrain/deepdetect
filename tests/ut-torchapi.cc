@@ -333,10 +333,10 @@ TEST(torchapi, service_predict_object_detection)
   // Check confidence threshold
   ASSERT_TRUE(preds[preds.Size() - 1]["prob"].GetDouble() >= 0.8);
 
-  // best
+  // best + rotate
   jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
                 "\"input\":{\"height\":224,"
-                "\"width\":224},\"output\":{\"bbox\":true, "
+                "\"width\":224, \"rotate\": 90},\"output\":{\"bbox\":true, "
                 "\"best_bbox\":3}},\"data\":[\""
                 + detect_repo + "cat.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
