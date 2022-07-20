@@ -238,6 +238,46 @@ TEST(torchapi, service_predict_native_bw)
   fileops::remove_dir(native_resnet_repo);
 }
 
+TEST(torchapi, service_predict_multi_label)
+{
+  // create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"resnet-50\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + incept_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"nclasses\":1000,\"multi_label\":true}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict
+  std::string jpredictstr
+      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
+        "\"width\":224},\"output\":{\"best\":10}},\"data\":"
+        "[\""
+        + incept_repo + "cat.jpg\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 10);
+
+  // multi_label = no softmax = sums of probs is not 1
+  double sum = 0.0;
+  for (size_t i = 0; i < jd["body"]["predictions"][0]["classes"].Size(); i++)
+    {
+      sum += jd["body"]["predictions"][0]["classes"][i]["prob"].GetDouble();
+    }
+  ASSERT_GT(sum, 1.0);
+}
+
 #if !defined(CPU_ONLY)
 TEST(torchapi, service_predict_fp16)
 {

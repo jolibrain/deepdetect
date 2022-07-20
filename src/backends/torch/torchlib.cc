@@ -82,6 +82,7 @@ namespace dd
     _bbox = tl._bbox;
     _segmentation = tl._segmentation;
     _ctc = tl._ctc;
+    _multi_label = tl._multi_label;
     _loss = tl._loss;
     _template_params = tl._template_params;
     _dtype = tl._dtype;
@@ -293,6 +294,11 @@ namespace dd
     else if (mllib_dto->ntargets != 0)
       {
         _regression = true;
+      }
+
+    if (mllib_dto->multi_label)
+      {
+        _multi_label = true;
       }
 
     if (_template == "bert")
@@ -1500,7 +1506,12 @@ namespace dd
                 // XXX: why is (!_timeserie) needed here? Aren't _timeserie and
                 // _classification mutually exclusive?
                 if (extract_layer.empty() && !_timeserie && _classification)
-                  output = torch::softmax(output, 1).to(cpu);
+                  {
+                    if (_multi_label)
+                      output = torch::sigmoid(output).to(cpu);
+                    else
+                      output = torch::softmax(output, 1).to(cpu);
+                  }
                 else if (extract_layer.empty() && !_timeserie && ctc)
                   output = torch::softmax(output, 2).to(cpu);
                 else
