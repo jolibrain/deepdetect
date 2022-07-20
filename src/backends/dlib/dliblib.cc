@@ -22,6 +22,7 @@
 #include <string>
 #include "dliblib.h"
 #include "imginputfileconn.h"
+#include "dlibinputconns.h"
 #include "outputconnectorstrategy.h"
 
 namespace dd
@@ -96,6 +97,9 @@ namespace dd
       }
   }
 
+// XXX Remove that to print the warnings
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   void DlibLib<TInputConnectorStrategy, TOutputConnectorStrategy,
@@ -121,6 +125,8 @@ namespace dd
   {
     // NOT IMPLEMENTED
   }
+// XXX Remove that to print the warnings
+#pragma GCC diagnostic pop
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>

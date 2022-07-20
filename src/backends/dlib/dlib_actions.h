@@ -30,10 +30,8 @@ namespace dd
   {
   public:
     DlibAlignCropAction(oatpp::Object<DTO::ChainCall> call_dto,
-                        const std::string &action_id,
-                        const std::string &action_type,
                         const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(call_dto, action_id, action_type, chain_logger)
+        : ChainAction(call_dto, chain_logger)
     {
     }
 
