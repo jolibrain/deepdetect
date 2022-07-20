@@ -252,6 +252,9 @@ option(USE_DLIB_CPU_ONLY "use DLIB without CUDA" OFF)
 option(USE_CAFFE2_CPU_ONLY "use CAFFE2 without CUDA" OFF)
 option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
 
+# Dlib AVX option
+option(USE_DLIB_AVX "build dlib with AVX enabled" OFF)
+
 # Deprecated flag
 if (USE_XGBOOST_GPU)
   set(USE_XGBOOST_CPU_ONLY OFF)
@@ -379,7 +382,7 @@ if (USE_DLIB)
     # Dlib
 
     # Currently supported release version of dlib
-    set(DLIB_RELEASE_VERSION v19.18)
+    set(DLIB_RELEASE_VERSION v19.24)
     message(STATUS "Using Dlib version ${DLIB_RELEASE_VERSION}")
     add_definitions(-DUSE_DLIB)
     set(DLIB_LIB_DEPS -ldlib -lopenblas)
@@ -389,7 +392,7 @@ if (USE_DLIB)
             dlib
             PREFIX dlib
             URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
-            CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+            CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DUSE_AVX_INSTRUCTIONS=${USE_DLIB_AVX} -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
             BUILD_COMMAND ""
             INSTALL_COMMAND ""
             BUILD_IN_SOURCE 1
@@ -402,7 +405,7 @@ if (USE_DLIB)
           dlib
           PREFIX dlib
           URL https://github.com/davisking/dlib/archive/${DLIB_RELEASE_VERSION}.tar.gz
-          CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
+          CONFIGURE_COMMAND cd dlib && mkdir -p build && cd build && cmake .. -DUSE_AVX_INSTRUCTIONS=${USE_DLIB_AVX} -DDLIB_NO_GUI_SUPPORT=ON -DDLIB_USE_CUDA=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/dlib/build && cmake --build . --config Release --target install
           BUILD_COMMAND ""
           INSTALL_COMMAND ""
           BUILD_IN_SOURCE 1
@@ -1291,6 +1294,7 @@ message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
 message(STATUS "USE_DLIB_CPU_ONLY:     ${USE_DLIB_CPU_ONLY}")
+message(STATUS "USE_DLIB_AVX:          ${USE_DLIB_AVX}")
 message(STATUS "USE_ANNOY:             ${USE_ANNOY}")
 message(STATUS "USE_FAISS:             ${USE_FAISS}")
 message(STATUS "USE_FAISS_CPU_ONLY:    ${USE_FAISS_CPU_ONLY}")
