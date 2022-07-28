@@ -3,6 +3,9 @@ if (NOT USE_CPU_ONLY)
     include(@PROJECT_SOURCE_DIR@/cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
+set(DeepDetect_VERSION @GIT_VERSION@)
+set(DeepDetect_COMMIT_HASH @GIT_COMMIT_HASH@)
+set(DeepDetect_BRANCH @GIT_BRANCH@)
 set(DeepDetect_CXX_FLAGS "-fopenmp -pthread")
 set(DeepDetect_DEFINITIONS @COMMON_DEFINITIONS@)
 set(DeepDetect_INCLUDE_DIRS @PROJECT_SOURCE_DIR@/src @CMAKE_BINARY_DIR@/src @CMAKE_BINARY_DIR@ @COMMON_INCLUDE_DIRS@ @EIGEN3_INCLUDE_DIR@)
