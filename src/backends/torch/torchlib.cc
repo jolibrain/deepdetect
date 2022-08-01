@@ -1376,7 +1376,9 @@ namespace dd
     double confidence_threshold = output_params->confidence_threshold;
 
     int best_count = _nclasses;
-    if (output_params->best != nullptr)
+    if (ctc) // ctc = only one result
+      best_count = 1;
+    else if (output_params->best != nullptr)
       best_count = output_params->best;
 
     int best_bbox = output_params->best_bbox;
@@ -1655,8 +1657,6 @@ namespace dd
                     for (int j = 0; j < timestep; ++j)
                       {
                         int cur = indices_acc[j][i][0];
-                        std::cout << "char: " << cur << " ("
-                                  << probs_acc[j][i][0] << ")" << std::endl;
                         if (cur != prev && cur != output_params->blank_label)
                           pred_label_seq.push_back(cur);
                         prev = cur;
@@ -1675,7 +1675,6 @@ namespace dd
                                    std::vector<std::string>{ oss.str() });
                     results_ad.add("probs", std::vector<double>{ prob });
                     results_ad.add("nclasses", (int)_nclasses);
-                    std::cout << "predicted: " << oss.str() << std::endl;
                     results_ads.push_back(results_ad);
                   }
               }
@@ -1985,7 +1984,6 @@ namespace dd
         Tensor labels;
         if (_timeserie)
           {
-
             if (_module._native != nullptr)
               output = _module._native->cleanup_output(output);
             // iterate over data in batch

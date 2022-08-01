@@ -655,26 +655,24 @@ namespace dd
                   }
               }
           }
-        else // shouldLoad
-          {
-            if (_ctc)
-              {
-                int corresp_size = get_corresp_size();
-                if (corresp_size <= 0)
-                  {
-                    throw InputConnectorBadParamException(
-                        "found db but no valid corresp file, remove the db to "
-                        "rebuild it?");
-                  }
-                _alphabet_size = corresp_size;
-              }
-          }
 
         if (createDb)
           {
             _dataset.db_finalize();
             _test_datasets.db_finalize();
           }
+      }
+
+    if (_ctc && _alphabet_size <= 0)
+      {
+        int corresp_size = get_corresp_size();
+        if (corresp_size <= 0)
+          {
+            throw InputConnectorBadParamException(
+                "found db but no valid corresp file, remove the db to "
+                "rebuild it?");
+          }
+        _alphabet_size = corresp_size;
       }
   }
 
