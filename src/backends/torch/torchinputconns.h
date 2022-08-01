@@ -73,8 +73,8 @@ namespace dd
     TorchInputInterface(const TorchInputInterface &i)
         : _lm_params(i._lm_params), _dataset(i._dataset),
           _test_datasets(i._test_datasets), _input_format(i._input_format),
-          _ctc(i._ctc), _ntargets(i._ntargets), _tilogger(i._tilogger),
-          _db(i._db)
+          _ctc(i._ctc), _ntargets(i._ntargets),
+          _alphabet_size(i._alphabet_size), _tilogger(i._tilogger), _db(i._db)
     {
     }
 

@@ -129,12 +129,13 @@ namespace dd
         }
     }
 
-    void copy_weights(const torch::jit::script::Module &from,
-                      torch::nn::Module &to, const torch::Device &device,
-                      std::shared_ptr<spdlog::logger> logger, bool strict)
+    template <typename FromParamsList>
+    void
+    copy_tensors(const FromParamsList &from_params,
+                 torch::OrderedDict<std::string, torch::Tensor> &to_params,
+                 const torch::Device &device,
+                 std::shared_ptr<spdlog::logger> logger, bool strict)
     {
-      auto from_params = from.named_parameters();
-      auto to_params = to.named_parameters();
       std::unordered_set<std::string> copied_params;
 
       for (const auto &from_item : from_params)
@@ -207,6 +208,18 @@ namespace dd
                 }
             }
         }
+    }
+
+    void copy_weights(const torch::jit::script::Module &from,
+                      torch::nn::Module &to, const torch::Device &device,
+                      std::shared_ptr<spdlog::logger> logger, bool strict)
+    {
+      auto from_params = from.named_parameters();
+      auto to_params = to.named_parameters();
+      copy_tensors(from_params, to_params, device, logger, strict);
+      auto from_buffers = from.named_buffers();
+      auto to_buffers = to.named_buffers();
+      copy_tensors(from_buffers, to_buffers, device, logger, strict);
     }
 
     /** Copy weights from a native module to another native module. This is

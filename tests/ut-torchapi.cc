@@ -518,9 +518,13 @@ TEST(torchapi, load_weights_native_model)
 
   module._finetuning = false;
   test_param_name = "wrapped.fc.bias";
+  std::string test_buffer_name = "wrapped.layer4.2.bn2.running_mean";
   // <!> segfault if test_param_name is not in named_parameters
   tested_value = *module._native->named_parameters().find(test_param_name);
   torch::Tensor before_val = tested_value.clone();
+  torch::Tensor before_buffer
+      = (*module._native->named_buffers().find(test_buffer_name)).clone();
+  ASSERT_TRUE(before_buffer.mean().item<double>() != 0);
 
   module.save_checkpoint(mlmodel, "0");
   mlmodel._native = "checkpoint-0.npt";
@@ -529,7 +533,11 @@ TEST(torchapi, load_weights_native_model)
   // <!> segfault if test_param_name is not in named_parameters
   tested_value = *module._native->named_parameters().find(test_param_name);
   torch::Tensor after_val = tested_value.clone();
+  torch::Tensor after_buffer
+      = (*module._native->named_buffers().find(test_buffer_name)).clone();
   ASSERT_TRUE(torch::allclose(before_val, after_val));
+  // check that buffers are copied as well
+  ASSERT_TRUE(torch::allclose(before_buffer, after_buffer));
 
   fileops::remove_file(".", mlmodel._native);
 }
@@ -1204,8 +1212,7 @@ TEST(torchapi, service_train_images_ctc)
 
   // Predict
   std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{"
-                            "\"output\":{\"best\":1,\"ctc\":true}},"
-                            "\"data\":[\""
+                            "\"output\":{\"ctc\":true}},\"data\":[\""
                             + ocr_test_image + "\"]}";
 
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
