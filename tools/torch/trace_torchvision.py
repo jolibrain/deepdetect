@@ -81,6 +81,7 @@ class DetectionModel(torch.nn.Module):
     def __init__(self, model):
         super(DetectionModel, self).__init__()
         self.model = model
+        self.str = ""
 
     def forward(self, x, ids = None, bboxes = None, labels = None):
         # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tuple[Dict[str,Tensor], List[Dict[str, Tensor]]]
@@ -108,6 +109,12 @@ class DetectionModel(torch.nn.Module):
 
                 targ = {"boxes": bboxes[start:stop], "labels": labels[start:stop]}
                 l_targs.append(targ)
+
+            # XXX: This prevents a buggy optimization in torchscript.
+            # Try to remove this after next pytorch update
+            self.str = str(l_targs)
+            if l_x[0].shape[0] > 40000:
+                print(self.str)
 
             losses, predictions = self.model(l_x, l_targs)
 
