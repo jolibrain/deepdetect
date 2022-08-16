@@ -176,6 +176,13 @@ namespace dd
       };
       DTO_FIELD(UnorderedFields<Any>, template_params);
 
+      DTO_FIELD_INFO(multi_label)
+      {
+        info->description
+            = "Model outputs an independent score for each class";
+      }
+      DTO_FIELD(Boolean, multi_label) = false;
+
       // Libtorch predict options
       DTO_FIELD_INFO(forward_method)
       {
