@@ -364,17 +364,40 @@ namespace dd
             else
               {
                 std::string tmp;
-                std::string bin;
+                std::string best_it;
+                std::string best_val;
                 std::string test_name;
-                // first three fields are thrown away
-                bestfile >> tmp >> bin >> tmp >> tmp >> tmp >> test_name;
+                // read metrics
+                while (std::getline(bestfile, tmp))
+                  {
+                    auto splitted = dd_utils::split(tmp, ':');
+                    if (splitted.size() == 2)
+                      {
+                        std::string key = dd_utils::trim_spaces(splitted[0]);
+                        std::string value = dd_utils::trim_spaces(splitted[1]);
+
+                        if (key == "iteration")
+                          {
+                            best_it = value;
+                          }
+                        else if (key == "test_name")
+                          {
+                            test_name = value;
+                          }
+                        else
+                          {
+                            // assuming the last and only field is the metric
+                            best_val = value;
+                          }
+                      }
+                  }
                 bestfile.close();
                 if (test_name != set_names[test_id])
                   _logger->warn(
                       "test names not matching: {} (API) vs {} (file)",
                       set_names[test_id], test_name);
-                best_iteration_numbers[test_id] = std::atof(bin.c_str());
-                best_metric_values[test_id] = std::atof(tmp.c_str());
+                best_iteration_numbers[test_id] = std::atof(best_it.c_str());
+                best_metric_values[test_id] = std::atof(best_val.c_str());
               }
           }
       }

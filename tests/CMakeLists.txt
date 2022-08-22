@@ -92,6 +92,8 @@ endfunction()
 
 find_package(PythonInterp 2.7 REQUIRED)
 
+REGISTER_TEST(ut_common ut-common.cc)
+
 if (USE_JSON_API)
   REGISTER_TEST(ut_apidata ut-apidata.cc)
   REGISTER_TEST(ut_dto ut-dto.cc)

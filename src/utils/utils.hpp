@@ -68,6 +68,17 @@ namespace dd
       return elems;
     }
 
+    inline std::string trim_spaces(const std::string &item)
+    {
+      const std::string WHITESPACE = " \n\r\t\f\v";
+      size_t start = item.find_first_not_of(WHITESPACE);
+      size_t end = item.find_last_not_of(WHITESPACE);
+
+      return start == std::string::npos || end == std::string::npos
+                 ? ""
+                 : item.substr(start, end - start + 1);
+    }
+
     inline bool iequals(const std::string &a, const std::string &b)
     {
       unsigned int sz = a.size();
