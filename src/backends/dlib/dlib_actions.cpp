@@ -47,8 +47,9 @@ namespace dd
     std::vector<std::string> bbox_ids;
 
     // check for action parameters
-    double bratio
-        = _params->padding_ratio != nullptr ? _params->padding_ratio : 0.25;
+    double bratio = _params->padding_ratio;
+    if (bratio == 0.0)
+      bratio = 0.25; // Default is 0.25 for DlibAlignCropAction
     int chip_size = _params->chip_size;
     std::vector<APIData> cvad;
 
