@@ -1384,7 +1384,8 @@ namespace dd
     int best_count = _nclasses;
     if (ctc) // ctc = only one result
       best_count = 1;
-    else if (output_params->best != nullptr)
+    // allow "best: -1" to represent all classes and "best: 0" to still be 0
+    else if (output_params->best != nullptr && output_params->best > -1)
       best_count = output_params->best;
 
     int best_bbox = output_params->best_bbox;
