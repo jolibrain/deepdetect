@@ -789,6 +789,14 @@ namespace dd
         if (num_processed == 0)
           break;
 
+        // some models don't support dynamic batch size (ex: onnx)
+        // this can lead to undetected bad predictions
+        if (num_processed > _dims.d[0])
+          throw MLLibBadParamException(
+              "Trying to process " + std::to_string(num_processed)
+              + " element, but the model has a maximum batch size of "
+              + std::to_string(_dims.d[0]));
+
         try
           {
 #ifdef USE_CUDA_CV
