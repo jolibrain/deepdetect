@@ -4,7 +4,7 @@ import subprocess
 import torch
 import torchvision
 
-_test_dir = os.path.dirname(__file__)
+_test_dir = os.path.dirname(os.path.abspath(__file__))
 _temp_dir = os.path.join(_test_dir, "temp")
 
 def get_detection_input(batch_size=1):

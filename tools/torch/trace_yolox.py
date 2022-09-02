@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--weights', type=str, help="yolo-x weights file (.pth or .pt)")
     parser.add_argument('--backbone_weights', type=str, help="yolo-x weights file, but will be applied only to backbone")
     parser.add_argument('--yolox_path', type=str, help="Path of yolo-x repository")
-    parser.add_argument('--num_classes', type=int, default=80, help="Number of classes of the model")
+    parser.add_argument('--num_classes', type=int, default=81, help="Number of classes of the model")
     parser.add_argument('--gpu', type=int, help="GPU id to run on GPU")
     parser.add_argument('--to_onnx', action="store_true", help="Export model to onnx")
     parser.add_argument('--use_wrapper', action="store_true", help="In case of onnx export, if this option is present, the model will be wrapped so that its output match dede expectations")
