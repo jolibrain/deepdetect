@@ -217,6 +217,13 @@ DOWNLOAD_DATASET(
   "video1.tar.gz"
   "video1.mp4"
 )
+DOWNLOAD_DATASET(
+  "Test images"
+  "http://www.deepdetect.com/dd/examples/all/images/all_test_images0.tar.gz"
+  "examples/all/images"
+  "all_test_images0.tar.gz"
+  "face.jpg"
+)
 
 set(SINUS_EXAMPLE_PATH ${CMAKE_SOURCE_DIR}/examples/all/sinus/)
 set(SINUS_EXAMPLE_OUT "examples/all/sinus")
