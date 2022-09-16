@@ -53,6 +53,8 @@ static std::string trt_detect_repo = "../examples/trt/squeezenet_ssd_trt";
 static std::string trt_gan_repo
     = "../examples/trt/cyclegan_resnet_attn_onnx_trt";
 
+static std::string test_img_folder = "../examples/all/images";
+
 #ifdef USE_TORCH
 
 TEST(chain, chain_torch_detection_classification)
@@ -269,9 +271,8 @@ TEST(chain, chain_caffe_faces_classification)
   joutstr = japi.jrender(japi.service_create(age_sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
-  std::string uri1 = "https://icour.fr/ELeveSeconde/ajout/yann_lecum_vidal/"
-                     "images/yann_LeCun.jpg";
-  std::string uri2 = "https://picsum.photos/id/10/600/600";
+  std::string uri1 = test_img_folder + "/face.jpg";
+  std::string uri2 = test_img_folder + "/600.jpg";
 
   std::string jchainstr
       = "{\"chain\": {\"calls\": [{\"parameters\": {\"input\": "
@@ -324,9 +325,7 @@ TEST(chain, chain_caffe_detect_draw_bboxes)
   std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
-  // TODO prendre l'image de gens qqpart dans le repo test
-  std::string uri1 = "https://icour.fr/ELeveSeconde/ajout/yann_lecum_vidal/"
-                     "images/yann_LeCun.jpg";
+  std::string uri1 = test_img_folder + "/face.jpg";
 
   std::string jchainstr
       = "{\"chain\": {\"calls\": [{\"parameters\": {\"input\": "
