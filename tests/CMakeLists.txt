@@ -92,6 +92,8 @@ endfunction()
 
 find_package(PythonInterp 2.7 REQUIRED)
 
+REGISTER_TEST(ut_common ut-common.cc)
+
 if (USE_JSON_API)
   REGISTER_TEST(ut_apidata ut-apidata.cc)
   REGISTER_TEST(ut_dto ut-dto.cc)
@@ -214,6 +216,13 @@ DOWNLOAD_DATASET(
   "examples/all/video"
   "video1.tar.gz"
   "video1.mp4"
+)
+DOWNLOAD_DATASET(
+  "Test images"
+  "http://www.deepdetect.com/dd/examples/all/images/all_test_images0.tar.gz"
+  "examples/all/images"
+  "all_test_images0.tar.gz"
+  "face.jpg"
 )
 
 set(SINUS_EXAMPLE_PATH ${CMAKE_SOURCE_DIR}/examples/all/sinus/)

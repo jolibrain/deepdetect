@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2019 Pixel Forensics, Inc.
- * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
+ * Copyright (c) 2020 Jolibrain SASU
+ * Author: Louis Jean <louis.jean@jolibrain.com>
  *
  * This file is part of deepdetect.
  *
@@ -18,29 +18,21 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef DEEPDETECT_DLIB_ACTIONS_H
-#define DEEPDETECT_DLIB_ACTIONS_H
 
-#include "chain_actions.h"
+#include <iostream>
+#include <gtest/gtest.h>
 
-namespace dd
+#include "utils/utils.hpp"
+
+using namespace dd;
+
+TEST(common, trim_spaces)
 {
-
-  class DlibAlignCropAction : public ChainAction
-  {
-  public:
-    DlibAlignCropAction(oatpp::Object<DTO::ChainCall> call_dto,
-                        const std::shared_ptr<spdlog::logger> chain_logger)
-        : ChainAction(call_dto, chain_logger)
-    {
-    }
-
-    ~DlibAlignCropAction()
-    {
-    }
-
-    void apply(APIData &model_out, ChainData &cdata);
-  };
+  ASSERT_EQ("test_name", dd_utils::trim_spaces("\n test_name"));
+  ASSERT_EQ("test_name", dd_utils::trim_spaces("test_name\t"));
+  ASSERT_EQ("test_name", dd_utils::trim_spaces("   test_name "));
+  ASSERT_EQ("test_name", dd_utils::trim_spaces("test_name"));
+  ASSERT_EQ("test_name test_name",
+            dd_utils::trim_spaces("  test_name test_name\t"));
+  ASSERT_EQ("", dd_utils::trim_spaces("   \n  "));
 }
-
-#endif // DEEPDETECT_DLIB_ACTIONS_H
