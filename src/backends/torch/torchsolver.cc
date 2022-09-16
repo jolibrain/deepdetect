@@ -100,6 +100,12 @@ namespace dd
       }
     else if (_solver_type == "ADAMW")
       {
+        if (_weight_decay == 0.0)
+          {
+            this->_logger->warn("Applying default weight decay of 0.01 to "
+                                "ADAMW instead of 0.0");
+            _weight_decay = 0.01;
+          }
         _optimizer
             = std::unique_ptr<torch::optim::Optimizer>(new torch::optim::AdamW(
                 _params, torch::optim::AdamWOptions(_base_lr)
