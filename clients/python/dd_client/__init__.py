@@ -92,6 +92,11 @@ class DD(object):
         assert f == self.RETURN_PYTHON or f == self.RETURN_JSON or f == self.RETURN_NONE
         self.__returntype = f
 
+    def get_headers(self):
+        return {
+            "Accept-Encoding" : "identity"
+        }
+
     def __return_data(self, r):
         if self.__returntype == self.RETURN_PYTHON:
             return r.json()
@@ -103,28 +108,28 @@ class DD(object):
     def get(self, method, json=None, params=None):
         """GET to DeepDetect server"""
         url = self.__ddurl + method
-        r = requests.get(url=url, json=json, params=params, timeout=DD_TIMEOUT)
+        r = requests.get(url=url, json=json, params=params, headers=self.get_headers(), timeout=DD_TIMEOUT)
         r.raise_for_status()
         return self.__return_data(r)
 
     def put(self, method, json=None, params=None):
         """PUT request to DeepDetect server"""
         url = self.__ddurl + method
-        r = requests.put(url=url, json=json, params=params, timeout=DD_TIMEOUT)
+        r = requests.put(url=url, json=json, params=params, headers=self.get_headers(), timeout=DD_TIMEOUT)
         r.raise_for_status()
         return self.__return_data(r)
 
     def post(self, method, json=None, params=None):
         """POST request to DeepDetect server"""
         url = self.__ddurl + method
-        r = requests.post(url=url, json=json, params=params, timeout=DD_TIMEOUT)
+        r = requests.post(url=url, json=json, params=params, headers=self.get_headers(), timeout=DD_TIMEOUT)
         r.raise_for_status()
         return self.__return_data(r)
 
     def delete(self, method, json=None, params=None):
         """DELETE request to DeepDetect server"""
         url = self.__ddurl + method
-        r = requests.delete(url=url, json=json, params=params, timeout=DD_TIMEOUT)
+        r = requests.delete(url=url, json=json, params=params, headers=self.get_headers(), timeout=DD_TIMEOUT)
         r.raise_for_status()
         return self.__return_data(r)
 
