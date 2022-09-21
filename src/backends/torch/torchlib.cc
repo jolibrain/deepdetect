@@ -519,74 +519,82 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
-  int64_t
-  TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-           TMLModel>::save_if_best(const size_t test_id, APIData &meas_out,
-                                   int64_t elapsed_it, TorchSolver &tsolver,
-                                   std::vector<int64_t> best_iteration_numbers)
+  void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::
+      save_if_best(APIData &ad_out, int64_t elapsed_it, TorchSolver &tsolver,
+                   std::vector<int64_t> &best_iteration_numbers)
   {
-    double cur_meas = std::numeric_limits<double>::infinity();
-    std::string meas;
-    for (auto m : _best_metrics)
+    for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
       {
-        if (meas_out.has(m))
+        APIData meas_out;
+        if (i == 0)
+          meas_out = ad_out.getobj("measure");
+        else
+          meas_out = ad_out.getv("measures").at(i - 1);
+
+        double cur_meas = std::numeric_limits<double>::infinity();
+        std::string meas;
+        for (auto m : _best_metrics)
           {
-            cur_meas = meas_out.get(m).get<double>();
-            meas = m;
-            break;
+            if (meas_out.has(m))
+              {
+                cur_meas = meas_out.get(m).get<double>();
+                meas = m;
+                break;
+              }
+          }
+        if (cur_meas == std::numeric_limits<double>::infinity())
+          {
+            // could not find value for measuring best
+            this->_logger->info(
+                "could not find any value for measuring best model");
+            return;
+          }
+        if (_best_metric_values[i] == std::numeric_limits<double>::infinity()
+            || is_better(cur_meas, _best_metric_values[i], meas))
+          {
+            if (best_iteration_numbers[i] != -1
+                && dd_utils::unique(best_iteration_numbers[i],
+                                    best_iteration_numbers))
+              {
+                remove_model(best_iteration_numbers[i]);
+              }
+            _best_metric_values[i] = cur_meas;
+            this->snapshot(elapsed_it, tsolver);
+            try
+              {
+                std::ofstream bestfile;
+                std::string bestfilename;
+                if (i >= 1)
+                  bestfilename = this->_mlmodel._repo
+                                 + fileops::insert_suffix(
+                                     "_test_" + std::to_string(i - 1),
+                                     this->_mlmodel._best_model_filename);
+                else
+                  bestfilename = this->_mlmodel._repo
+                                 + this->_mlmodel._best_model_filename;
+
+                bestfile.open(bestfilename, std::ios::out);
+                bestfile << "iteration:" << elapsed_it << std::endl;
+                bestfile << meas << ":" << cur_meas << std::endl;
+
+                if (i >= 1)
+                  {
+                    bestfile << "test_name: ";
+                    if (meas_out.has("test_name"))
+                      bestfile << meas_out.get("test_name").get<std::string>();
+                    else
+                      bestfile << "noname_" + std::to_string(i - 1);
+                    bestfile << std::endl;
+                  }
+                bestfile.close();
+              }
+            catch (std::exception &e)
+              {
+                this->_logger->error("could not write best model file");
+              }
+            best_iteration_numbers[i] = elapsed_it;
           }
       }
-    if (cur_meas == std::numeric_limits<double>::infinity())
-      {
-        // could not find value for measuring best
-        this->_logger->info(
-            "could not find any value for measuring best model");
-        return false;
-      }
-    if (_best_metric_values[test_id] == std::numeric_limits<double>::infinity()
-        || is_better(cur_meas, _best_metric_values[test_id], meas))
-      {
-        if (best_iteration_numbers[test_id] != -1
-            && dd_utils::unique(best_iteration_numbers[test_id],
-                                best_iteration_numbers))
-          {
-            remove_model(best_iteration_numbers[test_id]);
-          }
-        _best_metric_values[test_id] = cur_meas;
-        this->snapshot(elapsed_it, tsolver);
-        try
-          {
-            std::ofstream bestfile;
-            std::string bestfilename
-                = this->_mlmodel._repo
-                  + fileops::insert_suffix(
-                      "_test_" + std::to_string(test_id),
-                      this->_mlmodel._best_model_filename);
-            bestfile.open(bestfilename, std::ios::out);
-            bestfile << "iteration:" << elapsed_it << std::endl;
-            bestfile << meas << ":" << cur_meas << std::endl;
-            bestfile << "test_name: ";
-            if (meas_out.has("test_name"))
-              bestfile << meas_out.get("test_name").get<std::string>();
-            else
-              bestfile << "noname_" + std::to_string(test_id);
-            bestfile << std::endl;
-            bestfile.close();
-            if (test_id == 0)
-              fileops::copy_file(this->_mlmodel._repo
-                                     + fileops::insert_suffix(
-                                         "_test_" + std::to_string(test_id),
-                                         this->_mlmodel._best_model_filename),
-                                 this->_mlmodel._repo
-                                     + this->_mlmodel._best_model_filename);
-          }
-        catch (std::exception &e)
-          {
-            this->_logger->error("could not write best model file");
-          }
-        return elapsed_it;
-      }
-    return best_iteration_numbers[test_id];
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -833,8 +841,8 @@ namespace dd
       throw MLLibBadParamException("empty test dataset");
 
     // create solver
-    std::vector<int64_t> best_iteration_numbers(eval_dataset.size(), -1);
-    _best_metric_values.resize(eval_dataset.size(),
+    std::vector<int64_t> best_iteration_numbers(eval_dataset.size() + 1, -1);
+    _best_metric_values.resize(eval_dataset.size() + 1,
                                std::numeric_limits<double>::infinity());
     this->_test_names = eval_dataset.names();
 
@@ -1178,21 +1186,27 @@ namespace dd
                   meas_obj.add(e.first, e.second);
                 meas_out.add("measure", meas_obj);
 
-                for (size_t i = 0; i < eval_dataset.size(); ++i)
+                save_if_best(meas_out, elapsed_it, tsolver,
+                             best_iteration_numbers);
+
+                // print metrics
+                for (size_t i = 0; i < eval_dataset.size() + 1; ++i)
                   {
                     if (i == 0)
-                      meas_obj = meas_out.getobj("measure");
+                      {
+                        meas_obj = meas_out.getobj("measure");
+                        this->_logger->info("measures over all test sets");
+                      }
                     else
-                      meas_obj = meas_out.getv("measures")[i];
+                      {
+                        size_t test_id = i - 1;
+                        meas_obj = meas_out.getv("measures")[test_id];
+                        this->_logger->info("measures on test set "
+                                            + std::to_string(test_id) + " : "
+                                            + eval_dataset.name(test_id));
+                      }
+
                     std::vector<std::string> meas_names = meas_obj.list_keys();
-
-                    best_iteration_numbers[i]
-                        = save_if_best(i, meas_obj, elapsed_it, tsolver,
-                                       best_iteration_numbers);
-                    this->_logger->info("measures on test set "
-                                        + std::to_string(i) + " : "
-                                        + eval_dataset.name(i));
-
                     for (auto name : meas_names)
                       {
                         std::string metric_name
@@ -1216,17 +1230,17 @@ namespace dd
                                       .get<std::vector<double>>();
                             std::vector<std::string> cnames;
                             std::string mdiag_str;
-                            for (size_t i = 0; i < mdiag.size(); i++)
+                            for (size_t j = 0; j < mdiag.size(); j++)
                               {
                                 mdiag_str
-                                    += this->_mlmodel.get_hcorresp(i) + ":"
-                                       + std::to_string(mdiag.at(i)) + " ";
+                                    += this->_mlmodel.get_hcorresp(j) + ":"
+                                       + std::to_string(mdiag.at(j)) + " ";
                                 this->add_meas_per_iter(
                                     metric_name + '_'
-                                        + this->_mlmodel.get_hcorresp(i),
-                                    mdiag.at(i));
+                                        + this->_mlmodel.get_hcorresp(j),
+                                    mdiag.at(j));
                                 cnames.push_back(
-                                    this->_mlmodel.get_hcorresp(i));
+                                    this->_mlmodel.get_hcorresp(j));
                               }
                             this->_logger->info("{}=[{}]", metric_name,
                                                 mdiag_str);
@@ -1927,6 +1941,8 @@ namespace dd
   {
     for (size_t i = 0; i < testsets.size(); ++i)
       test(ad, inputc, testsets[i], batch_size, out, i, testsets.name(i));
+
+    SupervisedOutput::aggregate_multiple_testsets(out);
     return 0;
   }
 

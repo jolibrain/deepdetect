@@ -348,23 +348,26 @@ namespace dd
               throw;
             }
 
-        for (size_t test_id = 0; test_id < best_iteration_numbers.size();
-             ++test_id)
+        for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
           {
-            std::string bestfilename
-                = mlmodel._repo
-                  + fileops::insert_suffix("_test_" + std::to_string(test_id),
-                                           mlmodel._best_model_filename);
+            std::string bestfilename;
+            if (i == 0)
+              bestfilename = mlmodel._repo + mlmodel._best_model_filename;
+            else
+              bestfilename
+                  = mlmodel._repo
+                    + fileops::insert_suffix("_test_" + std::to_string(i - 1),
+                                             mlmodel._best_model_filename);
+
             std::ifstream bestfile;
             bestfile.open(bestfilename, std::ios::in);
             if (!bestfile.is_open())
               {
-                std::string msg
-                    = "could not find previous best model for test set "
-                      + std::to_string(test_id);
+                std::string msg = "could not find previous best model file "
+                                  + bestfilename;
                 _logger->warn(msg);
-                best_iteration_numbers[test_id] = -1;
-                best_metric_values[test_id]
+                best_iteration_numbers[i] = -1;
+                best_metric_values[i]
                     = std::numeric_limits<double>::infinity();
               }
             else
@@ -398,12 +401,15 @@ namespace dd
                       }
                   }
                 bestfile.close();
-                if (test_name != set_names[test_id])
-                  _logger->warn(
-                      "test names not matching: {} (API) vs {} (file)",
-                      set_names[test_id], test_name);
-                best_iteration_numbers[test_id] = std::atof(best_it.c_str());
-                best_metric_values[test_id] = std::atof(best_val.c_str());
+                if (i >= 1)
+                  {
+                    if (test_name != set_names[i - 1])
+                      _logger->warn(
+                          "test names not matching: {} (API) vs {} (file)",
+                          set_names[i - 1], test_name);
+                  }
+                best_iteration_numbers[i] = std::atof(best_it.c_str());
+                best_metric_values[i] = std::atof(best_val.c_str());
               }
           }
       }
