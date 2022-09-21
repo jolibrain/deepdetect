@@ -1303,21 +1303,48 @@ namespace dd
       if (lr)
         meas_out.add("learning_rate",
                      ad_res.get("learning_rate").get<double>());
+
       meas_out.add("test_id", static_cast<int>(test_id));
       meas_out.add("test_name", test_name);
+
+      std::vector<APIData> measures = out.has("measures")
+                                          ? out.getv("measures")
+                                          : std::vector<APIData>();
+      measures.push_back(meas_out);
+      out.add("measures", measures);
+
       if (test_id == 0)
+        out.add("measure", meas_out);
+    }
+
+    /** Reduce metrics over multiple test sets. The aggregated metrics are used
+     * to determine the best model. */
+    static void aggregate_multiple_testsets(APIData &ad_out)
+    {
+      APIData meas_obj;
+      std::vector<APIData> measures = ad_out.getv("measures");
+      std::unordered_map<std::string, double> measures_sum;
+
+      for (size_t i = 0; i < measures.size(); ++i)
         {
-          out.add("measure", meas_out);
-          std::vector<APIData> measures;
-          measures.push_back(meas_out);
-          out.add("measures", measures);
+          auto &test_meas = measures.at(i);
+          for (std::string key : test_meas.list_keys())
+            {
+              if (test_meas.get(key).is<double>())
+                {
+                  double val = test_meas.get(key).get<double>();
+                  auto it = measures_sum.insert({ key, 0.0 });
+                  it.first->second += val;
+                }
+            }
         }
-      else
+
+      for (auto &e : measures_sum)
         {
-          std::vector<APIData> measures = out.getv("measures");
-          measures.push_back(meas_out);
-          out.add("measures", measures);
+          e.second /= measures.size();
+          meas_obj.add(e.first, e.second);
         }
+      ad_out.add("measure", meas_obj);
     }
 
     static void

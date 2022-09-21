@@ -123,7 +123,9 @@ namespace dd
 
     std::vector<std::string>
         _best_metrics; /**< metric to use for saving best model */
-    std::vector<double> _best_metric_values; /**< best metric values  */
+    std::vector<double>
+        _best_metric_values; /**< best metric values. First is mean value over
+                                all test sets.  */
 
     torch::Dtype _dtype = torch::kFloat32;
 
@@ -136,9 +138,9 @@ namespace dd
     /**
      * \brief generates a file containing best iteration so far
      */
-    int64_t save_if_best(const size_t test_id, APIData &meas_out,
-                         int64_t elapsed_it, TorchSolver &tsolver,
-                         std::vector<int64_t> best_iteration_numbers);
+    void save_if_best(APIData &ad_out, int64_t elapsed_it,
+                      TorchSolver &tsolver,
+                      std::vector<int64_t> &best_iteration_numbers);
 
     /**
      * snapshop current optimizer state
