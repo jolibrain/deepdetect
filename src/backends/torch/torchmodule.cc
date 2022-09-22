@@ -227,7 +227,6 @@ namespace dd
         // reload params after finalize
         graph_model_load(tmodel);
       }
-    to(_device);
 
     if (_require_linear_head && !_linear_head)
       {
@@ -239,7 +238,6 @@ namespace dd
             setup_linear_head(_nclasses,
                               const_cast<TInputConnectorStrategy &>(inputc)
                                   .get_input_example(device));
-            _linear_head->to(_device);
           }
         catch (std::exception &e)
           {
@@ -255,7 +253,6 @@ namespace dd
                             const_cast<TInputConnectorStrategy &>(inputc)
                                 .get_input_example(device),
                             inputc._alphabet_size);
-            _crnn_head->to(_device);
           }
         catch (std::exception &e)
           {
@@ -263,6 +260,8 @@ namespace dd
                                          + e.what());
           }
       }
+
+    to(device);
   }
 
   template <class TInputConnectorStrategy>
@@ -560,17 +559,39 @@ namespace dd
   std::shared_ptr<TorchModule> TorchModule::clone(torch::Device device)
   {
     auto cloned = std::make_shared<TorchModule>(*this);
+
     if (_native)
       {
         cloned->_native
             = std::dynamic_pointer_cast<NativeModule>(_native->clone(device));
       }
-    if (_graph || _traced)
+    if (_traced)
       {
-        throw MLLibBadParamException(
-            "MultiGPU is not supported on non cloneable models (including "
-            "graphs & traced models)");
+        cloned->_traced
+            = std::make_shared<torch::jit::script::Module>(_traced->clone());
+        cloned->_traced->to(device);
+        for (auto param : cloned->_traced->parameters())
+          {
+            param.detach_().requires_grad_();
+          }
       }
+    if (_linear_head)
+      {
+        cloned->_linear_head
+            = std::dynamic_pointer_cast<torch::nn::LinearImpl>(
+                _linear_head->clone(device));
+      }
+    if (_crnn_head)
+      {
+        cloned->_crnn_head = std::dynamic_pointer_cast<CRNNHeadImpl>(
+            _crnn_head->clone(device));
+      }
+    if (_graph)
+      {
+        throw MLLibBadParamException("MultiGPU is not supported on non "
+                                     "cloneable models (graph models)");
+      }
+    cloned->to(device);
     return cloned;
   }
 
