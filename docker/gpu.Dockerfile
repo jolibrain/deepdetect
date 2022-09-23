@@ -169,6 +169,8 @@ COPY --from=build /opt/deepdetect/get_models.sh /opt/deepdetect/
 COPY --from=build /opt/deepdetect/docker/check-dede-deps.sh /opt/deepdetect/
 COPY --from=build /opt/deepdetect/docker/start-dede.sh /opt/deepdetect/
 
+COPY --from=build /usr/local/cuda-11.6/targets/x86_64-linux/lib/libcupti* /usr/local/cuda-11.6/targets/x86_64-linux/lib/
+
 # External volume to be mapped, e.g. for models or training data
 WORKDIR /opt/models
 
