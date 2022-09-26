@@ -27,7 +27,7 @@ General usage (examples):
     python3 trace_yolox.py -v yolox[-s|-m|-l|...] --yolox_path [YOLOX_PATH] --output_dir [OUTPUT_DIR] --from_repo [DD_REPO] --to_onnx
 """
     )
-    parser.add_argument("model", required=False, type=str, help="Model to export")
+    parser.add_argument("model", type=str, help="Model to export")
     parser.add_argument(
         "-o", "--output_dir", type=str, default="", help="Output directory"
     )
