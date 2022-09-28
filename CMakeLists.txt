@@ -1023,7 +1023,8 @@ endif()
 
 set(OATPP_VERSION "1.3.0")
 set(OATPP_SWAGGER_VERSION "1.3.0")
-set(OATPP_ZLIB_VERSION "1.3.0")
+# 1.3 + memory leak patch
+set(OATPP_ZLIB_VERSION "e7318068ae1b24b7d690f374ffbcd9c8f691336b")
 ExternalProject_Add(
     oatpp
     PREFIX oatpp
@@ -1038,7 +1039,7 @@ ExternalProject_Add(
     oatpp-zlib
     PREFIX oatpp-zlib
     URL https://github.com/oatpp/oatpp-zlib/archive/${OATPP_ZLIB_VERSION}.tar.gz
-    URL_HASH SHA256=6103b041a424b280e7de1f7ae75404f770049750044531f8d41ec4bafaa9497f
+    URL_HASH SHA256=17d85ace758ac3b924802d10473a8ed4cf6ee2ffa125022d5a64debf564cf3c3
     CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=Release
         -DBUILD_SHARED_LIBS=OFF
