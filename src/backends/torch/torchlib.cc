@@ -1209,8 +1209,11 @@ namespace dd
                     std::vector<std::string> meas_names = meas_obj.list_keys();
                     for (auto name : meas_names)
                       {
-                        std::string metric_name
-                            = name + "_test" + std::to_string(i);
+                        std::string metric_name;
+                        if (i == 0)
+                          metric_name = name;
+                        else
+                          metric_name = name + "_test" + std::to_string(i - 1);
 
                         if (name != "cmdiag" && name != "cmfull"
                             && name != "clacc" && name != "cliou"

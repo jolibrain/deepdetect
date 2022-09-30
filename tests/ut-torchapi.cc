@@ -929,6 +929,14 @@ TEST(torchapi, service_train_resume)
     }
 
   // remove files
+  ASSERT_TRUE(fileops::file_exists(resnet50_train_repo + "best_model.txt"));
+  remove((resnet50_train_repo + "best_model.txt").c_str());
+  ASSERT_TRUE(
+      fileops::file_exists(resnet50_train_repo + "best_model_test_0.txt"));
+  remove((resnet50_train_repo + "best_model_test_0.txt").c_str());
+  ASSERT_FALSE(
+      fileops::file_exists(resnet50_train_repo + "best_model_test_1.txt"));
+
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
   for (std::string ff : lfiles)
