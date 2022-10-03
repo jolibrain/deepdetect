@@ -23,7 +23,10 @@
 #include "utils/fileops.hpp"
 #include "utils/utils.hpp"
 #ifdef USE_FAISS
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "faiss/IndexIVF.h"
+#pragma GCC diagnostic pop
 #include "faiss/invlists/OnDiskInvertedLists.h"
 #include "faiss/IndexPreTransform.h"
 #include "faiss/index_factory.h"
