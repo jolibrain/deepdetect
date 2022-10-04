@@ -123,29 +123,52 @@ namespace dd
             double cymax
                 = std::min(static_cast<double>(im_rows), ymax + deltay);
 
-            if (fixed_width > 0 || fixed_height > 0)
+            if (_params->min_width > (cxmax - cxmin))
+              fixed_width = _params->min_width;
+
+            if (_params->min_height > (cymax - cymin))
+              fixed_height = _params->min_height;
+
+            if (_params->force_square)
+              {
+                if (fixed_width == 0)
+                  fixed_width = static_cast<int>(cxmax - cxmin);
+                if (fixed_height == 0)
+                  fixed_height = static_cast<int>(cymax - cymin);
+
+                if (fixed_height > fixed_width)
+                  fixed_width = fixed_height;
+                if (fixed_width > fixed_height)
+                  fixed_height = fixed_width;
+              }
+
+            if (fixed_width > 0)
               {
                 double xcenter = cxmin + (cxmax - cxmin) / 2.0;
-                double ycenter = cymin + (cymax - cymin) / 2.0;
                 cxmin = int(xcenter - fixed_width / 2.0);
                 cxmax = int(xcenter + fixed_width / 2.0);
-                cymin = int(ycenter - fixed_height / 2.0);
-                cymax = int(ycenter + fixed_height / 2.0);
 
                 if (cxmin < 0)
                   {
                     cxmax += -cxmin;
                     cxmin = 0;
                   }
-                if (cymin < 0)
-                  {
-                    cymax += -cymin;
-                    cymin = 0;
-                  }
                 if (cxmax > im_cols)
                   {
                     cxmin -= cxmax - im_cols;
                     cxmax = im_cols;
+                  }
+              }
+            if (fixed_height > 0)
+              {
+                double ycenter = cymin + (cymax - cymin) / 2.0;
+                cymin = int(ycenter - fixed_height / 2.0);
+                cymax = int(ycenter + fixed_height / 2.0);
+
+                if (cymin < 0)
+                  {
+                    cymax += -cymin;
+                    cymin = 0;
                   }
                 if (cymax > im_rows)
                   {
@@ -167,7 +190,17 @@ namespace dd
             if (!cuda_imgs.empty())
               {
                 cv::cuda::GpuMat cropped_img = cuda_imgs.at(i)(roi).clone();
-                // TODO save crops if requested
+
+                // save crops if requested
+                if (save_crops)
+                  {
+                    cv::Mat cropped_img_cpu;
+                    cropped_img.download(cropped_img_cpu);
+                    std::string puri = dd_utils::split(uri, '/').back();
+                    cv::imwrite(save_path + "crop_" + puri + "_"
+                                    + std::to_string(j) + ".png",
+                                cropped_img_cpu);
+                  }
 
                 cropped_cuda_imgs.push_back(std::move(cropped_img));
               }

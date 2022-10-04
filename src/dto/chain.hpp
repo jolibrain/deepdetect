@@ -90,6 +90,31 @@ namespace dd
       }
       DTO_FIELD(Int32, fixed_height) = 0;
 
+      DTO_FIELD_INFO(min_width)
+      {
+        info->description
+            = "[crop] if != 0 and bbox width < min_width, the crop will be "
+              "centered horizontally on the center of the bbox and of width "
+              "`min_width`";
+      }
+      DTO_FIELD(Int32, min_width) = 0;
+
+      DTO_FIELD_INFO(min_height)
+      {
+        info->description
+            = "[crop] if != 0 and bbox height < min_height, the crop will be "
+              "centered vertically on the center of the bbox and of width "
+              "`min_height`";
+      }
+      DTO_FIELD(Int32, min_height) = 0;
+
+      DTO_FIELD_INFO(force_square)
+      {
+        info->description = "[crop] if true, force the crop to be square by "
+                            "increasing the smallest dimension";
+      }
+      DTO_FIELD(Boolean, force_square) = false;
+
       DTO_FIELD_INFO(padding_ratio)
       {
         info->description
