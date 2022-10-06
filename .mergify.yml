@@ -9,6 +9,7 @@ queue_rules:
     conditions:
         # - "status-success=Semantic Pull Request"
       - "status-success=Jenkins - Unit tests GPU"
+      - "status-success=Jenkins - TensorRT Unit tests GPU"
       - or:
         - "label!=ci:docker"
         - "status-success=Jenkins - Docker build"
@@ -21,6 +22,7 @@ pull_request_rules:
       - "#changes-requested-reviews-by=0"
         # - "status-success=Semantic Pull Request"
       - "status-success=Jenkins - Unit tests GPU"
+      - "status-success=Jenkins - TensorRT Unit tests GPU"
       - or:
         - "label!=ci:docker"
         - "status-success=Jenkins - Docker build"

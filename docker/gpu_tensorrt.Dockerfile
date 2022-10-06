@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvcr.io/nvidia/tensorrt:22.03-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:22.08-py3 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -166,10 +166,10 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvcr.io/nvidia/tensorrt:22.03-py3 AS runtime
+FROM nvcr.io/nvidia/tensorrt:22.08-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
-ARG DEEPDETECT_CUDA_VERSION=11.6
+ARG DEEPDETECT_CUDA_VERSION=11.7
 
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"

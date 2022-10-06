@@ -374,8 +374,14 @@ namespace dd
 
     if (out_blob == "detection_out")
       network->markOutput(*blobNameToTensor->find("keep_count"));
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     _builder->setMaxBatchSize(_max_batch_size);
-    _builderc->setMaxWorkspaceSize(_max_workspace_size);
+#pragma GCC diagnostic pop
+
+    _builderc->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
+                                  _max_workspace_size);
 
     network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
 
@@ -405,7 +411,6 @@ namespace dd
   TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
               TMLModel>::read_engine_from_onnx()
   {
-    // XXX: TensorRT at the moment only supports explicitBatch models with ONNX
     const auto explicitBatch
         = 1U << static_cast<uint32_t>(
               nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
@@ -428,8 +433,10 @@ namespace dd
             "Error while parsing onnx model for conversion to "
             "TensorRT");
       }
-    _builder->setMaxBatchSize(_max_batch_size);
-    _builderc->setMaxWorkspaceSize(_max_workspace_size);
+    // TODO check with onnx models dynamic shape
+    this->_logger->warn("Onnx model: max batch size not used");
+    _builderc->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
+                                  _max_workspace_size);
 
     nvinfer1::IHostMemory *n
         = _builder->buildSerializedNetwork(*network, *_builderc);
@@ -815,12 +822,15 @@ namespace dd
                                   cudaMemcpyHostToDevice, cstream);
               }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
             if (!_explicit_batch)
               enqueue_success = _context->enqueue(
                   num_processed, _buffers.data(), cstream, nullptr);
             else
               enqueue_success
                   = _context->enqueueV2(_buffers.data(), cstream, nullptr);
+#pragma GCC diagnostic pop
             if (!enqueue_success)
               throw MLLibInternalException("Failed TRT enqueue call");
 

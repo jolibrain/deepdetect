@@ -581,8 +581,13 @@ void test_predict(std::shared_ptr<DedeApiTestClient> client)
   }
 
 OATPP_DEDE_TEST(test_info);
+
+#ifdef USE_CAFFE
+
 OATPP_DEDE_TEST(test_services);
 OATPP_DEDE_TEST(test_train);
 OATPP_DEDE_TEST(test_multiservices);
 OATPP_DEDE_TEST(test_concurrency);
 OATPP_DEDE_TEST(test_predict);
+
+#endif

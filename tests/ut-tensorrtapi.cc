@@ -51,75 +51,13 @@ inline std::string get_trt_archi()
   return std::to_string(prop.major) + std::to_string(prop.minor);
 }
 
-TEST(tensorrtapi, service_predict)
-{
-  // create service
-  JsonAPI japi;
-  std::string sname = "imgserv";
-  std::string jstr
-      = "{\"mllib\":\"tensorrt\",\"description\":\"squeezenet-ssd\",\"type\":"
-        "\"supervised\",\"model\":{\"repository\":\""
-        + squeez_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
-          "300,\"width\":300},\"mllib\":{\"nclasses\":21}}}";
-  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
-  ASSERT_EQ(created_str, joutstr);
-
-  // predict
-  std::string jpredictstr
-      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
-        "\"width\":300},\"output\":{\"bbox\":true}},\"data\":[\""
-        + squeez_repo + "face.jpg\"]}";
-  joutstr = japi.jrender(japi.service_predict(jpredictstr));
-  JDoc jd;
-  std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
-  ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
-  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  std::string cl1
-      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-  ASSERT_TRUE(cl1 == "15");
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
-              > 0.4);
-
-#ifdef USE_CUDA_CV
-  // predict with cuda input pipeline
-  jpredictstr
-      = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":300,"
-        "\"width\":300,\"cuda\":true},\"output\":{\"bbox\":true}},\"data\":[\""
-        + squeez_repo + "face.jpg\"]}";
-  joutstr = japi.jrender(japi.service_predict(jpredictstr));
-  jd = JDoc();
-  std::cout << "joutstr=" << joutstr << std::endl;
-  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
-  ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
-  cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
-  ASSERT_TRUE(cl1 == "15");
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
-              > 0.4);
-#endif
-
-  ASSERT_TRUE(fileops::file_exists(squeez_repo + "TRTengine_arch"
-                                   + get_trt_archi() + "_bs48"));
-  // ASSERT_TRUE(!fileops::remove_file(squeez_repo, "net_tensorRT.proto"));
-  // ASSERT_TRUE(!fileops::remove_file(squeez_repo, "TRTengine_archXX_bs48"));
-  jstr = "{\"clear\":\"lib\"}";
-  joutstr = japi.jrender(japi.service_delete(sname, jstr));
-  ASSERT_EQ(ok_str, joutstr);
-  ASSERT_TRUE(!fileops::file_exists(squeez_repo + "net_tensorRT.proto"));
-  ASSERT_TRUE(!fileops::file_exists(squeez_repo + "TRTengine_arch"
-                                    + get_trt_archi() + "_bs48"));
-}
-
 TEST(tensorrtapi, service_predict_best)
 {
   // create service
   JsonAPI japi;
   std::string sname = "imagenet";
   std::string jstr
-      = "{\"mllib\":\"tensorrt\",\"description\":\"age_classif\",\"type\":"
+      = "{\"mllib\":\"tensorrt\",\"description\":\"imagenet\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
         + squeezv1_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
@@ -243,6 +181,13 @@ TEST(tensorrtapi, service_predict_onnx)
             << std::endl;
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
               > 0.3);
+
+  ASSERT_TRUE(fileops::file_exists(resnet_onnx_repo + "TRTengine_arch"
+                                   + get_trt_archi() + "_bs1"));
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_FALSE(fileops::file_exists(resnet_onnx_repo + "TRTengine_arch"
+                                    + get_trt_archi() + "_bs1"));
 }
 
 TEST(tensorrtapi, service_predict_bbox_onnx)
@@ -304,6 +249,34 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
   ASSERT_TRUE(bbox2["xmin"].GetDouble() < 50 && bbox2["xmax"].GetDouble() > 200
               && bbox2["ymin"].GetDouble() < 50
               && bbox2["ymax"].GetDouble() > 200);
+
+#ifdef USE_CUDA_CV
+  // predict with cuda input pipeline
+  jpredictstr = "{\"service\":\"" + sname
+                + "\",\"parameters\":{\"input\":{\"cuda\":true},\"output\":{"
+                  "\"bbox\":true,\"confidence_threshold\":0.8}},\"data\":[\""
+                + resnet_onnx_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
+
+  auto &preds_cat = jd["body"]["predictions"][0]["classes"];
+  ASSERT_EQ(preds_cat.Size(), 1);
+  cl1 = preds_cat[0]["cat"].GetString();
+  ASSERT_EQ(cl1, "16");
+  // XXX: output is slightly different with cuda?
+  ASSERT_TRUE(preds_cat[0]["prob"].GetDouble() > 0.89);
+  auto &bbox_cat = preds_cat[0]["bbox"];
+  ASSERT_TRUE(bbox_cat["xmin"].GetDouble() < 50
+              && bbox_cat["xmax"].GetDouble() > 200
+              && bbox_cat["ymin"].GetDouble() < 50
+              && bbox_cat["ymax"].GetDouble() > 200);
+#endif
 
   ASSERT_TRUE(fileops::file_exists(yolox_onnx_repo + "TRTengine_arch"
                                    + get_trt_archi() + "_bs2"));

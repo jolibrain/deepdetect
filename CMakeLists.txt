@@ -960,7 +960,7 @@ if (USE_TENSORRT)
 
     if (NOT TENSORRT_VERSION)
         if (EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
-            set(TENSORRT_VERSION 22.03)
+            set(TENSORRT_VERSION 8.4.3)
             message(STATUS "Found TensorRT libraries version 8")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
@@ -972,6 +972,7 @@ if (USE_TENSORRT)
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
       -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
       -DBUILD_SAMPLES=OFF
+      -DPY_VERSION=3
     )
 
     if (JETSON)
