@@ -1,8 +1,8 @@
 diff --git a/plugin/CMakeLists.txt b/plugin/CMakeLists.txt
-index 562681f..656cf9e 100644
+index 7711727..a72abd9 100644
 --- a/plugin/CMakeLists.txt
 +++ b/plugin/CMakeLists.txt
-@@ -77,7 +77,7 @@ if(BERT_GENCODES)
+@@ -80,7 +80,7 @@ if(BERT_GENCODES)
      include_directories(bertQKVToContextPlugin/fused_multihead_attention/include bertQKVToContextPlugin/fused_multihead_attention_v2/include)
  endif()
  

@@ -49,7 +49,7 @@ static std::string caffe_ocr_repo = "../examples/caffe/multiword_ocr";
 static std::string caffe_faces_detect_repo = "../examples/caffe/faces_512";
 static std::string caffe_age_repo = "../examples/caffe/age_real";
 
-static std::string trt_detect_repo = "../examples/trt/squeezenet_ssd_trt";
+static std::string trt_detect_repo = "../examples/trt/faces_512/";
 static std::string trt_gan_repo
     = "../examples/trt/cyclegan_resnet_attn_onnx_trt";
 
@@ -372,12 +372,13 @@ TEST(chain, chain_trt_detection_gan)
   JsonAPI japi;
   std::string detect_sname = "detect";
   std::string jstr
-      = "{\"mllib\":\"tensorrt\",\"description\":\"fasterrcnn\",\"type\":"
-        "\"supervised\",\"model\":{\"repository\":\""
+      = "{\"mllib\":\"tensorrt\",\"description\":\"imagenet\","
+        "\"type\":\"supervised\",\"model\":{\"repository\":\""
         + trt_detect_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
-          "300,\"width\":300},\"mllib\":{\"maxBatchSize\":1,"
-          "\"maxWorkspaceSize\":256,\"gpuid\":0}}}"; //,\"datatype\":\"fp16\"
+        + "\"},\"parameters\":{\"input\":{\"connector\":"
+          "\"image\",\"height\":512,\"width\":512},\"mllib\":{\"datatype\":"
+          "\"fp32\",\"maxBatchSize\":1,\"maxWorkspaceSize\":256,\"gpuid\":0}}"
+          "}";
   std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -398,12 +399,11 @@ TEST(chain, chain_trt_detection_gan)
         "{\"service\":\""
         + detect_sname
         + "\",\"parameters\":{\"input\":{\"keep_orig\":true},\"output\":{"
-          "\"bbox\":true,\"confidence_threshold\":0.2}},\"data\":[\""
+          "\"bbox\":true,\"best_bbox\":1}},\"data\":[\""
         + trt_gan_repo
         + "/horse.jpg\"]},"
           "{\"id\":\"crop\",\"action\":{\"type\":\"crop\",\"parameters\":{"
-          "\"fixed_size\":360}}},"
-          "{\"service\":\""
+          "\"fixed_size\":360}}},{\"service\":\""
         + gan_sname
         + "\",\"parent_id\":\"crop\",\"parameters\":{\"mllib\":{\"extract_"
           "layer\":\"last\"},\"output\":{}}}"

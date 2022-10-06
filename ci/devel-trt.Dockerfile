@@ -1,9 +1,9 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=20.04
-ARG DD_CUDA_VERSION=11.4
+ARG DD_CUDA_VERSION=11.7
 ARG DD_CUDNN_VERSION=8
-ARG DD_TENSORRT_VERSION=8.2.3-1+cuda11.4
+ARG DD_TENSORRT_VERSION=8.4.3+cuda11.7
 
 # FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-devel-ubuntu${DD_UBUNTU_VERSION}
 # TODO(sileht): tensorrt is not yet in ubuntu20.04 nvidia machine learning repository
@@ -11,7 +11,7 @@ ARG DD_TENSORRT_VERSION=8.2.3-1+cuda11.4
 # https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64/
 # We temporary use another docker image just to build tensorrt
 
-FROM nvcr.io/nvidia/tensorrt:22.03-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:22.08-py3 AS build
 
 ARG DD_UBUNTU_VERSION
 ARG DD_CUDA_VERSION
