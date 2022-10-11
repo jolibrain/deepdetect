@@ -881,12 +881,15 @@ namespace dd
         if (_devices[i] != _main_device)
           {
             r.module = _module.clone(_devices[i]);
-
             r.module->train();
+            torch::Tensor class_weights_i
+                = torch::numel(class_weights) == 0
+                      ? class_weights
+                      : class_weights.to(_devices[i]);
             r.loss = std::make_shared<TorchLoss>(
                 _loss, r.module->has_model_loss(), _seq_training, _timeserie,
                 _regression, _classification, _segmentation, _ctc,
-                class_weights, _reg_weight, *r.module, this->_logger);
+                class_weights_i, _reg_weight, *r.module, this->_logger);
           }
       }
     _module.train();
