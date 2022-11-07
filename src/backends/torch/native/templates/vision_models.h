@@ -1,11 +1,30 @@
+/**
+ * DeepDetect
+ * Copyright (c) 2022 Jolibrain
+ * Author: Louis Jean <louis.jean@jolibrain.com>
+ *
+ * This file is part of deepdetect.
+ *
+ * deepdetect is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * deepdetect is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef DD_VISION_FACTORY_H
 #define DD_VISION_FACTORY_H
 
 #include <functional>
 
-#include <torchvision/models/models.h>
-
+#include "torchvision/resnet.h"
 #include "../native_wrapper.h"
 
 namespace dd
@@ -55,10 +74,6 @@ namespace dd
                     std::function<NativeModule *(const APIData &)>> &
     get_constructor_map()
     {
-      // XXX: Inception V3 is has a different output format and can not
-      // be wrapped normally
-      // Generic MNASNET & Shufflenet have more initialization parameters
-      // and need to have their custom create_wrapper function
       static std::map<std::string,
                       std::function<NativeModule *(const APIData &)>>
           ctor_map{
@@ -75,37 +90,6 @@ namespace dd
               create_wrapper<vision::models::WideResNet50_2> },
             { "wideresnet101_2",
               create_wrapper<vision::models::WideResNet101_2> },
-            // { "inceptionv3", create_wrapper<vision::models::InceptionV3> },
-            { "alexnet", create_wrapper<vision::models::AlexNet> },
-            { "vgg11", create_wrapper<vision::models::VGG11> },
-            { "vgg13", create_wrapper<vision::models::VGG13> },
-            { "vgg16", create_wrapper<vision::models::VGG16> },
-            { "vgg19", create_wrapper<vision::models::VGG19> },
-            { "vgg11bn", create_wrapper<vision::models::VGG11BN> },
-            { "vgg13bn", create_wrapper<vision::models::VGG13BN> },
-            { "vgg16bn", create_wrapper<vision::models::VGG16BN> },
-            { "vgg19bn", create_wrapper<vision::models::VGG19BN> },
-            { "mobilenetv2", create_wrapper<vision::models::MobileNetV2> },
-            { "densenet121", create_wrapper<vision::models::DenseNet121> },
-            { "densenet169", create_wrapper<vision::models::DenseNet169> },
-            { "densenet201", create_wrapper<vision::models::DenseNet201> },
-            { "densenet161", create_wrapper<vision::models::DenseNet161> },
-            // { "mnasnet", create_wrapper<vision::models::MNASNet> },
-            { "mnasnet0_5", create_wrapper<vision::models::MNASNet0_5> },
-            { "mnasnet0_75", create_wrapper<vision::models::MNASNet0_75> },
-            { "mnasnet1_0", create_wrapper<vision::models::MNASNet1_0> },
-            { "mnasnet1_3", create_wrapper<vision::models::MNASNet1_3> },
-            // { "shufflenetv2", create_wrapper<vision::models::MobileNetV2> }
-            { "shufflenetv2_x0_5",
-              create_wrapper<vision::models::ShuffleNetV2_x0_5> },
-            { "shufflenetv2_x1_0",
-              create_wrapper<vision::models::ShuffleNetV2_x1_0> },
-            { "shufflenetv2_x1_5",
-              create_wrapper<vision::models::ShuffleNetV2_x1_5> },
-            { "shufflenetv2_x2_0",
-              create_wrapper<vision::models::ShuffleNetV2_x2_0> },
-            { "squeezenet1_0", create_wrapper<vision::models::SqueezeNet1_0> },
-            { "squeezenet1_1", create_wrapper<vision::models::SqueezeNet1_1> },
           };
       return ctor_map;
     }

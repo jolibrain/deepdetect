@@ -1,0 +1,388 @@
+diff --git a/c10/util/logging_is_dd_log.h b/c10/util/logging_is_dd_log.h
+new file mode 100644
+index 0000000000..8f72861a08
+--- /dev/null
++++ b/c10/util/logging_is_dd_log.h
+@@ -0,0 +1,61 @@
++#ifndef DD_LOG_H
++#define DD_LOG_H
++#include <set>
++#include <iomanip>
++#include <map>
++
++#include "caffe/llogging.h"
++
++#ifndef VLOG
++#define DEBUG "none"
++static const std::string VLogLevels[4] = {DEBUG, DEBUG, DEBUG, DEBUG};
++#define VLOG(n) LOG(VLogLevels[n])
++#endif
++
++#define LOG_AS_STRING(l, o) \
++  std::stringstream ss;     \
++  ss << o;                  \
++  return l << ss.str();
++
++namespace std {
++
++#define LOG_PAIR(s)                                                 \
++  template <class First, class Second>                              \
++  inline s& operator<<(s& out, const std::pair<First, Second>& p) { \
++    return out << '(' << p.first << ", " << p.second << ')';        \
++  }
++
++LOG_PAIR(std::ostream)
++
++#define LOG_CONTAINER(s, c)                              \
++  template <class... Types>                              \
++  s& operator<<(s& out, const c<Types...>& seq) {        \
++    int i = 0;                                           \
++    for (auto it = seq.begin(); it != seq.end(); ++it) { \
++      if (i++) {                                         \
++        out << ' ';                                      \
++      }                                                  \
++      if (i > 100) {                                     \
++        return out << "...";                             \
++      }                                                  \
++      out << *it;                                        \
++    }                                                    \
++    return out;                                          \
++  }
++
++LOG_CONTAINER(std::ostream, std::vector)
++LOG_CONTAINER(std::ostream, std::map)
++LOG_CONTAINER(std::ostream, std::set)
++} // namespace std
++
++#define VLOG_IS_ON(n) true
++
++namespace c10 {
++bool InitCaffeLogging(int* argc, char** argv);
++void UpdateLoggingLevelsFromFlags();
++
++void ShowLogInfoToStderr();
++
++} // namespace c10
++
++#endif
+diff --git a/caffe/llogging.h b/caffe/llogging.h
+new file mode 100644
+index 0000000000..720bda66a7
+--- /dev/null
++++ b/caffe/llogging.h
+@@ -0,0 +1,315 @@
++/**
++ * Author: Emmanuel Benazera <beniz@droidnik.fr>
++ */
++
++#ifndef LLOGGING_H
++#define LLOGGING_H
++
++#ifdef USE_DD_SYSLOG
++#define SPDLOG_ENABLE_SYSLOG
++#endif
++
++#include <spdlog/spdlog.h>
++#ifdef USE_DD_SYSLOG
++#include <spdlog/sinks/syslog_sink.h>
++#else
++#include <spdlog/sinks/stdout_sinks.h>
++#endif
++
++#include <boost/algorithm/string.hpp>
++#include <iostream>
++#include <map>
++
++class DateLogger
++{
++public:
++  DateLogger()
++  {
++#if defined(_MSC_VER)
++    _tzset();
++#endif
++  }
++  const char *HumanDate()
++  {
++#if defined(_MSC_VER)
++    _strtime_s(buffer_, sizeof(buffer_));
++#else
++    time_t time_value = time(NULL);
++    struct tm *pnow;
++#if !defined(_WIN32)
++    struct tm now;
++    pnow = localtime_r(&time_value, &now);
++#else
++    pnow = localtime(&time_value); // NOLINT(*)
++#endif
++    snprintf(buffer_, sizeof(buffer_), "%02d:%02d:%02d", pnow->tm_hour,
++             pnow->tm_min, pnow->tm_sec);
++#endif
++    return buffer_;
++  }
++
++private:
++  char buffer_[9];
++};
++
++// avoid fatal checks from glog
++#define CAFFE_THROW_ON_ERROR
++
++// make sure we erase definitions by glog if any
++#undef LOG
++#undef LOG_IF
++#undef CHECK
++#undef CHECK_OP_LOG
++#undef CHECK_EQ
++#undef CHECK_LT
++#undef CHECK_GT
++#undef CHECK_LE
++#undef CHECK_GE
++#undef CHECK_EQ
++#undef CHECK_NE
++#undef CHECK_OP_LOG
++#undef CHECK_NOTNULL
++#undef DCHECK
++#undef DCHECK_LT
++#undef DCHECK_GT
++#undef DCHECK_LE
++#undef DCHECK_GE
++#undef DCHECK_EQ
++#undef DCHECK_NE
++#undef DLOG
++#undef DFATAL
++#undef LOG_DFATAL
++#undef LOG_EVERY_N
++
++#ifdef CAFFE_THROW_ON_ERROR
++#include <sstream>
++#define SSTR(x)                                                               \
++  dynamic_cast<std::ostringstream &>((std::ostringstream() << std::dec << x)) \
++      .str()
++class CaffeErrorException : public std::exception
++{
++public:
++  CaffeErrorException(const std::string &s) : _s(s)
++  {
++  }
++  ~CaffeErrorException() throw()
++  {
++  }
++  const char *what() const throw()
++  {
++    return _s.c_str();
++  }
++  std::string _s;
++};
++
++static std::string INFO = "INFO";
++static std::string WARNING = "WARNING";
++static std::string ERROR = "ERROR";
++static std::string FATAL = "FATAL";
++
++#define GLOG_NO_ABBREVIATED_SEVERITIES
++
++#define INFO INFO
++#define WARNING WARNING
++#define ERROR ERROR
++#define FATAL FATAL
++
++static std::ostream nullstream(0);
++
++#define CHECK(condition)                                                      \
++  if (!(condition))                                                           \
++    throw CaffeErrorException(std::string(__FILE__) + ":" + SSTR(__LINE__)    \
++                              + " / Check failed (custom): " #condition "");  \
++  nullstream << "Check failed (custom): " #condition " "
++
++#define CHECK_LT(x, y) CHECK((x) < (y))
++#define CHECK_GT(x, y) CHECK((x) > (y))
++#define CHECK_LE(x, y) CHECK((x) <= (y))
++#define CHECK_GE(x, y) CHECK((x) >= (y))
++#define CHECK_EQ(x, y) CHECK((x) == (y))
++#define CHECK_NE(x, y) CHECK((x) != (y))
++
++#define CHECK_OP_LOG(name, op, val1, val2, log) CHECK((val1)op(val2))
++/* #ifdef DEBUG */
++/* #define CHECK_EQ(val1,val2) if (0) std::cerr */
++/* #endif */
++#endif
++
++#define CHECK_NOTNULL(x)                                                      \
++  ((x) == NULL ? LOG(FATAL) << "Check  notnull: " #x << ' ',                  \
++   (x) : (x)) // NOLINT(*)
++
++#ifdef NDEBUG
++#define DCHECK(x)                                                             \
++  while (false)                                                               \
++  CHECK(x)
++#define DCHECK_LT(x, y)                                                       \
++  while (false)                                                               \
++  CHECK((x) < (y))
++#define DCHECK_GT(x, y)                                                       \
++  while (false)                                                               \
++  CHECK((x) > (y))
++#define DCHECK_LE(x, y)                                                       \
++  while (false)                                                               \
++  CHECK((x) <= (y))
++#define DCHECK_GE(x, y)                                                       \
++  while (false)                                                               \
++  CHECK((x) >= (y))
++#define DCHECK_EQ(x, y)                                                       \
++  while (false)                                                               \
++  CHECK((x) == (y))
++#define DCHECK_NE(x, y)                                                       \
++  while (false)                                                               \
++  CHECK((x) != (y))
++#else
++#define DCHECK(x) CHECK(x)
++#define DCHECK_LT(x, y) CHECK((x) < (y))
++#define DCHECK_GT(x, y) CHECK((x) > (y))
++#define DCHECK_LE(x, y) CHECK((x) <= (y))
++#define DCHECK_GE(x, y) CHECK((x) >= (y))
++#define DCHECK_EQ(x, y) CHECK((x) == (y))
++#define DCHECK_NE(x, y) CHECK((x) != (y))
++#endif // NDEBUG
++
++// torch check
++
++#define TORCH_CHECK_OP(val1, val2, op) CHECK(((val1)op(val2)))
++
++// TORCH_CHECK_OP macro definitions
++#define TORCH_CHECK_EQ(val1, val2) TORCH_CHECK_OP(val1, val2, ==)
++#define TORCH_CHECK_NE(val1, val2) TORCH_CHECK_OP(val1, val2, !=)
++#define TORCH_CHECK_LE(val1, val2) TORCH_CHECK_OP(val1, val2, <=)
++#define TORCH_CHECK_LT(val1, val2) TORCH_CHECK_OP(val1, val2, <)
++#define TORCH_CHECK_GE(val1, val2) TORCH_CHECK_OP(val1, val2, >=)
++#define TORCH_CHECK_GT(val1, val2) TORCH_CHECK_OP(val1, val2, >)
++
++#ifndef NDEBUG
++// Debug only versions of TORCH_CHECK_OP macros.
++#define TORCH_DCHECK_EQ(val1, val2) TORCH_CHECK_OP(val1, val2, ==)
++#define TORCH_DCHECK_NE(val1, val2) TORCH_CHECK_OP(val1, val2, !=)
++#define TORCH_DCHECK_LE(val1, val2) TORCH_CHECK_OP(val1, val2, <=)
++#define TORCH_DCHECK_LT(val1, val2) TORCH_CHECK_OP(val1, val2, <)
++#define TORCH_DCHECK_GE(val1, val2) TORCH_CHECK_OP(val1, val2, >=)
++#define TORCH_DCHECK_GT(val1, val2) TORCH_CHECK_OP(val1, val2, >)
++#else // !NDEBUG
++// These versions generate no code in optimized mode.
++#define TORCH_DCHECK_EQ(val1, val2)                                           \
++  while (false)                                                               \
++  TORCH_CHECK_OP(val1, val2, ==)
++#define TORCH_DCHECK_NE(val1, val2)                                           \
++  while (false)                                                               \
++  TORCH_CHECK_OP(val1, val2, !=)
++#define TORCH_DCHECK_LE(val1, val2)                                           \
++  while (false)                                                               \
++  TORCH_CHECK_OP(val1, val2, <=)
++#define TORCH_DCHECK_LT(val1, val2)                                           \
++  while (false)                                                               \
++  TORCH_CHECK_OP(val1, val2, <)
++#define TORCH_DCHECK_GE(val1, val2)                                           \
++  while (false)                                                               \
++  TORCH_CHECK_OP(val1, val2, >=)
++#define TORCH_DCHECK_GT(val1, val2)                                           \
++  while (false)                                                               \
++  TORCH_CHECK_OP(val1, val2, >)
++#endif // NDEBUG
++
++// Check that a pointer is not null.
++#define TORCH_CHECK_NOTNULL(val) CHECK_NOTNULL(val)
++#define TORCH_DCHECK_NOTNULL(val) CHECK_NOTNULL(val)
++
++class CaffeLogger
++{
++public:
++  CaffeLogger(const std::string &severity) : _severity(severity)
++  {
++    _console = spdlog::get("torchlib");
++    if (!_console)
++#ifdef USE_DD_SYSLOG
++#if SPDLOG_VER_MAJOR > 0
++      _console = spdlog::syslog_logger_mt("torchlib");
++#else
++      _console = spdlog::syslog_logger("torchlib");
++#endif
++#else
++      _console = spdlog::stdout_logger_mt("torchlib");
++#endif
++  }
++
++  CaffeLogger(const int &ddl)
++  {
++    if (ddl == 0)
++      _severity = "none"; // OFF to none
++    else
++      _severity = INFO; // translates DETAIL and INFO to INFO
++    _console = spdlog::get("torchlib");
++    if (!_console)
++#ifdef USE_DD_SYSLOG
++#if SPDLOG_VER_MAJOR > 0
++      _console = spdlog::syslog_logger_mt("torchlib");
++#else
++      _console = spdlog::syslog_logger("torchlib");
++#endif
++#else
++      _console = spdlog::stdout_logger_mt("torchlib");
++#endif
++  }
++
++  ~CaffeLogger()
++  {
++    if (_severity == "none" || _sstr.str().empty()) // ignore
++      {
++      }
++    else if (_severity == INFO)
++      _console->info(_sstr.str());
++    else if (_severity == WARNING)
++      _console->warn(_sstr.str());
++    else if (_severity == ERROR)
++      _console->error(_sstr.str());
++  }
++
++  std::stringstream &sstream()
++  {
++    if (_severity != FATAL)
++      return _sstr;
++    else
++      throw CaffeErrorException(
++          std::string(__FILE__) + ":" + SSTR(__LINE__)
++          + " / Fatal Caffe error"); // XXX: cannot report the exact location
++    // of the trigger...
++  }
++
++  std::string _severity = INFO;
++  std::shared_ptr<spdlog::logger> _console;
++  std::stringstream _sstr;
++  // std::string _str;
++};
++
++#define LOG(s) CaffeLogger(s).sstream()
++
++#define LOG_IF(s, cond)                                                       \
++  if (cond)                                                                   \
++  CaffeLogger(s).sstream()
++
++#define LOG_AT_FILE_LINE(s, file, line)                                       \
++  CaffeLogger(s).sstream() << "source file:" << file << "  line: " << line
++
++#ifdef NDEBUG
++
++#define DFATAL(s) CaffeLogger("none").sstream()
++
++#define LOG_DFATAL(s) CaffeLogger("none").sstream()
++
++#define DLOG(s) CaffeLogger("none").sstream()
++
++#else
++#define DFATAL(s) CaffeLogger(FATAL).sstream()
++
++#define LOG_DFATAL(s) CaffeLogger(FATAL).sstream()
++
++#define DLOG(s) CaffeLogger(s).sstream()
++#endif
++
++// Poor man's version...
++#define LOG_EVERY_N(s, n) CaffeLogger(s).sstream()
++
++#endif
