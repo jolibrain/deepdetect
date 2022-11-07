@@ -1,7 +1,7 @@
 /**
  * DeepDetect
- * Copyright (c) 2019-2020 Jolibrain
- * Author: Louis Jean <ljean@etud.insa-toulouse.fr>
+ * Copyright (c) 2019-2022 Jolibrain
+ * Author: Louis Jean <louis.jean@jolibrain.com>
  *        Guillaume Infantes <guillaume.infantes@jolibrain.com>
  *
  * This file is part of deepdetect.

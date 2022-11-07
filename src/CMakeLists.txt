@@ -98,6 +98,7 @@ if (USE_TORCH)
     backends/torch/native/templates/ttransformer/positionalenc.cc
     backends/torch/native/templates/ttransformer/tencoder.cc
     backends/torch/native/templates/ttransformer/tdecoder.cc
+    backends/torch/native/templates/torchvision/resnet.cc
     backends/torch/native/native_factory.cc
 	graph/basegraph.cc
     graph/operators.cc
