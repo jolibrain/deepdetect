@@ -25,6 +25,8 @@
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
 
+#include "error_recorder.hpp"
+
 namespace dd
 {
 

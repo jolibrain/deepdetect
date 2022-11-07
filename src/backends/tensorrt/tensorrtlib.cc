@@ -136,6 +136,7 @@ namespace dd
     initLibNvInferPlugins(&trtLogger, "");
     _runtime = std::shared_ptr<nvinfer1::IRuntime>(
         nvinfer1::createInferRuntime(trtLogger));
+    _runtime->setErrorRecorder(new TRTErrorRecorder(this->_logger));
 
     if (ad.has("tensorRTEngineFile"))
       _engineFileName = ad.get("tensorRTEngineFile").get<std::string>();
@@ -594,15 +595,34 @@ namespace dd
                 trtModelStream.resize(size);
                 file.read(trtModelStream.data(), size);
                 file.close();
+
+                auto *errors = _runtime->getErrorRecorder();
+                errors->clear();
                 _engine = std::shared_ptr<nvinfer1::ICudaEngine>(
                     _runtime->deserializeCudaEngine(trtModelStream.data(),
                                                     trtModelStream.size()));
 
-                if (_engine == nullptr)
-                  throw MLLibInternalException(
-                      "Engine could not be deserialized");
+                bool shouldRecompile = false;
+                for (int i = 0; i < errors->getNbErrors(); ++i)
+                  {
+                    std::string desc = errors->getErrorDesc(i);
+                    if (desc.find("Version tag does not match")
+                        != std::string::npos)
+                      {
+                        this->_logger->warn(
+                            "Engine is outdated and will be recompiled");
+                        shouldRecompile = true;
+                      }
+                  }
 
-                engineRead = true;
+                if (!shouldRecompile)
+                  {
+                    if (_engine == nullptr)
+                      throw MLLibInternalException(
+                          "Engine could not be deserialized");
+
+                    engineRead = true;
+                  }
               }
           }
 
