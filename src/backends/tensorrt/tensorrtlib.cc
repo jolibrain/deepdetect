@@ -39,7 +39,8 @@ namespace dd
 
   static TRTLogger trtLogger;
 
-  static int findEngineBS(std::string repo, std::string engineFileName)
+  static int findEngineBS(std::string repo, std::string engineFileName,
+                          std::string arch)
   {
     std::unordered_set<std::string> lfiles;
     fileops::list_directory(repo, true, false, false, lfiles);
@@ -50,7 +51,8 @@ namespace dd
         if (fstart == std::string::npos)
           fstart = 0;
 
-        if (s.find(engineFileName, fstart) != std::string::npos)
+        if (s.find(engineFileName + "_arch" + arch, fstart)
+            != std::string::npos)
           {
             std::string bs_str;
             for (auto it = s.crbegin(); it != s.crend(); ++it)
@@ -568,10 +570,14 @@ namespace dd
           this->_logger->error("could not determine number of classes");
 
         bool engineRead = false;
+        std::string engine_path = this->_mlmodel._repo + "/" + _engineFileName
+                                  + "_arch" + _arch + "_bs"
+                                  + std::to_string(_max_batch_size);
 
         if (_readEngine)
           {
-            int bs = findEngineBS(this->_mlmodel._repo, _engineFileName);
+            int bs
+                = findEngineBS(this->_mlmodel._repo, _engineFileName, _arch);
             if (bs != _max_batch_size && bs != -1)
               {
                 throw MLLibBadParamException(
@@ -581,10 +587,7 @@ namespace dd
                     + " / either delete it or set your maxBatchSize to "
                     + std::to_string(bs));
               }
-            std::ifstream file(this->_mlmodel._repo + "/" + _engineFileName
-                                   + "_arch" + _arch + "_bs"
-                                   + std::to_string(bs),
-                               std::ios::binary);
+            std::ifstream file(engine_path, std::ios::binary);
             if (file.good())
               {
                 std::vector<char> trtModelStream;
@@ -624,6 +627,12 @@ namespace dd
                     engineRead = true;
                   }
               }
+            else
+              {
+                this->_logger->warn(
+                    "Could not read engine at {}, will recompile.",
+                    engine_path);
+              }
           }
 
         if (!engineRead)
@@ -650,10 +659,7 @@ namespace dd
 
             if (_writeEngine)
               {
-                std::ofstream p(this->_mlmodel._repo + "/" + _engineFileName
-                                    + "_arch" + _arch + "_bs"
-                                    + std::to_string(_max_batch_size),
-                                std::ios::binary);
+                std::ofstream p(engine_path, std::ios::binary);
                 nvinfer1::IHostMemory *trtModelStream = _engine->serialize();
                 p.write(reinterpret_cast<const char *>(trtModelStream->data()),
                         trtModelStream->size());
