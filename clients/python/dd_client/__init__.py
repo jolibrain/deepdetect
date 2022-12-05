@@ -17,9 +17,9 @@ import base64
 import os
 import re
 import warnings
-
 import requests
-
+import cv2
+import numpy as np
 
 DD_TIMEOUT = 2000  # seconds, for long blocking training calls, as needed
 
@@ -34,7 +34,11 @@ API_METHODS_URL = {
 }
 
 
-def _convert_base64(filename):  # return type: Optional[str]
+def _convert_base64(filename, from_img):  # return type: Optional[str]
+    if from_img:
+        img = cv2.imencode('.png',filename)[1].tostring() # filename is actually raw image data
+        x = base64.encodebytes(img)
+        return x.decode("ascii").replace("\n", "")
     if os.path.isfile(filename):
         with open(filename, "rb") as fh:
             data = fh.read()
@@ -266,8 +270,12 @@ class DD(object):
         parameters_output -- dict of output parameters
         """
 
+        if type(data[0]) is np.ndarray:
+            from_img = True
+            use_base64 = True # force base64 transfer on raw images
+        
         if use_base64:
-            data = [_convert_base64(d) for d in data]
+            data = [_convert_base64(d, from_img) for d in data]
 
         data = {
             "service": sname,
