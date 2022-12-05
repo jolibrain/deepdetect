@@ -18,6 +18,7 @@ import os
 import re
 import warnings
 
+import cv2
 import requests
 
 
@@ -34,7 +35,12 @@ API_METHODS_URL = {
 }
 
 
-def _convert_base64(filename):  # return type: Optional[str]
+def _convert_base64(filename_or_data):  # return type: Optional[str]
+    if not isinstance(filename_or_data, str):
+        img = cv2.imencode(".png", filename_or_data)[1].tostring()
+        x = base64.encodebytes(img)
+        return x.decode("ascii").replace("\n", "")
+    filename = filename_or_data
     if os.path.isfile(filename):
         with open(filename, "rb") as fh:
             data = fh.read()
@@ -265,6 +271,10 @@ class DD(object):
         parameters_mllib -- dict ML library parameters
         parameters_output -- dict of output parameters
         """
+
+        contains_img = any([not isinstance(d, str) for d in data])
+        if contains_img:
+            use_base64 = True  # force base64 encoding for images
 
         if use_base64:
             data = [_convert_base64(d) for d in data]
