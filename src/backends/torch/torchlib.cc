@@ -2191,7 +2191,6 @@ namespace dd
           }
         else
           {
-            labels = batch.target[0].view(IntList{ -1 });
             if (_masked_lm)
               {
                 // Convert [n_batch, sequence_length, vocab_size] to [n_batch
@@ -2200,6 +2199,7 @@ namespace dd
               }
             if (_classification || _seq_training)
               {
+                labels = batch.target[0].view(IntList{ -1 });
                 output = torch::softmax(output, 1).to(cpu);
                 auto output_acc = output.accessor<float, 2>();
                 auto labels_acc = labels.accessor<int64_t, 1>();
@@ -2224,17 +2224,30 @@ namespace dd
             else if (_regression)
               {
                 output = output.to(cpu);
+                labels = batch.target[0];
+                unsigned int ntargets = nclasses;
                 auto output_acc = output.accessor<float, 2>();
-                auto labels_acc = labels.accessor<float, 1>();
+                auto labels_acc = labels.accessor<float, 2>();
                 for (int j = 0; j < labels.size(0); ++j)
                   {
                     APIData bad;
                     std::vector<double> predictions;
-                    for (int c = 0; c < nclasses; ++c)
+                    if (ntargets == 1)
                       {
-                        predictions.push_back(output_acc[j][c]);
+                        predictions.push_back(output_acc[j][0]);
+                        bad.add("target",
+                                static_cast<double>(labels_acc[j][0]));
                       }
-                    bad.add("target", static_cast<double>(labels_acc[j]));
+                    else
+                      {
+                        std::vector<double> targets;
+                        for (unsigned int t = 0; t < ntargets; ++t)
+                          {
+                            predictions.push_back(output_acc[j][t]);
+                            targets.push_back(labels_acc[j][t]);
+                          }
+                        bad.add("target", targets);
+                      }
                     bad.add("pred", predictions);
                     ad_res.add(std::to_string(entry_id), bad);
                     ++entry_id;
