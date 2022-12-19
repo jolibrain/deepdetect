@@ -210,12 +210,10 @@ namespace dd
         std::istringstream iss(line);
         string filename;
         string label;
-        iss >> filename >> label;
-
+        iss >> filename;
         std::vector<double> targets;
-        std::istringstream ill(label);
         std::string targ;
-        while (ill >> targ)
+        while (iss >> targ)
           targets.push_back(std::stod(targ));
 
         ++line_num;
