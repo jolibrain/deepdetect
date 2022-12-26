@@ -713,6 +713,12 @@ namespace dd
                 if (ad_geometry.has("zoom_in"))
                   geometry_params._geometry_zoom_in
                       = ad_geometry.get("zoom_in").get<bool>();
+                if (ad_geometry.has("persp_factor"))
+                  geometry_params._geometry_persp_factor
+                      = ad_geometry.get("persp_factor").get<double>();
+                if (ad_geometry.has("zoom_factor"))
+                  geometry_params._geometry_zoom_factor
+                      = ad_geometry.get("zoom_factor").get<double>();
                 if (ad_geometry.has("pad_mode"))
                   geometry_params.set_pad_mode(
                       ad_geometry.get("pad_mode").get<std::string>());
