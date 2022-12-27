@@ -63,6 +63,39 @@ namespace dd
     applyCrop(src, _crop_params, crop_x, crop_y, true, true);
   }
 
+  void TorchImgRandAugCV::applyDuplicateBBox(
+      std::vector<std::vector<float>> &bboxes, std::vector<int> &classes,
+      const float &img_width, const float &img_height)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    std::vector<int> nclasses;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        for (int tx = -img_width; tx <= img_width; tx += img_width)
+          {
+            for (int ty = -img_height; ty <= img_height; ty += img_height)
+              {
+                std::vector<float> nbox = bbox;
+                if (tx != 0) // horizontal mirror and translation
+                  {
+                    nbox[0] = tx + img_width - bbox[2];
+                    nbox[2] = tx + img_width - bbox[0];
+                  }
+                if (ty != 0) // vertical mirror and translation
+                  {
+                    nbox[1] = ty + img_height - bbox[3];
+                    nbox[3] = ty + img_height - bbox[1];
+                  }
+                nbboxes.push_back(nbox);
+                nclasses.push_back(classes.at(i));
+              }
+          }
+      }
+    bboxes = nbboxes;
+    classes = nclasses;
+  }
+
   void
   TorchImgRandAugCV::augment_with_bbox(cv::Mat &src,
                                        std::vector<torch::Tensor> &targets)
@@ -81,6 +114,15 @@ namespace dd
           }
         bboxes.push_back(bbox); // add (xmin, ymin, xmax, ymax)
         classes.push_back(c[bb].item<int>());
+      }
+    GeometryParams geoparams = _geometry_params;
+    bool duplicated = false;
+    // in mirrored padding mode, duplicate bboxes in the enlarged image
+    if (geoparams._geometry_pad_mode == 2)
+      {
+        duplicated = true;
+        applyDuplicateBBox(bboxes, classes, static_cast<float>(src.cols),
+                           static_cast<float>(src.rows));
       }
 
     bool mirror = applyMirror(src);
@@ -104,7 +146,6 @@ namespace dd
                       static_cast<float>(src.rows), crop_x, crop_y);
       }
     applyCutout(src, _cutout_params);
-    GeometryParams geoparams = _geometry_params;
     cv::Mat src_c = src.clone();
     applyGeometry(src_c, geoparams, true);
     if (!geoparams._lambda.empty())
@@ -122,7 +163,7 @@ namespace dd
 
     // replacing the initial bboxes with the transformed ones.
     nbbox = bboxes.size();
-    if (!cropped)
+    if (!cropped && !duplicated)
       {
         for (int bb = 0; bb < nbbox; ++bb)
           {
@@ -581,6 +622,24 @@ namespace dd
             outputQuad[0].x
                 = cols * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
             outputQuad[1].x = cols - outputQuad[0].x;
+          }
+      }
+    if (cp._geometry_transl_horizontal)
+      {
+        float tx = cols * cp._geometry_transl_factor
+                   * (2 * _uniform_real_1(_rnd_gen) - 1);
+        for (int i = 0; i < 4; ++i)
+          {
+            outputQuad[i].x += tx;
+          }
+      }
+    if (cp._geometry_transl_vertical)
+      {
+        float ty = rows * cp._geometry_transl_factor
+                   * (2 * _uniform_real_1(_rnd_gen) - 1);
+        for (int i = 0; i < 4; ++i)
+          {
+            outputQuad[i].y += ty;
           }
       }
   }

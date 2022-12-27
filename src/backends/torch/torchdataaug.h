@@ -133,10 +133,14 @@ namespace dd
 
     GeometryParams(const float &prob, const bool &geometry_persp_horizontal,
                    const bool &geometry_persp_vertical,
+                   const bool &geometry_transl_horizontal,
+                   const bool &geometry_transl_vertical,
                    const bool &geometry_zoom_out, const bool &geometry_zoom_in,
                    const std::string &geometry_pad_mode_str)
         : _prob(prob), _geometry_persp_horizontal(geometry_persp_horizontal),
           _geometry_persp_vertical(geometry_persp_vertical),
+          _geometry_transl_horizontal(geometry_transl_horizontal),
+          _geometry_transl_vertical(geometry_transl_vertical),
           _geometry_zoom_out(geometry_zoom_out),
           _geometry_zoom_in(geometry_zoom_in)
     {
@@ -161,14 +165,19 @@ namespace dd
     bool _geometry_persp_horizontal
         = true; /**< horizontal perspective change. */
     bool _geometry_persp_vertical = true; /**< vertical perspective change. */
+    bool _geometry_transl_horizontal
+        = false; /**< horizontal translation change. */
+    bool _geometry_transl_vertical
+        = false; /**< vertical translation change. */
     bool _geometry_zoom_out
         = true; /**< distance change: look from further away. */
     bool _geometry_zoom_in = true;      /**< distance change: look closer. */
     float _geometry_zoom_factor = 0.25; /**< zoom factor: 0.25 means that image
                                            can be *1.25 or /1.25. */
-    float _geometry_persp_factor
-        = 0.25;                     /**< persp factor: 0.25 means that new
-                                      image corners  be in 1.25 or 0.75. */
+    float _geometry_persp_factor = 0.25; /**< persp factor: 0.25 means that new
+                                           image corners be in 1.25 or 0.75. */
+    float _geometry_transl_factor = 0.5; /**< transl factor: 0.5 means that new
+                                            image corners be in 1.5 or 0.5. */
     uint8_t _geometry_pad_mode = 1; /**< filling around images, 1: constant, 2:
                                        repeat nearest (replicate). */
     float _geometry_bbox_intersect
@@ -306,6 +315,9 @@ namespace dd
 
   protected:
     bool roll_weighted_dice(const float &prob);
+    void applyDuplicateBBox(std::vector<std::vector<float>> &bboxes,
+                            std::vector<int> &classes, const float &img_width,
+                            const float &img_height);
     bool applyMirror(cv::Mat &src, const bool &sample = true);
     void applyMirrorBBox(std::vector<std::vector<float>> &bboxes,
                          const float &img_width);
