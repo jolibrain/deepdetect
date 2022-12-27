@@ -707,6 +707,12 @@ namespace dd
                 if (ad_geometry.has("persp_horizontal"))
                   geometry_params._geometry_persp_horizontal
                       = ad_geometry.get("persp_horizontal").get<bool>();
+                if (ad_geometry.has("transl_vertical"))
+                  geometry_params._geometry_transl_vertical
+                      = ad_geometry.get("transl_vertical").get<bool>();
+                if (ad_geometry.has("transl_horizontal"))
+                  geometry_params._geometry_transl_horizontal
+                      = ad_geometry.get("transl_horizontal").get<bool>();
                 if (ad_geometry.has("zoom_out"))
                   geometry_params._geometry_zoom_out
                       = ad_geometry.get("zoom_out").get<bool>();
@@ -716,6 +722,9 @@ namespace dd
                 if (ad_geometry.has("persp_factor"))
                   geometry_params._geometry_persp_factor
                       = ad_geometry.get("persp_factor").get<double>();
+                if (ad_geometry.has("transl_factor"))
+                  geometry_params._geometry_transl_factor
+                      = ad_geometry.get("transl_factor").get<double>();
                 if (ad_geometry.has("zoom_factor"))
                   geometry_params._geometry_zoom_factor
                       = ad_geometry.get("zoom_factor").get<double>();
