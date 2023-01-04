@@ -22,6 +22,7 @@
 #include "tensorrtlib.h"
 #include "utils/apitools.h"
 #include "tensorrtinputconns.h"
+#include "tensorrtcalibrator.hpp"
 #include "NvInferPlugin.h"
 #include "../parsers/onnx/NvOnnxParser.h"
 #include "protoUtils.h"
@@ -39,8 +40,26 @@ namespace dd
 
   static TRTLogger trtLogger;
 
+  static std::string dtype_to_str(nvinfer1::DataType dtype)
+  {
+    switch (dtype)
+      {
+      case nvinfer1::DataType::kFLOAT:
+        return "fp32";
+      case nvinfer1::DataType::kHALF:
+        return "fp16";
+      case nvinfer1::DataType::kINT32:
+        return "int32";
+      case nvinfer1::DataType::kINT8:
+        return "int8";
+      default:
+        throw MLLibInternalException("Unsupported datatype: "
+                                     + std::to_string(int(dtype)));
+      }
+  }
+
   static int findEngineBS(std::string repo, std::string engineFileName,
-                          std::string arch)
+                          std::string arch, nvinfer1::DataType dtype)
   {
     std::unordered_set<std::string> lfiles;
     fileops::list_directory(repo, true, false, false, lfiles);
@@ -51,7 +70,8 @@ namespace dd
         if (fstart == std::string::npos)
           fstart = 0;
 
-        if (s.find(engineFileName + "_arch" + arch, fstart)
+        if (s.find(engineFileName + "_arch" + arch + "_" + dtype_to_str(dtype),
+                   fstart)
             != std::string::npos)
           {
             std::string bs_str;
@@ -320,7 +340,7 @@ namespace dd
 
     // remove compiled model files.
     std::vector<std::string> extensions
-        = { "TRTengine", "net_tensorRT.proto" };
+        = { "TRTengine", "net_tensorRT.proto", "calibration_table" };
     fileops::remove_directory_files(this->_mlmodel._repo, extensions);
   }
 
@@ -385,6 +405,8 @@ namespace dd
 
     _builderc->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
                                   _max_workspace_size);
+    if (_calibrator)
+      _builderc->setInt8Calibrator(_calibrator.get());
 
     network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
 
@@ -436,6 +458,10 @@ namespace dd
             "Error while parsing onnx model for conversion to "
             "TensorRT");
       }
+
+    if (_calibrator)
+      _builderc->setInt8Calibrator(_calibrator.get());
+
     // TODO check with onnx models dynamic shape
     this->_logger->warn("Onnx model: max batch size not used");
     _builderc->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
@@ -503,6 +529,7 @@ namespace dd
 
     std::string out_blob = "prob";
     std::string extract_layer = predict_dto->parameters->mllib->extract_layer;
+    bool calibration = predict_dto->parameters->mllib->calibration;
 
     TInputConnectorStrategy inputc(this->_inputc);
 
@@ -571,13 +598,14 @@ namespace dd
 
         bool engineRead = false;
         std::string engine_path = this->_mlmodel._repo + "/" + _engineFileName
-                                  + "_arch" + _arch + "_bs"
+                                  + "_arch" + _arch + "_"
+                                  + dtype_to_str(_datatype) + "_bs"
                                   + std::to_string(_max_batch_size);
 
         if (_readEngine)
           {
-            int bs
-                = findEngineBS(this->_mlmodel._repo, _engineFileName, _arch);
+            int bs = findEngineBS(this->_mlmodel._repo, _engineFileName, _arch,
+                                  _datatype);
             if (bs != _max_batch_size && bs != -1)
               {
                 throw MLLibBadParamException(
@@ -638,6 +666,31 @@ namespace dd
         if (!engineRead)
           {
             nvinfer1::ICudaEngine *le = nullptr;
+            if (_datatype == nvinfer1::DataType::kINT8)
+              {
+                if (calibration)
+                  {
+                    try
+                      {
+                        inputc.transform(predict_dto);
+                      }
+                    catch (...)
+                      {
+                        throw;
+                      }
+                  }
+
+                bool calibrate_from_cache = !calibration;
+                if (calibrate_from_cache)
+                  this->_logger->info(
+                      "Setting up the int8 calibrator using cache");
+                else
+                  this->_logger->info(
+                      "Setting up the int8 calibrator using test data");
+                _calibrator.reset(new TRTCalibrator<TInputConnectorStrategy>(
+                    &inputc, this->_mlmodel._repo, _max_batch_size,
+                    calibrate_from_cache, this->_logger));
+              }
 
             if (this->_mlmodel._model.find("net_tensorRT.proto")
                     != std::string::npos
@@ -664,6 +717,9 @@ namespace dd
                 p.write(reinterpret_cast<const char *>(trtModelStream->data()),
                         trtModelStream->size());
               }
+
+            // once the engine is built, calibrator is not needed anymore
+            _calibrator = nullptr;
           }
         else
           {
@@ -782,7 +838,7 @@ namespace dd
     TOutputConnectorStrategy tout(this->_outputc);
     this->_stats.transform_start();
 #ifdef USE_CUDA_CV
-    inputc._cuda_buf = static_cast<float *>(_buffers.data()[_inputIndex]);
+    inputc._cuda_buf = static_cast<float *>(_buffers.at(_inputIndex));
     auto cv_stream = cv::cuda::StreamAccessor::wrapStream(cstream);
     inputc._cuda_stream = &cv_stream;
 #endif
