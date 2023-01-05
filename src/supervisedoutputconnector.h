@@ -780,7 +780,10 @@ namespace dd
           bool beucll = false;
           float beucll_thres = -1;
           find_presence_and_thres("eucll", measures, beucll, beucll_thres);
-          bool compute_all_meucll = beucll && !autoencoder;
+          bool bl1 = (std::find(measures.begin(), measures.end(), "l1")
+                      != measures.end());
+          bool compute_all_distl = (beucll || bl1) && !autoencoder;
+
           bool bmcc = (std::find(measures.begin(), measures.end(), "mcc")
                        != measures.end());
           bool baccv = false;
@@ -1074,16 +1077,16 @@ namespace dd
               double meucll;
               std::vector<double> all_meucll;
               std::tie(meucll, all_meucll)
-                  = eucll(ad_res, -1, compute_all_meucll);
+                  = distl(ad_res, -1, compute_all_distl, false);
               meas_out.add("eucll", meucll);
-              if (all_meucll.size() > 1 && compute_all_meucll)
+              if (all_meucll.size() > 1 && compute_all_distl)
                 for (unsigned int i = 0; i < all_meucll.size(); ++i)
                   meas_out.add("eucll_" + std::to_string(i), all_meucll[i]);
 
               if (beucll_thres > 0)
                 {
                   std::tuple<double, std::vector<double>> tmeucll_thres
-                      = eucll(ad_res, beucll_thres, compute_all_meucll);
+                      = distl(ad_res, beucll_thres, compute_all_distl, false);
                   double meucll_thres = std::get<0>(tmeucll_thres);
                   std::string b = "eucll_no_" + std::to_string(beucll_thres);
                   meas_out.add(b, meucll_thres);
@@ -1097,6 +1100,16 @@ namespace dd
                         meas_out.add(b, all_meucll_thres[i]);
                       }
                 }
+            }
+          if (bl1)
+            {
+              double ml1;
+              std::vector<double> all_ml1;
+              std::tie(ml1, all_ml1)
+                  = distl(ad_res, -1, compute_all_distl, true);
+              meas_out.add("l1", ml1);
+              for (unsigned int i = 0; i < all_ml1.size(); ++i)
+                meas_out.add("l1_" + std::to_string(i), all_ml1[i]);
             }
           if (bmcc)
             {
@@ -2574,7 +2587,8 @@ namespace dd
     }
 
     static std::tuple<double, std::vector<double>>
-    eucll(const APIData &ad, float thres, bool compute_all_meucll)
+    distl(const APIData &ad, float thres, bool compute_all_distl,
+          bool l1 = false)
     {
       double eucl = 0.0;
       unsigned int psize = ad.getobj(std::to_string(0))
@@ -2582,7 +2596,7 @@ namespace dd
                                .get<std::vector<double>>()
                                .size();
       std::vector<double> all_eucl;
-      if (compute_all_meucll)
+      if (compute_all_distl)
         all_eucl.resize(psize, 0.0);
       int batch_size = ad.get("batch_size").get<int>();
       bool has_ignore = ad.has("ignore_label");
@@ -2612,22 +2626,39 @@ namespace dd
                 {
                   if (diff >= thres)
                     {
-                      leucl += diff * diff;
-                      if (compute_all_meucll)
+                      if (l1)
+                        eucl += diff;
+                      else
+                        leucl += diff * diff;
+                      if (compute_all_distl)
                         all_eucl[j] += diff;
                     }
                 }
               else
                 {
-                  leucl += diff * diff;
-                  if (compute_all_meucll)
-                    all_eucl[j] += diff;
+                  if (l1)
+                    eucl += diff;
+                  else
+                    leucl += diff * diff;
+                  if (compute_all_distl)
+                    {
+                      if (l1)
+                        all_eucl[j] += diff;
+                      else
+                        all_eucl[j] += diff * diff;
+                    }
                 }
             }
-          eucl += sqrt(leucl);
+          if (!l1)
+            {
+              eucl += sqrt(leucl);
+              if (compute_all_distl)
+                for (size_t j = 0; j < target.size(); ++j)
+                  all_eucl[j] = sqrt(all_eucl[j]);
+            }
         }
 
-      if (compute_all_meucll)
+      if (compute_all_distl)
         for (unsigned int i = 0; i < all_eucl.size(); ++i)
           all_eucl[i] /= static_cast<double>(batch_size);
 
