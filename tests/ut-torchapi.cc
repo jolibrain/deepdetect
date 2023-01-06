@@ -2258,6 +2258,103 @@ TEST(torchapi, service_train_object_detection_yolox_multigpu)
   fileops::remove_dir(detect_train_repo_yolox + "test_0.lmdb");
 }
 
+TEST(torchapi, service_train_object_detection_translation)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"yolox\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_train_repo_yolox
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "640,\"width\":640,\"rgb\":true,\"bbox\":true,\"db\":true},"
+          "\"mllib\":{\"template\":\"yolox\",\"gpu\":true,"
+          "\"nclasses\":2}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"detectserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":3"
+        + std::string("")
+        //+ iterations_detection + ",\"base_lr\":" + torch_lr
+        + ",\"iter_size\":2,\"solver_"
+          "type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_size\":2,"
+          "\"test_batch_size\":2,\"reg_weight\":0.5},\"resume\":false,"
+          "\"mirror\":true,\"rotate\":true,\"crop_size\":512,"
+          "\"test_crop_samples\":10,"
+          "\"cutout\":0.1,\"geometry\":{\"prob\":1.0,\"persp_horizontal\":"
+          "true,\"persp_vertical\":true,\"transl_horizontal\":true,"
+          "\"transl_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
+          "\"pad_mode\":\"mirrored\"},\"noise\":{\"prob\":0.01},\"distort\":{"
+          "\"prob\":0.01}},\"input\":{\"seed\":12347,\"db\":true,"
+          "\"shuffle\":true},\"output\":{\"measure\":[\"map\"]}},\"data\":[\""
+        + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
+
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+  // ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
+
+  // check metrics
+  auto &meas = jd["body"]["measure"];
+  ASSERT_TRUE(meas.HasMember("iou_loss"));
+  ASSERT_TRUE(meas.HasMember("conf_loss"));
+  ASSERT_TRUE(meas.HasMember("cls_loss"));
+  ASSERT_TRUE(meas.HasMember("l1_loss"));
+  ASSERT_TRUE(meas.HasMember("train_loss"));
+  ASSERT_TRUE(
+      std::abs(meas["train_loss"].GetDouble()
+               - (meas["iou_loss"].GetDouble() * 0.5
+                  + meas["cls_loss"].GetDouble() + meas["l1_loss"].GetDouble()
+                  + meas["conf_loss"].GetDouble()))
+      < 0.0001);
+
+  // check that predict works fine
+  std::string jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                            "\"input\":{\"height\":640,"
+                            "\"width\":640},\"output\":{\"bbox\":true, "
+                            "\"confidence_threshold\":0.8}},\"data\":[\""
+                            + detect_train_repo_fasterrcnn
+                            + "/imgs/la_melrose_ave-000020.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(detect_train_repo_yolox, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(detect_train_repo_yolox + "checkpoint-"
+                                    + iterations_detection + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(detect_train_repo_yolox + "checkpoint-"
+                                    + iterations_detection + ".pt"));
+
+  fileops::clear_directory(detect_train_repo_yolox + "train.lmdb");
+  fileops::clear_directory(detect_train_repo_yolox + "test_0.lmdb");
+  fileops::remove_dir(detect_train_repo_yolox + "train.lmdb");
+  fileops::remove_dir(detect_train_repo_yolox + "test_0.lmdb");
+}
+
 TEST(torchapi, service_train_images_native)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
