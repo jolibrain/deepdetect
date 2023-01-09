@@ -662,6 +662,59 @@ TEST(torchapi, compute_bbox_stats)
               std::numeric_limits<float>::epsilon());
 }
 
+TEST(torchapi, map_false_negative)
+{
+  TorchModel torchmodel;
+  TorchLib<ImgTorchInputFileConn, SupervisedOutput, TorchModel> torchlib(
+      torchmodel);
+  torchlib._nclasses = 3;
+  // img dims are e.g. 1000, 1000
+  float targ_bboxes_data[] = {
+    10,  10,  100, 100, // perfect match for class 1
+    500, 500, 600, 600, // no prediction for class 2
+  };
+  at::Tensor targ_bboxes = torch::from_blob(targ_bboxes_data, { 2, 4 });
+
+  int64_t targ_labels_data[] = { 1, 2 };
+  at::Tensor targ_labels = torch::from_blob(targ_labels_data, 2, torch::kLong);
+
+  float bboxes_data[] = {
+    10, 10, 100, 100, // perfect match for class 1
+                      // no prediction for class 2
+  };
+  at::Tensor bboxes_tensor = torch::from_blob(bboxes_data, { 1, 4 });
+
+  int64_t labels_data[] = { 1 };
+  at::Tensor labels_tensor = torch::from_blob(labels_data, 1, torch::kLong);
+
+  float score_data[] = { 1.0 };
+  at::Tensor score_tensor = torch::from_blob(score_data, 1);
+
+  auto vbad = torchlib.get_bbox_stats(targ_bboxes, targ_labels, bboxes_tensor,
+                                      labels_tensor, score_tensor);
+
+  // Get MAP
+  APIData ad_res;
+  ad_res.add("clnames", std::vector<std::string>{ "0", "1", "2" });
+  ad_res.add("nclasses", static_cast<int>(torchlib._nclasses));
+  ad_res.add("bbox", true);
+  ad_res.add("pos_count", 1);
+  APIData ad_bbox;
+  ad_bbox.add("0", vbad);
+  ad_res.add("0", ad_bbox);
+  ad_res.add("batch_size", 1);
+  APIData ad_out;
+  ad_out.add("measure", std::vector<std::string>{ "map" });
+  APIData out;
+  SupervisedOutput::measure(ad_res, ad_out, out, 0, "test");
+  ASSERT_NEAR(out.getobj("measure").get("map").get<double>(), 0.5,
+              std::numeric_limits<float>::epsilon());
+  ASSERT_NEAR(out.getobj("measure").get("map_1").get<double>(), 1.,
+              std::numeric_limits<float>::epsilon());
+  ASSERT_NEAR(out.getobj("measure").get("map_2").get<double>(), 0.,
+              std::numeric_limits<float>::epsilon());
+}
+
 // Training tests
 
 #if !defined(CPU_ONLY)
