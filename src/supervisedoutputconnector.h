@@ -2429,7 +2429,7 @@ namespace dd
                   fp.push_back(std::pair<double, int>(fp_d.at(j), fp_i.at(j)));
                 }
 
-              if (tp.size() > 0 or fp.size() > 0)
+              if (tp.size() > 0 or fp.size() > 0 or num_pos > 0)
                 {
                   APs_count_all += 1;
                   double local_ap = compute_ap(tp, fp, num_pos);
