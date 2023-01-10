@@ -2615,6 +2615,7 @@ namespace dd
             target = bad.get("target").get<std::vector<double>>();
           else
             target.push_back(bad.get("target").get<double>());
+          int reg_dim = predictions.size();
           double leucl = 0;
           for (size_t j = 0; j < target.size(); j++)
             {
@@ -2627,7 +2628,7 @@ namespace dd
                   if (diff >= thres)
                     {
                       if (l1)
-                        eucl += diff;
+                        eucl += diff / reg_dim;
                       else
                         leucl += diff * diff;
                       if (compute_all_distl)
@@ -2637,7 +2638,7 @@ namespace dd
               else
                 {
                   if (l1)
-                    eucl += diff;
+                    eucl += diff / reg_dim;
                   else
                     leucl += diff * diff;
                   if (compute_all_distl)
@@ -2651,7 +2652,7 @@ namespace dd
             }
           if (!l1)
             {
-              eucl += sqrt(leucl);
+              eucl += sqrt(leucl) / reg_dim;
               if (compute_all_distl)
                 for (size_t j = 0; j < target.size(); ++j)
                   all_eucl[j] = sqrt(all_eucl[j]);
