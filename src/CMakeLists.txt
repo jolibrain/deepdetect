@@ -110,6 +110,7 @@ if (USE_TORCH)
     backends/torch/torchutils.cc
     backends/torch/optim/ranger.cc
     backends/torch/optim/madgrad.cc
+    backends/torch/optim/radam.cc
     backends/torch/torchdataaug.cc
 	)
 endif()
