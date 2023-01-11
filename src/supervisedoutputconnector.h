@@ -782,7 +782,10 @@ namespace dd
           find_presence_and_thres("eucll", measures, beucll, beucll_thres);
           bool bl1 = (std::find(measures.begin(), measures.end(), "l1")
                       != measures.end());
-          bool compute_all_distl = (beucll || bl1) && !autoencoder;
+          bool bpercent
+              = (std::find(measures.begin(), measures.end(), "percent")
+                 != measures.end());
+          bool compute_all_distl = (beucll || bl1 || bpercent) && !autoencoder;
 
           bool bmcc = (std::find(measures.begin(), measures.end(), "mcc")
                        != measures.end());
@@ -1110,6 +1113,16 @@ namespace dd
               meas_out.add("l1", ml1);
               for (unsigned int i = 0; i < all_ml1.size(); ++i)
                 meas_out.add("l1_" + std::to_string(i), all_ml1[i]);
+            }
+          if (bpercent)
+            {
+              double mpercent;
+              std::vector<double> all_mpercent;
+              std::tie(mpercent, all_mpercent)
+                  = percentl(ad_res, compute_all_distl);
+              meas_out.add("percent", mpercent);
+              for (unsigned int i = 0; i < all_mpercent.size(); ++i)
+                meas_out.add("percent_" + std::to_string(i), all_mpercent[i]);
             }
           if (bmcc)
             {
@@ -2664,6 +2677,59 @@ namespace dd
           all_eucl[i] /= static_cast<double>(batch_size);
 
       return std::make_tuple(eucl / static_cast<double>(batch_size), all_eucl);
+    }
+
+    static std::tuple<double, std::vector<double>>
+    percentl(const APIData &ad, bool compute_all_distl)
+    {
+      double percent = 0.0;
+      unsigned int psize = ad.getobj(std::to_string(0))
+                               .get("pred")
+                               .get<std::vector<double>>()
+                               .size();
+      std::vector<double> all_percent;
+      if (compute_all_distl)
+        all_percent.resize(psize, 0.0);
+      int batch_size = ad.get("batch_size").get<int>();
+      bool has_ignore = ad.has("ignore_label");
+
+      int ignore_label = -10000;
+      if (has_ignore)
+        ignore_label = ad.get("ignore_label").get<int>();
+
+      for (int i = 0; i < batch_size; i++)
+        {
+          APIData bad = ad.getobj(std::to_string(i));
+          std::vector<double> predictions
+              = bad.get("pred").get<std::vector<double>>();
+          std::vector<double> target;
+          if (predictions.size() > 1)
+            target = bad.get("target").get<std::vector<double>>();
+          else
+            target.push_back(bad.get("target").get<double>());
+          int reg_dim = predictions.size();
+          for (size_t j = 0; j < target.size(); j++)
+            {
+              int t = target.at(j);
+              if (has_ignore && t - static_cast<double>(ignore_label) < 1E-9)
+                continue;
+              double reldiff = fabs((predictions.at(j) - target.at(j)))
+                               / (fabs(target.at(j)) + 1E-9);
+              percent += reldiff / reg_dim;
+              if (compute_all_distl)
+                all_percent[j] += reldiff;
+            }
+        }
+
+      if (compute_all_distl)
+        for (unsigned int i = 0; i < all_percent.size(); ++i)
+          {
+            all_percent[i] /= static_cast<double>(batch_size);
+            all_percent[i] *= 100.0;
+          }
+
+      return std::make_tuple(percent * 100.0 / static_cast<double>(batch_size),
+                             all_percent);
     }
 
     // measure: gini coefficient
