@@ -2049,7 +2049,7 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_false)
   fileops::remove_dir(resnet50_train_repo + "test_0.lmdb");
 }
 
-TEST(torchapi, service_train_images_split_regression_2dims_db_false_l1)
+TEST(torchapi, service_train_images_split_regression_2dims_db_false_l1_percent)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
   torch::manual_seed(torch_seed);
@@ -2080,7 +2080,7 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_false_l1)
           "\"resume\":false},"
           "\"input\":{\"seed\":12345,\"db\":false,\"shuffle\":true,\"test_"
           "split\":0.1},"
-          "\"output\":{\"measure\":[\"l1\"]}},\"data\":[\""
+          "\"output\":{\"measure\":[\"l1\",\"percent\"]}},\"data\":[\""
         + resnet50_train_data_reg2 + "\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
   JDoc jd;
@@ -2091,6 +2091,8 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_false_l1)
 
   ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["l1"].GetDouble() <= 15.0) << "l1";
+  ASSERT_TRUE(jd["body"]["measure"]["percent"].GetDouble() <= 200.0)
+      << "percent";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(resnet50_train_repo, true, false, false, lfiles);
