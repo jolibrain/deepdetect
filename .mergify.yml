@@ -47,6 +47,7 @@ pull_request_rules:
           - Bycob
           - beniz
           - fantes
+          - royale
 
   - name: "warn on conflicts"
     conditions:
