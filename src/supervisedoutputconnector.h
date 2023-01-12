@@ -2645,7 +2645,12 @@ namespace dd
                       else
                         leucl += diff * diff;
                       if (compute_all_distl)
-                        all_eucl[j] += diff;
+                        {
+                          if (l1)
+                            all_eucl[j] += diff;
+                          else
+                            all_eucl[j] += diff * diff;
+                        }
                     }
                 }
               else
