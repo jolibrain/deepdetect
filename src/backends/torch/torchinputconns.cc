@@ -444,6 +444,7 @@ namespace dd
                     split_dataset<std::string>(lfiles, tests_lfiles[0]);
                   }
 
+#pragma omp parallel for ordered schedule(static, 1)
                 for (const std::pair<std::string, std::string> &lfile : lfiles)
                   {
                     _dataset.add_image_bbox_file(lfile.first, lfile.second,
@@ -458,6 +459,7 @@ namespace dd
                   }
 
                 for (size_t i = 0; i < tests_lfiles.size(); ++i)
+#pragma omp parallel for ordered schedule(static, 1)
                   for (const std::pair<std::string, std::string> &lfile :
                        tests_lfiles[i])
                     _test_datasets[i].add_image_bbox_file(
