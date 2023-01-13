@@ -152,6 +152,7 @@ namespace dd
     std::ostringstream tstream;
     torch::save(target, tstream);
 
+#pragma omp ordered
     write_image_to_db(dstream, tstream, bgr.rows, bgr.cols);
   }
 
@@ -257,6 +258,7 @@ namespace dd
       {
         // to tensor
         at::Tensor imgt = image_to_tensor(bgr, height, width);
+#pragma omp ordered
         add_batch({ imgt }, targett);
       }
     else
