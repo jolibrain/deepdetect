@@ -707,6 +707,12 @@ namespace dd
                 if (ad_geometry.has("persp_horizontal"))
                   geometry_params._geometry_persp_horizontal
                       = ad_geometry.get("persp_horizontal").get<bool>();
+                if (ad_geometry.has("transl_vertical"))
+                  geometry_params._geometry_transl_vertical
+                      = ad_geometry.get("transl_vertical").get<bool>();
+                if (ad_geometry.has("transl_horizontal"))
+                  geometry_params._geometry_transl_horizontal
+                      = ad_geometry.get("transl_horizontal").get<bool>();
                 if (ad_geometry.has("zoom_out"))
                   geometry_params._geometry_zoom_out
                       = ad_geometry.get("zoom_out").get<bool>();
@@ -716,6 +722,9 @@ namespace dd
                 if (ad_geometry.has("persp_factor"))
                   geometry_params._geometry_persp_factor
                       = ad_geometry.get("persp_factor").get<double>();
+                if (ad_geometry.has("transl_factor"))
+                  geometry_params._geometry_transl_factor
+                      = ad_geometry.get("transl_factor").get<double>();
                 if (ad_geometry.has("zoom_factor"))
                   geometry_params._geometry_zoom_factor
                       = ad_geometry.get("zoom_factor").get<double>();
@@ -2182,7 +2191,6 @@ namespace dd
           }
         else
           {
-            labels = batch.target[0].view(IntList{ -1 });
             if (_masked_lm)
               {
                 // Convert [n_batch, sequence_length, vocab_size] to [n_batch
@@ -2191,6 +2199,7 @@ namespace dd
               }
             if (_classification || _seq_training)
               {
+                labels = batch.target[0].view(IntList{ -1 });
                 output = torch::softmax(output, 1).to(cpu);
                 auto output_acc = output.accessor<float, 2>();
                 auto labels_acc = labels.accessor<int64_t, 1>();
@@ -2215,17 +2224,30 @@ namespace dd
             else if (_regression)
               {
                 output = output.to(cpu);
+                labels = batch.target[0];
+                unsigned int ntargets = nclasses;
                 auto output_acc = output.accessor<float, 2>();
-                auto labels_acc = labels.accessor<float, 1>();
+                auto labels_acc = labels.accessor<float, 2>();
                 for (int j = 0; j < labels.size(0); ++j)
                   {
                     APIData bad;
                     std::vector<double> predictions;
-                    for (int c = 0; c < nclasses; ++c)
+                    if (ntargets == 1)
                       {
-                        predictions.push_back(output_acc[j][c]);
+                        predictions.push_back(output_acc[j][0]);
+                        bad.add("target",
+                                static_cast<double>(labels_acc[j][0]));
                       }
-                    bad.add("target", static_cast<double>(labels_acc[j]));
+                    else
+                      {
+                        std::vector<double> targets;
+                        for (unsigned int t = 0; t < ntargets; ++t)
+                          {
+                            predictions.push_back(output_acc[j][t]);
+                            targets.push_back(labels_acc[j][t]);
+                          }
+                        bad.add("target", targets);
+                      }
                     bad.add("pred", predictions);
                     ad_res.add(std::to_string(entry_id), bad);
                     ++entry_id;

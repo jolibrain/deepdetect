@@ -21,6 +21,7 @@
 
 #include "torchsolver.h"
 #include "optim/ranger.h"
+#include "optim/radam.h"
 #include "optim/madgrad.h"
 
 namespace dd
@@ -97,6 +98,17 @@ namespace dd
                 _params, torch::optim::AdamOptions(_base_lr)
                              .betas(std::make_tuple(_beta1, _beta2))
                              .weight_decay(_weight_decay)));
+      }
+    else if (_solver_type == "RADAM")
+      {
+        _optimizer = std::unique_ptr<torch::optim::Optimizer>(
+            new RAdam(_params, RAdamOptions(_base_lr)
+                                   .betas(std::make_tuple(_beta1, _beta2))
+                                   .weight_decay(_weight_decay)));
+        this->_logger->info("beta_1: {}", _beta1);
+        this->_logger->info("beta_2: {}", _beta2);
+        this->_logger->info("weight_decay: {}", _weight_decay);
+        this->_logger->info("rectified: TRUE");
       }
     else if (_solver_type == "ADAMW")
       {

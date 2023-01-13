@@ -413,12 +413,19 @@ def fill_args_from_repo(repo_path, args):
         args.weights = os.path.join(repo_path, "checkpoint-%d.pt" % it)
 
     # Try to deduce template if not present
-    if not args.model:
+    if not args.model or args.model == "auto":
         suffixes = {"_m": "yolox-m", "-m": "yolox-m", "_s": "yolox-s", "-s": "yolox-s"}
+        repo_name = os.path.basename(repo_path.rstrip("/"))
+        model_found = False
+
         for suffix in suffixes:
-            if repo_path.endswith(suffix):
+            if repo_name.endswith(suffix):
                 args.model = suffixes[suffix]
+                model_found = True
                 logging.info("Deduced model %s with suffix %s" % (args.model, suffix))
+
+        if not model_found:
+            raise RuntimeError("Could not deduce the model from repository name %s" % repo_name)
 
 
 if __name__ == "__main__":
