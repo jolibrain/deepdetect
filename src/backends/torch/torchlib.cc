@@ -667,7 +667,8 @@ namespace dd
         bool has_data_augmentation
             = ad_mllib.has("mirror") || ad_mllib.has("rotate")
               || ad_mllib.has("crop_size") || ad_mllib.has("cutout")
-              || ad_mllib.has("geometry");
+              || ad_mllib.has("geometry") || ad_mllib.has("noise")
+              || ad_mllib.has("distort");
         if (has_data_augmentation)
           {
             bool has_mirror
