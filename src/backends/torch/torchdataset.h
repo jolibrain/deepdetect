@@ -46,6 +46,8 @@ namespace dd
                                std::vector<at::Tensor>>
       TorchBatch;
 
+  typedef std::vector<torch::Tensor> BatchToStack;
+
   /**
    * \brief dede torch dataset wrapper
    * allows reading from db, controllable randomness ...
@@ -67,6 +69,11 @@ namespace dd
     std::shared_ptr<spdlog::logger> _logger; /**< dd logger */
 
     std::mutex _mutex; /**< lock to keep the dataset synchronized */
+    void dataaug_then_push_back(const cv::Mat &bgr,
+                                const std::vector<torch::Tensor> &t,
+                                const cv::Mat &bw_target,
+                                std::vector<BatchToStack> &data,
+                                std::vector<BatchToStack> &target);
 
   public:
     bool _shuffle = true;            /**< shuffle dataset upon reset() */
@@ -75,6 +82,8 @@ namespace dd
     std::vector<int64_t> _indices;   /**< id/key  of data points */
     std::vector<std::pair<std::string, std::vector<double>>>
         _lfiles; /**< list of files */
+    std::vector<std::pair<std::string, std::string>>
+        _lfilesseg; /**< list of files for segmentation */
 
     std::vector<TorchBatch> _batches; /**< Vector containing the whole dataset
                                          (the "cached data") */
@@ -104,8 +113,8 @@ namespace dd
           _backend(d._backend), _db(d._db),
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
           _logger(d._logger), _shuffle(d._shuffle), _dbData(d._dbData),
-          _indices(d._indices), _lfiles(d._lfiles), _batches(d._batches),
-          _dbFullName(d._dbFullName), _inputc(d._inputc),
+          _indices(d._indices), _lfiles(d._lfiles), _lfilesseg(d._lfilesseg),
+          _batches(d._batches), _dbFullName(d._dbFullName), _inputc(d._inputc),
           _classification(d._classification), _image(d._image), _bbox(d._bbox),
           _segmentation(d._segmentation), _test(d._test),
           _img_rand_aug_cv(d._img_rand_aug_cv)
@@ -191,7 +200,8 @@ namespace dd
      */
     bool empty() const
     {
-      return (!_db && cache_size() == 0 && _lfiles.empty())
+      return (!_db && cache_size() == 0 && _lfiles.empty()
+              && _lfilesseg.empty())
              || (_db && _dbFullName.empty());
     }
 
