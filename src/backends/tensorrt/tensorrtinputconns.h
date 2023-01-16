@@ -28,6 +28,7 @@
 
 namespace dd
 {
+
   class TensorRTInputInterface
   {
   public:
@@ -104,7 +105,6 @@ namespace dd
     void GpuMatToRTBuffer(cv::cuda::GpuMat &img, int i);
 #endif
   };
-
 }
 
 #endif

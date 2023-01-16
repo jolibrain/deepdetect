@@ -193,6 +193,15 @@ namespace dd
       DTO_FIELD(String, forward_method) = "";
 
       // =====
+      // TensorRT Options
+      DTO_FIELD_INFO(calibration)
+      {
+        info->description
+            = "whether this image should be used to calibrate the model";
+      };
+      DTO_FIELD(Boolean, calibration) = false;
+
+      // =====
       // NCNN Options
       DTO_FIELD_INFO(threads)
       {

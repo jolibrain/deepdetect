@@ -127,6 +127,7 @@ namespace dd
         _template; /**< template for models that require specific treatment */
 
     //!< The TensorRT engine used to run the network
+    std::shared_ptr<nvinfer1::IInt8Calibrator> _calibrator = nullptr;
     std::shared_ptr<nvinfer1::ICudaEngine> _engine = nullptr;
     std::shared_ptr<nvinfer1::IBuilder> _builder = nullptr;
     std::shared_ptr<nvinfer1::IExecutionContext> _context = nullptr;
