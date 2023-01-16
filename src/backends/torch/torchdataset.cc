@@ -229,20 +229,21 @@ namespace dd
 
     if (bgr.cols != width || bgr.rows != height)
       {
-        float w_ratio = static_cast<float>(width) / bgr.cols;
-        float h_ratio = static_cast<float>(height) / bgr.rows;
         cv::resize(bgr, bgr, cv::Size(width, height), 0, 0, cv::INTER_CUBIC);
 
         if (_bbox)
-          for (int bb = 0; bb < (int)targett[0].size(0); ++bb)
-            {
-              targett[0][bb][0] *= w_ratio;
-              targett[0][bb][1] *= h_ratio;
-              targett[0][bb][2] *= w_ratio;
-              targett[0][bb][3] *= h_ratio;
-            }
-
-        if (_segmentation)
+          {
+            float w_ratio = static_cast<float>(width) / bgr.cols;
+            float h_ratio = static_cast<float>(height) / bgr.rows;
+            for (int bb = 0; bb < (int)targett[0].size(0); ++bb)
+              {
+                targett[0][bb][0] *= w_ratio;
+                targett[0][bb][1] *= h_ratio;
+                targett[0][bb][2] *= w_ratio;
+                targett[0][bb][3] *= h_ratio;
+              }
+          }
+        else if (_segmentation)
           {
             cv::resize(bw_target, bw_target, cv::Size(width, height), 0, 0,
                        cv::INTER_NEAREST);
@@ -313,6 +314,10 @@ namespace dd
           {
             data_size = _batches.size();
           }
+        else if (!_lfilesseg.empty())
+          {
+            data_size = _lfilesseg.size();
+          }
       }
     else // below db case
       {
@@ -370,13 +375,85 @@ namespace dd
     return d.at(i).sizes().vec();
   }
 
+  void TorchDataset::dataaug_then_push_back(
+      const cv::Mat &bgr, const std::vector<torch::Tensor> &t,
+      const cv::Mat &bw_target, std::vector<BatchToStack> &data,
+      std::vector<BatchToStack> &target)
+  {
+    int samples = 1;
+
+    if (_test && _img_rand_aug_cv._crop_params._crop_size > 0)
+      samples = _img_rand_aug_cv._crop_params._test_crop_samples;
+
+    while (samples > 0)
+      {
+        cv::Mat bgr_sample = bgr.clone();
+        cv::Mat bw_target_sample;
+        std::vector<torch::Tensor> d_sample;
+        std::vector<torch::Tensor> t_sample = t;
+        if (_segmentation)
+          bw_target_sample = bw_target.clone();
+
+        // data augmentation can apply here, with OpenCV
+        if (!_test)
+          {
+            if (_bbox)
+              _img_rand_aug_cv.augment_with_bbox(bgr_sample, t_sample);
+            else if (_segmentation)
+              _img_rand_aug_cv.augment_with_segmap(bgr_sample,
+                                                   bw_target_sample);
+            else
+              _img_rand_aug_cv.augment(bgr_sample);
+          }
+        else
+          {
+            // cropping requires test set 'augmentation'
+            if (_bbox)
+              {
+                _img_rand_aug_cv.augment_test_with_bbox(bgr_sample, t_sample);
+              }
+            else if (_segmentation)
+              _img_rand_aug_cv.augment_test_with_segmap(bgr_sample,
+                                                        bw_target_sample);
+            else
+              _img_rand_aug_cv.augment_test(bgr_sample);
+          }
+
+        torch::Tensor imgt
+            = image_to_tensor(bgr_sample, bgr_sample.rows, bgr_sample.cols);
+        d_sample.push_back(imgt);
+
+        if (_segmentation)
+          {
+            at::Tensor targett_seg
+                = image_to_tensor(bw_target_sample, bw_target_sample.rows,
+                                  bw_target_sample.cols, true);
+            t_sample.push_back(targett_seg);
+          }
+
+        --samples;
+
+        for (unsigned int i = 0; i < d_sample.size(); ++i)
+          {
+            while (i >= data.size())
+              data.emplace_back();
+            data.at(i).push_back(d_sample[i]);
+          }
+        for (unsigned int i = 0; i < t_sample.size(); ++i)
+          {
+            while (i >= target.size())
+              target.emplace_back();
+            target.at(i).push_back(t_sample[i]);
+          }
+      }
+  }
+
   // `request` holds the size of the batch
   // Data selection and batch construction are done in this method
   c10::optional<TorchBatch> TorchDataset::get_batch(BatchRequestType request)
   {
     size_t count = request[0];
 
-    typedef std::vector<torch::Tensor> BatchToStack;
     std::vector<BatchToStack> data, target;
 
     if (!_db) // Note: no data augmentation if no db
@@ -405,9 +482,6 @@ namespace dd
 
         if (!_lfiles.empty()) // prefetch batch from file list
           {
-            ImgTorchInputFileConn *inputc
-                = dynamic_cast<ImgTorchInputFileConn *>(_inputc);
-            bool first_iter = true;
 
             for (int64_t id : ids)
               {
@@ -423,25 +497,39 @@ namespace dd
                 int res = read_image_file(lfile.first, dimg);
                 if (res == 0)
                   {
-                    if (first_iter)
-                      {
-                        data.resize(1);
-                        target.resize(targetts.size());
-                        first_iter = false;
-                      }
-
-                    data[0].push_back(image_to_tensor(dimg, inputc->height(),
-                                                      inputc->width()));
-
-                    for (unsigned int i = 0; i < targetts.size(); ++i)
-                      {
-                        target.at(i).push_back(targetts[i]);
-                      }
+                    cv::Mat timg; // unused
+                    dataaug_then_push_back(dimg, targetts, timg, data, target);
                   }
                 else
                   {
                     this->_logger->warn("Skip file {}: not found",
                                         lfile.first);
+                  }
+              }
+          }
+        else if (!_lfilesseg.empty()) // segmentation with no db
+          {
+            std::vector<torch::Tensor> t;
+
+            for (int64_t id : ids)
+              {
+                auto lfile = _lfilesseg.at(id);
+
+                cv::Mat dimg, timg;
+                int res = read_image_file(lfile.first, dimg);
+                int res2 = read_image_file(lfile.second, timg, true);
+                if (res == 0 && res2 == 0)
+                  {
+                    dataaug_then_push_back(dimg, t, timg, data, target);
+                  }
+                else
+                  {
+                    if (res != 0)
+                      this->_logger->warn("Skip file {}: not found",
+                                          lfile.first);
+                    if (res2 != 0)
+                      this->_logger->warn("Skip file {}: not found",
+                                          lfile.second);
                   }
               }
           }
@@ -552,74 +640,7 @@ namespace dd
                                    inputc->_bw, inputc->width(),
                                    inputc->height());
 
-                int samples = 1;
-
-                if (_test && _img_rand_aug_cv._crop_params._crop_size > 0)
-                  samples = _img_rand_aug_cv._crop_params._test_crop_samples;
-
-                while (samples > 0)
-                  {
-                    cv::Mat bgr_sample = bgr.clone();
-                    cv::Mat bw_target_sample;
-                    std::vector<torch::Tensor> d_sample = d;
-                    std::vector<torch::Tensor> t_sample = t;
-                    if (_segmentation)
-                      bw_target_sample = bw_target.clone();
-
-                    // data augmentation can apply here, with OpenCV
-                    if (!_test)
-                      {
-                        if (_bbox)
-                          _img_rand_aug_cv.augment_with_bbox(bgr_sample,
-                                                             t_sample);
-                        else if (_segmentation)
-                          _img_rand_aug_cv.augment_with_segmap(
-                              bgr_sample, bw_target_sample);
-                        else
-                          _img_rand_aug_cv.augment(bgr_sample);
-                      }
-                    else
-                      {
-                        // cropping requires test set 'augmentation'
-                        if (_bbox)
-                          {
-                            _img_rand_aug_cv.augment_test_with_bbox(bgr_sample,
-                                                                    t_sample);
-                          }
-                        else if (_segmentation)
-                          _img_rand_aug_cv.augment_test_with_segmap(
-                              bgr_sample, bw_target_sample);
-                        else
-                          _img_rand_aug_cv.augment_test(bgr_sample);
-                      }
-
-                    torch::Tensor imgt = image_to_tensor(
-                        bgr_sample, bgr_sample.rows, bgr_sample.cols);
-                    d_sample.push_back(imgt);
-
-                    if (_segmentation)
-                      {
-                        at::Tensor targett_seg = image_to_tensor(
-                            bw_target_sample, bw_target_sample.rows,
-                            bw_target_sample.cols, true);
-                        t_sample.push_back(targett_seg);
-                      }
-
-                    --samples;
-
-                    for (unsigned int i = 0; i < d_sample.size(); ++i)
-                      {
-                        while (i >= data.size())
-                          data.emplace_back();
-                        data.at(i).push_back(d_sample[i]);
-                      }
-                    for (unsigned int i = 0; i < t_sample.size(); ++i)
-                      {
-                        while (i >= target.size())
-                          target.emplace_back();
-                        target.at(i).push_back(t_sample[i]);
-                      }
-                  }
+                dataaug_then_push_back(bgr, t, bw_target, data, target);
               }
           }
 
@@ -752,17 +773,22 @@ namespace dd
                                          const std::string &fname_target,
                                          const int &height, const int &width)
   {
-    cv::Mat img;
-    int res = read_image_file(fname, img);
-    if (res != 0)
-      return res;
-    cv::Mat img_tgt;
-    res = read_image_file(fname_target, img_tgt, true);
-
-    if (res != 0)
-      return res;
-    add_image_batch(img, width, height, img_tgt);
-    return res;
+    if (_db)
+      {
+        cv::Mat img;
+        int res = read_image_file(fname, img);
+        if (res != 0)
+          return res;
+        cv::Mat img_tgt;
+        res = read_image_file(fname_target, img_tgt, true);
+        if (res != 0)
+          return res;
+        add_image_batch(img, width, height, img_tgt);
+      }
+    else
+      _lfilesseg.push_back(
+          std::pair<std::string, std::string>(fname, fname_target));
+    return 0;
   }
 
   int TorchDataset::add_image_bbox_file(const std::string &fname,
