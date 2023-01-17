@@ -364,7 +364,8 @@ namespace dd
                     split_dataset<int>(lfiles, tests_lfiles[0]);
                   }
 
-                // Read data
+                  // Read data
+#pragma omp parallel for ordered schedule(static, 1)
                 for (const std::pair<std::string, int> &lfile : lfiles)
                   _dataset.add_image_file(lfile.first, lfile.second, _height,
                                           _width);
@@ -397,6 +398,7 @@ namespace dd
                   }
 
                 for (size_t i = 0; i < tests_lfiles.size(); ++i)
+#pragma omp parallel for ordered schedule(static, 1)
                   for (const std::pair<std::string, int> &lfile :
                        tests_lfiles[i])
                     _test_datasets[i].add_image_file(lfile.first, lfile.second,
@@ -496,6 +498,7 @@ namespace dd
                     split_dataset<std::string>(lfiles, tests_lfiles[0]);
                   }
 
+#pragma omp parallel for ordered schedule(static, 1)
                 for (const std::pair<std::string, std::string> &lfile : lfiles)
                   {
                     _dataset.add_image_image_file(lfile.first, lfile.second,
@@ -510,6 +513,7 @@ namespace dd
                   }
 
                 for (size_t i = 0; i < tests_lfiles.size(); ++i)
+#pragma omp parallel for ordered schedule(static, 1)
                   for (const std::pair<std::string, std::string> &lfile :
                        tests_lfiles[i])
                     _test_datasets[i].add_image_image_file(
@@ -558,6 +562,7 @@ namespace dd
                 // ctc blank character
                 alphabet[0] = 0;
 
+#pragma omp parallel for ordered schedule(static, 1)
                 for (const std::pair<std::string, std::string> &lfile : lfiles)
                   {
                     _dataset.add_image_text_file(lfile.first, lfile.second,
@@ -573,6 +578,7 @@ namespace dd
                   }
 
                 for (size_t i = 0; i < tests_lfiles.size(); ++i)
+#pragma omp parallel for ordered schedule(static, 1)
                   for (const std::pair<std::string, std::string> &lfile :
                        tests_lfiles[i])
                     _test_datasets[i].add_image_text_file(
@@ -631,6 +637,7 @@ namespace dd
                 // Read data
                 if (_db)
                   {
+#pragma omp parallel for ordered schedule(static, 1)
                     for (const std::pair<std::string, std::vector<double>>
                              &lfile : lfiles)
                       {
@@ -642,6 +649,7 @@ namespace dd
                     // has_to_create_db
 
                     for (size_t i = 0; i < tests_lfiles.size(); ++i)
+#pragma omp parallel for ordered schedule(static, 1)
                       for (const std::pair<std::string, std::vector<double>>
                                &lfile : tests_lfiles[i])
                         _test_datasets[i].add_image_file(
