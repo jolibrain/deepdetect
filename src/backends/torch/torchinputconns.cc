@@ -290,8 +290,7 @@ namespace dd
           {
             _imgs_size.insert(std::pair<std::string, std::pair<int, int>>(
                 this->_ids.at(i), this->_images_size.at(i)));
-            _dataset.add_batch({ _dataset.image_to_tensor(this->_images[i],
-                                                          _height, _width) });
+            _dataset.add_batch({ _dataset.image_to_tensor(this->_images[i]) });
           }
       }
     else // if (!_train)
@@ -367,8 +366,7 @@ namespace dd
                   // Read data
 #pragma omp parallel for ordered schedule(static, 1)
                 for (const std::pair<std::string, int> &lfile : lfiles)
-                  _dataset.add_image_file(lfile.first, lfile.second, _height,
-                                          _width);
+                  _dataset.add_image_file(lfile.first, lfile.second);
 
                 if (!_db)
                   // in case of db, test sets are already allocated in
@@ -401,8 +399,8 @@ namespace dd
 #pragma omp parallel for ordered schedule(static, 1)
                   for (const std::pair<std::string, int> &lfile :
                        tests_lfiles[i])
-                    _test_datasets[i].add_image_file(lfile.first, lfile.second,
-                                                     _height, _width);
+                    _test_datasets[i].add_image_file(lfile.first,
+                                                     lfile.second);
 
                 // Write corresp file
                 std::ofstream correspf(_model_repo + "/" + _correspname,
@@ -449,8 +447,7 @@ namespace dd
 #pragma omp parallel for ordered schedule(static, 1)
                 for (const std::pair<std::string, std::string> &lfile : lfiles)
                   {
-                    _dataset.add_image_bbox_file(lfile.first, lfile.second,
-                                                 _height, _width);
+                    _dataset.add_image_bbox_file(lfile.first, lfile.second);
                   }
 
                 // in case of db, alloc of test sets already done in
@@ -464,8 +461,8 @@ namespace dd
 #pragma omp parallel for ordered schedule(static, 1)
                   for (const std::pair<std::string, std::string> &lfile :
                        tests_lfiles[i])
-                    _test_datasets[i].add_image_bbox_file(
-                        lfile.first, lfile.second, _height, _width);
+                    _test_datasets[i].add_image_bbox_file(lfile.first,
+                                                          lfile.second);
               }
             else if (_segmentation) // expects a file list of image filepath
                                     // and target image filepath
@@ -501,8 +498,7 @@ namespace dd
 #pragma omp parallel for ordered schedule(static, 1)
                 for (const std::pair<std::string, std::string> &lfile : lfiles)
                   {
-                    _dataset.add_image_image_file(lfile.first, lfile.second,
-                                                  _height, _width);
+                    _dataset.add_image_image_file(lfile.first, lfile.second);
                   }
 
                 // in case of db, alloc of test sets already done in
@@ -516,8 +512,8 @@ namespace dd
 #pragma omp parallel for ordered schedule(static, 1)
                   for (const std::pair<std::string, std::string> &lfile :
                        tests_lfiles[i])
-                    _test_datasets[i].add_image_image_file(
-                        lfile.first, lfile.second, _height, _width);
+                    _test_datasets[i].add_image_image_file(lfile.first,
+                                                           lfile.second);
               }
             else if (_ctc)
               {
@@ -566,8 +562,7 @@ namespace dd
                 for (const std::pair<std::string, std::string> &lfile : lfiles)
                   {
                     _dataset.add_image_text_file(lfile.first, lfile.second,
-                                                 _height, _width, alphabet,
-                                                 max_ocr_length);
+                                                 alphabet, max_ocr_length);
                   }
 
                 // in case of db, alloc of test sets already done in
@@ -582,8 +577,7 @@ namespace dd
                   for (const std::pair<std::string, std::string> &lfile :
                        tests_lfiles[i])
                     _test_datasets[i].add_image_text_file(
-                        lfile.first, lfile.second, _height, _height, alphabet,
-                        max_ocr_length);
+                        lfile.first, lfile.second, alphabet, max_ocr_length);
 
                 // Write corresp file
                 std::ofstream correspf(_model_repo + "/" + _correspname,
@@ -641,8 +635,7 @@ namespace dd
                     for (const std::pair<std::string, std::vector<double>>
                              &lfile : lfiles)
                       {
-                        _dataset.add_image_file(lfile.first, lfile.second,
-                                                _height, _width);
+                        _dataset.add_image_file(lfile.first, lfile.second);
                       }
 
                     // in case of db, alloc of test sets already done in
@@ -652,8 +645,8 @@ namespace dd
 #pragma omp parallel for ordered schedule(static, 1)
                       for (const std::pair<std::string, std::vector<double>>
                                &lfile : tests_lfiles[i])
-                        _test_datasets[i].add_image_file(
-                            lfile.first, lfile.second, _height, _width);
+                        _test_datasets[i].add_image_file(lfile.first,
+                                                         lfile.second);
                   }
                 else
                   {

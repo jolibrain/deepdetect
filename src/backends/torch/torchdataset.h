@@ -136,12 +136,10 @@ namespace dd
     /**
      * \brief add an encoded image to a batch, with an int target
      */
-    void add_image_batch(const cv::Mat &bgr, const int &width,
-                         const int &height,
+    void add_image_batch(const cv::Mat &bgr,
                          const std::vector<at::Tensor> &targett);
 
-    void add_image_batch(const cv::Mat &bgr, const int &width,
-                         const int &height, const cv::Mat &bw_target);
+    void add_image_batch(const cv::Mat &bgr, const cv::Mat &bw_target);
 
     /**
      * \brief reset dataset reading status : ie start new epoch
@@ -292,16 +290,14 @@ namespace dd
                         const bool &target = false);
 
     int add_image_file(const std::string &fname,
-                       const std::vector<at::Tensor> &target,
-                       const int &height, const int &width);
+                       const std::vector<at::Tensor> &target);
 
     /**
      * \brief adds image from image filename, with an int target
      * \param width of preprocessed image
      * \param height of preprocessed image
      */
-    int add_image_file(const std::string &fname, const int &target,
-                       const int &height, const int &width);
+    int add_image_file(const std::string &fname, const int &target);
 
     /**
      * \brief adds image from image filename, with a set of regression targets
@@ -309,8 +305,7 @@ namespace dd
      * \param height of preprocessed image
      */
     int add_image_file(const std::string &fname,
-                       const std::vector<double> &target, const int &height,
-                       const int &width);
+                       const std::vector<double> &target);
 
     /**
      * \brief adds image from image filename, with an image as target
@@ -318,8 +313,7 @@ namespace dd
      * \param height of preprocessed image
      */
     int add_image_image_file(const std::string &fname,
-                             const std::string &fname_target,
-                             const int &height, const int &width);
+                             const std::string &fname_target);
 
     /**
      * \brief adds image to batch, with a bbox list file as target.
@@ -327,8 +321,7 @@ namespace dd
      * \param height of preprocessed image
      */
     int add_image_bbox_file(const std::string &fname,
-                            const std::string &bboxfname, const int &height,
-                            const int &width);
+                            const std::string &bboxfname);
 
     /**
      * \brief adds image from image filename with a text target (ocr)
@@ -338,7 +331,7 @@ namespace dd
      * \param max_ocr_length maximum possible size of the sequence
      */
     int add_image_text_file(const std::string &fname,
-                            const std::string &target, int height, int width,
+                            const std::string &target,
                             std::unordered_map<uint32_t, int> &alphabet,
                             int max_ocr_length);
 
@@ -349,8 +342,7 @@ namespace dd
      * \param width image width
      * \param target whether the image is a label/target
      */
-    at::Tensor image_to_tensor(const cv::Mat &bgr, const int &height,
-                               const int &width, const bool &target = false);
+    at::Tensor image_to_tensor(const cv::Mat &bgr, const bool &target = false);
 
     /**
      * \brief turns an int into a torch::Tensor
