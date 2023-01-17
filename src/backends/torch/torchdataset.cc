@@ -252,14 +252,13 @@ namespace dd
   }
 
   // add image batch
-  void TorchDataset::add_image_batch(const cv::Mat &bgr, const int &width,
-                                     const int &height,
+  void TorchDataset::add_image_batch(const cv::Mat &bgr,
                                      const std::vector<at::Tensor> &targett)
   {
     if (!_db)
       {
         // to tensor
-        at::Tensor imgt = image_to_tensor(bgr, height, width);
+        at::Tensor imgt = image_to_tensor(bgr);
 #pragma omp ordered
         add_batch({ imgt }, targett);
       }
@@ -271,15 +270,14 @@ namespace dd
   }
 
   // add image batch
-  void TorchDataset::add_image_batch(const cv::Mat &bgr, const int &width,
-                                     const int &height,
+  void TorchDataset::add_image_batch(const cv::Mat &bgr,
                                      const cv::Mat &bw_target)
   {
     if (!_db)
       {
         // to tensor
-        at::Tensor imgt = image_to_tensor(bgr, height, width);
-        at::Tensor imgt_tgt = image_to_tensor(bw_target, height, width, true);
+        at::Tensor imgt = image_to_tensor(bgr);
+        at::Tensor imgt_tgt = image_to_tensor(bw_target, true);
 #pragma omp ordered
         add_batch({ imgt }, { imgt_tgt });
       }
@@ -419,15 +417,12 @@ namespace dd
               _img_rand_aug_cv.augment_test(bgr_sample);
           }
 
-        torch::Tensor imgt
-            = image_to_tensor(bgr_sample, bgr_sample.rows, bgr_sample.cols);
+        torch::Tensor imgt = image_to_tensor(bgr_sample);
         d_sample.push_back(imgt);
 
         if (_segmentation)
           {
-            at::Tensor targett_seg
-                = image_to_tensor(bw_target_sample, bw_target_sample.rows,
-                                  bw_target_sample.cols, true);
+            at::Tensor targett_seg = image_to_tensor(bw_target_sample, true);
             t_sample.push_back(targett_seg);
           }
 
@@ -744,34 +739,30 @@ namespace dd
   }
 
   int TorchDataset::add_image_file(const std::string &fname,
-                                   const std::vector<at::Tensor> &target,
-                                   const int &height, const int &width)
+                                   const std::vector<at::Tensor> &target)
   {
     cv::Mat img;
     int res = read_image_file(fname, img);
     if (res == 0)
       {
-        add_image_batch(img, height, width, target);
+        add_image_batch(img, target);
       }
     return res;
   }
 
-  int TorchDataset::add_image_file(const std::string &fname, const int &target,
-                                   const int &height, const int &width)
+  int TorchDataset::add_image_file(const std::string &fname, const int &target)
   {
-    return add_image_file(fname, { target_to_tensor(target) }, height, width);
+    return add_image_file(fname, { target_to_tensor(target) });
   }
 
   int TorchDataset::add_image_file(const std::string &fname,
-                                   const std::vector<double> &target,
-                                   const int &height, const int &width)
+                                   const std::vector<double> &target)
   {
-    return add_image_file(fname, { target_to_tensor(target) }, height, width);
+    return add_image_file(fname, { target_to_tensor(target) });
   }
 
   int TorchDataset::add_image_image_file(const std::string &fname,
-                                         const std::string &fname_target,
-                                         const int &height, const int &width)
+                                         const std::string &fname_target)
   {
     if (_db)
       {
@@ -783,17 +774,17 @@ namespace dd
         res = read_image_file(fname_target, img_tgt, true);
         if (res != 0)
           return res;
-        add_image_batch(img, width, height, img_tgt);
+        add_image_batch(img, img_tgt);
       }
     else
+#pragma omp ordered
       _lfilesseg.push_back(
           std::pair<std::string, std::string>(fname, fname_target));
     return 0;
   }
 
   int TorchDataset::add_image_bbox_file(const std::string &fname,
-                                        const std::string &bboxfname,
-                                        const int &height, const int &width)
+                                        const std::string &bboxfname)
   {
     // read image before reading bboxes to get the size of the image
     ImgTorchInputFileConn *inputc
@@ -818,6 +809,7 @@ namespace dd
       {
         return -1;
       }
+
     int orig_height = dimg._imgs_size[0].first;
     int orig_width = dimg._imgs_size[0].second;
 
@@ -827,10 +819,10 @@ namespace dd
 
     std::ifstream infile(bboxfname);
     std::string line;
-    double wfactor
-        = static_cast<double>(width) / static_cast<double>(orig_width);
-    double hfactor
-        = static_cast<double>(height) / static_cast<double>(orig_height);
+    double wfactor = static_cast<double>(inputc->_width)
+                     / static_cast<double>(orig_width);
+    double hfactor = static_cast<double>(inputc->_height)
+                     / static_cast<double>(orig_height);
 
     while (std::getline(infile, line))
       {
@@ -865,15 +857,14 @@ namespace dd
       }
 
     // add image
-    add_image_batch(dimg._imgs[0], height, width,
+    add_image_batch(dimg._imgs[0],
                     { torch::stack(bboxes), torch::cat(classes) });
     return 0;
   }
 
   int TorchDataset::add_image_text_file(
-      const std::string &fname, const std::string &target, int height,
-      int width, std::unordered_map<uint32_t, int> &alphabet,
-      int max_ocr_length)
+      const std::string &fname, const std::string &target,
+      std::unordered_map<uint32_t, int> &alphabet, int max_ocr_length)
   {
     at::Tensor target_tensor = torch::zeros(
         max_ocr_length, at::TensorOptions().dtype(torch::kInt64));
@@ -913,18 +904,17 @@ namespace dd
 
         i++;
       }
-    add_image_file(fname, { target_tensor, target_length }, height, width);
+    add_image_file(fname, { target_tensor, target_length });
     return 0;
   }
 
   at::Tensor TorchDataset::image_to_tensor(const cv::Mat &bgr,
-                                           const int &height, const int &width,
                                            const bool &target)
   {
     ImgTorchInputFileConn *inputc
         = dynamic_cast<ImgTorchInputFileConn *>(_inputc);
 
-    std::vector<int64_t> sizes{ height, width, bgr.channels() };
+    std::vector<int64_t> sizes{ bgr.rows, bgr.cols, bgr.channels() };
     at::TensorOptions options(at::ScalarType::Byte);
 
     at::Tensor imgt = torch::from_blob(bgr.data, at::IntList(sizes), options);
