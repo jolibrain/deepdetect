@@ -84,6 +84,8 @@ namespace dd
         _lfiles; /**< list of files */
     std::vector<std::pair<std::string, std::string>>
         _lfilesseg; /**< list of files for segmentation */
+    std::vector<std::pair<std::string, std::string>>
+        _lfilesbbox; /**< list of files for bbox */
 
     std::vector<TorchBatch> _batches; /**< Vector containing the whole dataset
                                          (the "cached data") */
@@ -114,7 +116,8 @@ namespace dd
           _batches_per_transaction(d._batches_per_transaction), _txn(d._txn),
           _logger(d._logger), _shuffle(d._shuffle), _dbData(d._dbData),
           _indices(d._indices), _lfiles(d._lfiles), _lfilesseg(d._lfilesseg),
-          _batches(d._batches), _dbFullName(d._dbFullName), _inputc(d._inputc),
+          _lfilesbbox(d._lfilesbbox), _batches(d._batches),
+          _dbFullName(d._dbFullName), _inputc(d._inputc),
           _classification(d._classification), _image(d._image), _bbox(d._bbox),
           _segmentation(d._segmentation), _test(d._test),
           _img_rand_aug_cv(d._img_rand_aug_cv)
@@ -314,6 +317,13 @@ namespace dd
      */
     int add_image_image_file(const std::string &fname,
                              const std::string &fname_target);
+
+    /**
+     * \brief reads image with a bbox list file as target.
+     */
+    int read_image_bbox_file(const std::string &fname,
+                             const std::string &bboxfname, cv::Mat &out_img,
+                             std::vector<at::Tensor> &out_targett);
 
     /**
      * \brief adds image to batch, with a bbox list file as target.

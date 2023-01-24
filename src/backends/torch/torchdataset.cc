@@ -316,6 +316,10 @@ namespace dd
           {
             data_size = _lfilesseg.size();
           }
+        else if (!_lfilesbbox.empty())
+          {
+            data_size = _lfilesbbox.size();
+          }
       }
     else // below db case
       {
@@ -525,6 +529,24 @@ namespace dd
                     if (res2 != 0)
                       this->_logger->warn("Skip file {}: not found",
                                           lfile.second);
+                  }
+              }
+          }
+        else if (!_lfilesbbox.empty()) // bbox with no db
+          {
+            cv::Mat timg;
+
+            for (int64_t id : ids)
+              {
+                auto lfile = _lfilesbbox.at(id);
+
+                cv::Mat dimg;
+                std::vector<at::Tensor> t;
+                int res
+                    = read_image_bbox_file(lfile.first, lfile.second, dimg, t);
+                if (res == 0)
+                  {
+                    dataaug_then_push_back(dimg, t, timg, data, target);
                   }
               }
           }
@@ -783,8 +805,10 @@ namespace dd
     return 0;
   }
 
-  int TorchDataset::add_image_bbox_file(const std::string &fname,
-                                        const std::string &bboxfname)
+  int TorchDataset::read_image_bbox_file(const std::string &fname,
+                                         const std::string &bboxfname,
+                                         cv::Mat &out_img,
+                                         std::vector<at::Tensor> &out_targett)
   {
     // read image before reading bboxes to get the size of the image
     ImgTorchInputFileConn *inputc
@@ -856,9 +880,27 @@ namespace dd
         classes.push_back(target_to_tensor(cls));
       }
 
-    // add image
-    add_image_batch(dimg._imgs[0],
-                    { torch::stack(bboxes), torch::cat(classes) });
+    out_img = dimg._imgs[0];
+    out_targett = { torch::stack(bboxes), torch::cat(classes) };
+    return 0;
+  }
+
+  int TorchDataset::add_image_bbox_file(const std::string &fname,
+                                        const std::string &bboxfname)
+  {
+    if (_db)
+      {
+        cv::Mat img;
+        std::vector<at::Tensor> targett;
+        int res = read_image_bbox_file(fname, bboxfname, img, targett);
+        if (res != 0)
+          return res;
+        add_image_batch(img, targett);
+      }
+    else
+#pragma omp ordered
+      _lfilesbbox.push_back(
+          std::pair<std::string, std::string>(fname, bboxfname));
     return 0;
   }
 
