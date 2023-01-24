@@ -328,7 +328,7 @@ namespace dd
         if (!_dbCursor)
           _dbCursor = _dbData->NewCursor();
 
-        data_size = _dbData->Count();
+        data_size = _dbData->Count() / 2;
       }
 
     _indices.resize(data_size);
