@@ -890,11 +890,21 @@ namespace dd
             target_tensor[i] = it->second;
           }
         else if (!_test)
+#pragma omp ordered
           {
-            this->_logger->info("added {} to alphabet", c);
-            int id = alphabet.size();
-            alphabet[c] = id;
-            target_tensor[i] = id;
+            // in a parallel loop, recheck in order to avoid race condition
+            auto it = alphabet.find(c);
+            if (it != alphabet.end())
+              {
+                target_tensor[i] = it->second;
+              }
+            else
+              {
+                this->_logger->info("added {} to alphabet", c);
+                int id = alphabet.size();
+                alphabet[c] = id;
+                target_tensor[i] = id;
+              }
           }
         else
           {
