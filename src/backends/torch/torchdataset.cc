@@ -395,12 +395,24 @@ namespace dd
         std::vector<torch::Tensor> t_sample = t;
         if (_segmentation)
           bw_target_sample = bw_target.clone();
+        bool no_bbox = false;
+        if (_bbox)
+          {
+            auto &cls_bbox = t_sample.at(1);
+            no_bbox = cls_bbox.numel() == 1 && cls_bbox.item<int>() == 0;
+          }
 
         // data augmentation can apply here, with OpenCV
         if (!_test)
           {
             if (_bbox)
-              _img_rand_aug_cv.augment_with_bbox(bgr_sample, t_sample);
+              {
+                // don't augment dummy bbox
+                if (no_bbox)
+                  _img_rand_aug_cv.augment(bgr_sample);
+                else
+                  _img_rand_aug_cv.augment_with_bbox(bgr_sample, t_sample);
+              }
             else if (_segmentation)
               _img_rand_aug_cv.augment_with_segmap(bgr_sample,
                                                    bw_target_sample);
@@ -412,7 +424,12 @@ namespace dd
             // cropping requires test set 'augmentation'
             if (_bbox)
               {
-                _img_rand_aug_cv.augment_test_with_bbox(bgr_sample, t_sample);
+                // don't augment dummy bbox
+                if (no_bbox)
+                  _img_rand_aug_cv.augment_test(bgr_sample);
+                else
+                  _img_rand_aug_cv.augment_test_with_bbox(bgr_sample,
+                                                          t_sample);
               }
             else if (_segmentation)
               _img_rand_aug_cv.augment_test_with_segmap(bgr_sample,
