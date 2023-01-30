@@ -243,13 +243,13 @@ class YoloXWrapper(torch.nn.Module):
                 bboxes[start:stop]
                 targ = torch.cat(
                     (
-                        labels[start:stop].unsqueeze(1),
+                        # dd uses 0 as background class, not YOLOX
+                        labels[start:stop].unsqueeze(1) - 1,
                         self.convert_targs(bboxes[start:stop]),
                     ),
                     dim=1,
                 )
-                # dd uses 0 as background class, not YOLOX
-                targ = targ - 1
+
                 l_targs.append(targ)
                 max_count = max(max_count, targ.shape[0])
 
@@ -425,7 +425,9 @@ def fill_args_from_repo(repo_path, args):
                 logging.info("Deduced model %s with suffix %s" % (args.model, suffix))
 
         if not model_found:
-            raise RuntimeError("Could not deduce the model from repository name %s" % repo_name)
+            raise RuntimeError(
+                "Could not deduce the model from repository name %s" % repo_name
+            )
 
 
 if __name__ == "__main__":
