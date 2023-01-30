@@ -489,6 +489,12 @@ namespace dd
     _module.load(this->_mlmodel);
     _module.freeze_traced(freeze_traced);
 
+    // print
+    if (_module.is_ready(_template))
+      {
+        _module.print_model_info();
+      }
+
     _best_metrics = { "map", "meaniou",  "mlacc", "delta_score_0.1", "bacc",
                       "f1",  "net_meas", "acc",   "L1_mean_error",   "eucll" };
     _best_metric_values.resize(1, std::numeric_limits<double>::infinity());

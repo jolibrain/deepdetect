@@ -166,6 +166,12 @@ namespace dd
         const torch::Device &device,
         const oatpp::Object<DTO::ServicePredict> &pred_dto);
 
+    /** Returns true if the model has been fully initialized and is ready for
+     * use, and false if some parts still need to be allocated
+     *
+     * \param tmplate native template used to initialize the model. */
+    bool is_ready(const std::string &tmplate) const;
+
     /**
      * \brief see torch::module::to
      * @param device cpu / gpu
@@ -192,6 +198,12 @@ namespace dd
      * \brief clone module to given device (e.g. for multigpu training)
      **/
     std::shared_ptr<TorchModule> clone(torch::Device device);
+
+    /**
+     * \brief print model information such as parameter count, number of
+     * parameters for each layer, whether the layers are frozen or not
+     **/
+    void print_model_info();
 
   public:
     std::shared_ptr<torch::jit::script::Module>
