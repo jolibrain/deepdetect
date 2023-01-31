@@ -25,7 +25,7 @@ General usage (examples):
 - Export dd-trained yolox model to onnx for trt inference:
 
     python3 trace_yolox.py -v yolox[-s|-m|-l|...] --yolox_path [YOLOX_PATH] --output_dir [OUTPUT_DIR] --from_repo [DD_REPO] --to_onnx
-"""
+""", formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("model", type=str, help="Model to export")
     parser.add_argument(
