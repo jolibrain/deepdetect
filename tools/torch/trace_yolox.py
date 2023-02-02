@@ -355,7 +355,7 @@ def image_loader(loader, image_name):
 
 
 def get_image_input(batch_size=1, img_width=224, img_height=224):
-    return torch.rand(batch_size, 3, img_width, img_height)
+    return torch.rand(batch_size, 3, img_height, img_width)
 
 
 def get_detection_input(batch_size=1, img_width=224, img_height=224):
@@ -363,7 +363,7 @@ def get_detection_input(batch_size=1, img_width=224, img_height=224):
     Sample input for detection models, usable for tracing or testing
     """
     return (
-        torch.rand(batch_size, 3, img_width, img_height),
+        torch.rand(batch_size, 3, img_height, img_width),
         torch.arange(0, batch_size).long(),
         torch.Tensor([1, 1, 200, 200]).repeat((batch_size, 1)),
         torch.full((batch_size,), 1).long(),
