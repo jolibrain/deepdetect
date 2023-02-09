@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvidia/cuda:11.6.0-cudnn8-devel-ubuntu20.04 AS build
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -111,7 +111,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvidia/cuda:11.6.0-cudnn8-runtime-ubuntu20.04 AS runtime
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 
@@ -169,7 +169,7 @@ COPY --from=build /opt/deepdetect/get_models.sh /opt/deepdetect/
 COPY --from=build /opt/deepdetect/docker/check-dede-deps.sh /opt/deepdetect/
 COPY --from=build /opt/deepdetect/docker/start-dede.sh /opt/deepdetect/
 
-COPY --from=build /usr/local/cuda-11.6/targets/x86_64-linux/lib/libcupti* /usr/local/cuda-11.6/targets/x86_64-linux/lib/
+COPY --from=build /usr/local/cuda-11.8/targets/x86_64-linux/lib/libcupti* /usr/local/cuda-11.8/targets/x86_64-linux/lib/
 
 # External volume to be mapped, e.g. for models or training data
 WORKDIR /opt/models
