@@ -871,6 +871,12 @@ namespace dd
         std::string val;
         iss >> val;
         int cls = std::stoi(val);
+        if (cls <= 0)
+          {
+            throw InputConnectorBadParamException(
+                "Dataset contains an invalid class:" + std::to_string(cls)
+                + " in file " + bboxfname);
+          }
         classes.push_back(target_to_tensor(cls));
 
         std::vector<double> bbox(4);
