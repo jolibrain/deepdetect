@@ -1020,17 +1020,34 @@ namespace dd
       return;
     const int noise_pixels_n
         = std::floor(_noise_params._saltpepper_fraction * src.cols * src.rows);
-    const std::vector<uchar> val = { 0, 0, 0 };
+    const std::vector<uchar> val_black = { 0, 0, 0 };
+    const std::vector<uchar> val_white = { 255, 255, 255 };
     if (src.channels() == 1)
       {
 #pragma omp critical
         {
-          for (int k = 0; k < noise_pixels_n; ++k)
+          if (src.depth() == CV_8U) // general case
             {
-              const int i = _uniform_real_1(_rnd_gen) * src.cols;
-              const int j = _uniform_real_1(_rnd_gen) * src.rows;
-              uchar *ptr = src.ptr<uchar>(j);
-              ptr[i] = val[0];
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  uchar *ptr = src.ptr<uchar>(j);
+                  if (_bernouilli(_rnd_gen))
+                    ptr[i] = val_black[0];
+                  else
+                    ptr[i] = val_white[0];
+                }
+            }
+          else // black pixels only
+            {
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  uchar *ptr = src.ptr<uchar>(j);
+                  ptr[i] = val_black[0];
+                }
             }
         }
       }
@@ -1038,14 +1055,38 @@ namespace dd
       { // color image
 #pragma omp critical
         {
-          for (int k = 0; k < noise_pixels_n; ++k)
+          if (src.depth() == CV_8U) // general case
             {
-              const int i = _uniform_real_1(_rnd_gen) * src.cols;
-              const int j = _uniform_real_1(_rnd_gen) * src.rows;
-              cv::Vec3b *ptr = src.ptr<cv::Vec3b>(j);
-              (ptr[i])[0] = val[0];
-              (ptr[i])[1] = val[1];
-              (ptr[i])[2] = val[2];
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  cv::Vec3b *ptr = src.ptr<cv::Vec3b>(j);
+                  if (_bernouilli(_rnd_gen))
+                    {
+                      (ptr[i])[0] = val_black[0];
+                      (ptr[i])[1] = val_black[1];
+                      (ptr[i])[2] = val_black[2];
+                    }
+                  else
+                    {
+                      (ptr[i])[0] = val_white[0];
+                      (ptr[i])[1] = val_white[1];
+                      (ptr[i])[2] = val_white[2];
+                    }
+                }
+            }
+          else // black only
+            {
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  cv::Vec3b *ptr = src.ptr<cv::Vec3b>(j);
+                  (ptr[i])[0] = val_black[0];
+                  (ptr[i])[1] = val_black[1];
+                  (ptr[i])[2] = val_black[2];
+                }
             }
         }
       }
@@ -1116,7 +1157,7 @@ namespace dd
     {
       delta = _distort_params._uniform_real_saturation(_rnd_gen);
     }
-    if (fabs(delta - 1.f) != 1e-3)
+    if (fabs(delta - 1.f) >= 1e-3)
       {
         cv::Mat tmp;
 
