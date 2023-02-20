@@ -67,7 +67,7 @@ namespace dd
                                / static_cast<double>(_predict_count);
   }
 
-  void ServiceStats::to(APIData &ad) const
+  void ServiceStats::to(oatpp::Object<DTO::Service> &dto) const
   {
     std::lock_guard<std::mutex> lock(_mutex);
 
@@ -90,6 +90,6 @@ namespace dd
     stats.add("avg_predict_duration", _avg_predict_duration_ms / 1000.0);
     stats.add("avg_transform_duration", _avg_transform_duration_ms / 1000.0);
 
-    ad.add("service_stats", stats);
+    dto->service_stats = stats;
   }
 }

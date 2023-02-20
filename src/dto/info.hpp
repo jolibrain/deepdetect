@@ -27,12 +27,66 @@
 #include "oatpp/core/macro/codegen.hpp"
 
 #include "common.hpp"
+#include "ddtypes.hpp"
 
 namespace dd
 {
   namespace DTO
   {
 #include OATPP_CODEGEN_BEGIN(DTO) ///< Begin DTO codegen section
+
+    class ServiceModel : public oatpp::DTO
+    {
+      DTO_INIT(ServiceModel, DTO /* extends */)
+
+      DTO_FIELD_INFO(flops)
+      {
+        info->description = "Number of flops of the model";
+      }
+      DTO_FIELD(Int32, flops);
+
+      DTO_FIELD_INFO(params)
+      {
+        info->description = "Number of parameters of the model";
+      }
+      DTO_FIELD(Int32, params);
+
+      DTO_FIELD_INFO(frozen_params)
+      {
+        info->description = "Number of frozen parameters in the model";
+      }
+      DTO_FIELD(Int32, frozen_params);
+
+      DTO_FIELD_INFO(data_mem_train)
+      {
+        info->description = "Amount of memory used to store train data";
+      }
+      DTO_FIELD(Int32, data_mem_train);
+
+      DTO_FIELD_INFO(data_mem_test)
+      {
+        info->description = "Amount of memory used to store test data";
+      }
+      DTO_FIELD(Int32, data_mem_test);
+    };
+
+    class ServiceJob : public oatpp::DTO
+    {
+      DTO_INIT(ServiceJob, DTO /* extends */)
+
+      DTO_FIELD_INFO(job)
+      {
+        info->description = "Id of the job";
+      }
+      DTO_FIELD(Int32, job);
+
+      DTO_FIELD_INFO(status)
+      {
+        info->description = "status of the job, one of: \"not started\", "
+                            "\"running\", \"finished\"";
+      }
+      DTO_FIELD(String, status);
+    };
 
     class Service : public oatpp::DTO
     {
@@ -42,8 +96,29 @@ namespace dd
       DTO_FIELD(String, description);
       DTO_FIELD(String, mllib);
       DTO_FIELD(String, mltype);
+
+      DTO_FIELD_INFO(type)
+      {
+        info->description = "supervised, unsupervised";
+      }
+      DTO_FIELD(String, type);
+
       DTO_FIELD(Boolean, predict) = false;
       DTO_FIELD(Boolean, training) = false;
+
+      DTO_FIELD_INFO(stats)
+      {
+        info->description = "[deprecated] replaced by model_stats";
+      }
+      DTO_FIELD(Object<ServiceModel>, stats);
+      DTO_FIELD(Object<ServiceModel>, model_stats);
+      DTO_FIELD(Vector<DTOApiData>, jobs);
+
+      DTO_FIELD(String, repository);
+      DTO_FIELD(Int32, width);
+      DTO_FIELD(Int32, height);
+
+      DTO_FIELD(DTOApiData, service_stats);
     };
 
     class InfoHead : public oatpp::DTO

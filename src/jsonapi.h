@@ -24,6 +24,7 @@
 
 #include "apistrategy.h"
 #include "dd_types.h"
+#include "dto/info.hpp"
 
 namespace dd
 {
@@ -135,32 +136,12 @@ namespace dd
     {
     }
 
-    template <typename T> APIData operator()(T &mllib)
+    template <typename T> oatpp::Object<DTO::Service> operator()(T &mllib)
     {
       return mllib.info(_status);
     }
     bool _status = false;
   };
-
-  /**
-   * \brief visitor class for service status call
-   */
-  class visitor_status
-  {
-  public:
-    visitor_status()
-    {
-    }
-    ~visitor_status()
-    {
-    }
-
-    template <typename T> APIData operator()(T &mllib)
-    {
-      return mllib.status();
-    }
-  };
-
 }
 
 #endif

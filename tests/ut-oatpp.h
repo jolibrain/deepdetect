@@ -140,8 +140,9 @@ public:
     dd::OatppJsonAPI oja;
     TestComponent component;
     oatpp::test::web::ClientServerTestRunner runner;
+    // using dd mapper is required to be able to serialize the dd types
     std::shared_ptr<oatpp::data::mapping::ObjectMapper> defaultObjectMapper
-        = oatpp::parser::json::mapping::ObjectMapper::createShared();
+        = dd::oatpp_utils::createDDMapper();
     runner.addController(
         std::make_shared<DedeController>(&oja, defaultObjectMapper));
     runner.run(

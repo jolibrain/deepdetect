@@ -672,8 +672,7 @@ namespace dd
             {
               std::vector<APIData> res_vad;
               for (auto res_info : res_infos)
-                res_vad.push_back(
-                    APIData::fromDTO<DTO::ResourceResponseBody>(res_info));
+                res_vad.push_back(APIData::fromDTO(res_info));
 
               ad_out.add("resources", res_vad);
             }

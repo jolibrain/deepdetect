@@ -2830,7 +2830,7 @@ namespace dd
             = oatpp::Object<DTO::ServicePredict>(
                 std::static_pointer_cast<typename DTO::ServicePredict>(
                     any->ptr));
-        ad = APIData::fromDTO<oatpp::Void>(predict_dto);
+        ad = APIData::fromDTO(predict_dto);
 
         if (predict_dto->_chain)
           {

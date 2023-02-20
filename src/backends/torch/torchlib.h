@@ -157,6 +157,9 @@ namespace dd
      */
     double unscale(double val, unsigned int k,
                    const TInputConnectorStrategy &inputc);
+
+    /** print and update model stats */
+    void compute_and_print_model_info();
   };
 }
 

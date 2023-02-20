@@ -28,6 +28,8 @@
 #include <rapidjson/writer.h>
 #include <gflags/gflags.h>
 
+#include "utils/oatpp.hpp"
+
 DEFINE_string(service_start_list, "",
               "list of JSON calls to be executed at startup");
 DEFINE_bool(service_start_list_no_exit_on_failure, false,
@@ -432,10 +434,10 @@ namespace dd
     auto hit = _mlservices.begin();
     while (hit != _mlservices.end())
       {
-        APIData ad
+        auto dto
             = mapbox::util::apply_visitor(visitor_info(status), (*hit).second);
         JVal jserv(rapidjson::kObjectType);
-        ad.toJVal(jinfo, jserv);
+        oatpp_utils::dtoToJVal(dto, jinfo, jserv);
         jservs.PushBack(jserv, jinfo.GetAllocator());
         ++hit;
       }
@@ -980,10 +982,11 @@ namespace dd
     if (!this->service_exists(sname))
       return dd_service_not_found_1002(sname);
     auto hit = this->get_service_it(sname);
-    APIData ad = mapbox::util::apply_visitor(visitor_status(), (*hit).second);
+    auto status_dto
+        = mapbox::util::apply_visitor(visitor_info(true), (*hit).second);
     JDoc jst = dd_ok_200();
     JVal jbody(rapidjson::kObjectType);
-    ad.toJVal(jst, jbody);
+    oatpp_utils::dtoToJVal(status_dto, jst, jbody);
     jst.AddMember("body", jbody, jst.GetAllocator());
     return jst;
   }

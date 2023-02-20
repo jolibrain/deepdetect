@@ -175,6 +175,16 @@ namespace dd
       }
   }
 
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                TMLModel>::compute_and_print_model_info()
+  {
+    _module.compute_and_print_model_info();
+    this->_model_params = _module._params_count;
+    this->_model_frozen_params = _module._frozen_params_count;
+  }
+
   /*- from mllib -*/
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -492,7 +502,7 @@ namespace dd
     // print
     if (_module.is_ready(_template))
       {
-        _module.print_model_info();
+        compute_and_print_model_info();
       }
 
     _best_metrics = { "map", "meaniou",  "mlacc", "delta_score_0.1", "bacc",
@@ -658,8 +668,11 @@ namespace dd
     try
       {
         inputc.transform(ad);
+        bool module_was_ready = _module.is_ready(_template);
         _module.post_transform_train<TInputConnectorStrategy>(
             _template, _template_params, inputc, this->_mlmodel, _main_device);
+        if (!module_was_ready)
+          compute_and_print_model_info();
       }
     catch (...)
       {
@@ -1457,9 +1470,12 @@ namespace dd
             // XXX: torchinputconn does not fully support DTOs yet
             inputc.transform(ad_in);
           }
+        bool module_was_ready = _module.is_ready(_template);
         _module.post_transform_predict(_template, _template_params, inputc,
                                        this->_mlmodel, _main_device,
                                        predict_dto);
+        if (!module_was_ready)
+          compute_and_print_model_info();
       }
     catch (...)
       {
