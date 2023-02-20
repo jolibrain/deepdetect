@@ -27,6 +27,8 @@ namespace dd
   {
     namespace __class
     {
+      const oatpp::ClassId APIDataClass::CLASS_ID("APIData");
+
       const oatpp::ClassId GpuIdsClass::CLASS_ID("GpuIds");
 
       template <>

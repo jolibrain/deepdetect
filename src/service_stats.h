@@ -26,6 +26,7 @@
 #include <mutex>
 
 #include "apidata.h"
+#include "dto/info.hpp"
 
 namespace dd
 {
@@ -65,7 +66,7 @@ namespace dd
     void predict_start();
     void predict_end(bool succeed);
 
-    void to(APIData &ad) const;
+    void to(oatpp::Object<DTO::Service> &dto) const;
 
   private:
     int _inference_count = 0;

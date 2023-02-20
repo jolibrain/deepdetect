@@ -83,16 +83,8 @@ public:
     auto hit = _oja->_mlservices.begin();
     while (hit != _oja->_mlservices.end())
       {
-        // TODO(sileht): update visitor_info to return directly a Service()
-        JDoc jd;
-        jd.SetObject();
-        mapbox::util::apply_visitor(dd::visitor_info(status), (*hit).second)
-            .toJDoc(jd);
-        auto json_str = _oja->jrender(jd);
-        auto service_info
-            = getDefaultObjectMapper()
-                  ->readFromString<oatpp::Object<dd::DTO::Service>>(
-                      json_str.c_str());
+        auto service_info = mapbox::util::apply_visitor(
+            dd::visitor_info(status), (*hit).second);
         info_resp->head->services->emplace_back(service_info);
         ++hit;
       }

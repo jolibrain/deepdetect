@@ -309,7 +309,7 @@ namespace dd
           buffer.GetString());
     }
 
-    template <typename T> static APIData fromDTO(const oatpp::Void &dto)
+    static APIData fromDTO(const oatpp::Void &dto)
     {
       std::shared_ptr<oatpp::data::mapping::ObjectMapper> object_mapper
           = dd::oatpp_utils::createDDMapper();

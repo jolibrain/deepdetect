@@ -24,6 +24,7 @@
 
 #include "oatpp/core/Types.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
+#include "apidata.h"
 
 namespace dd
 {
@@ -47,10 +48,14 @@ namespace dd
 
     namespace __class
     {
+      class APIDataClass;
       class GpuIdsClass;
       template <typename T> class DTOVectorClass;
     }
 
+    typedef oatpp::data::mapping::type::Primitive<APIData,
+                                                  __class::APIDataClass>
+        DTOApiData;
     typedef oatpp::data::mapping::type::Primitive<VGpuIds,
                                                   __class::GpuIdsClass>
         GpuIds;
@@ -61,6 +66,17 @@ namespace dd
 
     namespace __class
     {
+      class APIDataClass
+      {
+      public:
+        static const oatpp::ClassId CLASS_ID;
+        static oatpp::Type *getType()
+        {
+          static oatpp::Type type(CLASS_ID);
+          return &type;
+        }
+      };
+
       class GpuIdsClass
       {
       public:
@@ -90,6 +106,76 @@ namespace dd
     }
 
     // ==== Serialization methods
+
+    static inline oatpp::Void apiDataDeserialize(
+        oatpp::parser::json::mapping::Deserializer *deserializer,
+        oatpp::parser::Caret &caret, const oatpp::Type *const type)
+    {
+      (void)type;
+      (void)deserializer;
+      if (caret.isAtChar('{'))
+        {
+          auto start = caret.getCurrData();
+          int nest_lvl = 1;
+          int length = 1;
+
+          while (nest_lvl != 0)
+            {
+              if (!caret.canContinue())
+                {
+                  caret.setError("[apiDataDeserialize] missing '}'",
+                                 oatpp::parser::json::mapping::Deserializer::
+                                     ERROR_CODE_OBJECT_SCOPE_CLOSE);
+                  return nullptr;
+                }
+              caret.inc();
+              length++;
+              if (caret.isAtChar('}'))
+                nest_lvl--;
+              else if (caret.isAtChar('{'))
+                nest_lvl++;
+            }
+
+          // read to APIData
+          DTOApiData dto_ad = APIData();
+          JDoc d;
+          d.Parse<rapidjson::kParseNanAndInfFlag>(start, length);
+          dto_ad->fromRapidJson(d);
+          return dto_ad;
+        }
+      else
+        {
+          caret.setError("[apiDataDeserialize] missing '{'",
+                         oatpp::parser::json::mapping::Deserializer::
+                             ERROR_CODE_OBJECT_SCOPE_OPEN);
+          return nullptr;
+        }
+    }
+
+    static inline void
+    apiDataSerialize(oatpp::parser::json::mapping::Serializer *serializer,
+                     oatpp::data::stream::ConsistentOutputStream *stream,
+                     const oatpp::Void &obj)
+    {
+      (void)serializer;
+      auto dto_ad = obj.cast<DTOApiData>();
+
+      // APIData to string
+      JDoc d;
+      d.SetObject();
+      dto_ad->toJDoc(d);
+
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                        rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                        rapidjson::kWriteNanAndInfFlag>
+          writer(buffer);
+      bool done = d.Accept(writer);
+      if (!done)
+        throw DataConversionException("JSON rendering failed");
+
+      stream->writeSimple(buffer.GetString());
+    }
 
     static inline oatpp::Void
     gpuIdsDeserialize(oatpp::parser::json::mapping::Deserializer *deserializer,
