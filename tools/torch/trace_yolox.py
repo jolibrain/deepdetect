@@ -20,7 +20,7 @@ def main():
 General usage (examples):
 - Export yolox model for DeepDetect training:
 
-    python3 trace_yolox.py -v yolox[-s|-m|-l|...] --yolox_path [YOLOX_PATH] --output_dir [OUTPUT_DIR] --num_classes 3 --img_width 512 --img_height 512
+    python3 trace_yolox.py -v yolox[-s|-m|-l|...] --yolox_path [YOLOX_PATH] --output_dir [OUTPUT_DIR] --backbone_weights /path/to/yolox_weights.pth --num_classes 3
 
 - Export dd-trained yolox model to onnx for trt inference:
 
