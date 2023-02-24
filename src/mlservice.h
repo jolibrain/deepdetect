@@ -247,6 +247,15 @@ namespace dd
               ad.add("width", this->_inputc.width());
               ad.add("height", this->_inputc.height());
             }
+          if (!this->_mlmodel._hcorresp.empty())
+            {
+              std::vector<std::string> labels(this->_mlmodel._hcorresp.size());
+              for (const auto &kv : this->_mlmodel._hcorresp)
+                {
+                  labels.push_back(kv.second);
+                }
+              ad.add("labels", labels);
+            }
         }
       this->_stats.to(ad);
       return ad;
