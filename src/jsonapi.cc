@@ -972,7 +972,8 @@ namespace dd
     return jsc;
   }
 
-  JDoc JsonAPI::service_status(const std::string &snamein)
+  JDoc JsonAPI::service_status(const std::string &snamein, bool status,
+                               bool labels)
   {
     std::string sname(snamein);
     std::transform(snamein.begin(), snamein.end(), sname.begin(), ::tolower);
@@ -982,8 +983,8 @@ namespace dd
     if (!this->service_exists(sname))
       return dd_service_not_found_1002(sname);
     auto hit = this->get_service_it(sname);
-    auto status_dto
-        = mapbox::util::apply_visitor(visitor_info(true), (*hit).second);
+    auto status_dto = mapbox::util::apply_visitor(visitor_info(status, labels),
+                                                  (*hit).second);
     JDoc jst = dd_ok_200();
     JVal jbody(rapidjson::kObjectType);
     oatpp_utils::dtoToJVal(status_dto, jst, jbody);
@@ -994,7 +995,6 @@ namespace dd
   JDoc JsonAPI::service_delete(const std::string &snamein,
                                const std::string &jstr)
   {
-
     std::string sname(snamein);
     std::transform(snamein.begin(), snamein.end(), sname.begin(), ::tolower);
 

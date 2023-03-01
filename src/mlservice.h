@@ -193,7 +193,8 @@ namespace dd
      * \brief get info about the service
      * @return info data object
      */
-    oatpp::Object<DTO::Service> info(const bool &status) const
+    oatpp::Object<DTO::Service> info(const bool &status,
+                                     const bool &labels = false) const
     {
       // general info
       auto serv_dto = DTO::Service::createShared();
@@ -270,6 +271,23 @@ namespace dd
               serv_dto->jobs->push_back(jad);
               ++hit;
             }
+        }
+
+      // labels
+      if (labels)
+        {
+          auto labels_vec = oatpp::Vector<oatpp::String>::createShared();
+
+          if (!this->_mlmodel._hcorresp.empty())
+            {
+              labels_vec->reserve(this->_mlmodel._hcorresp.size());
+
+              for (const auto &kv : this->_mlmodel._hcorresp)
+                {
+                  labels_vec->push_back(kv.second);
+                }
+            }
+          serv_dto->labels = labels_vec;
         }
 
       // stats

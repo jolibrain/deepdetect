@@ -116,6 +116,13 @@ namespace dd
       DTO_FIELD(Object<ServiceModel>, model_stats);
       DTO_FIELD(Vector<DTOApiData>, jobs);
 
+      DTO_FIELD_INFO(labels)
+      {
+        info->description
+            = "Labels for classification / detection / segmentation services";
+      }
+      DTO_FIELD(Vector<String>, labels);
+
       DTO_FIELD(String, repository);
       DTO_FIELD(Int32, width);
       DTO_FIELD(Int32, height);
