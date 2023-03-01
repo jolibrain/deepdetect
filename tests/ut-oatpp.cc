@@ -79,7 +79,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(201, d["status"]["code"].GetInt());
 
   // service info
-  response = client->get_services(serv.c_str());
+  response = client->get_service_with_labels(serv.c_str(), "1");
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << *message << std::endl;
@@ -99,6 +99,8 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d["body"]["parameters"].HasMember("output"));
   ASSERT_EQ(d["body"]["parameters"]["input"]["connector"].GetString(),
             std::string("image"));
+  ASSERT_TRUE(d["body"].HasMember("labels"));
+  ASSERT_EQ(d["body"]["labels"].Size(), 0);
 
   // info call
   response = client->get_info();

@@ -78,7 +78,7 @@ public:
     oatpp::String qs_status = queryParams.get("status");
     bool status = false;
     if (qs_status)
-      status = boost::lexical_cast<bool>(std::string(qs_status));
+      status = boost::lexical_cast<bool>(*qs_status);
 
     auto hit = _oja->_mlservices.begin();
     while (hit != _oja->_mlservices.end())
@@ -96,9 +96,20 @@ public:
     info->summary = "Retrieve a service detail";
   }
   ENDPOINT("GET", "services/{service-name}", get_service,
-           PATH(oatpp::String, service_name, "service-name"))
+           PATH(oatpp::String, service_name, "service-name"),
+           QUERIES(QueryParams, queryParams))
   {
-    auto janswer = _oja->service_status(service_name);
+    oatpp::String qs_status = queryParams.get("status");
+    bool status = true;
+    if (qs_status)
+      status = boost::lexical_cast<bool>(*qs_status);
+
+    oatpp::String qs_labels = queryParams.get("labels");
+    bool labels = false;
+    if (qs_labels)
+      labels = boost::lexical_cast<bool>(*qs_labels);
+
+    auto janswer = _oja->service_status(service_name, status, labels);
     return _oja->jdoc_to_response(janswer);
   }
 
