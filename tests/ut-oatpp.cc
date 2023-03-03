@@ -93,6 +93,12 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_TRUE(d["body"].HasMember("jobs"));
   ASSERT_TRUE(d["body"].HasMember("model_stats"));
   ASSERT_TRUE(d["body"]["model_stats"]["params"].GetInt() == 11177538);
+  ASSERT_TRUE(d["body"].HasMember("parameters"));
+  ASSERT_TRUE(d["body"]["parameters"].HasMember("input"));
+  ASSERT_TRUE(d["body"]["parameters"].HasMember("mllib"));
+  ASSERT_TRUE(d["body"]["parameters"].HasMember("output"));
+  ASSERT_EQ(d["body"]["parameters"]["input"]["connector"].GetString(),
+            std::string("image"));
 
   // info call
   response = client->get_info();
