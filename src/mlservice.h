@@ -209,10 +209,12 @@ namespace dd
         serv_dto->type = "unsupervised";
       else
         serv_dto->type = "supervised";
+      serv_dto->repository = this->_inputc._model_repo;
+      serv_dto->parameters
+          = _init_parameters.createSharedDTO<DTO::Parameters>();
 
       if (this->_has_predict)
         {
-          serv_dto->repository = this->_inputc._model_repo;
           serv_dto->width = this->_inputc.width();
           serv_dto->height = this->_inputc.height();
         }

@@ -28,6 +28,7 @@
 
 #include "common.hpp"
 #include "ddtypes.hpp"
+#include "parameters.hpp"
 
 namespace dd
 {
@@ -96,6 +97,7 @@ namespace dd
       DTO_FIELD(String, description);
       DTO_FIELD(String, mllib);
       DTO_FIELD(String, mltype);
+      DTO_FIELD(Object<Parameters>, parameters);
 
       DTO_FIELD_INFO(type)
       {
