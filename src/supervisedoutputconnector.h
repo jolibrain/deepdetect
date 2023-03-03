@@ -26,6 +26,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <opencv2/opencv.hpp>
+
 #include "dto/output_connector.hpp"
 #include "dto/predict_out.hpp"
 
@@ -1400,6 +1402,62 @@ namespace dd
           meas_obj.add(e.first, e.second);
         }
       ad_out.add("measure", meas_obj);
+    }
+
+    /** Create visuals from test results and write them in the model
+     * repository. */
+    static void create_visuals(const APIData &ad_res, APIData &ad_out,
+                               const std::string &visuals_folder, int test_id)
+    {
+      (void)ad_out;
+      int iteration = static_cast<int>(ad_res.get("iteration").get<double>());
+      bool bbox = ad_res.has("bbox") && ad_res.get("bbox").get<bool>();
+      std::string targ_dest_folder
+          = visuals_folder + "/target/test" + std::to_string(test_id);
+      std::string dest_folder = visuals_folder + "/iteration"
+                                + std::to_string(iteration) + "/test"
+                                + std::to_string(test_id);
+      fileops::create_dir(dest_folder, 0755);
+
+      cv::Scalar colors[]
+          = { { 255, 0, 0 },     { 0, 255, 0 },     { 0, 0, 255 },
+              { 0, 255, 255 },   { 255, 0, 255 },   { 255, 255, 0 },
+              { 255, 127, 127 }, { 127, 255, 127 }, { 127, 127, 255 } };
+      int ncolors = sizeof(colors) / sizeof(cv::Scalar);
+
+      if (bbox)
+        {
+          APIData images_data = ad_res.getobj("raw_bboxes");
+
+          for (size_t i = 0; i < images_data.size(); ++i)
+            {
+              APIData bad = images_data.getobj(std::to_string(i));
+              cv::Mat img = bad.get("image").get<std::vector<cv::Mat>>().at(0);
+
+              // pred
+              std::vector<APIData> preds = bad.getv("predictions");
+              for (size_t k = 0; k < preds.size(); ++k)
+                {
+                  APIData &pred_ad = preds[k];
+                  // float score = pred_ad.get("prob").get<float>();
+                  int64_t label = pred_ad.get("label").get<int64_t>();
+                  APIData bbox = pred_ad.getobj("bbox");
+                  int xmin = static_cast<int>(bbox.get("xmin").get<double>());
+                  int ymin = static_cast<int>(bbox.get("ymin").get<double>());
+                  int xmax = static_cast<int>(bbox.get("xmax").get<double>());
+                  int ymax = static_cast<int>(bbox.get("ymax").get<double>());
+
+                  auto &color = colors[label % ncolors];
+                  cv::rectangle(img, cv::Point{ xmin, ymin },
+                                cv::Point{ xmax, ymax }, color, 3);
+                }
+
+              // write image
+              std::string out_img_path
+                  = dest_folder + "/image" + std::to_string(i) + ".jpg";
+              cv::imwrite(out_img_path, img);
+            }
+        }
     }
 
     static void
