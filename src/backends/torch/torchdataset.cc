@@ -871,11 +871,12 @@ namespace dd
         std::string val;
         iss >> val;
         int cls = std::stoi(val);
-        if (cls <= 0)
+        if (cls <= 0 || cls >= static_cast<int>(inputc->_nclasses))
           {
             throw InputConnectorBadParamException(
-                "Dataset contains an invalid class:" + std::to_string(cls)
-                + " in file " + bboxfname);
+                "Dataset contains an invalid class: " + std::to_string(cls)
+                + " in file " + bboxfname
+                + " (nclasses=" + std::to_string(inputc->_nclasses) + ")");
           }
         classes.push_back(target_to_tensor(cls));
 
