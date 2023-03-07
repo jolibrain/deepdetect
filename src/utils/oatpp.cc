@@ -182,6 +182,15 @@ namespace dd
           jval = JVal(rapidjson::kObjectType);
           dto_ad->toJVal(jdoc, jval);
         }
+      else if (polymorph.getValueType() == DTO::GpuIds::Class::getType())
+        {
+          auto dto_gpuid = polymorph.cast<DTO::GpuIds>();
+          jval = JVal(rapidjson::kArrayType);
+          for (size_t i = 0; i < dto_gpuid->_ids.size(); ++i)
+            {
+              jval.PushBack(dto_gpuid->_ids[i], jdoc.GetAllocator());
+            }
+        }
       else if (polymorph.getValueType()->classId.id
                    == oatpp::data::mapping::type::__class::AbstractVector::
                           CLASS_ID.id
