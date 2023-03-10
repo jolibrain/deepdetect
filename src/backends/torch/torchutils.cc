@@ -255,5 +255,37 @@ namespace dd
       auto jit_module = torch::jit::load(filename, device);
       torch_utils::copy_weights(jit_module, module, device, logger, strict);
     }
+
+    cv::Mat tensorToImage(torch::Tensor tensor)
+    {
+      // 4 channels: batch size, chan, width, height
+      auto dims = tensor.sizes();
+      size_t img_chan = size_t(dims[1]);
+      size_t img_width = size_t(dims[2]), img_height = size_t(dims[3]);
+      auto cv_type = img_chan == 3 ? CV_8UC3 : CV_8UC1;
+      cv::Mat vals_mat(img_height, img_width, cv_type);
+
+      auto tensor_acc = tensor.accessor<float, 4>();
+
+      for (size_t y = 0; y < img_height; ++y)
+        {
+          for (size_t x = 0; x < img_width; ++x)
+            {
+              if (cv_type == CV_8UC3)
+                {
+                  vals_mat.at<cv::Vec3b>(y, x)
+                      = cv::Vec3b(static_cast<int8_t>(tensor_acc[0][0][y][x]),
+                                  static_cast<int8_t>(tensor_acc[0][1][y][x]),
+                                  static_cast<int8_t>(tensor_acc[0][2][y][x]));
+                }
+              else
+                {
+                  vals_mat.at<int8_t>(y, x)
+                      = static_cast<int8_t>(tensor_acc[0][0][y][x]);
+                }
+            }
+        }
+      return vals_mat;
+    }
   }
 }
