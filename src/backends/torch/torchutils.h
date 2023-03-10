@@ -37,6 +37,7 @@
 
 #include <google/protobuf/message.h>
 #include "dd_spdlog.h"
+#include <opencv2/opencv.hpp>
 
 namespace dd
 {
@@ -132,6 +133,11 @@ namespace dd
                       const torch::Device &device,
                       std::shared_ptr<spdlog::logger> logger = nullptr,
                       bool strict = false);
+
+    /** Converts a tensor to a CV image that can be saved on the disk.
+     * XXX(louis) this function is currently debug only, and makes strong
+     * assumptions on the input tensor format. */
+    cv::Mat tensorToImage(torch::Tensor tensor);
   }
 }
 #endif
