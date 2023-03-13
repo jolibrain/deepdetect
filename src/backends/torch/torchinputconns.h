@@ -73,7 +73,7 @@ namespace dd
     TorchInputInterface(const TorchInputInterface &i)
         : _lm_params(i._lm_params), _dataset(i._dataset),
           _test_datasets(i._test_datasets), _input_format(i._input_format),
-          _ctc(i._ctc), _ntargets(i._ntargets),
+          _ctc(i._ctc), _nclasses(i._nclasses), _ntargets(i._ntargets),
           _alphabet_size(i._alphabet_size), _tilogger(i._tilogger), _db(i._db)
     {
     }
@@ -191,7 +191,9 @@ namespace dd
     TorchMultipleDataset _test_datasets; /**< test datasets */
     std::string _input_format;           /**< for text, "bert" or nothing */
 
-    bool _ctc = false; /**< whether this is a CTC service */
+    bool _ctc = false;          /**< whether this is a CTC service */
+    unsigned int _nclasses = 0; /**< number of classes for classification /
+                                   detection / segmentation */
     unsigned int _ntargets
         = 0; /**< number of targets for regression / timeseries */
     int _alphabet_size = 0; /**< alphabet size for text prediction model */

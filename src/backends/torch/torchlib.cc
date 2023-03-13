@@ -213,6 +213,7 @@ namespace dd
     if (mllib_dto->nclasses != 0)
       {
         _nclasses = mllib_dto->nclasses;
+        this->_inputc._nclasses = _nclasses;
       }
     else if (mllib_dto->ntargets != 0)
       {
