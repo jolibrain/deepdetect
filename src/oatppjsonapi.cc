@@ -39,7 +39,12 @@
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "oatpp/core/macro/component.hpp"
 #ifdef USE_OATPP_SWAGGER
-#include "oatpp-swagger/Controller.hpp"
+#include "http/swagger_controller.hpp"
+
+DEFINE_string(
+    swagger_api_prefix, "",
+    "server api prefix in documentation. The prefix should not start "
+    "with \"/\" and should end with \"/\", e.g. `api/private/`.");
 #endif
 
 #include "utils/oatpp.hpp"
@@ -276,6 +281,15 @@ namespace dd
     return response;
   }
 
+  void OatppJsonAPI::addPrefixToEndpoints(
+      oatpp::web::server::api::Endpoints &endpoints, const std::string &prefix)
+  {
+    for (auto &endpoint : endpoints.list)
+      {
+        endpoint->info()->path = prefix + endpoint->info()->path;
+      }
+  }
+
   OatppJsonAPI::Response_ptr
   OatppJsonAPI::response_bad_request_400(const std::string &msg) const
   {
@@ -349,10 +363,16 @@ namespace dd
     // Initialize swagger
     oatpp::swagger::Generator::Endpoints docEndpoints;
     docEndpoints.append(dedeController->getEndpoints());
+    if (!FLAGS_swagger_api_prefix.empty())
+      {
+        addPrefixToEndpoints(docEndpoints, FLAGS_swagger_api_prefix);
+      }
 
     OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::DocumentInfo>,
                     documentInfo);
     OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::Resources>, resources);
+    OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::ControllerPaths>,
+                    swaggerPaths);
 
     std::shared_ptr<oatpp::swagger::Generator::Config> generatorConfig;
     try
@@ -372,8 +392,8 @@ namespace dd
     auto swaggerMapper = dd::oatpp_utils::createDDMapper();
     swaggerMapper->getSerializer()->getConfig()->includeNullFields = false;
     swaggerMapper->getDeserializer()->getConfig()->allowUnknownFields = false;
-    auto swaggerController = std::make_shared<oatpp::swagger::Controller>(
-        swaggerMapper, document, resources);
+    auto swaggerController = std::make_shared<dd::DedeSwaggerController>(
+        swaggerMapper, document, resources, *swaggerPaths);
     router->addController(swaggerController);
 #endif
 

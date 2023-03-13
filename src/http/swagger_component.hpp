@@ -23,12 +23,16 @@
 #define HTTP_SWAGGERCOMPONENT_HPP
 
 #include <iostream>
+#include <gflags/gflags.h>
 
 #include "oatpp-swagger/Model.hpp"
 #include "oatpp-swagger/Resources.hpp"
+#include "oatpp-swagger/ControllerPaths.hpp"
 #include "oatpp/core/macro/component.hpp"
 
 #include "dd_config.h"
+
+DECLARE_string(swagger_api_prefix);
 
 class SwaggerComponent
 {
@@ -52,6 +56,14 @@ public:
     //.addServer("http://localhost:8000", "server on localhost");
 
     return builder.build();
+  }());
+
+  OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::swagger::ControllerPaths>,
+                         controllerPaths)
+  ([] {
+    auto paths = std::make_shared<oatpp::swagger::ControllerPaths>();
+    paths->apiJson = FLAGS_swagger_api_prefix + paths->apiJson;
+    return paths;
   }());
 
   /**

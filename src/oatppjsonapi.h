@@ -58,6 +58,9 @@ namespace dd
                                  const uint32_t &dd_code = 0,
                                  const std::string &dd_msg = "") const;
 
+    void addPrefixToEndpoints(oatpp::web::server::api::Endpoints &endpoints,
+                              const std::string &prefix);
+
     // Oatpp responses
     Response_ptr response_bad_request_400(const std::string &msg = "") const;
     Response_ptr response_not_found_404() const;

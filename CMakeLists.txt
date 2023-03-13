@@ -1023,7 +1023,8 @@ if (USE_TENSORRT)
 endif()
 
 set(OATPP_VERSION "1.3.0")
-set(OATPP_SWAGGER_VERSION "1.3.0")
+# 1.3 + allow to change api path
+set(OATPP_SWAGGER_VERSION "ed5251c580e2e98beb50d818bcea8ddc91419d8c")
 # 1.3 + memory leak patch
 set(OATPP_ZLIB_VERSION "e7318068ae1b24b7d690f374ffbcd9c8f691336b")
 ExternalProject_Add(
@@ -1073,7 +1074,7 @@ if(USE_OATPP_SWAGGER)
         oatpp-swagger
         PREFIX oatpp-swagger
         URL https://github.com/oatpp/oatpp-swagger/archive/${OATPP_SWAGGER_VERSION}.tar.gz
-        URL_HASH SHA256=4d8db6d73095a786a521a71e8ba6b535fea62237faaaa57d98257312627d3a45
+        URL_HASH SHA256=afe026d6ba10f5cf43e65578acb80bb82f189d311ed6a0d7c4b8f4bd2b07e55f
         BUILD_IN_SOURCE true
         INSTALL_COMMAND ""
         CMAKE_ARGS
