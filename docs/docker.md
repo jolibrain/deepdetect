@@ -112,6 +112,16 @@ docker run -d -p 8080:8080 -v /path/to/volume:/opt/deepdetect jolibrain/deepdete
 ```
 where `/path/to/volume` is the path to your local volume that you'd like to attach to `/opt/deepdetect`. This is useful for sharing / saving models, etc...
 
+### Access documentation with custom API endpoint
+
+Given a running server on 0.0.0.0:8080, the documentation is served at `http://hostname:8080/swagger/ui`.
+
+If dede is behind a custom API endpoint, e.g. `hostname:port/api/deepdetect`, swagger links won't work correctly. You can get around this by specifying the api path when you run the docker:
+```bash
+docker run -d -p 8080:8080 jolibrain/deepdetect_cpu -swagger_api_prefix api/deepdetect/
+```
+You can now serve DeepDetect on `hostname:port/api/deepdetect/` and expect the links in swagger documentation to work correctly.
+
 ## Building docker images
 
 See https://github.com/jolibrain/deepdetect/tree/master/docker/README.md

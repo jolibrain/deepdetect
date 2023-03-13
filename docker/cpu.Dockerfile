@@ -185,6 +185,6 @@ RUN /opt/deepdetect/get_models.sh
 RUN /opt/deepdetect/check-dede-deps.sh
 
 WORKDIR /opt/deepdetect/build/main
-CMD /opt/deepdetect/start-dede.sh -host 0.0.0.0
+ENTRYPOINT ["/opt/deepdetect/start-dede.sh", "-host", "0.0.0.0"]
 VOLUME ["/data"]
 EXPOSE 8080

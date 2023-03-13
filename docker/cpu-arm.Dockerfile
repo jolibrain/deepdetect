@@ -121,5 +121,5 @@ WORKDIR /opt/deepdetect/build/main
 VOLUME ["/data"]
 
 # Set entrypoint
-CMD ./dede -host 0.0.0.0
+ENTRYPOINT ["./dede", "-host", "0.0.0.0"]
 EXPOSE 8080
