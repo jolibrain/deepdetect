@@ -131,6 +131,9 @@ public:
     components->bodyDecoder = std::make_shared<
         oatpp::web::protocol::http::incoming::SimpleBodyDecoder>(decoders);
 
+    /* Configure size limits */
+    components->config->headersReaderMaxSize = 16384;
+
     auto connectionHandler
         = std::make_shared<oatpp::web::server::HttpConnectionHandler>(
             components);
