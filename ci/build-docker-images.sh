@@ -19,6 +19,7 @@ TARGETS[gpu]="gpu/default"
 TARGETS[gpu_tf]="gpu/tf"
 TARGETS[gpu_torch]="gpu/torch"
 TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
+TARGETS[nano]="nano/default"
 
 PR_NUMBER=$(echo $GIT_BRANCH | sed -n '/^PR-/s/PR-//gp')
 if [ "$TAG_NAME" ]; then
@@ -31,6 +32,9 @@ else
     # Not built with Jenkins
     TMP_TAG="trash"
 fi
+
+# Setup binfmt to use qemu for arm docker image
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
 image_url_prefix="jolibrain/deepdetect"
 

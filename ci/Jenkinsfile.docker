@@ -47,6 +47,14 @@ pipeline {
         sh 'ci/build-docker-images.sh gpu_tensorrt'
       }
     }}
+    stage('Build docker nano image') { steps {
+      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
+        sh 'echo "DISABLED"'
+        sh 'it does work, it have the same issue as https://github.com/pytorch/pytorch/issues/39680'
+        sh 'exit 1'
+        sh 'ci/build-docker-images.sh nano'
+      }
+    }}
     stage('Update dockerhub readme') {
       when {
        expression { BRANCH_NAME == "master" }
