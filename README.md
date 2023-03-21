@@ -23,6 +23,24 @@ Please join the community on [Gitter](https://gitter.im/beniz/deepdetect), where
 
 ---
 
+| Build type | STABLE | DEVEL |
+|------|--------|-------|
+| SOURCE | <img src="https://img.shields.io/github/v/release/jolibrain/deepdetect?color=success&sort=semver"> | <img src="https://img.shields.io/github/commits-since/jolibrain/deepdetect/latest/master"> |
+
+All DeepDetect Docker images available from https://docker.jolibrain.com/.
+
+- To list all available images:
+```
+curl -X GET https://docker.jolibrain.com/v2/_catalog
+```
+
+- To list an image available tags, e.g. for the `deepdetect_cpu` image:
+```
+curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
+```
+
+---
+
 * [Main features](#main-features)
 * [Machine Learning functionalities per library](#machine-learning-functionalities-per-library)
 * [Installation](https://www.deepdetect.com/quickstart-server/)
@@ -52,14 +70,6 @@ Please join the community on [Gitter](https://gitter.im/beniz/deepdetect), where
 * [Performance tools and report](https://github.com/jolibrain/dd_performances) done on NVidia Desktop and embedded GPUs, along with Raspberry Pi 3.
 * [References](#references)
 * [Authors](#authors)
-
-| Build type | STABLE | DEVEL |
-|------|--------|-------|
-| SOURCE | <img src="https://img.shields.io/github/v/release/jolibrain/deepdetect?color=success&sort=semver"> | <img src="https://img.shields.io/github/commits-since/jolibrain/deepdetect/latest/master"> |
-| Docker image CPU | [<img src="https://img.shields.io/docker/v/jolibrain/deepdetect_cpu?color=success&sort=semver" />](https://hub.docker.com/r/jolibrain/deepdetect_cpu) | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_cpu%2Ftags%2Fci-master"> |
-| Docker image GPU | [<img src="https://img.shields.io/docker/v/jolibrain/deepdetect_gpu?color=success&sort=semver" />](https://hub.docker.com/r/jolibrain/deepdetect_gpu)  | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_gpu%2Ftags%2Fci-master">  |
-| Docker image GPU+TORCH | [<img src="https://img.shields.io/docker/v/jolibrain/deepdetect_gpu_torch?color=success&sort=semver" />](https://hub.docker.com/r/jolibrain/deepdetect_gpu_torch) | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_gpu_torch%2Ftags%2Fci-master"> |
-| Docker image GPU+TENSORRT | [<img src="https://img.shields.io/docker/v/jolibrain/deepdetect_gpu_tensorrt?color=success&sort=semver" />](https://hub.docker.com/r/jolibrain/deepdetect_gpu_tensorrt) | <img src="https://img.shields.io/badge/dynamic/json?color=9cf&label=date&query=%24.tag_last_pushed&url=https%3A%2F%2Fhub.docker.com%2Fv2%2Frepositories%2Fjolibrain%2Fdeepdetect_gpu_tensorrt%2Ftags%2Fci-master"> |
 
 ## Main features
 

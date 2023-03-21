@@ -13,17 +13,17 @@ This allows to run the container and set an image classification model based on 
 ## Getting and running official images
 
 ```
-docker pull jolibrain/deepdetect_cpu
+docker pull docker.jolibrain.com/deepdetect_cpu
 ```
 or
 ```
-docker pull jolibrain/deepdetect_gpu
+docker pull docker.jolibrain.com/deepdetect_gpu
 ```
 
 ### Running the CPU image
 
 ```
-docker run -d -p 8080:8080 jolibrain/deepdetect_cpu
+docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_cpu
 ```
 
 `dede` server is now listening on your port `8080`:
@@ -57,7 +57,7 @@ The following steps are required:
 - install `nvidia-docker`: https://github.com/NVIDIA/nvidia-docker
 - run with
 ```
-nvidia-docker run -d -p 8080:8080 jolibrain/deepdetect_gpu
+nvidia-docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_gpu
 ```
 
 Notes:
@@ -88,14 +88,14 @@ Example:
 
 - start container and server:
 ```
-> docker run -d -p 8080:8080 jolibrain/deepdetect_cpu
+> docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_cpu
 ```
 
 - look for container:
 ```
 > docker ps
 CONTAINER ID        IMAGE                  COMMAND                  CREATED              STATUS              PORTS                    NAMES
-d9944734d5d6        jolibrain/deepdetect_cpu   "/bin/sh -c './dede -"   17 seconds ago       Up 16 seconds       0.0.0.0:8080->8080/tcp   loving_shaw
+d9944734d5d6        docker.jolibrain.com/deepdetect_cpu   "/bin/sh -c './dede -"   17 seconds ago       Up 16 seconds       0.0.0.0:8080->8080/tcp   loving_shaw
 ```
 
 - access server logs:
@@ -108,7 +108,7 @@ Running DeepDetect HTTP server on 0.0.0.0:8080
 
 - share a volume with the image:
 ```
-docker run -d -p 8080:8080 -v /path/to/volume:/opt/deepdetect jolibrain/deepdetect_cpu
+docker run -d -p 8080:8080 -v /path/to/volume:/opt/deepdetect docker.jolibrain.com/deepdetect_cpu
 ```
 where `/path/to/volume` is the path to your local volume that you'd like to attach to `/opt/deepdetect`. This is useful for sharing / saving models, etc...
 
@@ -118,7 +118,7 @@ Given a running server on 0.0.0.0:8080, the documentation is served at `http://h
 
 If dede is behind a custom API endpoint, e.g. `hostname:port/api/deepdetect`, swagger links won't work correctly. You can get around this by specifying the api path when you run the docker:
 ```bash
-docker run -d -p 8080:8080 jolibrain/deepdetect_cpu -swagger_api_prefix api/deepdetect/
+docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_cpu -swagger_api_prefix api/deepdetect/
 ```
 You can now serve DeepDetect on `hostname:port/api/deepdetect/` and expect the links in swagger documentation to work correctly.
 
