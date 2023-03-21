@@ -32,7 +32,7 @@ else
     TMP_TAG="trash"
 fi
 
-image_url_prefix="jolibrain/deepdetect"
+image_url_prefix="docker.jolibrain.com/deepdetect"
 
 for name in $NAMES; do
     target=${TARGETS[$name]}
