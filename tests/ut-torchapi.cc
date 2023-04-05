@@ -608,7 +608,7 @@ TEST(torchapi, compute_bbox_stats)
     11,  11,  101, 101, // matching
     900, 10,  950, 100, // false positive
     510, 510, 610, 610, // 2 preds for 1 targets
-    490, 490, 590, 590, // --
+    490, 490, 590, 590, // (second pred)
     940, 940, 990, 990, // overlapping but iou < 0.5 -> false positive
   };
   at::Tensor bboxes_tensor = torch::from_blob(bboxes_data, { 5, 4 });
@@ -619,10 +619,10 @@ TEST(torchapi, compute_bbox_stats)
   float score_data[] = { 0.9, 0.8, 0.7, 0.6, 0.5 };
   at::Tensor score_tensor = torch::from_blob(score_data, 5);
 
-  auto vbad = torchlib.get_bbox_stats(targ_bboxes, targ_labels, bboxes_tensor,
-                                      labels_tensor, score_tensor);
-
-  auto lbad = vbad.at(0);
+  auto vbad50
+      = torchlib.get_bbox_stats(targ_bboxes, targ_labels, bboxes_tensor,
+                                labels_tensor, score_tensor, 0.5);
+  auto lbad = vbad50.at(0);
   auto tp_i = lbad.get("tp_i").get<std::vector<int>>();
   auto tp_d = lbad.get("tp_d").get<std::vector<double>>();
   auto fp_i = lbad.get("fp_i").get<std::vector<int>>();
@@ -643,6 +643,19 @@ TEST(torchapi, compute_bbox_stats)
     }
   ASSERT_EQ(lbad.get("num_pos").get<int>(), 4);
   ASSERT_EQ(lbad.get("label").get<int>(), 1);
+  APIData ad_bbox_50;
+  ad_bbox_50.add("0", vbad50);
+
+  // with map 90 the third bbox is no longer matching
+  auto vbad90
+      = torchlib.get_bbox_stats(targ_bboxes, targ_labels, bboxes_tensor,
+                                labels_tensor, score_tensor, 0.9);
+  lbad = vbad90.at(0);
+  tp_i = lbad.get("tp_i").get<std::vector<int>>();
+  ASSERT_EQ(std::accumulate(tp_i.begin(), tp_i.end(), 0), 1);
+  ASSERT_FALSE(tp_i[2]);
+  APIData ad_bbox_90;
+  ad_bbox_90.add("0", vbad90);
 
   // Get MAP
   APIData ad_res;
@@ -651,15 +664,25 @@ TEST(torchapi, compute_bbox_stats)
   ad_res.add("bbox", true);
   ad_res.add("pos_count", 1);
   APIData ad_bbox;
-  ad_bbox.add("0", vbad);
+  ad_bbox.add("map-50", ad_bbox_50);
+  ad_bbox.add("map-90", ad_bbox_90);
   ad_res.add("0", ad_bbox);
   ad_res.add("batch_size", 1);
   APIData ad_out;
-  ad_out.add("measure", std::vector<std::string>{ "map" });
+  ad_out.add("measure", std::vector<std::string>{ "map", "map-50", "map-90" });
   APIData out;
   SupervisedOutput::measure(ad_res, ad_out, out, 0, "test");
-  ASSERT_NEAR(out.getobj("measure").get("map").get<double>(), 5. / 12.,
+  JsonAPI japi;
+  JDoc jdoc;
+  jdoc.SetObject();
+  out.toJDoc(jdoc);
+  std::cout << japi.jrender(jdoc) << std::endl;
+  ASSERT_NEAR(out.getobj("measure").get("map-50").get<double>(), 5. / 12.,
               std::numeric_limits<float>::epsilon());
+  ASSERT_NEAR(out.getobj("measure").get("map-90").get<double>(), 0.25,
+              std::numeric_limits<float>::epsilon());
+  ASSERT_NEAR(out.getobj("measure").get("map").get<double>(),
+              (5. / 12 + 0.25) / 2., std::numeric_limits<float>::epsilon());
 }
 
 TEST(torchapi, map_false_negative)
@@ -691,7 +714,7 @@ TEST(torchapi, map_false_negative)
   at::Tensor score_tensor = torch::from_blob(score_data, 1);
 
   auto vbad = torchlib.get_bbox_stats(targ_bboxes, targ_labels, bboxes_tensor,
-                                      labels_tensor, score_tensor);
+                                      labels_tensor, score_tensor, 0.5);
 
   // Get MAP
   APIData ad_res;
@@ -2360,7 +2383,8 @@ TEST(torchapi, service_train_object_detection_yolox)
           "true,\"persp_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
           "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
           "\"prob\":0.01}},\"input\":{\"seed\":12347,\"db\":true,"
-          "\"shuffle\":true},\"output\":{\"measure\":[\"map\"]}},\"data\":[\""
+          "\"shuffle\":true},\"output\":{\"measure\":[\"map-05\",\"map-50\","
+          "\"map-90\"]}},\"data\":[\""
         + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
 
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -2372,6 +2396,9 @@ TEST(torchapi, service_train_object_detection_yolox)
 
   // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+  ASSERT_TRUE(jd["body"]["measure"]["map-05"].GetDouble() <= 1.0) << "map-05";
+  ASSERT_TRUE(jd["body"]["measure"]["map-50"].GetDouble() <= 1.0) << "map-50";
+  ASSERT_TRUE(jd["body"]["measure"]["map-90"].GetDouble() <= 1.0) << "map-90";
   // ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
 
   // check metrics
@@ -2456,7 +2483,8 @@ TEST(torchapi, service_train_object_detection_yolox_no_db)
           "true,\"persp_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
           "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
           "\"prob\":0.01}},\"input\":{\"seed\":12347,\"db\":false,"
-          "\"shuffle\":true},\"output\":{\"measure\":[\"map\"]}},\"data\":[\""
+          "\"shuffle\":true},\"output\":{\"measure\":[\"map-90\",\"map\"]}},"
+          "\"data\":[\""
         + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
 
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -2468,6 +2496,8 @@ TEST(torchapi, service_train_object_detection_yolox_no_db)
 
   // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+  ASSERT_TRUE(jd["body"]["measure"]["map-90"].GetDouble() <= 1.0) << "map-90";
+  ASSERT_FALSE(jd["body"]["measure"].HasMember("map-50"));
   // ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
 
   // check metrics
@@ -2551,7 +2581,8 @@ TEST(torchapi, service_train_object_detection_yolox_multigpu)
           "true,\"persp_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
           "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
           "\"prob\":0.01}},\"input\":{\"seed\":12347,\"db\":true,"
-          "\"shuffle\":true},\"output\":{\"measure\":[\"map\"]}},\"data\":[\""
+          "\"shuffle\":true},\"output\":{\"measure\":[\"map-50\",\"map-90\"]}}"
+          ",\"data\":[\""
         + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
 
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -2563,6 +2594,14 @@ TEST(torchapi, service_train_object_detection_yolox_multigpu)
 
   ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+  ASSERT_TRUE(jd["body"]["measure"]["map-50"].GetDouble() <= 1.0) << "map-50";
+  ASSERT_TRUE(jd["body"]["measure"]["map-90"].GetDouble() <= 1.0) << "map-90";
+  ASSERT_LE(jd["body"]["measure"]["map-90"].GetDouble(),
+            jd["body"]["measure"]["map-50"].GetDouble());
+  ASSERT_NEAR((jd["body"]["measure"]["map-90"].GetDouble()
+               + jd["body"]["measure"]["map-50"].GetDouble())
+                  / 2,
+              jd["body"]["measure"]["map"].GetDouble(), 0.001);
   // ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
 
   // check metrics
