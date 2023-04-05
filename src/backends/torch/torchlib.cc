@@ -2017,6 +2017,17 @@ namespace dd
         ad_out.add("measure", meas);
       }
 
+    std::vector<int> iou_thresholds;
+    std::map<int, APIData> ad_bbox_per_iou;
+    if (_bbox)
+      {
+        auto meas = ad_out.get("measure").get<std::vector<std::string>>();
+        SupervisedOutput::find_ap_iou_thresholds(meas, iou_thresholds);
+
+        for (int i : iou_thresholds)
+          ad_bbox_per_iou[i] = APIData();
+      }
+
     auto dataloader = torch::data::make_data_loader(
         dataset, data::DataLoaderOptions(batch_size));
     torch::Device cpu("cpu");
@@ -2120,11 +2131,19 @@ namespace dd
                     ++stop;
                   }
 
-                auto vbad = get_bbox_stats(
-                    targ_bboxes.index({ torch::indexing::Slice(start, stop) }),
-                    targ_labels.index({ torch::indexing::Slice(start, stop) }),
-                    bboxes_tensor, labels_tensor, score_tensor);
-                ad_bbox.add(std::to_string(entry_id), vbad);
+                for (int iou_thres : iou_thresholds)
+                  {
+                    double iou_thres_d = static_cast<double>(iou_thres) / 100;
+                    std::vector<APIData> vbad = get_bbox_stats(
+                        targ_bboxes.index(
+                            { torch::indexing::Slice(start, stop) }),
+                        targ_labels.index(
+                            { torch::indexing::Slice(start, stop) }),
+                        bboxes_tensor, labels_tensor, score_tensor,
+                        iou_thres_d);
+                    ad_bbox_per_iou[iou_thres].add(std::to_string(entry_id),
+                                                   vbad);
+                  }
                 ++entry_id;
               }
           }
@@ -2299,6 +2318,12 @@ namespace dd
       {
         ad_res.add("bbox", true);
         ad_res.add("pos_count", entry_id);
+
+        for (int iou_thres : iou_thresholds)
+          {
+            ad_bbox.add("map-" + std::to_string(iou_thres),
+                        ad_bbox_per_iou[iou_thres]);
+          }
         ad_res.add("0", ad_bbox);
       }
     else if (_segmentation)
@@ -2318,7 +2343,8 @@ namespace dd
                                      const at::Tensor &targ_labels,
                                      const at::Tensor &bboxes_tensor,
                                      const at::Tensor &labels_tensor,
-                                     const at::Tensor &score_tensor)
+                                     const at::Tensor &score_tensor,
+                                     float overlap_threshold)
   {
     auto targ_bboxes_acc = targ_bboxes.accessor<float, 2>();
     auto targ_labels_acc = targ_labels.accessor<int64_t, 1>();
@@ -2348,7 +2374,6 @@ namespace dd
     };
 
     std::vector<eval_info> eval_infos(_nclasses);
-    float overlap_threshold = 0.5; // TODO: parameter
 
     for (int j = 0; j < pred_bbox_count; ++j)
       {

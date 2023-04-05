@@ -90,7 +90,8 @@ namespace dd
                                         const at::Tensor &targ_labels,
                                         const at::Tensor &bboxes_tensor,
                                         const at::Tensor &labels_tensor,
-                                        const at::Tensor &score_tensor);
+                                        const at::Tensor &score_tensor,
+                                        float overlap_threshold);
 
   public:
     unsigned int _nclasses = 0; /**< number of classes*/

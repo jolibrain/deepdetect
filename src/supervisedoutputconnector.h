@@ -23,6 +23,9 @@
 #define SUPERVISEDOUTPUTCONNECTOR_H
 #define TS_METRICS_EPSILON 1E-2
 
+#include <sstream>
+#include <iomanip>
+
 #include "dto/output_connector.hpp"
 
 template <typename T>
@@ -845,19 +848,64 @@ namespace dd
             }
           if (bbox)
             {
-              bool bbmap = (std::find(measures.begin(), measures.end(), "map")
-                            != measures.end());
-              if (bbmap)
+              // required iou thresholds for map. If there are more than one
+              // threshold, the global map is the mean over the different iou
+              // thresholds.
+              std::vector<int> thresholds;
+              bool has_map = find_ap_iou_thresholds(measures, thresholds);
+
+              if (has_map)
                 {
-                  std::map<int, float> aps;
-                  double bmap = ap(ad_res, aps);
-                  meas_out.add("map", bmap);
-                  for (auto ap : aps)
+                  double sum_map = 0;
+                  std::map<int, float> sum_aps;
+                  int ap_count = 0;
+
+                  // map for each threshold
+                  for (int iou_thres : thresholds)
                     {
-                      std::string s = "map_" + std::to_string(ap.first);
-                      meas_out.add(s, static_cast<double>(ap.second));
+                      std::map<int, float> aps;
+                      double bmap = ap(ad_res, aps, iou_thres);
+                      std::string map_key = "map";
+                      if (iou_thres != 0)
+                        {
+                          std::stringstream ss;
+                          ss << map_key << "-" << std::setfill('0')
+                             << std::setw(2) << iou_thres;
+                          map_key = ss.str();
+                        }
+                      meas_out.add(map_key, bmap);
+                      for (auto ap : aps)
+                        {
+                          std::string s
+                              = map_key + "_" + std::to_string(ap.first);
+                          meas_out.add(s, static_cast<double>(ap.second));
+                        }
+
+                      sum_map += bmap;
+                      if (sum_aps.size() == 0)
+                        sum_aps = aps;
+                      else
+                        {
+                          for (auto ap : aps)
+                            sum_aps[ap.first] += ap.second;
+                        }
+                      ap_count++;
+                    }
+
+                  // mean of all thresholds
+                  if (thresholds.size() > 0)
+                    {
+                      meas_out.add("map", sum_map / ap_count);
+                      for (auto sum_ap : sum_aps)
+                        {
+                          std::string s
+                              = "map_" + std::to_string(sum_ap.first);
+                          meas_out.add(s, static_cast<double>(sum_ap.second
+                                                              / ap_count));
+                        }
                     }
                 }
+
               bool raw = (std::find(measures.begin(), measures.end(), "raw")
                           != measures.end());
               if (raw)
@@ -1606,6 +1654,35 @@ namespace dd
             else
               meas_thres = 0.0;
           }
+    }
+
+    /** \param thresholds the requested iou thresholds in percent (int)
+     * \return true if map is requested, false otherwise */
+    static bool
+    find_ap_iou_thresholds(const std::vector<std::string> &measures,
+                           std::vector<int> &thresholds)
+    {
+      bool has_map = false;
+      for (std::string s : measures)
+        {
+          if (s.find("map") != std::string::npos)
+            {
+              has_map = true;
+              std::vector<std::string> sv = dd_utils::split(s, '-');
+              int iou_thres = 0;
+
+              if (sv.size() == 2)
+                {
+                  iou_thres = std::atoi(sv.at(1).c_str());
+                  thresholds.push_back(iou_thres);
+                }
+            }
+        }
+
+      // Default threshold is 0.5 (map 50)
+      if (thresholds.empty())
+        thresholds.push_back(50);
+      return has_map;
     }
 
     static double straight_meas(const APIData &ad)
@@ -2407,13 +2484,22 @@ namespace dd
       return ap;
     }
 
-    static double ap(const APIData &ad, std::map<int, float> &APs)
+    /**
+     * Compute AP for all classes and mean AP
+     * \param APs std::map containing AP for each class
+     * \param thres iou threshold for map in percent
+     */
+    static double ap(const APIData &ad, std::map<int, float> &APs, int thres)
     {
       double mmAP = 0.0;
       std::map<int, int> APs_count;
       int APs_count_all = 0;
       // extract tp, fp, labels
       APIData bad = ad.getobj("0");
+      std::string map_key = "map-" + std::to_string(thres);
+      if (bad.has(map_key))
+        bad = bad.getobj(map_key);
+      // else: default threshold (legacy)
       int pos_count = ad.get("pos_count").get<int>();
       for (int i = 0; i < pos_count; i++)
         {
