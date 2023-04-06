@@ -55,19 +55,53 @@ namespace dd
       DTO_FIELD(Int32, height);
       DTO_FIELD(Int32, crop_width);
       DTO_FIELD(Int32, crop_height);
+
+      DTO_FIELD_INFO(bw)
+      {
+        info->description = "whether to convert to black & white.";
+      }
       DTO_FIELD(Boolean, bw);
+
+      DTO_FIELD_INFO(rgb)
+      {
+        info->description = "whether to convert to rgb.";
+      }
       DTO_FIELD(Boolean, rgb);
+
+      DTO_FIELD_INFO(histogram_equalization)
+      {
+        info->description = "whether to apply histogram equalizer.";
+      }
       DTO_FIELD(Boolean, histogram_equalization);
+
       DTO_FIELD(Boolean, unchanged_data);
       DTO_FIELD(Boolean, shuffle);
       DTO_FIELD(Int32, seed);
       DTO_FIELD(Float64, test_split);
+
+      DTO_FIELD_INFO(mean)
+      {
+        info->description = "mean image pixels, to be subtracted from images.";
+      }
       DTO_FIELD(Vector<Float32>, mean);
+
+      DTO_FIELD_INFO(std)
+      {
+        info->description = "std, to divide image values.";
+      }
       DTO_FIELD(Vector<Float32>, std);
+
       DTO_FIELD(Any, scale); // bool for csv/csvts, float for img
       DTO_FIELD(Boolean, scaled);
       DTO_FIELD(Int32, scale_min);
       DTO_FIELD(Int32, scale_max);
+
+      DTO_FIELD_INFO(rotate)
+      {
+        info->description = "Rotate input image of 90, 180 or 270 degrees.";
+      }
+      DTO_FIELD(Int32, rotate);
+
       DTO_FIELD(Boolean, keep_orig);
       DTO_FIELD(String, interp);
 
