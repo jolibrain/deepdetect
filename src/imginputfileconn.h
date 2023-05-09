@@ -100,9 +100,9 @@ namespace dd
         {
           if (_scaled)
             scale(src, dst);
-          else if (_width == 0 || _height == 0)
+          else if (_width < 0 || _height < 0)
             {
-              if (_width == 0 && _height == 0)
+              if (_width < 0 && _height < 0)
                 {
                   // Do nothing and keep native resolution. May cause issues if
                   // batched images are different resolutions
@@ -199,9 +199,9 @@ namespace dd
         {
           if (_scaled)
             scale_cuda(src, dst);
-          else if (_width == 0 || _height == 0)
+          else if (_width < 0 || _height < 0)
             {
-              if (_width == 0 && _height == 0)
+              if (_width < 0 && _height < 0)
                 {
                   // Do nothing and keep native resolution. May cause issues if
                   // batched images are different resolutions

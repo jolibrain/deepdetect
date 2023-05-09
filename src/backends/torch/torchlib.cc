@@ -701,8 +701,7 @@ namespace dd
             if (ad_mllib.has("crop_size"))
               {
                 int crop_size = ad_mllib.get("crop_size").get<int>();
-                crop_params
-                    = CropParams(crop_size, inputc.width(), inputc.height());
+                crop_params = CropParams(crop_size);
                 if (ad_mllib.has("test_crop_samples"))
                   crop_params._test_crop_samples
                       = ad_mllib.get("test_crop_samples").get<int>();
@@ -712,8 +711,7 @@ namespace dd
             if (ad_mllib.has("cutout"))
               {
                 float cutout = ad_mllib.get("cutout").get<double>();
-                cutout_params
-                    = CutoutParams(cutout, inputc.width(), inputc.height());
+                cutout_params = CutoutParams(cutout);
                 this->_logger->info("cutout: {}", cutout);
               }
             GeometryParams geometry_params;
@@ -1640,6 +1638,10 @@ namespace dd
                         throw MLLibInternalException(
                             "Couldn't find original image size for " + uri);
                       }
+                    int src_width
+                        = inputc.width() > 0 ? inputc.width() : cols - 1;
+                    int src_height
+                        = inputc.height() > 0 ? inputc.height() : rows - 1;
 
                     APIData results_ad;
                     std::vector<double> probs;
@@ -1676,10 +1678,10 @@ namespace dd
                             this->_mlmodel.get_hcorresp(labels_acc[j]));
 
                         double bbox[] = {
-                          bboxes_acc[j][0] / inputc.width() * (cols - 1),
-                          bboxes_acc[j][1] / inputc.height() * (rows - 1),
-                          bboxes_acc[j][2] / inputc.width() * (cols - 1),
-                          bboxes_acc[j][3] / inputc.height() * (rows - 1),
+                          bboxes_acc[j][0] / src_width * (cols - 1),
+                          bboxes_acc[j][1] / src_height * (rows - 1),
+                          bboxes_acc[j][2] / src_width * (cols - 1),
+                          bboxes_acc[j][3] / src_height * (rows - 1),
                         };
 
                         // clamp bbox

@@ -395,17 +395,24 @@ namespace dd
 
     if (sample)
       {
+        int img_width = src.cols;
+        int img_height = src.rows;
+        std::uniform_int_distribution<int> uniform_int_crop_x(
+            0, img_width - cp._crop_size);
+        std::uniform_int_distribution<int> uniform_int_crop_y(
+            0, img_height - cp._crop_size);
+
 #pragma omp critical
         {
           if (test)
             {
-              crop_x = cp._uniform_int_crop_x(_rnd_test_gen);
-              crop_y = cp._uniform_int_crop_y(_rnd_test_gen);
+              crop_x = uniform_int_crop_x(_rnd_test_gen);
+              crop_y = uniform_int_crop_y(_rnd_test_gen);
             }
           else
             {
-              crop_x = cp._uniform_int_crop_x(_rnd_gen);
-              crop_y = cp._uniform_int_crop_y(_rnd_gen);
+              crop_x = uniform_int_crop_x(_rnd_gen);
+              crop_y = uniform_int_crop_y(_rnd_gen);
             }
         }
       }
@@ -464,20 +471,22 @@ namespace dd
 
 #pragma omp critical
     {
+      int img_width = src.cols;
+      int img_height = src.rows;
       // get shape and area to erase
       int w = 0, h = 0, rect_x = 0, rect_y = 0;
       if (cp._w == 0 && cp._h == 0)
         {
-          float s = cp._uniform_real_cutout_s(_rnd_gen) * cp._img_width
-                    * cp._img_height;                    // area
+          float s = cp._uniform_real_cutout_s(_rnd_gen) * img_width
+                    * img_height;                        // area
           float r = cp._uniform_real_cutout_r(_rnd_gen); // aspect ratio
 
-          w = std::min(cp._img_width,
+          w = std::min(img_width,
                        static_cast<int>(std::floor(std::sqrt(s / r))));
-          h = std::min(cp._img_height,
+          h = std::min(img_height,
                        static_cast<int>(std::floor(std::sqrt(s * r))));
-          std::uniform_int_distribution<int> distx(0, cp._img_width - w);
-          std::uniform_int_distribution<int> disty(0, cp._img_height - h);
+          std::uniform_int_distribution<int> distx(0, img_width - w);
+          std::uniform_int_distribution<int> disty(0, img_height - h);
           rect_x = distx(_rnd_gen);
           rect_y = disty(_rnd_gen);
         }
