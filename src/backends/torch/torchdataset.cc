@@ -227,7 +227,7 @@ namespace dd
         torch::load(targett, targetstream);
       }
 
-    if (bgr.cols != width || bgr.rows != height)
+    if (width > 0 && height > 0 && (bgr.cols != width || bgr.rows != height))
       {
         cv::resize(bgr, bgr, cv::Size(width, height), 0, 0, cv::INTER_CUBIC);
 
@@ -860,10 +860,13 @@ namespace dd
 
     std::ifstream infile(bboxfname);
     std::string line;
-    double wfactor = static_cast<double>(inputc->_width)
-                     / static_cast<double>(orig_width);
-    double hfactor = static_cast<double>(inputc->_height)
-                     / static_cast<double>(orig_height);
+    double wfactor = inputc->_width > 0 ? static_cast<double>(inputc->_width)
+                                              / static_cast<double>(orig_width)
+                                        : 1;
+    double hfactor = inputc->_height > 0
+                         ? static_cast<double>(inputc->_height)
+                               / static_cast<double>(orig_height)
+                         : 1;
 
     while (std::getline(infile, line))
       {

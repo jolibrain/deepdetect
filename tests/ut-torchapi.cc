@@ -394,6 +394,46 @@ TEST(torchapi, service_predict_object_detection)
   ASSERT_EQ(preds_best.Size(), 3);
 }
 
+TEST(torchapi, service_predict_object_detection_any_size)
+{
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"fasterrcnn\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "-1,\"width\":-1,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"template\":\"fasterrcnn\"}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+  std::string jpredictstr
+      = "{\"service\":\"detectserv\",\"parameters\":{"
+        "\"input\":{\"height\":-1,"
+        "\"width\":-1},\"output\":{\"bbox\":true, "
+        "\"best_bbox\":1,\"confidence_threshold\":0.8}},\"data\":[\""
+        + detect_train_repo_fasterrcnn + "/imgs/000550-L.jpg\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  auto &preds = jd["body"]["predictions"][0]["classes"];
+  std::string cl1 = preds[0]["cat"].GetString();
+  ASSERT_TRUE(cl1 == "car");
+  ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.9);
+  auto &bbox = preds[0]["bbox"];
+  ASSERT_NEAR(bbox["xmin"].GetDouble(), 258.0, 5.0);
+  ASSERT_NEAR(bbox["ymin"].GetDouble(), 333.0, 5.0);
+  ASSERT_NEAR(bbox["xmax"].GetDouble(), 401.0, 5.0);
+  ASSERT_NEAR(bbox["ymax"].GetDouble(), 448.0, 5.0);
+}
+
 TEST(torchapi, service_predict_segmentation)
 {
   JsonAPI japi;
@@ -2722,6 +2762,107 @@ TEST(torchapi, service_train_object_detection_translation)
                             "\"confidence_threshold\":0.8}},\"data\":[\""
                             + detect_train_repo_fasterrcnn
                             + "/imgs/la_melrose_ave-000020.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(detect_train_repo_yolox, true, false, false, lfiles);
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(!fileops::file_exists(detect_train_repo_yolox + "checkpoint-"
+                                    + iterations_detection + ".ptw"));
+  ASSERT_TRUE(!fileops::file_exists(detect_train_repo_yolox + "checkpoint-"
+                                    + iterations_detection + ".pt"));
+
+  fileops::clear_directory(detect_train_repo_yolox + "train.lmdb");
+  fileops::clear_directory(detect_train_repo_yolox + "test_0.lmdb");
+  fileops::remove_dir(detect_train_repo_yolox + "train.lmdb");
+  fileops::remove_dir(detect_train_repo_yolox + "test_0.lmdb");
+}
+
+TEST(torchapi, service_train_object_detection_yolox_any_size)
+{
+  // Test with arbitrary image size: width = -1, height = -1
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"yolox\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_train_repo_yolox
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "-1,\"width\":-1,\"rgb\":true,\"bbox\":true,\"db\":true},"
+          "\"mllib\":{\"template\":\"yolox\",\"gpu\":true,"
+          "\"nclasses\":2}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train
+  std::string jtrainstr
+      = "{\"service\":\"detectserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":3"
+        + std::string("")
+        //+ iterations_detection + ",\"base_lr\":" + torch_lr
+        + ",\"iter_size\":2,\"solver_"
+          "type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_size\":2,"
+          "\"test_batch_size\":1,\"reg_weight\":0.5},\"resume\":false,"
+          "\"mirror\":true,\"rotate\":true,\"crop_size\":512,"
+          "\"test_crop_samples\":10,"
+          "\"cutout\":0.1,\"geometry\":{\"prob\":0.1,\"persp_horizontal\":"
+          "true,\"persp_vertical\":true,\"zoom_in\":true,\"zoom_out\":true,"
+          "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
+          "\"prob\":0.01}},\"input\":{\"seed\":12347,\"db\":true,"
+          "\"shuffle\":true},\"output\":{\"measure\":[\"map-05\",\"map-50\","
+          "\"map-90\"]}},\"data\":[\""
+        + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
+
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+  ASSERT_TRUE(jd["body"]["measure"]["map-05"].GetDouble() <= 1.0) << "map-05";
+  ASSERT_TRUE(jd["body"]["measure"]["map-50"].GetDouble() <= 1.0) << "map-50";
+  ASSERT_TRUE(jd["body"]["measure"]["map-90"].GetDouble() <= 1.0) << "map-90";
+  // ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
+
+  // check metrics
+  auto &meas = jd["body"]["measure"];
+  ASSERT_TRUE(meas.HasMember("iou_loss"));
+  ASSERT_TRUE(meas.HasMember("conf_loss"));
+  ASSERT_TRUE(meas.HasMember("cls_loss"));
+  ASSERT_TRUE(meas.HasMember("l1_loss"));
+  ASSERT_TRUE(meas.HasMember("train_loss"));
+  ASSERT_TRUE(
+      std::abs(meas["train_loss"].GetDouble()
+               - (meas["iou_loss"].GetDouble() * 0.5
+                  + meas["cls_loss"].GetDouble() + meas["l1_loss"].GetDouble()
+                  + meas["conf_loss"].GetDouble()))
+      < 0.0001);
+
+  // check that predict works fine
+  std::string jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                            "\"input\":{\"height\":-1,"
+                            "\"width\":-1},\"output\":{\"bbox\":true, "
+                            "\"confidence_threshold\":0.8}},\"data\":[\""
+                            + detect_train_repo_fasterrcnn
+                            + "/imgs/000550-L.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   jd = JDoc();
   std::cout << "joutstr=" << joutstr << std::endl;

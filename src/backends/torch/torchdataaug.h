@@ -33,44 +33,15 @@
 
 namespace dd
 {
-  class ImgAugParams
+  class CropParams
   {
   public:
-    ImgAugParams() : _img_width(224), _img_height(224)
+    CropParams()
     {
     }
 
-    ImgAugParams(const int &img_width, const int &img_height)
-        : _img_width(img_width), _img_height(img_height)
+    CropParams(const int &crop_size) : _crop_size(crop_size)
     {
-    }
-
-    ~ImgAugParams()
-    {
-    }
-
-    int _img_width;
-    int _img_height;
-  };
-
-  class CropParams : public ImgAugParams
-  {
-  public:
-    CropParams() : ImgAugParams()
-    {
-    }
-
-    CropParams(const int &crop_size, const int &img_width,
-               const int &img_height)
-        : ImgAugParams(img_width, img_height), _crop_size(crop_size)
-    {
-      if (_crop_size > 0)
-        {
-          _uniform_int_crop_x
-              = std::uniform_int_distribution<int>(0, _img_width - _crop_size);
-          _uniform_int_crop_y = std::uniform_int_distribution<int>(
-              0, _img_height - _crop_size);
-        }
     }
 
     ~CropParams()
@@ -79,21 +50,17 @@ namespace dd
 
     // default params
     int _crop_size = -1;
-    std::uniform_int_distribution<int> _uniform_int_crop_x;
-    std::uniform_int_distribution<int> _uniform_int_crop_y;
     int _test_crop_samples = 1; /**< number of sampled crops (at test time). */
   };
 
-  class CutoutParams : public ImgAugParams
+  class CutoutParams
   {
   public:
-    CutoutParams() : ImgAugParams()
+    CutoutParams()
     {
     }
 
-    CutoutParams(const float &prob, const int &img_width,
-                 const int &img_height)
-        : ImgAugParams(img_width, img_height), _prob(prob)
+    CutoutParams(const float &prob) : _prob(prob)
     {
       _uniform_real_cutout_s
           = std::uniform_real_distribution<float>(_cutout_sl, _cutout_sh);
@@ -287,11 +254,6 @@ namespace dd
           _uniform_real_1(0.0, 1.0), _bernouilli(0.5),
           _uniform_int_rotate(0, 3)
     {
-      if (_crop_params._crop_size > 0)
-        {
-          _cutout_params._img_width = _crop_params._crop_size;
-          _cutout_params._img_height = _crop_params._crop_size;
-        }
       reset_rnd_test_gen();
     }
 
