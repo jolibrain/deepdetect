@@ -1,6 +1,6 @@
 diff --git a/c10/util/logging_is_dd_log.h b/c10/util/logging_is_dd_log.h
 new file mode 100644
-index 0000000000..8f72861a08
+index 00000000000..c1c0c24defa
 --- /dev/null
 +++ b/c10/util/logging_is_dd_log.h
 @@ -0,0 +1,61 @@
@@ -13,8 +13,8 @@ index 0000000000..8f72861a08
 +#include "caffe/llogging.h"
 +
 +#ifndef VLOG
-+#define DEBUG "none"
-+static const std::string VLogLevels[4] = {DEBUG, DEBUG, DEBUG, DEBUG};
++#define DEBUG_STR "none"
++static const std::string VLogLevels[4] = {DEBUG_STR, DEBUG_STR, DEBUG_STR, DEBUG_STR};
 +#define VLOG(n) LOG(VLogLevels[n])
 +#endif
 +
@@ -67,7 +67,7 @@ index 0000000000..8f72861a08
 +#endif
 diff --git a/caffe/llogging.h b/caffe/llogging.h
 new file mode 100644
-index 0000000000..720bda66a7
+index 00000000000..548b0febecc
 --- /dev/null
 +++ b/caffe/llogging.h
 @@ -0,0 +1,315 @@
@@ -157,7 +157,7 @@ index 0000000000..720bda66a7
 +#ifdef CAFFE_THROW_ON_ERROR
 +#include <sstream>
 +#define SSTR(x)                                                               \
-+  dynamic_cast<std::ostringstream &>((std::ostringstream() << std::dec << x)) \
++  dynamic_cast<std::ostringstream &&>((std::ostringstream() << std::dec << x)) \
 +      .str()
 +class CaffeErrorException : public std::exception
 +{
@@ -168,7 +168,7 @@ index 0000000000..720bda66a7
 +  ~CaffeErrorException() throw()
 +  {
 +  }
-+  const char *what() const throw()
++  const char *what() const throw() override
 +  {
 +    return _s.c_str();
 +  }

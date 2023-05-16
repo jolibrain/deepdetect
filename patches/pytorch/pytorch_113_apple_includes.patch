@@ -1,0 +1,14 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 471fc8a8d3d..09026bdb2d7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1004,6 +1004,9 @@ if(NOT APPLE AND UNIX)
+   list(APPEND Caffe2_DEPENDENCY_LIBS dl)
+ endif()
+ 
++# Mac OS
++include_directories(BEFORE /opt/homebrew/include/)
++
+ # Prefix path to Caffe2 headers.
+ # If a directory containing installed Caffe2 headers was inadvertently
+ # added to the list of include directories, prefixing

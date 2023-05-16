@@ -1226,7 +1226,7 @@ namespace dd
         cv::split(src, channels);
 
         // Shuffle the channels
-        std::random_shuffle(channels.begin(), channels.end());
+        std::shuffle(channels.begin(), channels.end(), _rnd_gen);
         cv::merge(channels, src);
       }
   }

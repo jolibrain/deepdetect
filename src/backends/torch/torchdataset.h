@@ -215,11 +215,11 @@ namespace dd
     /**
      * \brief get tensor dims if data #i (of first element of dataset)
      */
-    std::vector<long int> datasize(long int i) const;
+    std::vector<int64_t> datasize(int64_t i) const;
     /**
      * \brief get tensor dims if data #i (of first element of dataset)
      */
-    std::vector<long int> targetsize(long int i) const;
+    std::vector<int64_t> targetsize(int64_t i) const;
 
     /**
      * \brief Returns a batch containing all the cached data

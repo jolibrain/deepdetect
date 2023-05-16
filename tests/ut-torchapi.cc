@@ -620,7 +620,7 @@ TEST(torchapi, load_weights_native_model)
   auto output_size = module.forward({ torch::zeros({ 1, 3, 224, 224 }) })
                          .toTensor()
                          .sizes();
-  std::vector<long int> target_sizes = { 1, 2 };
+  std::vector<int64_t> target_sizes = { 1, 2 };
   ASSERT_EQ(output_size, target_sizes);
 
   // =====
@@ -4065,9 +4065,9 @@ TEST(torchapi, nbeats_extract_layers_simple)
 
   torch::Tensor x = torch::randn({ 2, 500, 1 });
   torch::Tensor y = nb.forward(x);
-  ASSERT_EQ(y.sizes(), std::vector<long int>({ 2, 550, 1 }));
+  ASSERT_EQ(y.sizes(), std::vector<int64_t>({ 2, 550, 1 }));
   torch::Tensor z = nb.extract(x, "2:0:fc1");
-  ASSERT_EQ(z.sizes(), std::vector<long int>({ 2, 10 }));
+  ASSERT_EQ(z.sizes(), std::vector<int64_t>({ 2, 10 }));
   torch::Tensor t = nb.extract(x, "1:1:end");
   std::cout << t << std::endl;
 }

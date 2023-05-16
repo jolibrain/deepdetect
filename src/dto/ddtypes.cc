@@ -42,6 +42,9 @@ namespace dd
 
       template <>
       const oatpp::ClassId DTOVectorClass<bool>::CLASS_ID("vector<bool>");
+
+      template class DTOVectorClass<double>;
+      template class DTOVectorClass<bool>;
     }
   }
 }

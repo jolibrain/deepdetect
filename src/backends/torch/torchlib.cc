@@ -22,10 +22,6 @@
 
 #include "torchlib.h"
 
-#if !defined(CPU_ONLY)
-#include <c10/cuda/CUDACachingAllocator.h>
-#endif
-
 #include "outputconnectorstrategy.h"
 
 #include "generators/net_caffe.h"
@@ -95,7 +91,7 @@ namespace dd
            TMLModel>::~TorchLib()
   {
     _module.free();
-    torch_utils::empty_cuda_cache();
+    torch_utils::free_gpu_memory();
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -203,7 +199,7 @@ namespace dd
       }
     _template = mllib_dto->model_template;
 
-    if (mllib_dto->gpu && !torch::cuda::is_available())
+    if (mllib_dto->gpu && !torch_utils::is_gpu_available())
       {
         throw MLLibBadParamException(
             "GPU is not available, service could not be created");
@@ -270,7 +266,7 @@ namespace dd
         // if gpuids = -1, we use all gpus
         if (gpuids.size() == 1 && gpuids[0] == -1)
           {
-            gpuids.resize(torch::cuda::device_count());
+            gpuids.resize(torch_utils::get_gpu_count());
             std::iota(gpuids.begin(), gpuids.end(), 0);
           }
 
@@ -278,7 +274,13 @@ namespace dd
           gpuids.push_back(0);
 
         for (int gpuid : gpuids)
-          _devices.push_back(torch::Device(DeviceType::CUDA, gpuid));
+          {
+#if USE_MPS
+            _devices.push_back(torch::Device(DeviceType::MPS, gpuid));
+#else
+            _devices.push_back(torch::Device(DeviceType::CUDA, gpuid));
+#endif
+          }
 
         if (_devices.size() > 1)
           {
@@ -556,7 +558,7 @@ namespace dd
           {
             if (meas_out.has(m))
               {
-                cur_meas = meas_out.get(m).get<double>();
+                cur_meas = meas_out.get(m).template get<double>();
                 meas = m;
                 break;
               }
@@ -1348,13 +1350,13 @@ namespace dd
           }
         if (!snapshotted)
           snapshot(elapsed_it, tsolver);
-        torch_utils::empty_cuda_cache();
+        torch_utils::free_gpu_memory();
         return -1;
       }
 
     if (skip_training)
       test(ad, inputc, inputc._test_datasets, test_batch_size, out);
-    torch_utils::empty_cuda_cache();
+    torch_utils::free_gpu_memory();
 
     // Update model after training
     this->_mlmodel.read_from_repository(this->_logger);
@@ -1510,7 +1512,7 @@ namespace dd
         meas_out.erase("iteration");
         meas_out.erase("train_loss");
         out.add("measure", meas_out.getobj("measure"));
-        torch_utils::empty_cuda_cache();
+        torch_utils::free_gpu_memory();
         return 0;
       }
 

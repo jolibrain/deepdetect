@@ -26,7 +26,7 @@
 namespace dd
 {
   void CRNNHeadImpl::get_params(const APIData &ad_params,
-                                const std::vector<long int> &input_dims,
+                                const std::vector<int64_t> &input_dims,
                                 int output_size)
   {
     if (ad_params.has("timesteps"))

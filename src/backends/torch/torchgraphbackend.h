@@ -238,7 +238,7 @@ namespace dd
 
     bool _allocation_done = false;
 
-    long int _autoencoder_timesteps = -1;
+    int64_t _autoencoder_timesteps = -1;
     /**< this var stores timesteps of an lstm autoencoder, read from lstm
      * layers and given to tile/repeat layer, in order not to have to put it in
      * prototxt */
