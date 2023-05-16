@@ -634,7 +634,7 @@ TEST(graphapi, simple_extract_layer)
   ASSERT_TRUE(ctt.extractable("LSTM_1"));
   torch::Tensor x = torch::randn({ 2, 10, 9 });
   torch::Tensor y = ctt.extract(x, "LSTM_1");
-  ASSERT_EQ(y.sizes(), std::vector<long int>({ 2, 10, 50 }));
+  ASSERT_EQ(y.sizes(), std::vector<int64_t>({ 2, 10, 50 }));
 }
 
 TEST(graphapi, complete_extract_layer)

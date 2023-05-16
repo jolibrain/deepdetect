@@ -126,7 +126,7 @@ namespace dd
                            torch::Tensor perturb, float eps, float delta,
                            float wd)
   {
-    std::vector<long int> expand_size(p.sizes().size(), 1);
+    std::vector<int64_t> expand_size(p.sizes().size(), 1);
     expand_size[0] = -1;
 
     std::vector<std::function<torch::Tensor(torch::Tensor)>> view_funcs{
@@ -230,8 +230,8 @@ namespace dd
             if (options.gradient_centralization())
               {
 
-                std::vector<long int> dim;
-                for (long int i = 1; i < grad.dim(); ++i)
+                std::vector<int64_t> dim;
+                for (int64_t i = 1; i < grad.dim(); ++i)
                   dim.push_back(i);
                 grad.add_(-grad.mean(torch::IntArrayRef(dim), true));
               }

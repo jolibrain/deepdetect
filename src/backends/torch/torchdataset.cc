@@ -343,7 +343,7 @@ namespace dd
       }
   }
 
-  std::vector<long int> TorchDataset::targetsize(long int i) const
+  std::vector<int64_t> TorchDataset::targetsize(int64_t i) const
   {
     if (!_db)
       return _batches[0].target[i].sizes().vec();
@@ -360,7 +360,7 @@ namespace dd
     return t.at(i).sizes().vec();
   }
 
-  std::vector<long int> TorchDataset::datasize(long int i) const
+  std::vector<int64_t> TorchDataset::datasize(int64_t i) const
   {
     if (!_db)
       return _batches[0].data[i].sizes().vec();

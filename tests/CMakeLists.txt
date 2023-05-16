@@ -1,5 +1,7 @@
 include_directories(${COMMON_INCLUDE_DIRS})
 link_directories(${COMMON_LINK_DIRS})
+link_directories("/opt/homebrew/lib/")
+link_directories("/usr/local/lib") # for gtest
 
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})

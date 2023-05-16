@@ -181,8 +181,10 @@ namespace dd
                       _class_weights = weights;
                     else
                       {
-                        weights = (_class_weights * _num_batches + weights)
-                                  / (_num_batches + 1);
+                        weights = (_class_weights
+                                       * static_cast<double>(_num_batches)
+                                   + weights)
+                                  / static_cast<double>(_num_batches + 1);
                         _class_weights = weights;
                       }
                     _num_batches++;

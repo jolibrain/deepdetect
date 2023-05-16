@@ -58,7 +58,7 @@ namespace dd
     }
 
     CRNNHeadImpl(const APIData &ad_params,
-                 const std::vector<long int> &input_dims, int output_size = -1)
+                 const std::vector<int64_t> &input_dims, int output_size = -1)
     {
       get_params(ad_params, input_dims, output_size);
       init();
@@ -89,7 +89,7 @@ namespace dd
     void init();
 
     void get_params(const APIData &ad_params,
-                    const std::vector<long int> &input_dims, int output_size);
+                    const std::vector<int64_t> &input_dims, int output_size);
 
     void set_output_size(int output_size);
 

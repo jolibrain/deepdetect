@@ -182,12 +182,12 @@ namespace dd
     else if (optype == "Tile")
       {
         torch::Tensor x = inputsTensor[0];
-        std::vector<long int> rssizes = x.sizes().vec();
+        std::vector<int64_t> rssizes = x.sizes().vec();
         rssizes.erase(rssizes.begin()); // remove first dim because it is
         // 1 : num_layers * num_directions
         rssizes.insert(rssizes.begin() + _graph[v].axis, 1L);
         torch::Tensor y = x.reshape(rssizes);
-        std::vector<long int> tiless(rssizes.size(), 1);
+        std::vector<int64_t> tiless(rssizes.size(), 1);
         if (_graph[v].outputsdims[0][_graph[v].axis]
             < 0) // to be autodetermined : autoencoder LSTM case only for now
           tiless[_graph[v].axis] = _autoencoder_timesteps;

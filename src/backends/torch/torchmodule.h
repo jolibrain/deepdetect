@@ -23,17 +23,11 @@
 #ifndef TORCH_MODULE_H
 #define TORCH_MODULE_H
 
-// TODO this should normally be defined by pytorch
-#define AT_PARALLEL_OPENMP 1
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <torch/torch.h>
 #include <torch/script.h>
 #include <torch/nn/pimpl.h>
-#if !defined(CPU_ONLY)
-#include <torch/nn/parallel/data_parallel.h>
-#endif
 #pragma GCC diagnostic pop
 
 #include "torchmodel.h"
