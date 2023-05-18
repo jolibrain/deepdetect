@@ -373,6 +373,11 @@ if (CUDA_FOUND)
   if (USE_CUDNN)
     set(CUDA_LIB_DEPS ${CUDA_LIB_DEPS} ${CUDNN_LIBRARY})
   endif()
+  if ("${CUDA_ARCH}" STREQUAL "")
+    message(STATUS "CUDA_ARCH not set, using detected set " ${NVCC_ARCH_EXTRA})
+    set(CUDA_ARCH ${NVCC_ARCH_EXTRA})
+  endif()
+  message(STATUS "CUDA_ARCH=${CUDA_ARCH}")
 else()
   set(CUDA_LIB_DEPS "")
   add_definitions(-DCPU_ONLY)
@@ -667,7 +672,7 @@ elseif(USE_CAFFE)
         echo "INCLUDE_DIRS+=${SPDLOG_INCLUDE_DIR}" >> Makefile.config &&
         echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
         echo "INCLUDE_DIRS+=${OpenCV_INCLUDE_DIRS}" >> Makefile.config &&
-        echo "CUDA_ARCH:=${CUDA_ARCH}" >> Makefile.config &&
+        echo "CUDA_ARCH:=${CUDA_ARCH_FLAGS}" >> Makefile.config &&
         echo "LIBRARIES+=${SPDLOG_CAFFE_LIB_DEPS}" >> Makefile.config &&
         echo "LIBRARIES+=${OpenCV_LIBS}" >> Makefile.config &&
         echo "LIBRARY_DIRS+=${SPDLOG_LIB_DIR}" >> Makefile.config &&
@@ -780,7 +785,7 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v2.0.0)
+    set(PYTORCH_COMMIT v2.0.1)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if(USE_TORCH_CPU_ONLY)
@@ -789,6 +794,7 @@ if (USE_TORCH)
       set(PYTORCH_USE_CUDA 1)
     endif()
 
+    file(WRITE ${CMAKE_BINARY_DIR}/build_pytorch.sh "set -x\n${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA}  BUILD_CAFFE2=1 BUILD_CAFFE2_OPS=1 BUILD_CAFFE2_MOBILE=0 USE_DDLOG=1 USE_TENSORRT=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 \"CMAKE_CXX_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"CMAKE_CUDA_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" CMAKE_CUDA_ARCHITECTURES=\"${CUDA_ARCH}\" \"CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc\" CMAKE_PREFIX_PATH=${PROTOBUF_LIB_DIR}/cmake MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py")
     ExternalProject_Add(
       pytorch
       PREFIX pytorch
@@ -799,7 +805,7 @@ if (USE_TORCH)
       PATCH_COMMAND "" test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
       CONFIGURE_COMMAND "" cd ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/third_party/fmt/ && git checkout 7.1.0
       BUILD_COMMAND ""
-      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || ${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 GLIBCXX_USE_CXX11_ABI=1 BUILD_TEST=0 USE_CUDA=${PYTORCH_USE_CUDA}  BUILD_CAFFE2=1 BUILD_CAFFE2_OPS=1 BUILD_CAFFE2_MOBILE=0 USE_DDLOG=1 USE_TENSORRT=0 CAFFE2_LINK_LOCAL_PROTOBUF=0 "CMAKE_CXX_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}" "CMAKE_CUDA_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}  ${CUDA_ARCH}" CMAKE_PREFIX_PATH=${PROTOBUF_LIB_DIR}/cmake MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
+      COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || sh ${CMAKE_BINARY_DIR}/build_pytorch.sh
       INSTALL_COMMAND ""
       DEPENDS spdlog protobuf
     )
@@ -820,7 +826,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.15.1") # 0.15.1 & torch 2.0.0
+  set(PYTORCH_VISION_COMMIT "v0.15.2") # 0.15.2 & torch 2.0.1
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   # set(PYTORCH_VISION_PATCHES
   #   ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
@@ -829,13 +835,7 @@ if (USE_TORCH)
   set(PYTORCH_VISION_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch_vision-complete)
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
 
-  set(PYTORCH_VISION_FLAGS
-      -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
-      -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
-      "-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}"
-      "-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR} ${CUDA_ARCH}"
-      "-DCMAKE_CUDA_STANDARD=14"
-      -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc)
+ file(WRITE ${CMAKE_BINARY_DIR}/build_pytorch_vision.sh "sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh PYTORCH_VISION ${CMAKE_BINARY_DIR}/pytorch_vision ${PYTORCH_VISION_COMPLETE} src/pytorch_vision src/pytorch_vision-build ${N} \"install\" ${CMAKE_COMMAND} ${PYTORCH_VISION_FLAGS} -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION} -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR} \"-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_STANDARD=14\" \"-DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH}\" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc")
 
   ExternalProject_Add(
     pytorch_vision
@@ -846,7 +846,7 @@ if (USE_TORCH)
     UPDATE_DISCONNECTED 1
     PATCH_COMMAND "" #test -f ${PYTORCH_VISION_COMPLETE} && echo Skipping || git apply ${PYTORCH_VISION_PATCHES} && echo Applying ${PYTORCH_VISION_PATCHES}
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh PYTORCH_VISION ${CMAKE_BINARY_DIR}/pytorch_vision ${PYTORCH_VISION_COMPLETE} src/pytorch_vision src/pytorch_vision-build ${N} "install" ${CMAKE_COMMAND} ${PYTORCH_VISION_FLAGS}
+    BUILD_COMMAND sh ${CMAKE_BINARY_DIR}/build_pytorch_vision.sh
     INSTALL_COMMAND ""
     DEPENDS protobuf pytorch
   )
@@ -887,7 +887,7 @@ if (USE_XGBOOST)
       CMAKE_ARGS
         -DPLUGIN_UPDATER_GPU=ON
         -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost_cub/src/xgboost_cub
-        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda $CUDA_ARCH"
+        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda $CUDA_ARCH_FLAGS"
       INSTALL_COMMAND ""
       DEPENDS xgboost_cub
     )

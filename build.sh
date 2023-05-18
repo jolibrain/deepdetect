@@ -9,12 +9,22 @@ deepdetect_gpu_build_profiles=(default torch tf caffe2 tensorrt)
 
 # NOTE(beniz): list of all supported card by CUDA 11.1
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
+if [ ! "$DEEPDETECT_CUDA_ARCH_FLAGS" ]; then
     for card in 50 52 60 61 62 70 72 75 80 86; do
-        DEEPDETECT_CUDA_ARCH="$DEEPDETECT_CUDA_ARCH -gencode arch=compute_${card},code=sm_${card}"
+        DEEPDETECT_CUDA_ARCH_FLAGS="$DEEPDETECT_CUDA_ARCH_FLAGS -gencode arch=compute_${card},code=sm_${card}"
     done
     # trim spaces
-    DEEPDETECT_CUDA_ARCH="$(echo ${DEEPDETECT_CUDA_ARCH} | xargs)"
+    DEEPDETECT_CUDA_ARCH_FLAGS="$(echo ${DEEPDETECT_CUDA_ARCH_FLAGS} | xargs)"
+fi
+
+if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
+    for card in 50 52 60 61 62 70 72 75 80 86; do
+        if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
+            DEEPDETECT_CUDA_ARCH=${card}
+        else
+            DEEPDETECT_CUDA_ARCH="$DEEPDETECT_CUDA_ARCH;${card}"
+        fi
+    done
 fi
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
@@ -157,7 +167,7 @@ gpu_build() {
 	"tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_CAFFE=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
         *) extra_flags="$default_flags";;
     esac
-    cmake .. $extra_flags -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH} -DRELEASE=${DEEPDETECT_RELEASE}"
+    cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" "-DRELEASE=${DEEPDETECT_RELEASE}"
     make -j6
 }
 
@@ -180,6 +190,7 @@ elif [[ ${DEEPDETECT_ARCH} == "gpu" ]]; then
     echo "  DEEPDETECT_ARCH      : ${DEEPDETECT_ARCH}"
     echo "  DEEPDETECT_BUILD     : ${DEEPDETECT_BUILD}"
     echo "  DEEPDETECT_CUDA_ARCH : ${DEEPDETECT_CUDA_ARCH}"
+    echo "  DEEPDETECT_CUDA_ARCH_FLAGS : ${DEEPDETECT_CUDA_ARCH_FLAGS}"
     echo "  DEEPDETECT_OPENCV4_BUILD_PATH : ${DEEPDETECT_OPENCV4_BUILD_PATH}"
     echo ""
     gpu_build
