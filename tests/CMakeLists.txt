@@ -90,7 +90,7 @@ function (DOWNLOAD_FILES _BASEURL _DEST)
   endforeach()
 endfunction()
 
-find_package(PythonInterp 2.7 REQUIRED)
+find_package(PythonInterp 3 REQUIRED)
 
 REGISTER_TEST(ut_common ut-common.cc)
 
