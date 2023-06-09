@@ -39,19 +39,22 @@ namespace dd
   public:
     TModule _module;
 
+    // XXX: support of clang-format-10 on ubuntu 20.04
+    // clang-format off
     template <typename... Args>
-    NativeModuleWrapper(Args &&... args) : _module(args...)
+    NativeModuleWrapper(Args &&...args) : _module(args...)
     {
       _clone_function
           = [args = std::make_tuple(std::forward<Args>(args)...)]() {
               return dd_utils::apply(
-                  [](auto &&... args) {
+                  [](auto &&...args) {
                     return new NativeModuleWrapper<TModule>(args...);
                   },
                   std::move(args));
             };
       this->register_module("wrapped", _module);
     }
+    // clang-format on
 
     std::shared_ptr<torch::nn::Module>
     clone(const c10::optional<torch::Device> &device

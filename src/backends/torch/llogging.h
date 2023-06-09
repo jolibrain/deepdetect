@@ -84,7 +84,8 @@ private:
 #ifdef CAFFE_THROW_ON_ERROR
 #include <sstream>
 #define SSTR(x)                                                               \
-  dynamic_cast<std::ostringstream &>((std::ostringstream() << std::dec << x)) \
+  dynamic_cast<std::ostringstream &&>(                                        \
+      (std::ostringstream() << std::dec << x))                                \
       .str()
 class CaffeErrorException : public std::exception
 {
@@ -135,9 +136,12 @@ static std::ostream nullstream(0);
 /* #endif */
 #endif
 
+// XXX: support for clang-format 10 on ubuntu 20.04
+// clang-format off
 #define CHECK_NOTNULL(x)                                                      \
   ((x) == NULL ? LOG(FATAL) << "Check  notnull: " #x << ' ',                  \
-   (x) : (x)) // NOLINT(*)
+   (x)         : (x)) // NOLINT(*)
+// clang-format on
 
 #ifdef NDEBUG
 #define DCHECK(x)                                                             \
