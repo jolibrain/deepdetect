@@ -1,12 +1,11 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvcr.io/nvidia/tensorrt:22.08-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:23.05-py3 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=tensorrt
 ARG DEEPDETECT_DEFAULT_MODELS=true
-ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.5.3/build
-#ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp
+ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.7.0/build
 
 # Install build dependencies
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
@@ -14,15 +13,11 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloa
 RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
     export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && apt-get install -y python-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
+    apt-get update -y && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget curl
 
 # CMake
-RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
-RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
-
-# python2 pycompile + docker-buildkit is a bit buggy, it's slow as hell, so disable it for dev
-# bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
-RUN cp /bin/true /usr/bin/pycompile
+# RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
+# RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ jammy main'
 
 # Don't install opencv-ml-dev, it will install libprotobuf dans link dede to 2 versions of protobuf
 RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
@@ -37,8 +32,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     pkg-config \
     cmake \
     zip \
-    g++ \
-    gcc-7 g++-7 \
+    gcc-11 g++-11 \
     zlib1g-dev \
     libgoogle-glog-dev \
     libgflags-dev \
@@ -67,19 +61,10 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libmapbox-variant-dev \
     autoconf \
     libtool-bin \
-    python-numpy \
-    python-yaml \
-    python-typing \
     swig \
     curl \
     unzip \
     python-setuptools \
-    python-dev \
-    python3-dev \
-    python3-pip \
-    python-six \
-    python-enum34 \
-    python3-yaml \
     unzip \
     libgoogle-perftools-dev \
     curl \
@@ -92,18 +77,10 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav \
-    gstreamer1.0-doc \
     gstreamer1.0-tools \
     gstreamer1.0-x \
     gstreamer1.0-gl \
     bash-completion
-
-RUN for url in \
-        https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
-        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
-
-# Fix "ImportError: No module named builtins"
-# RUN pip install future pyyaml typing
 
 # Fix  ModuleNotFoundError: No module named 'dataclasses', 'typing_extensions' for torch 1.8.0
 RUN python3 -m pip install --upgrade pip
@@ -119,11 +96,11 @@ RUN wget http://www.deepdetect.com/stuff/Video_Codec_SDK_11.1.5.zip && unzip Vid
 RUN cd Video_Codec_SDK_11.1.5 && cp Interface/* /usr/local/cuda/targets/x86_64-linux/include/ && \
 cp Lib/linux/stubs/x86_64/* /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
 cd /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
-ln -s libcuda.so libcuda.so.1 && ln -s libnvcuvid.so libnvcuvid.so.1
+ln -s libcuda.so libcuda.so.1 && ln -s libnvcuvid.so libnvcuvid.so.1 && ln -s libnvidia-encode.so libnvidia-encode.so.1
 
 # Build OpenCV 4 with CUDA
-RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.5.3.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.5.3.zip && unzip opencv.zip && unzip opencv_contrib.zip
-RUN cd /tmp/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.7.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.7.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
+RUN cd /tmp/opencv/opencv-4.7.0 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D CMAKE_INSTALL_PREFIX=/tmp/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
@@ -146,12 +123,12 @@ RUN cd /tmp/opencv/opencv-4.5.3 && mkdir build && cd build && cmake -D CMAKE_BUI
 -D OPENCV_ENABLE_NONFREE=ON \
 -D BUILD_opencv_python2=OFF \
 -D BUILD_opencv_python3=OFF \
--D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.5.3/modules \
+-D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.7.0/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
 -D INSTALL_C_EXAMPLES=OFF \
 -D BUILD_EXAMPLES=OFF ..
 
-WORKDIR /tmp/opencv/opencv-4.5.3/build
+WORKDIR /tmp/opencv/opencv-4.7.0/build
 RUN make -j20
 RUN make install
 
@@ -166,10 +143,10 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvcr.io/nvidia/tensorrt:22.08-py3 AS runtime
+FROM nvcr.io/nvidia/tensorrt:23.05-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
-ARG DEEPDETECT_CUDA_VERSION=11.7
+ARG DEEPDETECT_CUDA_VERSION=12.1
 
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
@@ -184,24 +161,36 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 	libopenblas-base \
 	liblmdb0 \
 	libleveldb1d \
-    libboost-regex1.71.0 \
+    libboost-regex1.74.0 \
 	libgoogle-glog0v5 \
-    libopencv4.2 \
 	libgflags2.2 \
 	libcurl4 \
 	libcurlpp0 \
 	libhdf5-cpp-103 \
-    libboost-atomic1.71.0 \
-    libboost-chrono1.71.0 \
-    libboost-date-time1.71.0 \
-	libboost-filesystem1.71.0 \
-	libboost-thread1.71.0 \
-	libboost-iostreams1.71.0 \
-    libboost-regex1.71.0 \
-    libboost-stacktrace1.71.0 \
-    libboost-system1.71.0 \
+    libboost-atomic1.74.0 \
+    libboost-chrono1.74.0 \
+    libboost-date-time1.74.0 \
+	libboost-filesystem1.74.0 \
+	libboost-thread1.74.0 \
+	libboost-iostreams1.74.0 \
+    libboost-regex1.74.0 \
+    libboost-stacktrace1.74.0 \
+    libboost-system1.74.0 \
 	libarchive13 \
-	libgstreamer1.0-0
+    libtbb12 \
+	libgstreamer1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    libavcodec58 \
+    libavformat58 \
+    libavutil56 \
+    libswscale5 \
+    libavdevice58 \
+    libswresample3
+
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
@@ -214,6 +203,7 @@ RUN useradd -ms /bin/bash dd && \
 # XXX: some version of buildkit fail when copying to simlink, using cuda true path instead
 COPY --from=build /usr/local/cuda/targets/x86_64-linux/lib/stubs/libnvcuvid.so.1 /usr/local/cuda-${DEEPDETECT_CUDA_VERSION}/targets/x86_64-linux/lib/stubs/libnvcuvid.so.1
 COPY --from=build /usr/local/cuda/targets/x86_64-linux/lib/stubs/libcuda.so.1 /usr/local/cuda-${DEEPDETECT_CUDA_VERSION}/targets/x86_64-linux/lib/stubs/libcuda.so.1
+COPY --from=build /usr/local/cuda/targets/x86_64-linux/lib/stubs/libnvidia-encode.so.1 /usr/local/cuda-${DEEPDETECT_CUDA_VERSION}/targets/x86_64-linux/lib/stubs/libnvidia-encode.so.1
 
 USER dd
 

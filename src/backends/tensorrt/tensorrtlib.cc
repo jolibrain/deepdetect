@@ -733,17 +733,31 @@ namespace dd
 
         try
           {
-            _inputIndex = 0;
+            _inputName = _engine->getIOTensorName(0);
             if (out_blob == "last")
-              _outputIndex0 = _engine->getNbBindings() - 1;
+              _outputName0
+                  = _engine->getIOTensorName(_engine->getNbIOTensors() - 1);
             else
-              _outputIndex0 = _engine->getBindingIndex(out_blob.c_str());
-            _dims = _engine->getBindingDimensions(_outputIndex0);
+              _outputName0 = out_blob;
+
+            // Get dimensions
+            _dims = _engine->getTensorShape(_outputName0.c_str());
             if (_dims.nbDims >= 2)
-              this->_logger->info("detected output dimensions: [{}, {} {} {}]",
-                                  _dims.d[0], _dims.d[1],
-                                  _dims.nbDims > 2 ? _dims.d[2] : 0,
-                                  _dims.nbDims > 3 ? _dims.d[3] : 0);
+              {
+                this->_logger->info(
+                    "detected output dimensions: [{}, {} {} {}]", _dims.d[0],
+                    _dims.d[1], _dims.nbDims > 2 ? _dims.d[2] : 0,
+                    _dims.nbDims > 3 ? _dims.d[3] : 0);
+
+                if (_explicit_batch)
+                  {
+                    this->_logger->warn(
+                        "Explicit batch: set max batch size to "
+                        "model batch size {}",
+                        _dims.d[0]);
+                    _max_batch_size = _dims.d[0];
+                  }
+              }
           }
         catch (...)
           {
@@ -762,7 +776,7 @@ namespace dd
                       "Bbox model requires 3 output dimensions, found "
                       + std::to_string(_dims.nbDims));
 
-                _outputIndex1 = _engine->getBindingIndex("keep_count");
+                _outputName1 = "keep_count";
                 _buffers.resize(3);
                 int det_out_size
                     = _max_batch_size * _results_height * _dims.d[2];
@@ -904,15 +918,28 @@ namespace dd
                                   cudaMemcpyHostToDevice, cstream);
               }
 
+            if (!_explicit_batch)
+              {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-            if (!_explicit_batch)
-              enqueue_success = _context->enqueue(
-                  num_processed, _buffers.data(), cstream, nullptr);
-            else
-              enqueue_success
-                  = _context->enqueueV2(_buffers.data(), cstream, nullptr);
+                enqueue_success = _context->enqueue(
+                    num_processed, _buffers.data(), cstream, nullptr);
 #pragma GCC diagnostic pop
+              }
+            else
+              {
+                _context->setTensorAddress(_inputName.c_str(),
+                                           _buffers.data()[_inputIndex]);
+                _context->setTensorAddress(_outputName0.c_str(),
+                                           _buffers.data()[_outputIndex0]);
+                if (_buffers.size() >= 3)
+                  {
+                    _context->setTensorAddress(_outputName1.c_str(),
+                                               _buffers.data()[_outputIndex1]);
+                  }
+
+                enqueue_success = _context->enqueueV3(cstream);
+              }
             if (!enqueue_success)
               throw MLLibInternalException("Failed TRT enqueue call");
 
