@@ -146,9 +146,12 @@ namespace dd
 
     bool _TRTContextReady = false;
 
-    int _inputIndex;
-    int _outputIndex0;
-    int _outputIndex1;
+    std::string _inputName;
+    int _inputIndex = 0;
+    std::string _outputName0;
+    int _outputIndex0 = 1;
+    std::string _outputName1;
+    int _outputIndex1 = 2;
 
     bool _first_predict
         = true; // do some cuda allocations only at first predict

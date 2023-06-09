@@ -49,7 +49,7 @@ static std::string caffe_ocr_repo = "../examples/caffe/multiword_ocr";
 static std::string caffe_faces_detect_repo = "../examples/caffe/faces_512";
 static std::string caffe_age_repo = "../examples/caffe/age_real";
 
-static std::string trt_detect_repo = "../examples/trt/faces_512/";
+static std::string trt_detect_repo = "../examples/trt/yolox_onnx_trt_nowrap/";
 static std::string trt_gan_repo
     = "../examples/trt/cyclegan_resnet_attn_onnx_trt";
 
@@ -372,18 +372,18 @@ TEST(chain, chain_trt_detection_gan)
   JsonAPI japi;
   std::string detect_sname = "detect";
   std::string jstr
-      = "{\"mllib\":\"tensorrt\",\"description\":\"imagenet\","
+      = "{\"mllib\":\"tensorrt\",\"description\":\"yolox\","
         "\"type\":\"supervised\",\"model\":{\"repository\":\""
         + trt_detect_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":"
-          "\"image\",\"height\":512,\"width\":512},\"mllib\":{\"datatype\":"
-          "\"fp32\",\"maxBatchSize\":1,\"maxWorkspaceSize\":256,\"gpuid\":0}}"
-          "}";
+          "\"image\",\"height\":640,\"width\":640},\"mllib\":{"
+          "\"maxBatchSize\":2,\"maxWorkspaceSize\":256,\"gpuid\":0,"
+          "\"template\":\"yolox\",\"nclasses\":81,\"datatype\":\"fp16\"}}}";
   std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
   std::string gan_sname = "gan";
-  jstr = "{\"mllib\":\"tensorrt\",\"description\":\"squeezenet\",\"type\":"
+  jstr = "{\"mllib\":\"tensorrt\",\"description\":\"gan\",\"type\":"
          "\"supervised\",\"model\":{\"repository\":\""
          + trt_gan_repo
          + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"

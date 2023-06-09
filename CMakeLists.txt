@@ -960,7 +960,7 @@ if (USE_TENSORRT)
 
     if (NOT TENSORRT_VERSION)
         if (EXISTS "${TRTTESTDIR}/libnvinfer.so.8")
-            set(TENSORRT_VERSION 8.4.3)
+            set(TENSORRT_VERSION v8.6.1)
             message(STATUS "Found TensorRT libraries version 8")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
@@ -981,10 +981,8 @@ if (USE_TENSORRT)
 
 	set(TRT_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/trt)
 	set(TRT_PATCHES
-      ${TRT_PATCHES_PATH}/0001-support-for-refinedet.patch
       ${TRT_PATCHES_PATH}/0003-c++14.patch
       ${TRT_PATCHES_PATH}/0009-fix_compil_order.patch
-      ${TRT_PATCHES_PATH}/0010-fix_plugin_detect.patch
       ${TRT_PATCHES_PATH}/0011-fix_plugin_makefile_cub.patch
       )
 
@@ -1201,7 +1199,9 @@ set(COMMON_LINK_LIBS
     ${TORCH_LIB_DEPS}
 )
 if (USE_HDF5)
-    list(APPEND COMMON_LINK_LIBS hdf5_cpp)
+    find_library(HDF5_LIBRARY NAMES hdf5_cpp hdf5_serial_cpp)
+    message(STATUS "HDF5 library at ${HDF5_LIBRARY}")
+    list(APPEND COMMON_LINK_LIBS ${HDF5_LIBRARY})
 endif()
 
 # configure config.cmake for external application
@@ -1238,8 +1238,8 @@ endif()
 file(GLOB_RECURSE ALL_SOURCE_FILES src/*.cpp src/*.hpp src/*.h src/*.c tests/*.cc src/*.cc)
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "^${CMAKE_SOURCE_DIR}/src/ext/.*$")
 
-
-find_program(CLANG_FORMAT_BIN clang-format-10 clang-format)
+# ubuntu 20: clang-format-10, ubuntu 22: clang-format 14
+find_program(CLANG_FORMAT_BIN NAMES clang-format clang-format-14 clang-format-10)
 add_custom_target(
         clang-format
         COMMAND ${CLANG_FORMAT_BIN}
