@@ -22,6 +22,9 @@
 #ifndef UNSUPERVISEDOUTPUTCONNECTOR_H
 #define UNSUPERVISEDOUTPUTCONNECTOR_H
 
+#include <vector>
+#include <map>
+
 #include "dto/predict_out.hpp"
 
 namespace dd
@@ -119,6 +122,9 @@ namespace dd
         _bool_binarized = ad_out.get("bool_binarized").get<bool>();
       else if (ad_out.has("string_binarized"))
         _string_binarized = ad_out.get("string_binarized").get<bool>();
+
+      if (ad_out.has("encoding"))
+        _image_encoding = ad_out.get("encoding").get<std::string>();
     }
 
     void set_results(std::vector<UnsupervisedResult> &&results)
@@ -321,8 +327,16 @@ namespace dd
           auto pred_dto = DTO::Prediction::createShared();
           pred_dto->uri = _vvres.at(i)._uri.c_str();
           if (_vvres.at(i)._images.size() != 0)
-            pred_dto->_images = _vvres.at(i)._images;
-          if (_bool_binarized)
+            {
+              // XXX: legacy
+              pred_dto->_images = _vvres.at(i)._images;
+
+              pred_dto->images = oatpp::Vector<DTO::DTOImage>::createShared();
+              for (auto &image : _vvres.at(i)._images)
+                pred_dto->images->push_back(
+                    DTO::VImage{ image, _image_encoding });
+            }
+          else if (_bool_binarized)
             pred_dto->vals
                 = DTO::DTOVector<bool>(std::move(_vvres.at(i)._bvals));
           else if (_string_binarized)
@@ -368,6 +382,8 @@ namespace dd
         = false; /**< boolean binary representation of output values. */
     bool _string_binarized = false; /**< boolean string as binary
                                        representation of output values. */
+    std::string _image_encoding
+        = ".png"; /**< encoding used for output images */
 #ifdef USE_SIMSEARCH
     int _search_nn = 10; /**< default nearest neighbors per search. */
 #endif

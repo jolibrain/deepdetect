@@ -124,6 +124,8 @@ static std::string iterations_ttransformer_cpu = "100";
 static std::string iterations_ttransformer_gpu = "1000";
 
 static std::string iterations_resnet50 = "200";
+/// different values to mitigate failure due to randomness
+static std::string iterations_resnet50_split = "300";
 static std::string iterations_vit = "200";
 static std::string iterations_detection = "200";
 static std::string iterations_deeplabv3 = "200";
@@ -831,7 +833,7 @@ TEST(torchapi, service_train_images_split)
   std::string jtrainstr
       = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
         "\"mllib\":{\"solver\":{\"iterations\":"
-        + iterations_resnet50 + ",\"base_lr\":" + torch_lr
+        + iterations_resnet50_split + ",\"base_lr\":" + torch_lr
         + ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
           "interval\":200},\"net\":{\"batch_size\":4},\"nclasses\":2,"
           "\"resume\":false},"
@@ -846,7 +848,8 @@ TEST(torchapi, service_train_images_split)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"]);
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  int it_count = std::stoi(iterations_resnet50_split);
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == it_count) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
@@ -862,9 +865,9 @@ TEST(torchapi, service_train_images_split)
         remove(ff.c_str());
     }
   ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
-                                    + iterations_resnet50 + ".ptw"));
+                                    + iterations_resnet50_split + ".ptw"));
   ASSERT_TRUE(!fileops::file_exists(resnet50_train_repo + "checkpoint-"
-                                    + iterations_resnet50 + ".pt"));
+                                    + iterations_resnet50_split + ".pt"));
   fileops::clear_directory(resnet50_train_repo + "train.lmdb");
   fileops::clear_directory(resnet50_train_repo + "test_0.lmdb");
   fileops::remove_dir(resnet50_train_repo + "train.lmdb");
