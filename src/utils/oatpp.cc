@@ -38,6 +38,8 @@ namespace dd
                                    DTO::apiDataDeserialize);
       deser->setDeserializerMethod(DTO::GpuIds::Class::CLASS_ID,
                                    DTO::gpuIdsDeserialize);
+      deser->setDeserializerMethod(DTO::DTOImage::Class::CLASS_ID,
+                                   DTO::imageDeserialize);
       deser->setDeserializerMethod(DTO::DTOVector<double>::Class::CLASS_ID,
                                    DTO::vectorDeserialize<double>);
       deser->setDeserializerMethod(DTO::DTOVector<uint8_t>::Class::CLASS_ID,
@@ -49,6 +51,8 @@ namespace dd
                                DTO::apiDataSerialize);
       ser->setSerializerMethod(DTO::GpuIds::Class::CLASS_ID,
                                DTO::gpuIdsSerialize);
+      ser->setSerializerMethod(DTO::DTOImage::Class::CLASS_ID,
+                               DTO::imageSerialize);
       ser->setSerializerMethod(DTO::DTOVector<double>::Class::CLASS_ID,
                                DTO::vectorSerialize<double>);
       ser->setSerializerMethod(DTO::DTOVector<uint8_t>::Class::CLASS_ID,
@@ -190,6 +194,13 @@ namespace dd
             {
               jval.PushBack(dto_gpuid->_ids[i], jdoc.GetAllocator());
             }
+        }
+      else if (polymorph.getValueType() == DTO::DTOImage::Class::getType())
+        {
+          auto dto_img = polymorph.cast<DTO::DTOImage>();
+          std::string img_str
+              = cv_utils::image_to_base64(dto_img->get_img(), dto_img->_ext);
+          jval.SetString(img_str.c_str(), jdoc.GetAllocator());
         }
       else if (polymorph.getValueType()->classId.id
                    == oatpp::data::mapping::type::__class::AbstractVector::

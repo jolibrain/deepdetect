@@ -31,6 +31,8 @@ namespace dd
 
       const oatpp::ClassId GpuIdsClass::CLASS_ID("GpuIds");
 
+      const oatpp::ClassId ImageClass::CLASS_ID("Image");
+
       template <>
       const oatpp::ClassId DTOVectorClass<double>::CLASS_ID("vector<double>");
 

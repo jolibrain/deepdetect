@@ -22,9 +22,12 @@
 #ifndef DD_DTO_TYPES_HPP
 #define DD_DTO_TYPES_HPP
 
+#include <opencv2/opencv.hpp>
+
 #include "oatpp/core/Types.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "apidata.h"
+#include "utils/cv_utils.hpp"
 
 namespace dd
 {
@@ -46,10 +49,51 @@ namespace dd
       }
     };
 
+    struct VImage
+    {
+      cv::Mat _img;
+#ifdef USE_CUDA_CV
+      cv::cuda::GpuMat _cuda_img;
+#endif
+      std::string _ext = ".png";
+
+      VImage(const cv::Mat &img, const std::string &ext = ".png")
+          : _img(img), _ext(ext)
+      {
+      }
+#ifdef USE_CUDA_CV
+      VImage(const cv::cuda::GpuMat &cuda_img, const std::string &ext = ".png")
+          : _cuda_img(cuda_img), _ext(ext)
+      {
+      }
+#endif
+      bool is_cuda() const
+      {
+#ifdef USE_CUDA_CV
+        return !_cuda_img.empty();
+#else
+        return false;
+#endif
+      }
+
+      /** get image on CPU whether it's on GPU or not */
+      const cv::Mat &get_img()
+      {
+#ifdef USE_CUDA_CV
+        if (is_cuda())
+          {
+            _cuda_img.download(_img);
+          }
+#endif
+        return _img;
+      }
+    };
+
     namespace __class
     {
       class APIDataClass;
       class GpuIdsClass;
+      class ImageClass;
       template <typename T> class DTOVectorClass;
     }
 
@@ -59,6 +103,8 @@ namespace dd
     typedef oatpp::data::mapping::type::Primitive<VGpuIds,
                                                   __class::GpuIdsClass>
         GpuIds;
+    typedef oatpp::data::mapping::type::Primitive<VImage, __class::ImageClass>
+        DTOImage;
     template <typename T>
     using DTOVector
         = oatpp::data::mapping::type::Primitive<std::vector<T>,
@@ -78,6 +124,18 @@ namespace dd
       };
 
       class GpuIdsClass
+      {
+      public:
+        static const oatpp::ClassId CLASS_ID;
+
+        static oatpp::Type *getType()
+        {
+          static oatpp::Type type(CLASS_ID);
+          return &type;
+        }
+      };
+
+      class ImageClass
       {
       public:
         static const oatpp::ClassId CLASS_ID;
@@ -113,6 +171,9 @@ namespace dd
     {
       (void)type;
       (void)deserializer;
+      // XXX: this has a failure case if the stream contains excaped "{" or "}"
+      // Since this is a temporary workaround until we use DTO everywhere, it
+      // might not be required to be fixed
       if (caret.isAtChar('{'))
         {
           auto start = caret.getCurrData();
@@ -219,6 +280,30 @@ namespace dd
             }
           serializer->serializeToStream(stream, ids);
         }
+    }
+
+    static inline oatpp::Void
+    imageDeserialize(oatpp::parser::json::mapping::Deserializer *deserializer,
+                     oatpp::parser::Caret &caret,
+                     const oatpp::Type *const type)
+    {
+      (void)type;
+      auto str_base64
+          = deserializer->deserialize(caret, oatpp::String::Class::getType())
+                .cast<oatpp::String>();
+      return DTOImage(VImage{ cv_utils::base64_to_image(*str_base64) });
+    }
+
+    static inline void
+    imageSerialize(oatpp::parser::json::mapping::Serializer *serializer,
+                   oatpp::data::stream::ConsistentOutputStream *stream,
+                   const oatpp::Void &obj)
+    {
+      (void)serializer;
+      auto img_dto = obj.cast<DTOImage>();
+      std::string encoded
+          = cv_utils::image_to_base64(img_dto->get_img(), img_dto->_ext);
+      stream->writeSimple(encoded);
     }
 
     // Inspired by oatpp json deserializer

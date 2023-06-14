@@ -116,11 +116,24 @@ namespace dd
 
       DTO_FIELD_INFO(vals)
       {
-        info->description = "[Unsupervised] Array containing model output "
-                            "values. Can be in different formats: double, "
-                            "binarized double, booleans, binarized string";
+        info->description
+            = "[Unsupervised] Array containing model output "
+              "values. Can be in different formats: double, "
+              "binarized double, booleans, binarized string, base64 image";
       }
       DTO_FIELD(Any, vals);
+
+      DTO_FIELD_INFO(images)
+      {
+        info->description
+            = "[Unsupervised] Array of images returned by the model";
+      }
+      DTO_FIELD(Vector<DTOImage>, images);
+
+      DTO_FIELD_INFO(imgsize)
+      {
+        info->description = "[Unsupervised] Image size";
+      }
       DTO_FIELD(Object<Dimensions>, imgsize);
 
       DTO_FIELD_INFO(confidences)
@@ -140,6 +153,7 @@ namespace dd
       DTO_FIELD(String, index_uri);
 
     public:
+      // XXX: Legacy & deprecated
       std::vector<cv::Mat> _images; /**<allow to pass images in the DTO */
     };
 
