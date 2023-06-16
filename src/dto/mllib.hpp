@@ -183,6 +183,13 @@ namespace dd
       }
       DTO_FIELD(Boolean, multi_label) = false;
 
+      DTO_FIELD_INFO(concurrent_predict)
+      {
+        info->description
+            = "Enable/disable concurrent predict for the model";
+      }
+      DTO_FIELD(Boolean, concurrent_predict) = true;
+
       // Libtorch predict options
       DTO_FIELD_INFO(forward_method)
       {

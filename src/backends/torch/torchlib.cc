@@ -83,6 +83,7 @@ namespace dd
     _segmentation = tl._segmentation;
     _ctc = tl._ctc;
     _multi_label = tl._multi_label;
+    _concurrent_predict = tl._concurrent_predict;
     _loss = tl._loss;
     _template_params = tl._template_params;
     _dtype = tl._dtype;
@@ -310,6 +311,11 @@ namespace dd
     if (mllib_dto->multi_label)
       {
         _multi_label = true;
+      }
+
+    if (mllib_dto->concurrent_predict)
+      {
+        _concurrent_predict = true;
       }
 
     if (_template == "bert")
@@ -1369,6 +1375,11 @@ namespace dd
   int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                TMLModel>::predict(const APIData &ad_in, APIData &out)
   {
+    std::unique_ptr<std::lock_guard<std::mutex>> lock;
+    if (!_concurrent_predict) {
+        // concurrent calls can use more memory on gpu than initially expected
+        lock = std::make_unique<std::lock_guard<std::mutex>>(_net_mutex);
+      }
     oatpp::Object<DTO::ServicePredict> predict_dto;
 
     // XXX: until everything is DTO, we consider the two cases:
