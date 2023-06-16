@@ -112,9 +112,17 @@ namespace dd
     bool _segmentation = false;   /**< select segmentation type problem */
     bool _ctc = false;            /**< select OCR type problem */
     bool _multi_label = false;    /**< whether model outputs multiple labels */
+    bool _concurrent_predict = true; /**< allow concurrent predicts */
     std::string _loss = "";       /**< selected loss*/
     double _reg_weight
         = 1; /**< for detection models, weight for bbox regression loss. */
+
+    std::mutex
+        _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as
+                         it can use more gpu memory than initially expected.
+                         Use batches instead.
+                         This is only used if concurrent_predict is
+                         disabled. */
 
     APIData _template_params; /**< template parameters, for recurrent and
                                  native models*/
