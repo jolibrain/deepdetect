@@ -25,6 +25,8 @@
 #include <fstream>
 #include <vector>
 
+#include <boost/lexical_cast.hpp>
+
 namespace dd
 {
   namespace dd_utils
@@ -99,6 +101,25 @@ namespace dd
             count++;
         }
       return count == 1;
+    }
+
+    /** boost::lexical_cast<bool> but accept "true" and "false" */
+    inline bool parse_bool(const std::string &str)
+    {
+      try
+        {
+          return boost::lexical_cast<bool>(str);
+        }
+      catch (boost::bad_lexical_cast &)
+        {
+          if (str == "true")
+            return true;
+          else if (str == "false")
+            return false;
+          else
+            throw;
+        }
+      return false;
     }
 
 #ifdef WIN32

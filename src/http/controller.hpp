@@ -26,8 +26,6 @@
 #include <vector>
 #include <iostream>
 
-#include <boost/lexical_cast.hpp>
-
 #include "oatpp/web/server/api/ApiController.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 #include "oatpp/core/macro/codegen.hpp"
@@ -35,6 +33,7 @@
 
 #include "apidata.h"
 #include "oatppjsonapi.h"
+#include "utils/utils.hpp"
 #include "dto/info.hpp"
 #include "dto/service_predict.hpp"
 #include "dto/service_create.hpp"
@@ -77,8 +76,16 @@ public:
 
     oatpp::String qs_status = queryParams.get("status");
     bool status = false;
-    if (qs_status)
-      status = boost::lexical_cast<bool>(*qs_status);
+    try
+      {
+        if (qs_status)
+          status = dd::dd_utils::parse_bool(*qs_status);
+      }
+    catch (boost::bad_lexical_cast &)
+      {
+        return _oja->response_bad_request_400(
+            "status must be a boolean value");
+      }
 
     auto hit = _oja->_mlservices.begin();
     while (hit != _oja->_mlservices.end())
@@ -101,13 +108,29 @@ public:
   {
     oatpp::String qs_status = queryParams.get("status");
     bool status = true;
-    if (qs_status)
-      status = boost::lexical_cast<bool>(*qs_status);
+    try
+      {
+        if (qs_status)
+          status = dd::dd_utils::parse_bool(*qs_status);
+      }
+    catch (boost::bad_lexical_cast &)
+      {
+        return _oja->response_bad_request_400(
+            "status must be a boolean value");
+      }
 
     oatpp::String qs_labels = queryParams.get("labels");
     bool labels = false;
-    if (qs_labels)
-      labels = boost::lexical_cast<bool>(*qs_labels);
+    try
+      {
+        if (qs_labels)
+          labels = dd::dd_utils::parse_bool(*qs_labels);
+      }
+    catch (boost::bad_lexical_cast &)
+      {
+        return _oja->response_bad_request_400(
+            "labels must be a boolean value");
+      }
 
     auto janswer = _oja->service_status(service_name, status, labels);
     return _oja->jdoc_to_response(janswer);
