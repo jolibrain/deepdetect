@@ -79,7 +79,7 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   ASSERT_EQ(201, d["status"]["code"].GetInt());
 
   // service info
-  response = client->get_service_with_labels(serv.c_str(), "1");
+  response = client->get_service_with_labels(serv.c_str(), "true");
   message = response->readBodyToString();
   ASSERT_TRUE(message != nullptr);
   std::cout << "jstr=" << *message << std::endl;
@@ -101,6 +101,16 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
             std::string("image"));
   ASSERT_TRUE(d["body"].HasMember("labels"));
   ASSERT_EQ(d["body"]["labels"].Size(), 0);
+
+  // test other boolean values
+  response = client->get_service_with_labels(serv.c_str(), "1");
+  ASSERT_EQ(response->getStatusCode(), 200);
+  response = client->get_service_with_labels(serv.c_str(), "false");
+  ASSERT_EQ(response->getStatusCode(), 200);
+  response = client->get_service_with_labels(serv.c_str(), "0");
+  ASSERT_EQ(response->getStatusCode(), 200);
+  response = client->get_service_with_labels(serv.c_str(), "flase");
+  ASSERT_EQ(response->getStatusCode(), 400);
 
   // info call
   response = client->get_info();
