@@ -20,11 +20,11 @@
 #ifndef TENSORRTLIB_H
 #define TENSORRTLIB_H
 
-#include "tensorrtmodel.h"
-#include "apidata.h"
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
 
+#include "apidata.h"
+#include "tensorrtmodel.h"
 #include "error_recorder.hpp"
 
 namespace dd
@@ -127,6 +127,7 @@ namespace dd
         _template; /**< template for models that require specific treatment */
 
     //!< The TensorRT engine used to run the network
+    std::shared_ptr<TRTErrorRecorder> _error_recorder = nullptr;
     std::shared_ptr<nvinfer1::IInt8Calibrator> _calibrator = nullptr;
     std::shared_ptr<nvinfer1::ICudaEngine> _engine = nullptr;
     std::shared_ptr<nvinfer1::IBuilder> _builder = nullptr;

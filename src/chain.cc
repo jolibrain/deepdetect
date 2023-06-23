@@ -96,7 +96,7 @@ namespace dd
             for (auto p : *body->predictions)
               {
                 std::string uri = p->uri;
-                p->uri = model_name.c_str();
+                p->uri = model_name;
                 other_models_out.insert(
                     std::pair<std::string, oatpp::Object<DTO::Prediction>>(uri,
                                                                            p));
@@ -123,7 +123,7 @@ namespace dd
             for (auto p : *out_body->predictions)
               {
                 std::string uri = p->uri;
-                p->uri = action_id.c_str();
+                p->uri = action_id;
                 other_models_out.insert(
                     std::pair<std::string, oatpp::Object<DTO::Prediction>>(uri,
                                                                            p));

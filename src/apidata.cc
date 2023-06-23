@@ -21,6 +21,8 @@
 
 #include "apidata.h"
 
+#include "utils/utils.hpp"
+
 namespace dd
 {
   /*- visitor_vad -*/
@@ -244,4 +246,11 @@ namespace dd
       }
   }
 
+  std::string APIData::toJSONString() const
+  {
+    JDoc jd;
+    jd.SetObject();
+    toJDoc(jd);
+    return dd_utils::jrender(jd);
+  }
 }

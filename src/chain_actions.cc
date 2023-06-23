@@ -185,7 +185,6 @@ namespace dd
               }
 
             cv::Rect roi(cxmin, cymin, cxmax - cxmin, cymax - cymin);
-
 #ifdef USE_CUDA_CV
             if (!cuda_imgs.empty())
               {
@@ -235,11 +234,16 @@ namespace dd
       }
     // store crops into action output store
     APIData action_out;
-    action_out.add("data_raw_img", cropped_imgs);
 #ifdef USE_CUDA_CV
     if (!cropped_cuda_imgs.empty())
-      action_out.add("data_cuda_img", cropped_cuda_imgs);
+      {
+        action_out.add("data_cuda_img", cropped_cuda_imgs);
+      }
+    else
 #endif
+      {
+        action_out.add("data_raw_img", cropped_imgs);
+      }
     action_out.add("cids", bbox_ids);
     cdata.add_action_data(_action_id, action_out);
 
@@ -323,6 +327,205 @@ namespace dd
     APIData action_out;
     action_out.add("data_raw_img", rimgs);
     action_out.add("cids", uris);
+    cdata.add_action_data(_action_id, action_out);
+  }
+
+  void make_even(cv::Mat &mat, int &width, int &height)
+  {
+    if (width % 2 != 0)
+      width -= 1;
+    if (height % 2 != 0)
+      height -= 1;
+
+    if (width != mat.cols || height != mat.rows)
+      {
+        cv::Rect roi{ 0, 0, width, height };
+        mat = mat(roi);
+      }
+  }
+
+  void ImgsCropRecomposeAction::apply(APIData &model_out, ChainData &cdata)
+  {
+    APIData first_model = cdata.get_model_data("0");
+    APIData input_ad = first_model.getobj("input");
+    // image
+    std::vector<cv::Mat> imgs;
+#ifdef USE_CUDA_CV
+    std::vector<cv::cuda::GpuMat> cuda_imgs;
+    std::vector<cv::cuda::GpuMat> cropped_cuda_imgs;
+
+    if (input_ad.has("cuda_imgs"))
+      {
+        cuda_imgs
+            = input_ad.get("cuda_imgs").get<std::vector<cv::cuda::GpuMat>>();
+      }
+    else
+#endif
+      {
+        imgs = input_ad.get("imgs").get<std::vector<cv::Mat>>();
+      }
+    std::vector<std::pair<int, int>> imgs_size
+        = input_ad.get("imgs_size").get<std::vector<std::pair<int, int>>>();
+
+    // bbox
+    std::vector<APIData> vad = first_model.getv("predictions");
+
+    // generated images
+    // XXX: Images always are written on RAM first.
+    // This may change in the future
+    std::map<std::string, cv::Mat> gen_imgs;
+    if (model_out.has("dto"))
+      {
+        auto dto = model_out.get("dto")
+                       .get<oatpp::Any>()
+                       .retrieve<oatpp::Object<DTO::PredictBody>>();
+        for (size_t i = 0; i < dto->predictions->size(); ++i)
+          {
+            auto images = dto->predictions->at(i)->images;
+            if (images->size() == 0)
+              throw ActionBadParamException(
+                  "Recompose requires output.image = true in previous model");
+            gen_imgs.insert(
+                { *dto->predictions->at(i)->uri, images->at(0)->get_img() });
+          }
+      }
+    else
+      {
+        throw ActionBadParamException("Recompose action requires GAN output");
+      }
+
+    std::vector<cv::Mat> rimgs;
+    std::vector<std::string> uris;
+
+    bool save_img = _params->save_img;
+    std::string save_path = _params->save_path;
+    if (!save_path.empty())
+      save_path += "/";
+
+    auto pred_body = DTO::PredictBody::createShared();
+
+    // need: original image, bbox coordinates, new image
+    for (size_t i = 0; i < vad.size(); i++)
+      {
+        std::string uri = vad.at(i).get("uri").get<std::string>();
+        uris.push_back(uri);
+
+        cv::Mat input_img;
+        int input_width, input_height;
+        cv::Mat rimg;
+#ifdef USE_CUDA_CV
+        cv::cuda::GpuMat cuda_input_img;
+        cv::cuda::GpuMat cuda_rimg;
+        if (!cuda_imgs.empty())
+          {
+            cuda_input_img = cuda_imgs.at(i);
+            input_width = cuda_input_img.cols;
+            input_height = cuda_input_img.rows;
+            cuda_rimg = cuda_input_img.clone();
+          }
+        else
+#endif
+          {
+            input_img = imgs.at(i);
+            input_width = input_img.cols;
+            input_height = input_img.rows;
+            rimg = input_img.clone();
+          }
+        int orig_width = imgs_size.at(i).second;
+        int orig_height = imgs_size.at(i).first;
+
+        std::vector<APIData> ad_cls = vad.at(i).getv("classes");
+        APIData bbox;
+
+        for (size_t j = 0; j < ad_cls.size(); j++)
+          {
+            bbox = ad_cls.at(j).getobj("bbox");
+            std::string cls_id
+                = ad_cls.at(j).get("class_id").get<std::string>();
+
+            cv::Mat gen_img = gen_imgs.at(cls_id);
+            int gen_width = gen_img.cols;
+            int gen_height = gen_img.rows;
+
+            // support odd width & height
+            make_even(gen_img, gen_width, gen_height);
+
+            if (gen_width > input_width || gen_height > input_height)
+              {
+                throw ActionBadParamException(
+                    "Recomposing image is impossible, crop is too big: "
+                    + std::to_string(gen_width) + ","
+                    + std::to_string(gen_height) + "/"
+                    + std::to_string(orig_width) + ","
+                    + std::to_string(orig_height));
+              }
+
+            double xmin
+                = bbox.get("xmin").get<double>() / orig_width * input_width;
+            double ymin
+                = bbox.get("ymin").get<double>() / orig_height * input_height;
+            double xmax
+                = bbox.get("xmax").get<double>() / orig_width * input_width;
+            double ymax
+                = bbox.get("ymax").get<double>() / orig_height * input_height;
+
+            int cx = static_cast<int>((xmin + xmax) / 2);
+            int cy = static_cast<int>((ymin + ymax) / 2);
+            cx = std::min(std::max(cx, gen_width / 2),
+                          input_width - gen_width / 2);
+            cy = std::min(std::max(cy, gen_height / 2),
+                          input_height - gen_height / 2);
+
+            cv::Rect roi{ cx - gen_width / 2, cy - gen_height / 2, gen_width,
+                          gen_height };
+#ifdef USE_CUDA_CV
+            if (cuda_rimg.cols != 0)
+              {
+                cv::cuda::GpuMat cuda_gen_img;
+                cuda_gen_img.upload(gen_img);
+                cuda_gen_img.copyTo(cuda_rimg(roi));
+              }
+            else
+#endif
+              {
+                gen_img.copyTo(rimg(roi));
+              }
+          }
+
+        rimgs.push_back(rimg);
+
+        auto action_pred = DTO::Prediction::createShared();
+        action_pred->uri = uri.c_str();
+        action_pred->images = oatpp::Vector<DTO::DTOImage>::createShared();
+#ifdef USE_CUDA_CV
+        if (cuda_rimg.cols != 0)
+          {
+            action_pred->images->push_back({ cuda_rimg });
+          }
+        else
+#endif
+          {
+            action_pred->images->push_back({ rimg });
+          }
+        pred_body->predictions->push_back(action_pred);
+
+        // save image if requested
+        if (save_img)
+          {
+            std::string puri = dd_utils::split(uri, '/').back();
+#ifdef USE_CUDA_CV
+            if (cuda_rimg.cols != 0)
+              cuda_rimg.download(rimg);
+#endif
+            cv::imwrite(save_path + "recompose_" + puri + ".png", rimg);
+          }
+      }
+
+    // Output: new image -> only works in "image" output mode
+    APIData action_out;
+    action_out.add("data_raw_img", rimgs);
+    action_out.add("cids", uris);
+    action_out.add("output", pred_body);
     cdata.add_action_data(_action_id, action_out);
   }
 
@@ -533,6 +736,7 @@ namespace dd
 
   CHAIN_ACTION("crop", ImgsCropAction)
   CHAIN_ACTION("rotate", ImgsRotateAction)
+  CHAIN_ACTION("recompose", ImgsCropRecomposeAction)
   CHAIN_ACTION("draw_bbox", ImgsDrawBBoxAction)
   CHAIN_ACTION("filter", ClassFilter)
 #ifdef USE_DLIB

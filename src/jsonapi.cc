@@ -349,30 +349,15 @@ namespace dd
     return jd;
   }
 
+  // XXX: legacy methods, remove in favor of dd_utils::jrender?
   std::string JsonAPI::jrender(const JDoc &jst) const
   {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
-                      rapidjson::UTF8<>, rapidjson::CrtAllocator,
-                      rapidjson::kWriteNanAndInfFlag>
-        writer(buffer);
-    bool done = jst.Accept(writer);
-    if (!done)
-      throw DataConversionException("JSON rendering failed");
-    return buffer.GetString();
+    return dd_utils::jrender(jst);
   }
 
   std::string JsonAPI::jrender(const JVal &jval) const
   {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
-                      rapidjson::UTF8<>, rapidjson::CrtAllocator,
-                      rapidjson::kWriteNanAndInfFlag>
-        writer(buffer);
-    bool done = jval.Accept(writer);
-    if (!done)
-      throw DataConversionException("JSON rendering failed");
-    return buffer.GetString();
+    return dd_utils::jrender(jval);
   }
 
   JDoc JsonAPI::info(const std::string &jstr) const

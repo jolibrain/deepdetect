@@ -23,6 +23,7 @@
 #define DDTYPES_H
 
 #include <exception>
+
 class RapidjsonException : public std::exception
 {
 public:

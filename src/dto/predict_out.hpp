@@ -128,7 +128,7 @@ namespace dd
         info->description
             = "[Unsupervised] Array of images returned by the model";
       }
-      DTO_FIELD(Vector<DTOImage>, images);
+      DTO_FIELD(Vector<DTOImage>, images) = Vector<DTOImage>::createShared();
 
       DTO_FIELD_INFO(imgsize)
       {

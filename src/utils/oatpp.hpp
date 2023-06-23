@@ -69,6 +69,9 @@ namespace dd
                    bool ignore_null = true);
     void dtoToJVal(const oatpp::Void &polymorph, JDoc &jdoc, JVal &jval,
                    bool ignore_null = true);
+
+    std::string dtoToJSONString(const oatpp::Void &polymorph,
+                                bool ignore_null = true);
   }
 }
 

@@ -139,6 +139,12 @@ namespace dd
     _floatOut = tl._floatOut;
     _keepCount = tl._keepCount;
     _dims = tl._dims;
+    _error_recorder = tl._error_recorder;
+    _calibrator = tl._calibrator;
+    _engine = tl._engine;
+    _builder = tl._builder;
+    _context = tl._context;
+    _builderc = tl._builderc;
     _runtime = tl._runtime;
   }
 
@@ -147,6 +153,12 @@ namespace dd
   TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
               TMLModel>::~TensorRTLib()
   {
+    // Delete objects in the correct order
+    _calibrator = nullptr;
+    _context = nullptr;
+    _engine = nullptr;
+    _builderc = nullptr;
+    _builder = nullptr;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -158,7 +170,8 @@ namespace dd
     initLibNvInferPlugins(&trtLogger, "");
     _runtime = std::shared_ptr<nvinfer1::IRuntime>(
         nvinfer1::createInferRuntime(trtLogger));
-    _runtime->setErrorRecorder(new TRTErrorRecorder(this->_logger));
+    _error_recorder.reset(new TRTErrorRecorder(this->_logger));
+    _runtime->setErrorRecorder(_error_recorder.get());
 
     if (ad.has("tensorRTEngineFile"))
       _engineFileName = ad.get("tensorRTEngineFile").get<std::string>();
@@ -377,7 +390,8 @@ namespace dd
         break;
       }
 
-    nvinfer1::INetworkDefinition *network = _builder->createNetworkV2(0U);
+    std::unique_ptr<nvinfer1::INetworkDefinition> network(
+        _builder->createNetworkV2(0U));
     nvcaffeparser1::ICaffeParser *caffeParser
         = nvcaffeparser1::createCaffeParser();
 
@@ -426,7 +440,6 @@ namespace dd
     outl->setPrecision(nvinfer1::DataType::kFLOAT);
     nvinfer1::IHostMemory *n
         = _builder->buildSerializedNetwork(*network, *_builderc);
-
     return _runtime->deserializeCudaEngine(n->data(), n->size());
   }
 
@@ -439,8 +452,8 @@ namespace dd
     const auto explicitBatch
         = 1U << static_cast<uint32_t>(
               nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
-    nvinfer1::INetworkDefinition *network
-        = _builder->createNetworkV2(explicitBatch);
+    std::unique_ptr<nvinfer1::INetworkDefinition> network(
+        _builder->createNetworkV2(explicitBatch));
     _explicit_batch = true;
 
     nvonnxparser::IParser *onnxParser
@@ -473,7 +486,6 @@ namespace dd
     if (n == nullptr)
       throw MLLibInternalException("Could not build model: "
                                    + this->_mlmodel._model);
-
     return _runtime->deserializeCudaEngine(n->data(), n->size());
   }
 
@@ -506,6 +518,12 @@ namespace dd
         if (ad.has("data_raw_img"))
           predict_dto->_data_raw_img
               = ad.get("data_raw_img").get<std::vector<cv::Mat>>();
+#ifdef USE_CUDA_CV
+        if (ad.has("data_raw_img_cuda"))
+          predict_dto->_data_raw_img_cuda
+              = ad.get("data_raw_img_cuda")
+                    .get<std::vector<cv::cuda::GpuMat>>();
+#endif
         if (ad.has("ids"))
           predict_dto->_ids = ad.get("ids").get<std::vector<std::string>>();
         if (ad.has("meta_uris"))

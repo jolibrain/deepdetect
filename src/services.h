@@ -764,6 +764,14 @@ namespace dd
                                                              // be supported /
                                                              // auto-detected)
             }
+#ifdef USE_CUDA_CV
+          else if (act_data.has("data_cuda_img"))
+            {
+              adc.add("data_raw_img_cuda",
+                      act_data.get("data_cuda_img")
+                          .get<std::vector<cv::cuda::GpuMat>>());
+            }
+#endif
           else if (act_data.has("data_raw_img")) // raw images
             {
               adc.add(
@@ -819,7 +827,8 @@ namespace dd
               size_t npred_classes
                   = pred->classes != nullptr ? pred->classes->size() : 0;
               classes_size += npred_classes;
-              vals_size += static_cast<int>(pred->vals != nullptr);
+              vals_size += static_cast<int>(pred->vals != nullptr)
+                           + static_cast<int>(pred->images->size());
 
               if (chain_pos == 0) // first call's response contains uniformized
                                   // top level URIs.
@@ -913,7 +922,8 @@ namespace dd
           = adc.getobj("action").get("type").get<std::string>();
 
       APIData prev_data = cdata.get_model_data(prec_pred_id);
-      if (!prev_data.getv("predictions").size())
+      // XXX: no prediction not checked in case of dto
+      if (prev_data.getv("predictions").empty() && !prev_data.has("dto"))
         {
           // no prediction to work from
           chain_logger->info("no prediction to act on");
@@ -930,7 +940,7 @@ namespace dd
       cdata.add_model_data(prec_pred_id, prev_data);
 
       std::vector<APIData> vad = prev_data.getv("predictions");
-      if (vad.empty())
+      if (vad.empty() && !prev_data.has("dto"))
         {
           // no prediction to work from
           chain_logger->info("no prediction to act on after applying action "
@@ -938,6 +948,7 @@ namespace dd
           return 1;
         }
 
+      // check that there are predictions
       int classes_size = 0;
       int vals_size = 0;
       for (size_t i = 0; i < vad.size(); i++)
@@ -948,7 +959,7 @@ namespace dd
           vals_size += static_cast<int>(vad.at(i).has("vals"));
         }
 
-      if (!classes_size && !vals_size)
+      if (classes_size == 0 && vals_size == 0 && !prev_data.has("dto"))
         {
           chain_logger->info("[" + std::to_string(chain_pos)
                              + "] / no result after applying action "

@@ -286,6 +286,11 @@ namespace dd
     void toJVal(JDoc &jd, JVal &jv) const;
 
     /**
+     * \brief converts APIData to json string
+     */
+    std::string toJSONString() const;
+
+    /**
      * \brief converts APIData to oat++ DTO
      */
     template <typename T> inline oatpp::Object<T> createSharedDTO() const
