@@ -377,7 +377,7 @@ TEST(chain, chain_trt_detection_gan)
         + trt_detect_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":"
           "\"image\",\"height\":640,\"width\":640},\"mllib\":{"
-          "\"maxBatchSize\":2,\"maxWorkspaceSize\":256,\"gpuid\":0,"
+          "\"maxWorkspaceSize\":256,\"gpuid\":0,"
           "\"template\":\"yolox\",\"nclasses\":81,\"datatype\":\"fp16\"}}}";
   std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
   ASSERT_EQ(created_str, joutstr);
@@ -401,9 +401,9 @@ TEST(chain, chain_trt_detection_gan)
         + "\",\"parameters\":{\"input\":{\"keep_orig\":true},\"output\":{"
           "\"bbox\":true,\"best_bbox\":1}},\"data\":[\""
         + trt_gan_repo
-        + "/horse.jpg\"]},"
+        + "/horse_1024.jpg\"]},"
           "{\"id\":\"crop\",\"action\":{\"type\":\"crop\",\"parameters\":{"
-          "\"fixed_size\":360}}},{\"service\":\""
+          "\"fixed_width\":360,\"fixed_height\":360}}},{\"service\":\""
         + gan_sname
         + "\",\"parent_id\":\"crop\",\"parameters\":{\"mllib\":{\"extract_"
           "layer\":\"last\"},\"output\":{}}}"
@@ -430,6 +430,50 @@ TEST(chain, chain_trt_detection_gan)
       = jd["body"]["predictions"][0]["classes"][0][gan_sname.c_str()];
   ASSERT_TRUE(gan_pred["vals"].IsArray());
   ASSERT_EQ(gan_pred["vals"].Size(), 360 * 360 * 3);
+
+  // image recompose
+  // XXX: keep_orig = false doesn't work on CUDA images!
+  jchainstr
+      = "{\"chain\":{\"name\":\"chain\",\"calls\":[{\"service\":\""
+        + detect_sname
+        + "\",\"parameters\":{\"input\":{\"keep_orig\":true,"
+#ifdef USE_CUDA_CV
+          "\"cuda\":true"
+#else
+          "\"cuda\":false"
+#endif
+          "},\"output\":{\"bbox\":true,\"best_bbox\":2}},\"data\":[\""
+        + trt_gan_repo
+        + "/horse_1024.jpg\"]},"
+          "{\"id\":\"crop\",\"action\":{\"type\":\"crop\",\"parameters\":{"
+          "\"fixed_width\":360,\"fixed_height\":360}}},{\"service\":\""
+        + gan_sname
+        + "\",\"parent_id\":\"crop\",\"parameters\":{\"input\":{"
+#ifdef USE_CUDA_CV
+          "\"cuda\":true"
+#else
+          "\"cuda\":false"
+#endif
+          "},\"mllib\":{\"extract_layer\":\"last\"},\"output\":{\"image\":"
+          "true}}},{\"id\":\"recompose\",\"action\":{\"type\":\"recompose\","
+          "\"parameters\":{\"save_img\":true,\"save_path\":\".\"}}}]}}";
+  joutstr = japi.jrender(japi.service_chain("chain", jchainstr));
+  std::cout << "joutstr=" << joutstr.substr(0, 500)
+            << (joutstr.size() > 500
+                    ? " ... " + joutstr.substr(joutstr.size() - 500)
+                    : "")
+            << std::endl;
+  jd = JDoc();
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
+  ASSERT_EQ(2, jd["body"]["predictions"][0]["classes"].Size());
+  ASSERT_TRUE(jd["body"]["predictions"][0]["recompose"].IsObject());
+
+  auto &recompose_pred = jd["body"]["predictions"][0]["recompose"];
+  ASSERT_TRUE(recompose_pred["images"].IsArray());
 
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(detect_sname, jstr));

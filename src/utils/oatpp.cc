@@ -23,6 +23,7 @@
 #include <iostream>
 
 #include "dto/ddtypes.hpp"
+#include "utils/utils.hpp"
 
 namespace dd
 {
@@ -293,6 +294,14 @@ namespace dd
           throw std::runtime_error("dtoToJVal: \"" + type_name
                                    + "\": type not recognised");
         }
+    }
+
+    std::string dtoToJSONString(const oatpp::Void &polymorph, bool ignore_null)
+    {
+      JDoc jd;
+      jd.SetObject();
+      dtoToJDoc(polymorph, jd, ignore_null);
+      return dd_utils::jrender(jd);
     }
   }
 }

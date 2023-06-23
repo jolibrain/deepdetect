@@ -88,6 +88,15 @@ namespace dd
       return std::to_string(std::hash<std::string>{}(str));
     }
 
+    /** Apply an action to a model output.
+     * \param model_out Output of the previous model.
+     * \param cdata Chain data object containing all the output of previous
+     * models and actions. This method should add the action result to cdata
+     * using the `add_action_data()` method. If the action creates data that
+     * should appear in the result, they are stored in the "output" field. If
+     * the action creates data that should be used by the next model, they are
+     * stored in other fields, as handled in `services.h:chain_service()`.
+     * */
     void apply(APIData &model_out, ChainData &cdata);
 
     std::string _action_id;
@@ -123,6 +132,24 @@ namespace dd
     }
 
     ~ImgsRotateAction()
+    {
+    }
+
+    void apply(APIData &model_out, ChainData &cdata);
+  };
+
+  /** Recompose origin image with inference result, for example in crop + GAN
+   * pipeline */
+  class ImgsCropRecomposeAction : public ChainAction
+  {
+  public:
+    ImgsCropRecomposeAction(oatpp::Object<DTO::ChainCall> call_dto,
+                            const std::shared_ptr<spdlog::logger> chain_logger)
+        : ChainAction(call_dto, chain_logger)
+    {
+    }
+
+    ~ImgsCropRecomposeAction()
     {
     }
 
@@ -206,6 +233,9 @@ namespace dd
     oatpp::Object<DTO::ChainCall> _call_dto;
   };
 
+  /** Add an action type to DeepDetect chains. The action transforms the output
+   * of a model. This output can then be used by another model or embedded in
+   * the API result. */
 #define CHAIN_ACTION(ActionName, ActionType)                                  \
   namespace                                                                   \
   {                                                                           \

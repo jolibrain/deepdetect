@@ -27,6 +27,13 @@
 #include <algorithm>
 
 #include <boost/lexical_cast.hpp>
+#include <rapidjson/allocators.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/reader.h>
+#include <rapidjson/writer.h>
+
+#include "apidata.h"
+#include "dd_types.h"
 
 namespace dd
 {
@@ -80,6 +87,32 @@ namespace dd
       return start == std::string::npos || end == std::string::npos
                  ? ""
                  : item.substr(start, end - start + 1);
+    }
+
+    inline std::string jrender(const JDoc &jst)
+    {
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                        rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                        rapidjson::kWriteNanAndInfFlag>
+          writer(buffer);
+      bool done = jst.Accept(writer);
+      if (!done)
+        throw DataConversionException("JSON rendering failed");
+      return buffer.GetString();
+    }
+
+    inline std::string jrender(const JVal &jval)
+    {
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
+                        rapidjson::UTF8<>, rapidjson::CrtAllocator,
+                        rapidjson::kWriteNanAndInfFlag>
+          writer(buffer);
+      bool done = jval.Accept(writer);
+      if (!done)
+        throw DataConversionException("JSON rendering failed");
+      return buffer.GetString();
     }
 
     inline bool iequals(const std::string &a, const std::string &b)
