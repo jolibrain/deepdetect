@@ -67,7 +67,7 @@ cmake .. \
     -DUSE_TENSORRT=OFF  \
     -DUSE_TENSORRT_OSS=OFF  \
     -DCUDA_ARCH_FLAGS="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_86,code=sm_86" \
-    -DCUDA_ARCH="61;75;86"
+    -DCUDA_ARCH="6.1;7.5;8.6"
 
 make clang-format-check
 

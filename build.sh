@@ -17,15 +17,7 @@ if [ ! "$DEEPDETECT_CUDA_ARCH_FLAGS" ]; then
     DEEPDETECT_CUDA_ARCH_FLAGS="$(echo ${DEEPDETECT_CUDA_ARCH_FLAGS} | xargs)"
 fi
 
-if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
-    for card in 50 52 60 61 62 70 72 75 80 86; do
-        if [ ! "$DEEPDETECT_CUDA_ARCH" ]; then
-            DEEPDETECT_CUDA_ARCH=${card}
-        else
-            DEEPDETECT_CUDA_ARCH="$DEEPDETECT_CUDA_ARCH;${card}"
-        fi
-    done
-fi
+DEEPDETECT_CUDA_ARCH="5.0;5.2;6.0;6.1;6.2;7.0;7.2;7.5;8.0;8.6"
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
 
