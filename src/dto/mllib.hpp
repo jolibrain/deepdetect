@@ -185,8 +185,7 @@ namespace dd
 
       DTO_FIELD_INFO(concurrent_predict)
       {
-        info->description
-            = "Enable/disable concurrent predict for the model";
+        info->description = "Enable/disable concurrent predict for the model";
       }
       DTO_FIELD(Boolean, concurrent_predict) = true;
 
