@@ -1376,7 +1376,8 @@ namespace dd
                TMLModel>::predict(const APIData &ad_in, APIData &out)
   {
     std::unique_ptr<std::lock_guard<std::mutex>> lock;
-    if (!_concurrent_predict) {
+    if (!_concurrent_predict)
+      {
         // concurrent calls can use more memory on gpu than initially expected
         lock = std::make_unique<std::lock_guard<std::mutex>>(_net_mutex);
       }
