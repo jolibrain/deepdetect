@@ -752,6 +752,11 @@ namespace dd
       const torch::Device &device,
       const oatpp::Object<DTO::ServicePredict> &pred_dto);
 
+  template void TorchModule::create_native_template(
+      const std::string &tmpl, const APIData &lib_ad,
+      const ImgTorchInputFileConn &inputc, const TorchModel &tmodel,
+      const torch::Device &device);
+
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
       const VideoTorchInputFileConn &inputc, const TorchModel &tmodel,
@@ -767,6 +772,11 @@ namespace dd
       const VideoTorchInputFileConn &inputc, const TorchModel &tmodel,
       const torch::Device &device,
       const oatpp::Object<DTO::ServicePredict> &pred_dto);
+
+  template void TorchModule::create_native_template(
+      const std::string &tmpl, const APIData &lib_ad,
+      const VideoTorchInputFileConn &inputc, const TorchModel &tmodel,
+      const torch::Device &device);
 
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
@@ -784,6 +794,11 @@ namespace dd
       const torch::Device &device,
       const oatpp::Object<DTO::ServicePredict> &pred_dto);
 
+  template void TorchModule::create_native_template(
+      const std::string &tmpl, const APIData &lib_ad,
+      const TxtTorchInputFileConn &inputc, const TorchModel &tmodel,
+      const torch::Device &device);
+
   template void TorchModule::post_transform(
       const std::string tmpl, const APIData &template_params,
       const CSVTSTorchInputFileConn &inputc, const TorchModel &tmodel,
@@ -799,4 +814,9 @@ namespace dd
       const CSVTSTorchInputFileConn &inputc, const TorchModel &tmodel,
       const torch::Device &device,
       const oatpp::Object<DTO::ServicePredict> &pred_dto);
+
+  template void TorchModule::create_native_template(
+      const std::string &tmpl, const APIData &lib_ad,
+      const CSVTSTorchInputFileConn &inputc, const TorchModel &tmodel,
+      const torch::Device &device);
 }

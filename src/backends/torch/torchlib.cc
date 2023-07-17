@@ -209,6 +209,7 @@ namespace dd
             "GPU is not available, service could not be created");
       }
 
+    _concurrent_predict = mllib_dto->concurrent_predict;
     std::vector<int> gpuids = mllib_dto->gpuid->_ids;
 
     if (mllib_dto->nclasses != 0)
@@ -311,11 +312,6 @@ namespace dd
     if (mllib_dto->multi_label)
       {
         _multi_label = true;
-      }
-
-    if (mllib_dto->concurrent_predict)
-      {
-        _concurrent_predict = true;
       }
 
     if (_template == "bert")
@@ -1380,6 +1376,7 @@ namespace dd
       {
         // concurrent calls can use more memory on gpu than initially expected
         lock = std::make_unique<std::lock_guard<std::mutex>>(_net_mutex);
+        this->_logger->info("Locking torch service for predict");
       }
     oatpp::Object<DTO::ServicePredict> predict_dto;
 
