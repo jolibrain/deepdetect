@@ -27,6 +27,7 @@
 #include <iomanip>
 
 #include "dto/output_connector.hpp"
+#include "dto/predict_out.hpp"
 
 template <typename T>
 bool SortScorePairDescend(const std::pair<double, T> &pair1,
@@ -413,9 +414,9 @@ namespace dd
     void finalize(oatpp::Object<DTO::OutputConnector> output_params,
                   APIData &ad_out, MLModel *mlm)
     {
-#ifndef USE_SIMSEARCH
       (void)mlm;
-#endif
+      auto out_dto = DTO::PredictBody::createShared();
+
       SupervisedOutput bcats(*this);
       bool regression = false;
       bool autoencoder = false;
@@ -721,11 +722,13 @@ namespace dd
       if (has_multibox_rois)
         has_roi = false;
       if (!timeseries)
-        bcats.to_ad(ad_out, regression, autoencoder, has_bbox, has_roi,
+        bcats.to_ad(out_dto, regression, autoencoder, has_bbox, has_roi,
                     has_mask, timeseries, indexed_uris);
       else
-        to_ad(ad_out, regression, autoencoder, has_bbox, has_roi, has_mask,
+        to_ad(out_dto, regression, autoencoder, has_bbox, has_roi, has_mask,
               timeseries, indexed_uris);
+
+      ad_out.add("dto", out_dto);
     }
 
     struct PredictionAndAnswer
@@ -2913,51 +2916,40 @@ namespace dd
      * @param has_mask whether a mask creation task
      * @param indexed_uris list of indexed uris, if any
      */
-    void to_ad(APIData &out, const bool &regression, const bool &autoencoder,
-               const bool &has_bbox, const bool &has_roi, const bool &has_mask,
+    void to_ad(oatpp::Object<DTO::PredictBody> out, const bool &regression,
+               const bool &autoencoder, const bool &has_bbox,
+               const bool &has_roi, const bool &has_mask,
                const bool &timeseries,
                const std::unordered_set<std::string> &indexed_uris) const
     {
 #ifndef USE_SIMSEARCH
       (void)indexed_uris;
 #endif
-      static std::string cl = "classes";
-      static std::string ve = "vector";
-      static std::string ae = "losses";
-      static std::string bb = "bbox";
-      static std::string roi = "vals";
-      static std::string rois = "rois";
-      static std::string series = "series";
-      static std::string mask = "mask";
-      static std::string phead = "prob";
-      static std::string chead = "cat";
-      static std::string vhead = "val";
-      static std::string ahead = "loss";
-      static std::string last = "last";
       std::unordered_set<std::string>::const_iterator hit;
-      std::vector<APIData> vpred;
       for (size_t i = 0; i < _vvcats.size(); i++)
         {
-          APIData adpred;
-          std::vector<APIData> v;
+          // APIData adpred;
+          auto pred_dto = DTO::Prediction::createShared();
+          auto v = oatpp::Vector<
+              oatpp::Object<DTO::PredictClass>>::createShared();
           auto bit = _vvcats.at(i)._bboxes.begin();
           auto vit = _vvcats.at(i)._vals.begin();
           auto mit = _vvcats.at(i)._cats.begin();
           auto maskit = _vvcats.at(i)._masks.begin();
           while (mit != _vvcats.at(i)._cats.end())
             {
-              APIData nad;
+              auto cls_dto = DTO::PredictClass::createShared();
               if (!autoencoder)
-                nad.add(chead, (*mit).second);
+                cls_dto->cat = (*mit).second;
               if (regression)
-                nad.add(vhead, (*mit).first);
+                cls_dto->val = (*mit).first;
               else if (autoencoder)
-                nad.add(ahead, (*mit).first);
+                cls_dto->loss = (*mit).first;
               else
-                nad.add(phead, (*mit).first);
+                cls_dto->prob = (*mit).first;
               if (has_bbox || has_roi || has_mask)
                 {
-                  nad.add(bb, (*bit).second);
+                  cls_dto->bbox = (*bit).second.createSharedDTO<DTO::BBox>();
                   ++bit;
                 }
               if (has_roi)
@@ -2968,47 +2960,45 @@ namespace dd
                   /* std::copy(keys.begin(), keys.end(),
                    * std::ostream_iterator<std::string>(std::cout, "'")); */
                   /* std::cout << std::endl; */
-                  nad.add(
-                      roi,
-                      (*vit).second.get("vals").get<std::vector<double>>());
+                  cls_dto->vals
+                      = (*vit).second.get("vals").get<std::vector<double>>();
                   ++vit;
                 }
               if (has_mask)
                 {
-                  nad.add(mask, (*maskit).second);
+                  cls_dto->mask = (*maskit).second;
                   ++maskit;
                 }
               ++mit;
               if (mit == _vvcats.at(i)._cats.end())
-                nad.add(last, true);
-              v.push_back(nad);
+                cls_dto->last = true;
+              v->push_back(cls_dto);
             }
           if (_vvcats.at(i)._loss
               > 0.0) // XXX: not set by Caffe in prediction mode for now
-            adpred.add("loss", _vvcats.at(i)._loss);
-          adpred.add("uri", _vvcats.at(i)._label);
+            pred_dto->loss = _vvcats.at(i)._loss;
+          pred_dto->uri = _vvcats.at(i)._label;
 #ifdef USE_SIMSEARCH
           if (!_vvcats.at(i)._index_uri.empty())
-            adpred.add("index_uri", _vvcats.at(i)._index_uri);
+            pred_dto->index_uri = _vvcats.at(i)._index_uri;
           if (!indexed_uris.empty()
               && (hit = indexed_uris.find(_vvcats.at(i)._label))
                      != indexed_uris.end())
-            adpred.add("indexed", true);
+            pred_dto->indexed = true;
           if (!_vvcats.at(i)._nns.empty() || !_vvcats.at(i)._bbox_nns.empty())
             {
               if (!has_roi)
                 {
-                  std::vector<APIData> ad_nns;
+                  pred_dto->nns = oatpp::Vector<oatpp::Any>::createShared();
                   auto nnit = _vvcats.at(i)._nns.begin();
                   while (nnit != _vvcats.at(i)._nns.end())
                     {
                       APIData ad_nn;
                       ad_nn.add("uri", (*nnit).second._uri);
                       ad_nn.add("dist", (*nnit).first);
-                      ad_nns.push_back(ad_nn);
+                      pred_dto->nns->push_back(DTO::DTOApiData{ ad_nn });
                       ++nnit;
                     }
-                  adpred.add("nns", ad_nns);
                 }
               else // has_roi
                 {
@@ -3033,8 +3023,8 @@ namespace dd
                           ad_nns.push_back(ad_nn);
                           ++nnit;
                         }
-                      v.at(bb).add("nns",
-                                   ad_nns); // v is in roi object vector
+                      // v will be stored in "rois" field
+                      v->at(bb)->nns->push_back(DTO::DTOApiData{ ad_nns });
                     }
                 }
             }
@@ -3044,29 +3034,28 @@ namespace dd
               auto sit = _vvcats.at(i)._series.begin();
               while (sit != _vvcats.at(i)._series.end())
                 {
-                  APIData nad;
-                  nad.add("out",
-                          (*sit).second.get("out").get<std::vector<double>>());
+                  auto cls_dto = DTO::PredictClass::createShared();
+                  cls_dto->out
+                      = (*sit).second.get("out").get<std::vector<double>>();
                   ++sit;
                   if (sit == _vvcats.at(i)._series.end())
-                    nad.add(last, true);
-                  v.push_back(nad);
+                    cls_dto->last = true;
+                  v->push_back(cls_dto);
                 }
             }
 
           if (timeseries)
-            adpred.add(series, v);
+            pred_dto->series = v;
           else if (regression)
-            adpred.add(ve, v);
+            pred_dto->vector = v;
           else if (autoencoder)
-            adpred.add(ae, v);
+            pred_dto->losses = v;
           else if (has_roi)
-            adpred.add(rois, v);
+            pred_dto->rois = v;
           else
-            adpred.add(cl, v);
-          vpred.push_back(adpred);
+            pred_dto->classes = v;
+          out->predictions->push_back(pred_dto);
         }
-      out.add("predictions", vpred);
     }
 
     std::unordered_map<std::string, int>
