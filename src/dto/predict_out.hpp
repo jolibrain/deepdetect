@@ -88,6 +88,36 @@ namespace dd
       }
       DTO_FIELD(String, cat);
 
+      DTO_FIELD_INFO(val)
+      {
+        info->description = "Regression value";
+      }
+      DTO_FIELD(Float32, val);
+
+      DTO_FIELD_INFO(vals)
+      {
+        info->description = "Values for RoIs";
+      }
+      DTO_FIELD(DTOVector<double>, vals);
+
+      DTO_FIELD_INFO(out)
+      {
+        info->description = "Output values for series";
+      }
+      DTO_FIELD(DTOVector<double>, out);
+
+      DTO_FIELD_INFO(loss)
+      {
+        info->description = "Loss value for autoencoders";
+      }
+      DTO_FIELD(Float32, loss);
+
+      DTO_FIELD_INFO(mask)
+      {
+        // XXX(louis): I don't know what this is
+        info->description = "mask";
+      }
+      DTO_FIELD(DTOApiData, mask);
       /// XXX: May be removed when we get rid of APIData
       /// id to track class throught chains
       DTO_FIELD(String, class_id);
@@ -106,6 +136,12 @@ namespace dd
       }
       DTO_FIELD(String, uri);
 
+      DTO_FIELD_INFO(index_uri)
+      {
+        info->description = "[Simsearch]";
+      }
+      DTO_FIELD(String, index_uri);
+
       DTO_FIELD_INFO(classes)
       {
         info->description = "[Supervised] Array of predicted classes with "
@@ -113,6 +149,30 @@ namespace dd
       }
       DTO_FIELD(Vector<Object<PredictClass>>, classes)
           = Vector<Object<PredictClass>>::createShared();
+
+      DTO_FIELD_INFO(series)
+      {
+        info->description = "[Supervised] series";
+      }
+      DTO_FIELD(Vector<Object<PredictClass>>, series);
+
+      DTO_FIELD_INFO(vector)
+      {
+        info->description = "[Supervised] regression results";
+      }
+      DTO_FIELD(Vector<Object<PredictClass>>, vector);
+
+      DTO_FIELD_INFO(losses)
+      {
+        info->description = "[Supervised] autoencoder";
+      }
+      DTO_FIELD(Vector<Object<PredictClass>>, losses);
+
+      DTO_FIELD_INFO(rois)
+      {
+        info->description = "[Supervised] rois (?)";
+      }
+      DTO_FIELD(Vector<Object<PredictClass>>, rois);
 
       DTO_FIELD_INFO(vals)
       {
@@ -143,14 +203,27 @@ namespace dd
       }
       DTO_FIELD(UnorderedFields<DTOVector<double>>, confidences);
 
+      DTO_FIELD_INFO(indexed)
+      {
+        info->description
+            = "[Simsearch] Whether indexed or not"; // XXX(louis) need more
+                                                    // precise documentation
+      }
+      DTO_FIELD(Boolean, indexed);
+
       DTO_FIELD_INFO(nns)
       {
-        info->description = "Nearest neighbors (use with simsearch)";
+        info->description = "[simsearch] Nearest neighbors";
       }
       DTO_FIELD(Vector<Any>, nns);
 
-      DTO_FIELD(Boolean, indexed);
-      DTO_FIELD(String, index_uri);
+      DTO_FIELD_INFO(loss)
+      {
+        // XXX(louis): I'm not sure of the documentation here
+        info->description
+            = "[Autoencoder][Legacy] Loss value for the only prediction";
+      }
+      DTO_FIELD(Float32, loss);
 
     public:
       // XXX: Legacy & deprecated
