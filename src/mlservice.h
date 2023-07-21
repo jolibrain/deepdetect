@@ -491,11 +491,12 @@ namespace dd
 
     /**
      * \brief starts a predict job, makes sure no training call is running.
-     * @param ad root data object
-     * @param out output data object
-     * @return predict job status
+     * @param ad root input call object
+     * @param chain whether the predict call is part of a chain call
+     * @return predict output object
      */
-    int predict_job(const APIData &ad, APIData &out, const bool &chain = false)
+    oatpp::Object<DTO::PredictBody> predict_job(const APIData &ad,
+                                                const bool &chain = false)
     {
       if (!_train_mutex.try_lock_shared())
         throw MLServiceLockException(
@@ -503,12 +504,12 @@ namespace dd
 
       this->_stats.predict_start();
 
-      int err = 0;
+      oatpp::Object<DTO::PredictBody> out = nullptr;
       try
         {
           if (chain)
             const_cast<APIData &>(ad).add("chain", true);
-          err = this->predict(ad, out);
+          out = this->predict(ad);
         }
       catch (std::exception &e)
         {
@@ -519,7 +520,7 @@ namespace dd
       this->_stats.predict_end(true);
 
       _train_mutex.unlock_shared();
-      return err;
+      return out;
     }
 
     std::string _sname;       /**< service name. */

@@ -1370,8 +1370,9 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
-  int TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-               TMLModel>::predict(const APIData &ad_in, APIData &out)
+  oatpp::Object<DTO::PredictBody>
+  TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+           TMLModel>::predict(const APIData &ad_in)
   {
     std::unique_ptr<std::lock_guard<std::mutex>> lock;
     if (!_concurrent_predict)
@@ -1511,9 +1512,10 @@ namespace dd
         test(ad_in, inputc, inputc._dataset, 1, meas_out);
         meas_out.erase("iteration");
         meas_out.erase("train_loss");
-        out.add("measure", meas_out.getobj("measure"));
+        auto out_dto = DTO::PredictBody::createShared();
+        out_dto->measure = meas_out;
         torch_utils::free_gpu_memory();
-        return 0;
+        return out_dto;
       }
 
     inputc._dataset.reset(false);
@@ -1943,25 +1945,27 @@ namespace dd
           }
       }
 
+    oatpp::Object<DTO::PredictBody> out_dto;
+    OutputConnectorConfig conf;
     if (extract_layer.empty() && !_segmentation)
       {
         outputc.add_results(results_ads);
 
         if (_timeserie)
-          out.add("timeseries", true);
+          conf._timeseries = true;
         if (_regression)
-          out.add("regression", true);
-        out.add("bbox", bbox);
-        out.add("nclasses", static_cast<int>(_nclasses));
-        outputc.finalize(output_params, out,
-                         static_cast<MLModel *>(&this->_mlmodel));
+          conf._regression = true;
+        conf._has_bbox = bbox;
+        conf._nclasses = static_cast<int>(_nclasses);
+        out_dto = outputc.finalize(output_params, conf,
+                                   static_cast<MLModel *>(&this->_mlmodel));
       }
     else
       {
         UnsupervisedOutput unsupo;
         unsupo.add_results(results_ads);
-        unsupo.finalize(output_params, out,
-                        static_cast<MLModel *>(&this->_mlmodel));
+        out_dto = unsupo.finalize(output_params, conf,
+                                  static_cast<MLModel *>(&this->_mlmodel));
       }
 
     if (predict_dto->_chain)
@@ -1972,18 +1976,16 @@ namespace dd
             // can't do reinterpret_cast because virtual inheritance
             InputConnectorStrategy *inputc_base = &inputc;
             auto *img_ic = dynamic_cast<ImgTorchInputFileConn *>(inputc_base);
-            APIData chain_input;
             if (!img_ic->_orig_images.empty())
-              chain_input.add("imgs", img_ic->_orig_images);
+              out_dto->_chain_input._imgs = img_ic->_orig_images;
             else
-              chain_input.add("imgs", img_ic->_images);
-            chain_input.add("imgs_size", img_ic->_images_size);
-            out.add("input", chain_input);
+              out_dto->_chain_input._imgs = img_ic->_images;
+            out_dto->_chain_input._img_sizes = img_ic->_images_size;
           }
       }
 
-    out.add("status", 0);
-    return 0;
+    // out_dto->status = 0;
+    return out_dto;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

@@ -491,8 +491,9 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
-  int TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-                  TMLModel>::predict(const APIData &ad, APIData &out)
+  oatpp::Object<DTO::PredictBody>
+  TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+              TMLModel>::predict(const APIData &ad)
   {
     std::lock_guard<std::mutex> lock(
         _net_mutex); // no concurrent calls since the net is not
@@ -1231,27 +1232,25 @@ namespace dd
 
     cudaStreamDestroy(cstream);
 
+    oatpp::Object<DTO::PredictBody> out_dto;
+    OutputConnectorConfig conf;
     if (extract_layer.empty())
       {
         tout.add_results(vrad);
-        out.add("nclasses", this->_nclasses);
+        conf._nclasses = this->_nclasses;
         if (_bbox)
-          out.add("bbox", true);
+          conf._has_bbox = true;
         if (_regression)
-          out.add("regression", true);
-        out.add("roi", false);
-        out.add("multibox_rois", false);
-        tout.finalize(predict_dto->parameters->output,
-                      out, // TODO; to output DTO
-                      static_cast<MLModel *>(&this->_mlmodel));
+          conf._regression = true;
+        out_dto = tout.finalize(predict_dto->parameters->output, conf,
+                                static_cast<MLModel *>(&this->_mlmodel));
       }
     else
       {
         UnsupervisedOutput unsupo;
         unsupo.set_results(std::move(unsup_results));
-        unsupo.finalize(predict_dto->parameters->output,
-                        out, // TODO: to output DTO
-                        static_cast<MLModel *>(&this->_mlmodel));
+        out_dto = unsupo.finalize(predict_dto->parameters->output, conf,
+                                  static_cast<MLModel *>(&this->_mlmodel));
       }
 
     if (predict_dto->_chain)
@@ -1260,30 +1259,28 @@ namespace dd
           {
             auto *img_ic
                 = reinterpret_cast<ImgTensorRTInputFileConn *>(&inputc);
-            APIData chain_input;
 #ifdef USE_CUDA_CV
             if (!img_ic->_cuda_images.empty())
               {
                 if (img_ic->_orig_images.empty())
-                  chain_input.add("cuda_imgs", img_ic->_cuda_orig_images);
+                  out_dto->_chain_input._cuda_imgs = img_ic->_cuda_orig_images;
                 else
-                  chain_input.add("cuda_imgs", img_ic->_cuda_images);
+                  out_dto->_chain_input._cuda_imgs = img_ic->_cuda_images;
               }
             else
 #endif
               {
                 if (!img_ic->_orig_images.empty())
-                  chain_input.add("imgs", img_ic->_orig_images);
+                  out_dto->_chain_input._imgs = img_ic->_orig_images;
                 else
-                  chain_input.add("imgs", img_ic->_images);
+                  out_dto->_chain_input._imgs = img_ic->_images;
               }
-            chain_input.add("imgs_size", img_ic->_images_size);
-            out.add("input", chain_input);
+            out_dto->_chain_input._img_sizes = img_ic->_images_size;
           }
       }
 
-    out.add("status", 0);
-    return 0;
+    // out_dto->status = 0;
+    return out_dto;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

@@ -44,7 +44,7 @@ static std::string n20_repo = "../examples/all/n20/";
 static std::string sflare_repo = "../examples/all/sflare/";
 
 static std::string iterations_forest = "10";
-static std::string iterations_n20 = "10";
+static std::string iterations_n20 = "20";
 static std::string iterations_sflare = "100";
 
 TEST(xgbapi, service_train_csv)

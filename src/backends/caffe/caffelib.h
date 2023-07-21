@@ -144,10 +144,9 @@ namespace dd
     /**
      * \brief predicts from model
      * @param ad root data object
-     * @param out output data object (e.g. predictions, ...)
-     * @return 0 if OK, 1 otherwise
+     * @return output call data object
      */
-    int predict(const APIData &ad, APIData &out);
+    oatpp::Object<DTO::PredictBody> predict(const APIData &ad);
 
     // TODO: status ?
 

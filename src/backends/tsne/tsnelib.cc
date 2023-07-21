@@ -158,9 +158,13 @@ namespace dd
       }
     delete[] Y;
     tout.add_results(vrad);
-    tout.finalize(ad.getobj("parameters").getobj("output"), out,
-                  static_cast<MLModel *>(&this->_mlmodel));
-    out.add("status", 0);
+
+    OutputConnectorConfig conf;
+    auto out_dto
+        = tout.finalize(ad.getobj("parameters").getobj("output"), conf,
+                        static_cast<MLModel *>(&this->_mlmodel));
+    out = APIData::fromDTO(out_dto);
+    // out_dto->status = 0;
     return 0;
   }
 

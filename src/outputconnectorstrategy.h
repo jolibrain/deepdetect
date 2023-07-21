@@ -78,6 +78,20 @@ namespace dd
     std::string _s;
   };
 
+  struct OutputConnectorConfig
+  {
+  public:
+    // supervised
+    int _nclasses = -1;
+    bool _regression = false;
+    bool _autoencoder = false;
+    bool _has_bbox = false;
+    bool _has_roi = false;
+    bool _has_mask = false;
+    bool _multibox_rois = false;
+    bool _timeseries = false;
+  };
+
   /**
    * \brief main output connector class
    */
@@ -117,10 +131,22 @@ namespace dd
     /**
      * \brief finalize output connector data
      * @param ad_in data output object from the API call
-     * @param ad_out data object as the call response
+     * @param config what to put in the call response. filled by the mllib
+     * @return data object as the call response
      */
-    void finalize(const APIData &ad_in, APIData &ad_out,
-                  MLModel *mlm = nullptr);
+    oatpp::Object<DTO::PredictBody>
+    finalize(const APIData &ad_in, const OutputConnectorConfig &config,
+             MLModel *mlm = nullptr);
+
+    /**
+     * \brief finalize output connector data
+     * @param output_params data output object from the API call
+     * @param config what to put in the call response. filled by the mllib
+     * @return data object as the call response
+     */
+    oatpp::Object<DTO::PredictBody>
+    finalize(oatpp::Object<DTO::OutputConnector> output_params,
+             const OutputConnectorConfig &config, MLModel *mlm = nullptr);
 
     std::shared_ptr<spdlog::logger> _logger;
   };

@@ -49,11 +49,10 @@ namespace dd
     int train(const APIData &ad, APIData &out);
 
     // N/A
-    int predict(const APIData &ad, APIData &out)
+    oatpp::Object<DTO::PredictBody> predict(const APIData &ad)
     {
       (void)ad;
-      (void)out;
-      return 0;
+      return DTO::PredictBody::createShared();
     }
 
   public:

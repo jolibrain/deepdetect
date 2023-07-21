@@ -193,15 +193,19 @@ namespace dd
         }
     }
 
-    void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
+    oatpp::Object<DTO::PredictBody>
+    finalize(const APIData &ad_in, const OutputConnectorConfig &config,
+             MLModel *mlm)
     {
       auto output_params = ad_in.createSharedDTO<DTO::OutputConnector>();
-      finalize(output_params, ad_out, mlm);
+      return finalize(output_params, config, mlm);
     }
 
-    void finalize(oatpp::Object<DTO::OutputConnector> output_params,
-                  APIData &ad_out, MLModel *mlm)
+    oatpp::Object<DTO::PredictBody>
+    finalize(oatpp::Object<DTO::OutputConnector> output_params,
+             const OutputConnectorConfig &config, MLModel *mlm)
     {
+      (void)config;
 #ifndef USE_SIMSEARCH
       (void)mlm;
 #endif
@@ -310,11 +314,11 @@ namespace dd
         }
 #endif
 
-      to_ad(ad_out, indexed_uris);
+      return to_dto(indexed_uris);
     }
 
-    void to_ad(APIData &out,
-               const std::unordered_set<std::string> &indexed_uris) const
+    oatpp::Object<DTO::PredictBody>
+    to_dto(const std::unordered_set<std::string> &indexed_uris) const
     {
 #ifndef USE_SIMSEARCH
       (void)indexed_uris;
@@ -371,7 +375,7 @@ namespace dd
 #endif
           out_dto->predictions->push_back(pred_dto);
         }
-      out.add("dto", out_dto);
+      return out_dto;
     }
 
     std::unordered_map<std::string, int>

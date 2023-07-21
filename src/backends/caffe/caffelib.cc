@@ -2814,8 +2814,9 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
-  int CaffeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-               TMLModel>::predict(const APIData &ad_in, APIData &out)
+  oatpp::Object<DTO::PredictBody>
+  CaffeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+           TMLModel>::predict(const APIData &ad_in)
   {
     std::lock_guard<std::mutex> lock(
         _net_mutex); // no concurrent calls since the net is not
@@ -2985,12 +2986,15 @@ namespace dd
           }
 
         bool has_mean_file = this->_mlmodel._has_mean_file;
-        test(_net, ad, inputc, batch_size, has_mean_file, 1, out);
-        APIData out_meas = out.getobj("measure");
+        APIData meas_out;
+        test(_net, ad, inputc, batch_size, has_mean_file, 1, meas_out);
+        APIData out_meas = meas_out.getobj("measure");
         out_meas.erase("train_loss");
         out_meas.erase("iteration");
-        out.add("measure", out_meas);
-        return 0;
+
+        auto out_dto = DTO::PredictBody::createShared();
+        out_dto->measure = out_meas;
+        return out_dto;
       }
 
     std::string extract_layer;
@@ -3746,61 +3750,56 @@ namespace dd
 
     if (!inputc._segmentation)
       tout.add_results(vrad);
+
+    OutputConnectorConfig conf;
     if (extract_layer.empty())
       {
         if (_regression)
-          {
-            out.add("regression", true);
-          }
+          conf._regression = true;
         else if (_autoencoder)
-          {
-            out.add("autoencoder", true);
-          }
+          conf._autoencoder = true;
         if (inputc._timeserie)
-          {
-            out.add("timeseries", true);
-          }
+          conf._timeseries = true;
       }
 
-    out.add("nclasses", nclasses);
-    out.add("bbox", bbox);
-    out.add("roi", rois);
-    out.add("multibox_rois", multibox_rois);
+    oatpp::Object<DTO::PredictBody> out_dto;
+    conf._nclasses = nclasses;
+    conf._has_bbox = bbox;
+    conf._has_roi = rois;
+    conf._multibox_rois = multibox_rois;
     if (!inputc._segmentation)
-      tout.finalize(ad.getobj("parameters").getobj("output"), out,
-                    static_cast<MLModel *>(&this->_mlmodel));
+      out_dto = tout.finalize(ad.getobj("parameters").getobj("output"), conf,
+                              static_cast<MLModel *>(&this->_mlmodel));
     else // segmentation returns an array, best dealt with an unsupervised
          // connector
       {
         UnsupervisedOutput unsupo;
         unsupo.add_results(vrad);
-        unsupo.finalize(ad.getobj("parameters").getobj("output"), out,
-                        static_cast<MLModel *>(&this->_mlmodel));
+        out_dto
+            = unsupo.finalize(ad.getobj("parameters").getobj("output"), conf,
+                              static_cast<MLModel *>(&this->_mlmodel));
       }
     if (ad.has("chain") && ad.get("chain").get<bool>())
       {
         if (typeid(inputc) == typeid(ImgCaffeInputFileConn))
           {
-            APIData chain_input;
             if (!reinterpret_cast<ImgCaffeInputFileConn *>(&inputc)
                      ->_orig_images.empty())
-              chain_input.add(
-                  "imgs", reinterpret_cast<ImgCaffeInputFileConn *>(&inputc)
-                              ->_orig_images);
+              out_dto->_chain_input._imgs
+                  = reinterpret_cast<ImgCaffeInputFileConn *>(&inputc)
+                        ->_orig_images;
             else
-              chain_input.add(
-                  "imgs",
-                  reinterpret_cast<ImgCaffeInputFileConn *>(&inputc)->_images);
-            chain_input.add("imgs_size",
-                            reinterpret_cast<ImgCaffeInputFileConn *>(&inputc)
-                                ->_images_size);
-            out.add("input", chain_input);
+              out_dto->_chain_input._imgs
+                  = reinterpret_cast<ImgCaffeInputFileConn *>(&inputc)
+                        ->_images;
+            out_dto->_chain_input._img_sizes
+                = reinterpret_cast<ImgCaffeInputFileConn *>(&inputc)
+                      ->_images_size;
           }
       }
 
-    out.add("status", 0);
-
-    return 0;
+    // out_dto->status = 0;
+    return out_dto;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

@@ -26,6 +26,7 @@
 
 #include "apidata.h"
 #include "dto/chain.hpp"
+#include "dto/predict_out.hpp"
 
 namespace dd
 {
@@ -63,21 +64,24 @@ namespace dd
     {
     }
 
-    void add_model_data(const std::string &id, const APIData &out)
+    void add_model_data(const std::string &id,
+                        const oatpp::Object<DTO::PredictBody> &out)
     {
-      std::unordered_map<std::string, APIData>::iterator hit;
+      std::unordered_map<std::string,
+                         oatpp::Object<DTO::PredictBody>>::const_iterator hit;
       if ((hit = _model_data.find(id)) != _model_data.end())
         _model_data.erase(hit);
-      _model_data.insert(std::pair<std::string, APIData>(id, out));
+      _model_data.insert(std::make_pair(id, out));
     }
 
-    APIData get_model_data(const std::string &id) const
+    oatpp::Object<DTO::PredictBody> get_model_data(const std::string &id) const
     {
-      std::unordered_map<std::string, APIData>::const_iterator hit;
+      std::unordered_map<std::string,
+                         oatpp::Object<DTO::PredictBody>>::const_iterator hit;
       if ((hit = _model_data.find(id)) != _model_data.end())
         return (*hit).second;
       else
-        return APIData();
+        return nullptr;
     }
 
     void add_action_data(const std::string &id, const APIData &out)
@@ -115,7 +119,8 @@ namespace dd
 
     oatpp::Object<DTO::ChainBody> nested_chain_output();
 
-    std::unordered_map<std::string, APIData> _model_data;
+    std::unordered_map<std::string, oatpp::Object<DTO::PredictBody>>
+        _model_data;
     std::unordered_map<std::string, APIData> _action_data;
     std::unordered_map<std::string, std::string> _id_sname;
     // std::string _first_sname;

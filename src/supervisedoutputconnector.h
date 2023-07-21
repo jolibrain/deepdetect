@@ -400,10 +400,12 @@ namespace dd
      * @param ad_in data output object from the API call
      * @param ad_out data object as the call response
      */
-    void finalize(const APIData &ad_in, APIData &ad_out, MLModel *mlm)
+    oatpp::Object<DTO::PredictBody>
+    finalize(const APIData &ad_in, const OutputConnectorConfig &config,
+             MLModel *mlm)
     {
       auto output_params = ad_in.createSharedDTO<DTO::OutputConnector>();
-      finalize(output_params, ad_out, mlm);
+      return finalize(output_params, config, mlm);
     }
 
     /**
@@ -411,51 +413,27 @@ namespace dd
      * @param ad_in data output object from the API call
      * @param ad_out data object as the call response
      */
-    void finalize(oatpp::Object<DTO::OutputConnector> output_params,
-                  APIData &ad_out, MLModel *mlm)
+    oatpp::Object<DTO::PredictBody>
+    finalize(oatpp::Object<DTO::OutputConnector> output_params,
+             const OutputConnectorConfig &config, MLModel *mlm)
     {
       (void)mlm;
       auto out_dto = DTO::PredictBody::createShared();
 
       SupervisedOutput bcats(*this);
-      bool regression = false;
-      bool autoencoder = false;
-      int nclasses = -1;
-      if (ad_out.has("nclasses"))
-        nclasses = ad_out.get("nclasses").get<int>();
-      if (ad_out.has("regression"))
-        {
-          if (ad_out.get("regression").get<bool>())
-            {
-              regression = true;
-              _best = ad_out.get("nclasses").get<int>();
-            }
-          ad_out.erase("regression");
-          ad_out.erase("nclasses");
-        }
-      if (ad_out.has("autoencoder") && ad_out.get("autoencoder").get<bool>())
-        {
-          autoencoder = true;
-          _best = 1;
-          ad_out.erase("autoencoder");
-        }
+      int nclasses = config._nclasses;
+      bool regression = config._regression;
+      if (regression)
+        _best = config._nclasses;
+      bool autoencoder = config._autoencoder;
+      if (autoencoder)
+        _best = 1;
 
-      bool has_bbox = ad_out.has("bbox") && ad_out.get("bbox").get<bool>();
-      bool has_roi = ad_out.has("roi") && ad_out.get("roi").get<bool>();
-      bool has_mask = ad_out.has("mask") && ad_out.get("mask").get<bool>();
-      bool has_multibox_rois = has_roi && ad_out.has("multibox_rois")
-                               && ad_out.get("multibox_rois").get<bool>();
-      bool timeseries
-          = ad_out.has("timeseries") && ad_out.get("timeseries").get<bool>();
-
-      if (timeseries)
-        ad_out.erase("timeseries");
-
-      if (has_bbox)
-        {
-          ad_out.erase("nclasses");
-          ad_out.erase("bbox");
-        }
+      bool has_bbox = config._has_bbox;
+      bool has_roi = config._has_roi;
+      bool has_mask = config._has_mask;
+      bool has_multibox_rois = config._has_roi && config._multibox_rois;
+      bool timeseries = config._timeseries;
 
       if (output_params->best == nullptr)
         output_params->best = _best;
@@ -722,13 +700,13 @@ namespace dd
       if (has_multibox_rois)
         has_roi = false;
       if (!timeseries)
-        bcats.to_ad(out_dto, regression, autoencoder, has_bbox, has_roi,
-                    has_mask, timeseries, indexed_uris);
+        bcats.to_dto(out_dto, regression, autoencoder, has_bbox, has_roi,
+                     has_mask, timeseries, indexed_uris);
       else
-        to_ad(out_dto, regression, autoencoder, has_bbox, has_roi, has_mask,
-              timeseries, indexed_uris);
+        to_dto(out_dto, regression, autoencoder, has_bbox, has_roi, has_mask,
+               timeseries, indexed_uris);
 
-      ad_out.add("dto", out_dto);
+      return out_dto;
     }
 
     struct PredictionAndAnswer
@@ -2916,11 +2894,11 @@ namespace dd
      * @param has_mask whether a mask creation task
      * @param indexed_uris list of indexed uris, if any
      */
-    void to_ad(oatpp::Object<DTO::PredictBody> out, const bool &regression,
-               const bool &autoencoder, const bool &has_bbox,
-               const bool &has_roi, const bool &has_mask,
-               const bool &timeseries,
-               const std::unordered_set<std::string> &indexed_uris) const
+    void to_dto(oatpp::Object<DTO::PredictBody> out, const bool &regression,
+                const bool &autoencoder, const bool &has_bbox,
+                const bool &has_roi, const bool &has_mask,
+                const bool &timeseries,
+                const std::unordered_set<std::string> &indexed_uris) const
     {
 #ifndef USE_SIMSEARCH
       (void)indexed_uris;
@@ -3005,7 +2983,8 @@ namespace dd
                   for (size_t bb = 0; bb < _vvcats.at(i)._bbox_nns.size();
                        bb++)
                     {
-                      std::vector<APIData> ad_nns;
+                      v->at(bb)->nns
+                          = oatpp::Vector<oatpp::Any>::createShared();
                       auto nnit = _vvcats.at(i)._bbox_nns.at(bb).begin();
                       while (nnit != _vvcats.at(i)._bbox_nns.at(bb).end())
                         {
@@ -3020,11 +2999,10 @@ namespace dd
                           ad_bbox.add("xmax", (*nnit).second._bbox.at(2));
                           ad_bbox.add("ymax", (*nnit).second._bbox.at(3));
                           ad_nn.add("bbox", ad_bbox);
-                          ad_nns.push_back(ad_nn);
+                          v->at(bb)->nns->push_back(DTO::DTOApiData{ ad_nn });
                           ++nnit;
                         }
                       // v will be stored in "rois" field
-                      v->at(bb)->nns->push_back(DTO::DTOApiData{ ad_nns });
                     }
                 }
             }
