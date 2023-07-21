@@ -444,8 +444,9 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
-  int XGBLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-             TMLModel>::predict(const APIData &ad, APIData &out)
+  oatpp::Object<DTO::PredictBody>
+  XGBLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(
+      const APIData &ad)
   {
     // mutex since using in-memory learner
     std::lock_guard<std::mutex> lock(_learner_mutex);
@@ -494,8 +495,9 @@ namespace dd
         test(ad, learner, eval_datasets.at(0).get(), meas_out);
         learner.release();
         meas_out.erase("iteration");
-        out.add("measure", meas_out.getobj("measure"));
-        return 0;
+        auto out_dto = DTO::PredictBody::createShared();
+        out_dto->measure = meas_out.getobj("measure");
+        return out_dto;
       }
 
     // predict
@@ -538,16 +540,18 @@ namespace dd
       }
     tout.add_results(vrad);
     TOutputConnectorStrategy btout(this->_outputc);
+
+    OutputConnectorConfig conf;
     if (_regression)
       {
-        out.add("regression", true);
-        out.add("nclasses", nclasses);
+        conf._regression = true;
       }
-    out.add("nclasses", nclasses);
-    tout.finalize(ad.getobj("parameters").getobj("output"), out,
-                  static_cast<MLModel *>(&this->_mlmodel));
-    out.add("status", 0);
-    return 0;
+    conf._nclasses = nclasses;
+    auto out_dto
+        = tout.finalize(ad.getobj("parameters").getobj("output"), conf,
+                        static_cast<MLModel *>(&this->_mlmodel));
+    // out_dto->status = 0;
+    return out_dto;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

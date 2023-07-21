@@ -71,8 +71,7 @@ namespace dd
             // ad.add("imgfname",FLAGS_imgfname);
             std::vector<std::string> vdata = { FLAGS_imgfname };
             ad.add("data", vdata);
-            APIData out;
-            predict(ad, 0, out);
+            auto out = APIData::fromDTO(predict(ad, 0));
             // std::cout << "witness=\n" << out.to_str() << std::endl;
             // std::string tpl = "status={{status}}\n{{cat0}} -->
             // {{prob0}}\n{{cat1}} --> {{prob1}}\n{{cat2}} --> {{prob2}}\n";

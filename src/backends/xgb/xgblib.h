@@ -99,7 +99,7 @@ namespace dd
 
     int train(const APIData &ad, APIData &out);
 
-    int predict(const APIData &ad, APIData &out);
+    oatpp::Object<DTO::PredictBody> predict(const APIData &ad);
 
     /*- local functions -*/
     void test(const APIData &ad, std::unique_ptr<xgboost::Learner> &learner,

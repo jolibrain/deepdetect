@@ -22,10 +22,12 @@
 #ifndef CHAIN_ACTIONS_H
 #define CHAIN_ACTIONS_H
 
+#include <memory>
+
 #include "apidata.h"
 #include "chain.h"
-#include <memory>
 #include "dd_spdlog.h"
+#include "dto/predict_out.hpp"
 
 namespace dd
 {
@@ -97,7 +99,7 @@ namespace dd
      * the action creates data that should be used by the next model, they are
      * stored in other fields, as handled in `services.h:chain_service()`.
      * */
-    void apply(APIData &model_out, ChainData &cdata);
+    void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
 
     std::string _action_id;
     std::string _action_type;
@@ -119,7 +121,7 @@ namespace dd
     {
     }
 
-    void apply(APIData &model_out, ChainData &cdata);
+    void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
   };
 
   class ImgsRotateAction : public ChainAction
@@ -135,7 +137,7 @@ namespace dd
     {
     }
 
-    void apply(APIData &model_out, ChainData &cdata);
+    void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
   };
 
   /** Recompose origin image with inference result, for example in crop + GAN
@@ -153,7 +155,7 @@ namespace dd
     {
     }
 
-    void apply(APIData &model_out, ChainData &cdata);
+    void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
   };
 
   class ImgsDrawBBoxAction : public ChainAction
@@ -169,7 +171,7 @@ namespace dd
     {
     }
 
-    void apply(APIData &model_out, ChainData &cdata);
+    void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
   };
 
   class ClassFilter : public ChainAction
@@ -185,20 +187,21 @@ namespace dd
     {
     }
 
-    void apply(APIData &model_out, ChainData &cdata);
+    void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
   };
 
   template <typename T>
   inline void apply_action(oatpp::Object<DTO::ChainCall> call_dto,
-                           APIData &model_out, ChainData &cdata,
+                           oatpp::Object<DTO::PredictBody> &model_out,
+                           ChainData &cdata,
                            const std::shared_ptr<spdlog::logger> &chain_logger)
   {
     T act(call_dto, chain_logger);
     act.apply(model_out, cdata);
   }
 
-  typedef std::function<void(oatpp::Object<DTO::ChainCall>, APIData &,
-                             ChainData &,
+  typedef std::function<void(oatpp::Object<DTO::ChainCall>,
+                             oatpp::Object<DTO::PredictBody> &, ChainData &,
                              const std::shared_ptr<spdlog::logger> &)>
       action_function;
 
@@ -226,7 +229,8 @@ namespace dd
     {
     }
 
-    void apply_action(const std::string &action_type, APIData &model_out,
+    void apply_action(const std::string &action_type,
+                      oatpp::Object<DTO::PredictBody> &model_out,
                       ChainData &cdata,
                       const std::shared_ptr<spdlog::logger> &chain_logger);
 

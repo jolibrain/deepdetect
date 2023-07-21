@@ -32,14 +32,16 @@
 
 #include "dto/common.hpp"
 #include "dto/ddtypes.hpp"
+#include "dto/resource.hpp"
 
 namespace dd
 {
   /** Data passed from an mllib to the next step in the chain */
   class ChainInputData
   {
+  public:
     std::vector<cv::Mat> _imgs;
-    std::vector<std::pair<double, double>> _img_sizes;
+    std::vector<std::pair<int, int>> _img_sizes;
 #ifdef USE_CUDA_CV
     std::vector<cv::cuda::GpuMat> _cuda_imgs;
 #endif
@@ -118,6 +120,13 @@ namespace dd
         info->description = "mask";
       }
       DTO_FIELD(DTOApiData, mask);
+
+      DTO_FIELD_INFO(nns)
+      {
+        info->description = "[simsearch] Nearest neighbors";
+      }
+      DTO_FIELD(Vector<Any>, nns);
+
       /// XXX: May be removed when we get rid of APIData
       /// id to track class throught chains
       DTO_FIELD(String, class_id);
@@ -247,6 +256,19 @@ namespace dd
         info->description = "Total prediction time";
       }
       DTO_FIELD(Float64, time);
+
+      DTO_FIELD_INFO(measure)
+      {
+        info->description = "Measures if predict is launched as model test";
+      }
+      DTO_FIELD(DTOApiData, measure);
+
+      DTO_FIELD_INFO(resources)
+      {
+        info->description
+            = "Array containing resources status for each resource input data";
+      }
+      DTO_FIELD(Vector<Object<ResourceResponseBody>>, resources);
 
     public:
       /// chain input data

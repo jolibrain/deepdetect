@@ -54,8 +54,10 @@ namespace dd
     oatpp::Object<DTO::PredictBody> first_model_out;
     std::unordered_multimap<std::string, oatpp::Object<DTO::Prediction>>
         other_models_out;
-    std::unordered_map<std::string, APIData>::const_iterator hit
+    std::unordered_map<std::string,
+                       oatpp::Object<DTO::PredictBody>>::const_iterator hit
         = _model_data.begin();
+
     while (hit != _model_data.end())
       {
         std::string model_id = (*hit).first;
@@ -63,35 +65,12 @@ namespace dd
 
         if (model_id == _first_id)
           {
-            if ((*hit).second.has("dto"))
-              {
-                first_model_out
-                    = hit->second.get("dto")
-                          .get<oatpp::Any>()
-                          .retrieve<oatpp::Object<DTO::PredictBody>>();
-              }
-            else
-              {
-                // XXX: DTO conversion for supervised output
-                first_model_out
-                    = (*hit).second.createSharedDTO<DTO::PredictBody>();
-              }
+            first_model_out = (*hit).second;
           }
         else
           {
             // predictions/classes or predictions/vals
-            oatpp::Object<DTO::PredictBody> body;
-            if (hit->second.has("dto"))
-              {
-                body = hit->second.get("dto")
-                           .get<oatpp::Any>()
-                           .retrieve<oatpp::Object<DTO::PredictBody>>();
-              }
-            else
-              {
-                // XXX: DTO conversion for supervised output
-                body = hit->second.createSharedDTO<DTO::PredictBody>();
-              }
+            oatpp::Object<DTO::PredictBody> body = hit->second;
 
             for (auto p : *body->predictions)
               {
@@ -109,6 +88,7 @@ namespace dd
     std::unordered_map<std::string, APIData>::const_iterator ahit
         = _action_data.begin();
 
+    // TODO stay out of APIData
     while (ahit != _action_data.end())
       {
         std::string action_id = ahit->first;

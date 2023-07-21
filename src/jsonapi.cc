@@ -1070,12 +1070,10 @@ namespace dd
       }
 
     // prediction
-    APIData out;
+    oatpp::Object<DTO::PredictBody> pred_dto;
     try
       {
-        this->predict(
-            ad_data, sname,
-            out); // we ignore returned status, stored in out data object
+        pred_dto = this->predict(ad_data, sname);
       }
     catch (InputConnectorBadParamException &e)
       {
@@ -1117,10 +1115,7 @@ namespace dd
       }
     JDoc jpred = dd_ok_200();
     JVal jout(rapidjson::kObjectType);
-    if (out.has("dto"))
-      oatpp_utils::dtoToJVal(out.get("dto").get<oatpp::Any>(), jpred, jout);
-    else
-      out.toJVal(jpred, jout);
+    oatpp_utils::dtoToJVal(pred_dto, jpred, jout);
     bool has_measure
         = ad_data.getobj("parameters").getobj("output").has("measure");
     JVal jhead(rapidjson::kObjectType);

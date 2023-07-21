@@ -105,7 +105,7 @@ namespace dd
 
     int train(const APIData &ad, APIData &out);
 
-    int predict(const APIData &ad, APIData &out);
+    oatpp::Object<DTO::PredictBody> predict(const APIData &ad);
 
     void model_type(const std::string &param_file, std::string &mltype);
 

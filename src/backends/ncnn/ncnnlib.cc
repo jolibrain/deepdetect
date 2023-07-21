@@ -152,8 +152,9 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
-  int NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-              TMLModel>::predict(const APIData &ad, APIData &out)
+  oatpp::Object<DTO::PredictBody>
+  NCNNLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+          TMLModel>::predict(const APIData &ad)
   {
     auto predict_dto = ad.createSharedDTO<DTO::ServicePredict>();
 
@@ -365,9 +366,6 @@ namespace dd
         else
           rad.add("probs", probs);
 
-        if (_timeserie)
-          out.add("timeseries", true);
-
 #pragma omp critical
         {
           vrad.push_back(rad);
@@ -376,40 +374,37 @@ namespace dd
 
     tout.add_results(vrad);
     int nclasses = this->_init_dto->nclasses;
-    out.add("nclasses", nclasses);
+    OutputConnectorConfig conf;
+    conf._nclasses = nclasses;
+    if (_timeserie)
+      conf._timeseries = true;
     if (output_params->bbox == true)
-      out.add("bbox", true);
-    out.add("roi", false);
-    out.add("multibox_rois", false);
-    APIData ad_output = ad.getobj("parameters").getobj("output");
-    tout.finalize(ad_output, out, static_cast<MLModel *>(&this->_mlmodel));
+      conf._has_bbox = true;
+    oatpp::Object<DTO::PredictBody> out_dto
+        = tout.finalize(predict_dto->parameters->output, conf,
+                        static_cast<MLModel *>(&this->_mlmodel));
 
     // chain compliance
-    // XXX(louis): dynamic parameter added in MLService. With DTO, this
-    // parameter must be passed by other means.
     if (ad.has("chain") && ad.get("chain").get<bool>())
       {
         if (typeid(inputc) == typeid(ImgNCNNInputFileConn))
           {
-            APIData chain_input;
             if (!reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
                      ->_orig_images.empty())
-              chain_input.add("imgs",
-                              reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
-                                  ->_orig_images);
+              out_dto->_chain_input._imgs
+                  = reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
+                        ->_orig_images;
             else
-              chain_input.add(
-                  "imgs",
-                  reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)->_images);
-            chain_input.add("imgs_size",
-                            reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
-                                ->_images_size);
-            out.add("input", chain_input);
+              out_dto->_chain_input._imgs
+                  = reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)->_images;
+            out_dto->_chain_input._img_sizes
+                = reinterpret_cast<ImgNCNNInputFileConn *>(&inputc)
+                      ->_images_size;
           }
       }
 
-    out.add("status", 0);
-    return 0;
+    // out_dto->status = 0;
+    return out_dto;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

@@ -77,7 +77,7 @@ namespace dd
 
     int train(const APIData &ad, APIData &out);
 
-    int predict(const APIData &ad, APIData &out);
+    oatpp::Object<DTO::PredictBody> predict(const APIData &ad_in);
 
     int test(const APIData &ad, TInputConnectorStrategy &inputc,
              TorchMultipleDataset &datasets, int batch_size, APIData &out);
