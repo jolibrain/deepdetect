@@ -65,6 +65,40 @@ namespace dd
       return vec;
     }
 
+    inline oatpp::Void getAnyContent(const oatpp::Any &any)
+    {
+      auto anyHandle
+          = static_cast<oatpp::data::mapping::type::AnyHandle *>(any.get());
+      return oatpp::Void(anyHandle->ptr, anyHandle->type);
+    }
+
+    template <class S, class D> inline std::vector<D> anyToVec(oatpp::Any any)
+    {
+      auto polymorph = getAnyContent(any);
+      auto poly_dispatch
+          = static_cast<const oatpp::data::mapping::type::__class::Collection::
+                            PolymorphicDispatcher *>(
+              polymorph.getValueType()->polymorphicDispatcher);
+      std::vector<D> vec;
+      for (auto it = poly_dispatch->beginIteration(polymorph); !it->finished();
+           it->next())
+        {
+          auto val = it->get().cast<oatpp::Any>().retrieve<S>();
+          vec.push_back(val);
+        }
+      return vec;
+    }
+
+    inline bool isList(const oatpp::Void &polymorph)
+    {
+      return polymorph.getValueType()->classId.id
+                 == oatpp::data::mapping::type::__class::AbstractVector::
+                        CLASS_ID.id
+             || polymorph.getValueType()->classId.id
+                    == oatpp::data::mapping::type::__class::AbstractList::
+                           CLASS_ID.id;
+    }
+
     void dtoToJDoc(const oatpp::Void &polymorph, JDoc &jdoc,
                    bool ignore_null = true);
     void dtoToJVal(const oatpp::Void &polymorph, JDoc &jdoc, JVal &jval,

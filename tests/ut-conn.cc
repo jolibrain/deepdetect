@@ -690,7 +690,8 @@ TEST(inputconn, csv_read_categoricals)
   CSVInputFileConn cifc;
   cifc._logger = spdlog::stdout_logger_mt("test5");
   cifc._train = true;
-  cifc.read_categoricals(ap);
+  auto input_dto = ap.createSharedDTO<DTO::InputConnector>();
+  cifc.read_categoricals(input_dto);
   ASSERT_EQ(23, cifc._categoricals.size());
   CCategorical cc = cifc._categoricals["odor"];
   ASSERT_EQ(9, cc._vals.size());

@@ -328,49 +328,53 @@ namespace dd
 
     void fillup_parameters(const APIData &ad_input)
     {
-      if (ad_input.has("shuffle"))
-        _shuffle = ad_input.get("shuffle").get<bool>();
-      if (ad_input.has("seed"))
-        _seed = ad_input.get("seed").get<int>();
-      if (ad_input.has("test_split"))
-        _test_split = ad_input.get("test_split").get<double>();
-      if (ad_input.has("count"))
-        _count = ad_input.get("count").get<bool>();
-      if (ad_input.has("tfidf"))
-        _tfidf = ad_input.get("tfidf").get<bool>();
-      if (ad_input.has("min_count"))
-        _min_count = ad_input.get("min_count").get<int>();
-      if (ad_input.has("min_word_length"))
-        _min_word_length = ad_input.get("min_word_length").get<int>();
-      if (ad_input.has("sentences"))
-        _sentences = ad_input.get("sentences").get<bool>();
-      if (ad_input.has("characters"))
-        _characters = ad_input.get("characters").get<bool>();
-      if (ad_input.has("ordered_words"))
-        _ordered_words = ad_input.get("ordered_words").get<bool>();
-      if (ad_input.has("lower_case"))
-        _lower_case = ad_input.get("lower_case").get<bool>();
-      if (ad_input.has("wordpiece_tokens"))
-        _wordpiece_tokens = ad_input.get("wordpiece_tokens").get<bool>();
-      if (ad_input.has("word_start"))
-        _wordpiece_tokenizer._word_start
-            = ad_input.get("word_start").get<std::string>();
-      if (ad_input.has("suffix_start"))
-        _wordpiece_tokenizer._suffix_start
-            = ad_input.get("suffix_start").get<std::string>();
-      if (ad_input.has("punctuation_tokens"))
-        _punctuation_tokens = ad_input.get("punctuation_tokens").get<bool>();
-      if (ad_input.has("alphabet"))
-        _alphabet_str = ad_input.get("alphabet").get<std::string>();
+      auto params = ad_input.createSharedDTO<DTO::InputConnector>();
+      fillup_parameters(params);
+    }
+
+    void fillup_parameters(oatpp::Object<DTO::InputConnector> params)
+    {
+      if (params->shuffle != nullptr)
+        _shuffle = params->shuffle;
+      if (params->seed != nullptr)
+        _seed = params->seed;
+      if (params->test_split != nullptr)
+        _test_split = params->test_split;
+      if (params->count != nullptr)
+        _count = params->count;
+      if (params->tfidf != nullptr)
+        _tfidf = params->tfidf;
+      if (params->min_count != nullptr)
+        _min_count = params->min_count;
+      if (params->min_word_length != nullptr)
+        _min_word_length = params->min_word_length;
+      if (params->sentences != nullptr)
+        _sentences = params->sentences;
+      if (params->characters != nullptr)
+        _characters = params->characters;
+      if (params->ordered_words != nullptr)
+        _ordered_words = params->ordered_words;
+      if (params->lower_case != nullptr)
+        _lower_case = params->lower_case;
+      if (params->wordpiece_tokens != nullptr)
+        _wordpiece_tokens = params->wordpiece_tokens;
+      if (params->word_start != nullptr)
+        _wordpiece_tokenizer._word_start = params->word_start;
+      if (params->suffix_start != nullptr)
+        _wordpiece_tokenizer._suffix_start = params->suffix_start;
+      if (params->punctuation_tokens != nullptr)
+        _punctuation_tokens = params->punctuation_tokens;
+      if (params->alphabet != nullptr)
+        _alphabet_str = params->alphabet;
       if (_characters)
         build_alphabet();
-      if (ad_input.has("sequence"))
-        _sequence = ad_input.get("sequence").get<int>();
-      if (ad_input.has("read_forward"))
-        _seq_forward = ad_input.get("read_forward").get<bool>();
+      if (params->sequence != nullptr)
+        _sequence = params->sequence;
+      if (params->read_forward != nullptr)
+        _seq_forward = params->read_forward;
 
       // timeout
-      this->set_timeout(ad_input);
+      this->set_timeout(params);
     }
 
     int feature_size() const
@@ -392,7 +396,6 @@ namespace dd
     void transform(const APIData &ad)
     {
       get_data(ad);
-
       if (ad.has(
               "parameters")) // hotplug of parameters, overriding the defaults
         {
@@ -401,6 +404,18 @@ namespace dd
             {
               fillup_parameters(ad_param.getobj("input"));
             }
+        }
+
+      transform(nullptr);
+    }
+
+    void transform(oatpp::Object<DTO::ServicePredict> input_dto)
+    {
+      if (input_dto != nullptr) // [temporary] == nullptr if called from
+                                // transform(APIData)
+        {
+          get_data(input_dto);
+          fillup_parameters(input_dto->parameters->input);
         }
 
       if (_alphabet.empty() && _characters)

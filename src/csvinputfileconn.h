@@ -152,13 +152,19 @@ namespace dd
 
     void fillup_parameters(const APIData &ad_input)
     {
+      auto params = ad_input.createSharedDTO<DTO::InputConnector>();
+      fillup_parameters(params);
+    }
 
-      if (ad_input.has("shuffle") && ad_input.get("shuffle").get<bool>())
+    void fillup_parameters(oatpp::Object<DTO::InputConnector> params)
+    {
+
+      if (params->shuffle != nullptr && params->shuffle)
         {
           _shuffle = true;
-          if (ad_input.has("seed") && ad_input.get("seed").get<int>() >= 0)
+          if (params->seed != nullptr)
             {
-              _g = std::mt19937(ad_input.get("seed").get<int>());
+              _g = std::mt19937(params->seed);
             }
           else
             {
@@ -167,35 +173,34 @@ namespace dd
             }
         }
 
-      if (ad_input.has("id"))
-        _id = ad_input.get("id").get<std::string>();
-      if (ad_input.has("separator"))
-        _delim = ad_input.get("separator").get<std::string>();
-      if (ad_input.has("quote"))
-        _quote = ad_input.get("quote").get<std::string>();
+      if (params->id != nullptr)
+        _id = params->id;
+      if (params->separator != nullptr)
+        _delim = params->separator;
+      if (params->quote != nullptr)
+        _quote = params->quote;
 
-      if (ad_input.has("ignore"))
+      if (params->ignore != nullptr)
         {
-          std::vector<std::string> vignore
-              = ad_input.get("ignore").get<std::vector<std::string>>();
-          for (std::string s : vignore)
+          for (std::string s : *params->ignore)
             _ignored_columns.insert(s);
         }
 
-      if (ad_input.has("test_split"))
-        _test_split = ad_input.get("test_split").get<double>();
+      if (params->test_split != nullptr)
+        _test_split = params->test_split;
 
       // read categorical mapping, if any
-      read_categoricals(ad_input);
+      read_categoricals(params);
 
       // read scaling parameters, if any
-      read_scale_vals(ad_input);
+      read_scale_vals(params);
 
-      if (ad_input.has("label"))
+      // dummy to fix compilation errors
+      if (params->label != nullptr)
         {
-          try
+          if (params->label.getStoredType() == oatpp::String::Class::getType())
             {
-              std::string label = ad_input.get("label").get<std::string>();
+              std::string label = params->label.retrieve<oatpp::String>();
               // weird stuff may happen if label is given as single string (not
               // vector) both at service creation and at train (mutiple calls
               // may be possible due to csvts fillup parameters everywhere it
@@ -212,18 +217,17 @@ namespace dd
               if (!already_in_labels)
                 _label.push_back(label);
             }
-          catch (std::exception &e)
+          else if (oatpp_utils::isList(
+                       oatpp_utils::getAnyContent(params->label)))
             {
-              try
-                {
-                  _label
-                      = ad_input.get("label").get<std::vector<std::string>>();
-                }
-              catch (std::exception &e)
-                {
-                  throw InputConnectorBadParamException(
-                      "wrong type for label parameter");
-                }
+              _label = oatpp_utils::anyToVec<oatpp::String, std::string>(
+                  params->label);
+            }
+          else
+            {
+              throw InputConnectorBadParamException(
+                  std::string("wrong type for label parameter")
+                  + params->label_offset.getStoredType()->classId.name);
             }
           _label_pos.clear();
           for (size_t l = 0; l < _label.size(); l++)
@@ -232,40 +236,45 @@ namespace dd
               _label_set.insert(std::pair<std::string, int>(_label.at(l), l));
             }
         }
-      if (ad_input.has("label_offset"))
+      if (params->label_offset != nullptr)
         {
-          try
+          if (params->label_offset.getStoredType()
+              == oatpp::Int32::Class::getType())
             {
-              int label_offset = ad_input.get("label_offset").get<int>();
+              int label_offset = params->label_offset.retrieve<oatpp::Int32>();
               _label_offset.push_back(label_offset);
             }
-          catch (std::exception &e)
+          else if (params->label_offset.getStoredType()
+                   == oatpp::Float64::Class::getType())
             {
-              try
-                {
-                  _label_offset
-                      = ad_input.get("label_offset").get<std::vector<int>>();
-                }
-              catch (std::exception &e)
-                {
-                  throw InputConnectorBadParamException(
-                      "wrong type for label_offset parameter");
-                }
+              int label_offset = static_cast<int>(
+                  *params->label_offset.retrieve<oatpp::Float64>());
+              _label_offset.push_back(label_offset);
+            }
+          else if (oatpp_utils::isList(
+                       oatpp_utils::getAnyContent(params->label_offset)))
+            {
+              _label_offset = oatpp_utils::anyToVec<oatpp::Int32, int>(
+                  params->label_offset);
+            }
+          else
+            {
+              throw InputConnectorBadParamException(
+                  std::string("wrong type for label_offset parameter: ")
+                  + params->label_offset.getStoredType()->classId.name);
             }
         }
       else
         _label_offset = std::vector<int>(_label.size(), 0);
 
-      if (ad_input.has("categoricals"))
+      if (params->categoricals != nullptr)
         {
-          std::vector<std::string> vcats
-              = ad_input.get("categoricals").get<std::vector<std::string>>();
-          for (std::string v : vcats)
+          for (std::string v : *params->categoricals)
             _categoricals.emplace(std::make_pair(v, CCategorical()));
         }
 
       // timeout
-      this->set_timeout(ad_input);
+      this->set_timeout(params);
     }
 
     /**
@@ -286,11 +295,11 @@ namespace dd
      *        this most often applies when the mapping is provided at inference
      *        time.
      */
-    void read_categoricals(const APIData &ad_input)
+    void read_categoricals(oatpp::Object<DTO::InputConnector> params)
     {
-      if (ad_input.has("categoricals_mapping"))
+      if (params->categoricals_mapping != nullptr)
         {
-          APIData ad_cats = ad_input.getobj("categoricals_mapping");
+          APIData ad_cats = params->categoricals_mapping;
           std::vector<std::string> vcats = ad_cats.list_keys();
           for (std::string c : vcats)
             {
@@ -380,15 +389,14 @@ namespace dd
      *        sets _scale flag and _min_vals, _max_vals vectors
      * @param ad_input the APIData input object
      */
-    void read_scale_vals(const APIData &ad_input)
+    void read_scale_vals(oatpp::Object<DTO::InputConnector> params)
     {
-      if (ad_input.has("scale") && ad_input.get("scale").get<bool>())
+      if (params->scale != nullptr && params->scale.retrieve<oatpp::Boolean>())
         {
           _scale = true;
-          if (ad_input.has("scale_type"))
+          if (params->scale_type != nullptr)
             {
-              std::string stype
-                  = ad_input.get("scale_type").get<std::string>();
+              std::string stype = params->scale_type;
               if (stype == "minmax")
                 _scale_type = MINMAX;
               else if (stype == "znorm")
@@ -399,67 +407,22 @@ namespace dd
             }
           if (_scale_type == MINMAX)
             {
-              if (ad_input.has("min_vals"))
-                {
-                  try
-                    {
-                      _min_vals = ad_input.get("min_vals")
-                                      .get<std::vector<double>>();
-                    }
-                  catch (...)
-                    {
-                      std::vector<int> vi
-                          = ad_input.get("min_vals").get<std::vector<int>>();
-                      _min_vals = std::vector<double>(vi.begin(), vi.end());
-                    }
-                }
-              if (ad_input.has("max_vals"))
-                {
-                  try
-                    {
-                      _max_vals = ad_input.get("max_vals")
-                                      .get<std::vector<double>>();
-                    }
-                  catch (...)
-                    {
-                      std::vector<int> vi
-                          = ad_input.get("max_vals").get<std::vector<int>>();
-                      _max_vals = std::vector<double>(vi.begin(), vi.end());
-                    }
-                }
+              if (params->min_vals != nullptr)
+                _min_vals = oatpp_utils::dtoVecToVec<oatpp::Float32, double>(
+                    params->min_vals);
+              if (params->max_vals != nullptr)
+                _max_vals = oatpp_utils::dtoVecToVec<oatpp::Float32, double>(
+                    params->max_vals);
             }
           else
             {
-              if (ad_input.has("mean_vals"))
-                {
-                  try
-                    {
-                      _mean_vals = ad_input.get("mean_vals")
-                                       .get<std::vector<double>>();
-                    }
-                  catch (...)
-                    {
-                      std::vector<int> vi
-                          = ad_input.get("mean_vals").get<std::vector<int>>();
-                      _mean_vals = std::vector<double>(vi.begin(), vi.end());
-                    }
-                }
-
-              if (ad_input.has("variance_vals"))
-                {
-                  try
-                    {
-                      _variance_vals = ad_input.get("variance_vals")
-                                           .get<std::vector<double>>();
-                    }
-                  catch (...)
-                    {
-                      std::vector<int> vi = ad_input.get("variance_vals")
-                                                .get<std::vector<int>>();
-                      _variance_vals
-                          = std::vector<double>(vi.begin(), vi.end());
-                    }
-                }
+              if (params->mean_vals != nullptr)
+                _mean_vals = oatpp_utils::dtoVecToVec<oatpp::Float32, double>(
+                    params->mean_vals);
+              if (params->variance_vals != nullptr)
+                _variance_vals
+                    = oatpp_utils::dtoVecToVec<oatpp::Float32, double>(
+                        params->variance_vals);
             }
 
           // debug
