@@ -3551,6 +3551,9 @@ namespace dd
                     = _net->blob_by_name("cont_seq");
                 // cont_seq is TxN
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+
                 CSVTSCaffeInputFileConn *ic
                     = reinterpret_cast<CSVTSCaffeInputFileConn *>(&inputc);
 
@@ -3638,6 +3641,7 @@ namespace dd
                         series.push_back(ts);
                       }
                   }
+#pragma GCC diagnostic pop
               }
             else // classification
               {

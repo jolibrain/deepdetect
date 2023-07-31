@@ -20,17 +20,22 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include "deepdetect.h"
-#include "jsonapi.h"
-#include "txtinputfileconn.h"
 #include <gtest/gtest.h>
 #include <stdio.h>
 #include <iostream>
 #include <numeric>
-#include "backends/torch/native/templates/nbeats.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include <torch/torch.h>
+#pragma GCC diagnostic pop
 #include <rapidjson/istreamwrapper.h>
+
+#include "deepdetect.h"
+#include "jsonapi.h"
+#include "txtinputfileconn.h"
+#include "utils/cv_utils.hpp"
+#include "backends/torch/native/templates/nbeats.h"
 
 using namespace dd;
 
@@ -383,6 +388,7 @@ TEST(torchapi, service_predict_object_detection)
                 "\"best_bbox\":3}},\"data\":[\""
                 + detect_repo + "cat.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
 
@@ -392,6 +398,26 @@ TEST(torchapi, service_predict_object_detection)
 
   auto &preds_best = jd["body"]["predictions"][0]["classes"];
   ASSERT_EQ(preds_best.Size(), 3);
+
+  // base64
+  cv::Mat img = cv::imread(detect_repo + "cat.jpg");
+  std::string b64_str = cv_utils::image_to_base64(img, ".png");
+  jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                "\"input\":{\"height\":224,"
+                "\"width\":224},\"output\":{\"bbox\":true, "
+                "\"best_bbox\":3}},\"data\":[\""
+                + b64_str + "\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  auto &preds_best_b64 = jd["body"]["predictions"][0]["classes"];
+  ASSERT_EQ(preds_best_b64.Size(), 3);
 }
 
 TEST(torchapi, service_predict_object_detection_any_size)
