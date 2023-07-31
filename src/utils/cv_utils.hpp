@@ -23,13 +23,15 @@
 #define DD_UTILS_CVUTILS_HPP
 
 #include <vector>
+#include <opencv2/opencv.hpp>
+#include "ext/base64/base64.h"
 
 namespace dd
 {
   namespace cv_utils
   {
     /** Convert an int fourcc (from a video) to string format */
-    std::string fourcc_to_string(int fourcc)
+    inline std::string fourcc_to_string(int fourcc)
     {
       union
       {
@@ -43,6 +45,33 @@ namespace dd
           (i32_c.c[1] >= ' ' && i32_c.c[1] < 128) ? i32_c.c[1] : '?',
           (i32_c.c[2] >= ' ' && i32_c.c[2] < 128) ? i32_c.c[2] : '?',
           (i32_c.c[3] >= ' ' && i32_c.c[3] < 128) ? i32_c.c[3] : '?');
+    }
+
+    inline cv::Mat base64_to_image(const std::string &str_base64)
+    {
+      std::string img_str;
+      if (!Base64::Decode(str_base64, &img_str))
+        throw std::runtime_error("Image could not be decoded");
+
+      std::vector<unsigned char> vdat(img_str.begin(), img_str.end());
+      cv::Mat img
+          = cv::Mat(cv::imdecode(cv::Mat(vdat, false), cv::IMREAD_UNCHANGED));
+      return img;
+    }
+
+    /** Convert image to base64 string */
+    inline std::string image_to_base64(const cv::Mat &mat,
+                                       const std::string &ext)
+    {
+      std::vector<uint8_t> buffer;
+      cv::imencode(ext, mat, buffer);
+
+      // encode to base64
+      std::string byte_str(buffer.begin(), buffer.end());
+      std::string encoded;
+      if (!Base64::Encode(byte_str, &encoded))
+        throw std::runtime_error("Image could not be encoded");
+      return encoded;
     }
   }
 }
