@@ -446,6 +446,11 @@ if (CUDA_FOUND)
   message(STATUS "CUDA_ARCH=${CUDA_ARCH}")
 else()
   set(CUDA_LIB_DEPS "")
+
+  if (NOT APPLE)
+    # XXX: On Apple platforms MPS can be used, so we'd need a different condition
+    add_definitions(-DCPU_ONLY)
+  endif()
 endif()
 
 if (USE_DLIB)
