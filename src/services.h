@@ -1213,7 +1213,8 @@ namespace dd
               size_t npred_classes
                   = pred->classes != nullptr ? pred->classes->size() : 0;
               classes_size += npred_classes;
-              vals_size += static_cast<int>(pred->vals != nullptr);
+              vals_size += static_cast<int>(pred->vals != nullptr)
+                           + static_cast<int>(pred->images->size());
 
               if (chain_pos == 0) // first call's response contains uniformized
                                   // top level URIs.
