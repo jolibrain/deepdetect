@@ -346,10 +346,13 @@ namespace dd
                    TMLModel>::clear_mllib(const APIData &ad)
   {
     (void)ad;
-    cudaFree(_buffers.data()[_inputIndex]);
-    cudaFree(_buffers.data()[_outputIndex0]);
-    if (_bbox)
-      cudaFree(_buffers.data()[_outputIndex1]);
+    if (!_buffers.empty())
+      {
+        cudaFree(_buffers.at(_inputIndex));
+        cudaFree(_buffers.at(_outputIndex0));
+        if (_bbox)
+          cudaFree(_buffers.at(_outputIndex1));
+      }
 
     // remove compiled model files.
     std::vector<std::string> extensions
