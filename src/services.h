@@ -842,9 +842,8 @@ namespace dd
         {
           chain_logger->info("[" + std::to_string(chain_pos)
                              + "] / no result from prediction");
-          cdata.add_model_data(
-              pred_id,
-              DTO::PredictBody::createShared()); // store empty model output
+          cdata.add_model_data(pred_id,
+                               pred_dto); // store empty model output
           return 1;
         }
 
@@ -1170,9 +1169,8 @@ namespace dd
         {
           chain_logger->info("[" + std::to_string(chain_pos)
                              + "] / no result from prediction");
-          cdata.add_model_data(
-              pred_id,
-              DTO::PredictBody::createShared()); // store empty model output
+          cdata.add_model_data(pred_id,
+                               pred_dto); // store empty model output
           return 1;
         }
 
