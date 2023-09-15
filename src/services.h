@@ -708,6 +708,20 @@ namespace dd
       return pred_dto;
     }
 
+    /** Find a logger name that does not exist yet for chain call */
+    std::string find_logger_name(std::string cname)
+    {
+      int i = 1;
+      std::string prefix = cname;
+
+      while (spdlog::get(cname) != nullptr)
+        {
+          i++;
+          cname = prefix + "-" + std::to_string(i);
+        }
+      return cname;
+    }
+
     int chain_service(const std::string &cname,
                       const std::shared_ptr<spdlog::logger> &chain_logger,
                       APIData &adc, ChainData &cdata,
@@ -914,12 +928,12 @@ namespace dd
       return 0;
     }
 
-    oatpp::Object<DTO::ChainBody> chain(const APIData &ad,
-                                        const std::string &cname)
+    oatpp::Object<DTO::ChainBody> chain(const APIData &ad, std::string cname)
     {
       oatpp::Object<DTO::ChainBody> chain_dto;
       try
         {
+          cname = find_logger_name(cname);
           auto chain_logger = DD_SPDLOG_LOGGER(cname);
 
           std::chrono::time_point<std::chrono::system_clock> tstart
@@ -1240,11 +1254,12 @@ namespace dd
     }
 
     oatpp::Object<DTO::ChainBody>
-    chain(oatpp::Object<DTO::ServiceChain> input_dto, const std::string &cname)
+    chain(oatpp::Object<DTO::ServiceChain> input_dto, std::string cname)
     {
       oatpp::Object<DTO::ChainBody> out_dto;
       try
         {
+          cname = find_logger_name(cname);
           auto chain_logger = DD_SPDLOG_LOGGER(cname);
 
           std::chrono::time_point<std::chrono::system_clock> tstart
