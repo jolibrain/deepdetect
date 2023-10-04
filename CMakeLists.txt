@@ -722,7 +722,7 @@ elseif(USE_CAFFE)
 
   message(STATUS "include_dirs : ${INCLUDE_DIRS}")
 
-  set(CAFFE_DD_TARBALL_HASH "bf2d6dab6bc187be349377f4baa97f867c6044186d7ad85cd72a56cd1ad30e35")
+  set(CAFFE_DD_TARBALL_HASH "6d340fff2213c37886e058d188c9b54458a0747422d54bc294db4e5029a68aa0")
 
   ExternalProject_Add(
     caffe_dd
