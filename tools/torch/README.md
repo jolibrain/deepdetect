@@ -36,3 +36,27 @@ Then to export a pretrained model before using it with DeepDetect:
 ```
 python3 trace_yolox.py yolox-m -o /path/to/output/ --yolox_path /path/to/YOLOX/ --backbone_weights /path/to/pretrained/yolox_m.pth --num_classes 2 --img_width 300 --img_height 300
 ```
+
+## Export segformer model
+
+First install our version of mmsegmentation with a modified export script
+```bash
+git clone https://github.com/beniz/mmsegmentation.git
+git checkout feat_add_num_classes_export_control
+CUDA_HOME=/usr/local/cuda11.7 pip install "mmcv-full==1.5.0"
+pip install -e -V .
+```
+
+Then run the script:
+```bash
+cd tools
+python3 pytorch2torchscript.py \
+    ../configs/segformer/segformer_mit-b0_512x512_160k_ade20k.py \
+    --checkpoint /opt/platform/models/pretrained/segformer/orig/segformer_mit-b0_512x512_160k_ade20k.pth \
+    --output-file /data1/louisj/models/pretrained/segformer/segformer_b0_512_cls3.pt \
+    --num_classes 3 --show
+```
+
+Checkpoints can be downloaded [here](https://github.com/open-mmlab/mmsegmentation/tree/main/configs/segformer)
+
+To export only the backbone, use `--only_backbone`. Then you do not need to specify the number of classes.
