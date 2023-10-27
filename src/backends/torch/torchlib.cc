@@ -756,7 +756,7 @@ namespace dd
                       ad_geometry.get("pad_mode").get<std::string>());
               }
             auto *img_ic = reinterpret_cast<ImgTorchInputFileConn *>(&inputc);
-            NoiseParams noise_params;
+            NoiseParams noise_params(img_ic->_bw);
             noise_params._rgb = img_ic->_rgb;
             APIData ad_noise = ad_mllib.getobj("noise");
             if (!ad_noise.empty())
@@ -764,7 +764,7 @@ namespace dd
                 noise_params._prob = ad_noise.get("prob").get<double>();
                 this->_logger->info("noise: {}", noise_params._prob);
               }
-            DistortParams distort_params;
+            DistortParams distort_params(img_ic->_bw);
             distort_params._rgb = img_ic->_rgb;
             APIData ad_distort = ad_mllib.getobj("distort");
             if (!ad_distort.empty())

@@ -306,7 +306,8 @@ namespace dd
 
     if (_timesteps > 0)
       {
-        at::Tensor dummy_img = torch::zeros({ 1, 3, _img_height, _img_width });
+        at::Tensor dummy_img
+            = torch::zeros({ 1, _input_channels, _img_height, _img_width });
         at::Tensor dummy = _backbone(dummy_img).reshape({ 1, -1, _timesteps });
         output_channel = dummy.size(1);
         // XXX should use logger
