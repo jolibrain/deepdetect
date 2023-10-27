@@ -804,6 +804,15 @@ namespace dd
     if (_noise_params._prob == 0.0)
       return;
 
+    // sanity check
+    bool img_is_bw = src.channels() == 1;
+    if (img_is_bw
+        && (_noise_params._hist_eq || _noise_params._decolorize
+            || _noise_params._jpg || _noise_params._convert_to_hsv
+            || _noise_params._convert_to_lab))
+      throw std::runtime_error(
+          "Image has one channel when 3 channel dataaug is enabled");
+
     if (_noise_params._rgb)
       {
         cv::Mat bgr;
@@ -846,6 +855,13 @@ namespace dd
   {
     if (_distort_params._prob == 0.0)
       return;
+
+    bool img_is_bw = src.channels() == 1;
+    if (img_is_bw
+        && (_distort_params._saturation || _distort_params._hue
+            || _distort_params._channel_order))
+      throw std::runtime_error(
+          "Image has one channel when 3 channel dataaug is enabled");
 
     if (_distort_params._rgb)
       {

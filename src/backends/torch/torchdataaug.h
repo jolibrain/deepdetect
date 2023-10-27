@@ -156,7 +156,9 @@ namespace dd
   class NoiseParams
   {
   public:
-    NoiseParams()
+    NoiseParams(bool bw = false)
+        : _hist_eq(!bw), _decolorize(!bw), _jpg(!bw), _convert_to_hsv(!bw),
+          _convert_to_lab(!bw)
     {
     }
 
@@ -192,7 +194,8 @@ namespace dd
   class DistortParams
   {
   public:
-    DistortParams()
+    DistortParams(bool bw = false)
+        : _saturation(!bw), _hue(!bw), _channel_order(!bw)
     {
     }
 

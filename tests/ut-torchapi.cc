@@ -1610,6 +1610,80 @@ TEST(torchapi, service_train_images_ctc_native)
   fileops::remove_dir(resnet18_ocr_train_repo + "test_0.lmdb");
 }
 
+TEST(torchapi, service_train_ctc_native_bw)
+{
+  // Just check that there are no errors when training in black&white
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  // Create service
+  JsonAPI japi;
+  std::string sname = "imgserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + resnet18_ocr_train_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
+          "\"width\":112,\"height\":32,\"bw\":true,\"db\":true,\"ctc\":true},"
+          "\"mllib\":{\"template\":\"crnn\",\"gpu\":true,\"timesteps\":128}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // Train (few iterations)
+  std::string jtrainstr
+      = "{\"service\":\"imgserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":3,\"base_lr\":1e-4"
+        ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
+        "interval\":200},\"net\":{\"batch_size\":32},"
+        "\"resume\":false,\"mirror\":false,\"rotate\":false,"
+        "\"geometry\":{\"prob\":0.1,\"persp_horizontal\":"
+        "false,\"persp_vertical\":false,\"zoom_in\":true,\"zoom_out\":true,"
+        "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
+        "\"prob\":0.01},\"dataloader_threads\":4},"
+        "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
+        "\"output\":{\"measure\":[\"acc\"]}},\"data\":[\""
+        + ocr_train_data + "\",\"" + ocr_test_data + "\"]}";
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+
+  // predict
+  std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{"
+                            "\"output\":{\"best\":1,\"ctc\":true}},"
+                            "\"data\":[\""
+                            + ocr_test_image + "\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  // remove files
+  std::unordered_set<std::string> lfiles;
+  fileops::list_directory(resnet18_ocr_train_repo, true, false, false, lfiles);
+  ASSERT_TRUE(
+      fileops::file_exists(resnet18_ocr_train_repo + "checkpoint-3.npt"));
+  for (std::string ff : lfiles)
+    {
+      if (ff.find("checkpoint") != std::string::npos
+          || ff.find("solver") != std::string::npos)
+        remove(ff.c_str());
+    }
+  ASSERT_TRUE(
+      !fileops::file_exists(resnet18_ocr_train_repo + "checkpoint-3.npt"));
+
+  fileops::clear_directory(resnet18_ocr_train_repo + "train.lmdb");
+  fileops::clear_directory(resnet18_ocr_train_repo + "test_0.lmdb");
+  fileops::remove_dir(resnet18_ocr_train_repo + "train.lmdb");
+  fileops::remove_dir(resnet18_ocr_train_repo + "test_0.lmdb");
+}
+
 TEST(torchapi, service_publish_trained_model)
 {
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
