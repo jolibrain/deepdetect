@@ -93,7 +93,11 @@ namespace dd
             return _ctype.read_file(uri, test_id);
         }
       else
-        return _ctype.read_mem(uri);
+        {
+          logger->info("uri is not an existing file, trying to interpret it "
+                       "as raw data...");
+          return _ctype.read_mem(uri);
+        }
       return 0;
     }
 
