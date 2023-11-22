@@ -89,6 +89,19 @@ namespace dd
                  : item.substr(start, end - start + 1);
     }
 
+    /** Cut string if it's too long and add "..." at the end of it.
+     * This is useful if we want to print a string but it might be very
+     * long.*/
+    inline std::string crop_string(const std::string &str, size_t crop_size)
+    {
+      if (str.size() > crop_size)
+        {
+          std::string cropped = str.substr(0, crop_size - 3);
+          return cropped + "...";
+        }
+      return str;
+    }
+
     inline std::string jrender(const JDoc &jst)
     {
       rapidjson::StringBuffer buffer;

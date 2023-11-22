@@ -319,7 +319,7 @@ namespace dd
     {
       if (img.empty())
         {
-          _logger->error("empty image {}", img_name);
+          _logger->error("Could not read image: {}", img_name);
           return -1;
         }
       _imgs_size.push_back(std::pair<int, int>(img.rows, img.cols));
@@ -368,7 +368,7 @@ namespace dd
 #endif
 
     // decode image
-    void decode(const std::string &str)
+    int decode(const std::string &str)
     {
       std::vector<unsigned char> vdat(str.begin(), str.end());
       cv::Mat img = cv::Mat(cv::imdecode(
@@ -376,11 +376,11 @@ namespace dd
           _unchanged_data
               ? CV_LOAD_IMAGE_UNCHANGED
               : (_bw ? CV_LOAD_IMAGE_GRAYSCALE : CV_LOAD_IMAGE_COLOR)));
-      add_image(img, "base64 image");
+      return add_image(img, "base64 image");
     }
 
     // deserialize image, independent of format
-    void deserialize(std::stringstream &input)
+    int deserialize(std::stringstream &input)
     {
       size_t size = 0;
       input.seekg(0, input.end);
@@ -390,7 +390,7 @@ namespace dd
       input.read(data, size);
       std::string str(data, data + size);
       delete[] data;
-      decode(str);
+      return decode(str);
     }
 
     // data acquisition
@@ -415,21 +415,20 @@ namespace dd
       _in_mem = true;
       cv::Mat timg;
       _b64 = possibly_base64(content);
+      int ret_code;
       if (_b64)
         {
           std::string ccontent;
           Base64::Decode(content, &ccontent);
           std::stringstream sstr;
           sstr << ccontent;
-          deserialize(sstr);
+          ret_code = deserialize(sstr);
         }
       else
         {
-          decode(content);
+          ret_code = decode(content);
         }
-      if (_imgs.at(0).empty())
-        return -1;
-      return 0;
+      return ret_code;
     }
 
     int read_dir(const std::string &dir, int test_id)
@@ -915,8 +914,9 @@ namespace dd
             {
               if (dimg.read_element(u, this->_logger))
                 {
-                  _logger->error("no data for image {}", u);
-                  no_img = true;
+                  throw InputConnectorBadParamException(
+                      "image could not be read or does not exist: "
+                      + dd_utils::crop_string(u, 200));
                 }
               if (!dimg._ctype._db_fname.empty())
                 _db_fname = dimg._ctype._db_fname;
@@ -996,7 +996,8 @@ namespace dd
         {
           for (auto s : failed_uris)
             _logger->error("failed reading image {}", s);
-          throw InputConnectorBadParamException(catch_msg);
+          throw InputConnectorBadParamException("Could not read image(s): "
+                                                + catch_msg);
         }
       _uris = uris;
       _ids = _uris; // since uris may be in different order than before

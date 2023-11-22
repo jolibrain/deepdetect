@@ -426,6 +426,7 @@ TEST(inputconn, img)
   };
   ad.add("data", uris);
   ImgInputFileConn iifc;
+  iifc._logger = spdlog::stdout_logger_mt("test_img");
   try
     {
       iifc.transform(ad);
@@ -446,6 +447,28 @@ TEST(inputconn, img)
   for (int i = 0; i < 3; i++)
     ASSERT_TRUE(cv::countNonZero(channels.at(i))
                 == 0); // the two images must be identical
+}
+
+TEST(inputconn, img_error)
+{ // test error
+  APIData ad;
+  // possibly base64
+  std::vector<std::string> uris = { "disimagedoesnotexist.png" };
+  ad.add("data", uris);
+  bool image_was_read_successfully = false;
+  ImgInputFileConn iifc;
+  iifc._logger = spdlog::stdout_logger_mt("test_img_error");
+  try
+    {
+      iifc.transform(ad);
+      image_was_read_successfully = true;
+    }
+  catch (InputConnectorBadParamException &e)
+    {
+      std::cerr << e.what() << std::endl;
+    }
+  ASSERT_FALSE(image_was_read_successfully)
+      << "Reading this image should not be possible";
 }
 
 // TODO: test csv scale, separator, categorical, ...

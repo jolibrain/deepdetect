@@ -1631,6 +1631,10 @@ namespace dd
             if (bbox)
               {
                 // Supporting only torchvision output format at the moment.
+                if (!out_ivalue.isList())
+                  throw MLLibBadParamException(
+                      "Could not read output of detection model. Check that "
+                      "mllib.template is set correctly.");
                 auto out_dicts = out_ivalue.toList();
 
                 for (size_t i = 0; i < out_dicts.size(); ++i)
@@ -1661,6 +1665,10 @@ namespace dd
                     std::vector<std::string> cats;
                     std::vector<APIData> bboxes;
 
+                    if (!out_dicts.get(i).isGenericDict())
+                      throw MLLibBadParamException(
+                          "Could not read output of detection model. Check "
+                          "that mllib.template is set correctly.");
                     auto out_dict = out_dicts.get(i).toGenericDict();
                     Tensor bboxes_tensor
                         = torch_utils::to_tensor_safe(out_dict.at("boxes"))
