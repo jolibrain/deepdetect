@@ -4,8 +4,8 @@ set -e
 
 # Deepdetect architecture and build profiles
 deepdetect_arch=(cpu gpu)
-deepdetect_cpu_build_profiles=(default torch tf armv7)
-deepdetect_gpu_build_profiles=(default torch tf caffe2 tensorrt)
+deepdetect_cpu_build_profiles=(default tf armv7)
+deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
 
 # NOTE(beniz): list of all supported card by CUDA 11.1
 # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
@@ -126,11 +126,6 @@ cpu_build() {
 
     case ${DEEPDETECT_BUILD} in
 
-    "torch")
-  	cmake .. -DUSE_TORCH=ON -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DRELEASE=${DEEPDETECT_RELEASE}
-        make -j6
-        ;;
-	
     "tf")
         cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE}
         make -j6
@@ -142,7 +137,7 @@ cpu_build() {
         ;;
 
     *)
-        cmake .. -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE}
+        cmake .. -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DRELEASE=${DEEPDETECT_RELEASE}
         make -j6
         ;;
     esac
@@ -151,12 +146,11 @@ cpu_build() {
 
 gpu_build() {
     local extra_flags=
-    local default_flags="-DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON"
+    local default_flags="-DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_TORCH=ON"
     case ${DEEPDETECT_BUILD} in
         "tf") extra_flags="$default_flags -DUSE_TF=ON" ;;
         "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;;
-        "torch") extra_flags="$default_flags -DUSE_TORCH=ON" ;;
-	"tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_CAFFE=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
+        "tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_CAFFE=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
         *) extra_flags="$default_flags";;
     esac
     cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" "-DRELEASE=${DEEPDETECT_RELEASE}"
