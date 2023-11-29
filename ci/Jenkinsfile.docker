@@ -15,19 +15,9 @@ pipeline {
         sh 'printenv | sort'
       }
     }
-    stage('Build docker gpu_torch image') { steps {
-      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
-        sh 'ci/build-docker-images.sh gpu_torch'
-      }
-    }}
     stage('Build docker cpu image') { steps {
       catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
         sh 'ci/build-docker-images.sh cpu'
-      }
-    }}
-    stage('Build docker cpu_torch image') { steps {
-      catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
-        sh 'ci/build-docker-images.sh cpu_torch'
       }
     }}
     stage('Build docker gpu image') { steps {
