@@ -35,7 +35,7 @@ function(deepdetect_detect_installed_gpus out_variable)
       # nvcc outputs text containing line breaks when building with MSVC.
       # The line below prevents CMake from inserting a variable with line
       # breaks in the cache
-      string(REGEX MATCH "([1-9].[0-9])" __nvcc_out "${__nvcc_out}")
+      string(REGEX MATCHALL "([1-9].[0-9])" __nvcc_out "${__nvcc_out}")
       string(REPLACE "2.1" "2.1(2.0)" __nvcc_out "${__nvcc_out}")
       set(CUDA_gpu_detect_output ${__nvcc_out} CACHE INTERNAL "Returned GPU architetures from deepdetect_detect_gpus tool" FORCE)
     endif()

@@ -13,12 +13,11 @@
   "USE_DLIB=@USE_DLIB@ USE_CUDA_CV=@USE_CUDA_CV@ "                            \
   "USE_SIMSEARCH=@USE_SIMSEARCH@ USE_ANNOY=@USE_ANNOY@ "                      \
   "USE_FAISS=@USE_FAISS@ USE_COMMAND_LINE=@USE_COMMAND_LINE@ "                \
-  "USE_JSON_API=@USE_JSON_API@ USE_HTTP_SERVER=@USE_HTTP_SERVER@ "            \
-  "USE_CUDA_CV=@USE_CUDA_CV@"
+  "USE_JSON_API=@USE_JSON_API@ USE_HTTP_SERVER=@USE_HTTP_SERVER@ "
 
 #define DEPS_VERSION                                                          \
   "OPENCV_VERSION=@OpenCV_VERSION@ "                                          \
   "CUDA_VERSION=@CUDA_VERSION_STRING@ CUDNN_VERSION=@CUDNN_VERSION@ "         \
-  "TENSORRT_VERSION=@TENSORRT_VERSION@"
+  "CUDA_ARCH=@CUDA_ARCH@ TENSORRT_VERSION=@TENSORRT_VERSION@"
 
 #endif
