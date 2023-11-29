@@ -132,12 +132,12 @@ cpu_build() {
         ;;
 
     "armv7")
-        cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_CAFFE=OFF -DRELEASE=${DEEPDETECT_RELEASE}
+        cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_TORCH=OFF -DRELEASE=${DEEPDETECT_RELEASE}
         make -j6
         ;;
 
     *)
-        cmake .. -DUSE_XGBOOST=ON -DUSE_TORCH=ON -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DRELEASE=${DEEPDETECT_RELEASE}
+        cmake .. -DUSE_XGBOOST=ON -DUSE_CAFFE=ON -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=ON -DRELEASE=${DEEPDETECT_RELEASE}
         make -j6
         ;;
     esac
@@ -146,11 +146,11 @@ cpu_build() {
 
 gpu_build() {
     local extra_flags=
-    local default_flags="-DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_TORCH=ON"
+    local default_flags="-DUSE_FAISS=ON -DUSE_CUDNN=ON -DUSE_XGBOOST=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_CAFFE=ON"
     case ${DEEPDETECT_BUILD} in
         "tf") extra_flags="$default_flags -DUSE_TF=ON" ;;
         "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;;
-        "tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_CAFFE=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
+        "tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
         *) extra_flags="$default_flags";;
     esac
     cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" "-DRELEASE=${DEEPDETECT_RELEASE}"

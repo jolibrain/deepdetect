@@ -60,6 +60,7 @@ cmake .. \
     -DUSE_CUDNN=ON  \
     -DUSE_FAISS=ON  \
     -DUSE_SIMSEARCH=ON  \
+    -DUSE_CAFFE=ON \
     -DUSE_TSNE=ON  \
     -DUSE_XGBOOST=ON  \
     -DUSE_TORCH=ON  \
