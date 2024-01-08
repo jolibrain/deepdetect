@@ -80,6 +80,7 @@ static std::string resnet50_test_image
 
 static std::string resnet18_ocr_train_repo
     = "../examples/torch/resnet18_training_torch_ocr/";
+static std::string native_ocr_train_repo = "native_training_torch_ocr/";
 static std::string ocr_train_data
     = "../examples/torch/resnet18_training_torch_ocr/train.txt";
 static std::string ocr_test_data
@@ -837,7 +838,7 @@ TEST(torchapi, service_train_images_split)
         + ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
           "interval\":200},\"net\":{\"batch_size\":4},\"nclasses\":2,"
           "\"resume\":false},"
-          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,\"test_"
+          "\"input\":{\"seed\":12346,\"db\":true,\"shuffle\":true,\"test_"
           "split\":0.1},"
           "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
         + resnet50_train_data + "\"]}";
@@ -1610,7 +1611,7 @@ TEST(torchapi, service_train_images_ctc_native)
   fileops::remove_dir(resnet18_ocr_train_repo + "test_0.lmdb");
 }
 
-TEST(torchapi, service_train_ctc_native_bw)
+TEST(torchapi, service_train_and_publish_ctc_native_bw)
 {
   // Just check that there are no errors when training in black&white
   setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
@@ -1623,10 +1624,11 @@ TEST(torchapi, service_train_ctc_native_bw)
   std::string jstr
       = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
         "\"supervised\",\"model\":{\"repository\":\""
-        + resnet18_ocr_train_repo
-        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\","
-          "\"width\":112,\"height\":32,\"bw\":true,\"db\":true,\"ctc\":true},"
-          "\"mllib\":{\"template\":\"crnn\",\"gpu\":true,\"timesteps\":128}}}";
+        + native_ocr_train_repo
+        + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
+          "\"connector\":\"image\",\"width\":112,\"height\":32,\"bw\":true,"
+          "\"db\":true,\"ctc\":true},\"mllib\":{\"template\":\"crnn\",\"gpu\":"
+          "true,\"timesteps\":128}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -1641,7 +1643,7 @@ TEST(torchapi, service_train_ctc_native_bw)
         "false,\"persp_vertical\":false,\"zoom_in\":true,\"zoom_out\":true,"
         "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
         "\"prob\":0.01},\"dataloader_threads\":4},"
-        "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
+        "\"input\":{\"seed\":12346,\"db\":true,\"shuffle\":true},"
         "\"output\":{\"measure\":[\"acc\"]}},\"data\":[\""
         + ocr_train_data + "\",\"" + ocr_test_data + "\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -1664,11 +1666,29 @@ TEST(torchapi, service_train_ctc_native_bw)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"]);
 
+  // Publish the service
+  std::string published_repo = "published_ctc";
+  jstr = "{\"mllib\":\"torch\",\"description\":\"image\",\"type\":"
+         "\"supervised\",\"model\":{\"repository\":\""
+         + published_repo
+         + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
+           "\"connector\":\"image\",\"width\":112,\"height\":32,\"bw\":true,"
+           "\"db\":true,\"ctc\":true},\"mllib\":{\"template\":\"crnn\","
+           "\"gpu\":true,\"from_repository\":\""
+         + native_ocr_train_repo + "\"}}}";
+  joutstr = japi.jrender(japi.service_create(sname + "_published", jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/checkpoint-3.npt"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/best_model.txt"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/model.json"));
+  ASSERT_TRUE(fileops::file_exists(published_repo + "/config.json"));
+
   // remove files
   std::unordered_set<std::string> lfiles;
-  fileops::list_directory(resnet18_ocr_train_repo, true, false, false, lfiles);
+  fileops::list_directory(native_ocr_train_repo, true, false, false, lfiles);
   ASSERT_TRUE(
-      fileops::file_exists(resnet18_ocr_train_repo + "checkpoint-3.npt"));
+      fileops::file_exists(native_ocr_train_repo + "checkpoint-3.npt"));
   for (std::string ff : lfiles)
     {
       if (ff.find("checkpoint") != std::string::npos
@@ -1676,12 +1696,17 @@ TEST(torchapi, service_train_ctc_native_bw)
         remove(ff.c_str());
     }
   ASSERT_TRUE(
-      !fileops::file_exists(resnet18_ocr_train_repo + "checkpoint-3.npt"));
+      !fileops::file_exists(native_ocr_train_repo + "checkpoint-3.npt"));
 
-  fileops::clear_directory(resnet18_ocr_train_repo + "train.lmdb");
-  fileops::clear_directory(resnet18_ocr_train_repo + "test_0.lmdb");
-  fileops::remove_dir(resnet18_ocr_train_repo + "train.lmdb");
-  fileops::remove_dir(resnet18_ocr_train_repo + "test_0.lmdb");
+  fileops::clear_directory(native_ocr_train_repo + "train.lmdb");
+  fileops::clear_directory(native_ocr_train_repo + "test_0.lmdb");
+  fileops::remove_dir(native_ocr_train_repo + "train.lmdb");
+  fileops::remove_dir(native_ocr_train_repo + "test_0.lmdb");
+  fileops::remove_dir(native_ocr_train_repo);
+
+  // remove published repo
+  fileops::clear_directory(published_repo);
+  fileops::remove_dir(published_repo);
 }
 
 TEST(torchapi, service_publish_trained_model)
@@ -2075,7 +2100,7 @@ TEST(torchapi, service_train_images_split_list)
         + iterations_resnet50 + ",\"base_lr\":" + torch_lr
         + ",\"iter_size\":4,\"solver_type\":\"ADAM\",\"test_"
           "interval\":200},\"net\":{\"batch_size\":4},\"resume\":false},"
-          "\"input\":{\"seed\":12345,\"db\":false,\"shuffle\":true,\"test_"
+          "\"input\":{\"seed\":12346,\"db\":false,\"shuffle\":true,\"test_"
           "split\":0.1},"
           "\"output\":{\"measure\":[\"acc\",\"f1\"]}},\"data\":[\""
         + resnet50_train_data_classif + "\"]}";
