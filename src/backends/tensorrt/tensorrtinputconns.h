@@ -35,7 +35,8 @@ namespace dd
     TensorRTInputInterface()
     {
     }
-    TensorRTInputInterface(const TensorRTInputInterface &i) : _buf(i._buf)
+    TensorRTInputInterface(const TensorRTInputInterface &i)
+        : _has_mean_file(i._has_mean_file), _bufs(i._bufs)
     {
     }
 
@@ -44,12 +45,16 @@ namespace dd
     }
 
     bool _has_mean_file = false; /**< image model mean.binaryproto. */
-    std::vector<float> _buf;
-    float *_cuda_buf = nullptr;
+    std::vector<std::vector<float>> _bufs;
+    std::vector<float *> _cuda_bufs;
 
-    float *data()
+    float *data(int id = 0)
     {
-      return _buf.data();
+      return _bufs.at(id).data();
+    }
+    float *cuda_data(int id = 0)
+    {
+      return _cuda_bufs.at(id);
     }
   };
 
@@ -62,9 +67,8 @@ namespace dd
     }
     ImgTensorRTInputFileConn(const ImgTensorRTInputFileConn &i)
         : ImgInputFileConn(i), TensorRTInputInterface(i),
-          _imgs_size(i._imgs_size)
+          _imgs_size(i._imgs_size), _mask_num_channels(i._mask_num_channels)
     {
-      this->_has_mean_file = i._has_mean_file;
     }
     ~ImgTensorRTInputFileConn()
     {
@@ -89,6 +93,7 @@ namespace dd
 
     void transform(oatpp::Object<DTO::ServicePredict> input_dto);
 
+    /** Load batch in memory, either CUDA or CPU */
     int process_batch(const unsigned int batch_size);
 
     std::string _meanfname = "mean.binaryproto";
@@ -97,12 +102,26 @@ namespace dd
     int _batch_size = 0;
     std::unordered_map<std::string, std::pair<int, int>>
         _imgs_size; /**< image sizes, used in detection. */
+    std::vector<cv::Mat> _masks;
+#ifdef USE_CUDA_CV
+    std::vector<cv::cuda::GpuMat> _masks_cuda;
+#endif
+    /** number of channels of the mask required by the model */
+    int _mask_num_channels = 3;
 
   private:
-    void CVMatToRTBuffer(cv::Mat &img, int i);
+    /** Copy cv::Mat into a float buffer ready to be sent to the GPU
+     * \param i id of the image in the batch
+     * \param mask whether the cv::Mat is a mask. */
+    void CVMatToRTBuffer(cv::Mat &img, size_t buf_id, int i,
+                         bool mask = false);
 
 #ifdef USE_CUDA_CV
-    void GpuMatToRTBuffer(cv::cuda::GpuMat &img, int i);
+    /** Copy GpuMat into cuda buffer
+     * \param i id of the image in the batch
+     * \param mask whether the cv::cuda::GpuMat is a mask. */
+    void GpuMatToRTBuffer(cv::cuda::GpuMat &img, size_t buf_id, int i,
+                          bool mask = false);
 #endif
   };
 }

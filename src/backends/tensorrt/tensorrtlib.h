@@ -143,16 +143,15 @@ namespace dd
     // detection
     bool _need_nms = false;
 
+    // XXX: Single buffer vector kept for backward compatibility
     std::vector<void *> _buffers;
 
     bool _TRTContextReady = false;
 
-    std::string _inputName;
-    int _inputIndex = 0;
-    std::string _outputName0;
-    int _outputIndex0 = 1;
-    std::string _outputName1;
-    int _outputIndex1 = 2;
+    std::vector<std::string> _inputNames;
+    std::vector<int> _inputIndices;
+    std::vector<std::string> _outputNames;
+    std::vector<int> _outputIndices;
 
     bool _first_predict
         = true; // do some cuda allocations only at first predict
@@ -172,6 +171,9 @@ namespace dd
     nvinfer1::ICudaEngine *read_engine_from_caffe(const std::string &out_blob);
 
     nvinfer1::ICudaEngine *read_engine_from_onnx();
+
+    /** create buffer array with inputs and output count */
+    void allocate_buffer_array();
   };
 }
 #endif

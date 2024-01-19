@@ -49,14 +49,17 @@ namespace dd
 
     std::vector<cv::Mat> imgs = input_data._imgs;
     std::vector<cv::Mat> cropped_imgs;
+    std::vector<cv::Mat> masks;
 #ifdef USE_CUDA_CV
     std::vector<cv::cuda::GpuMat> cuda_imgs = input_data._cuda_imgs;
     std::vector<cv::cuda::GpuMat> cropped_cuda_imgs;
+    std::vector<cv::cuda::GpuMat> cuda_masks;
 #endif
 
     // check for action parameters
     double bratio = _params->padding_ratio;
     bool save_crops = _params->save_crops;
+    bool gen_mask = _params->generate_mask;
 
     std::string save_path = _params->save_path;
     if (!save_path.empty())
@@ -172,10 +175,25 @@ namespace dd
               }
 
             cv::Rect roi(cxmin, cymin, cxmax - cxmin, cymax - cymin);
+            // roi corresponding to the bbox inside the crop
+            cv::Rect mask_roi(bbox->xmin - cxmin, bbox->ymin - cymin,
+                              bbox->xmax - bbox->xmin,
+                              bbox->ymax - bbox->ymin);
 #ifdef USE_CUDA_CV
             if (!cuda_imgs.empty())
               {
                 cv::cuda::GpuMat cropped_img = cuda_imgs.at(i)(roi).clone();
+
+                // Generate mask for diffusion
+                if (gen_mask)
+                  {
+                    cv::cuda::GpuMat cuda_mask(cropped_img.rows,
+                                               cropped_img.cols, CV_8UC1,
+                                               cv::Scalar(0));
+                    // XXX: Use streams for non-blocking call
+                    cuda_mask(mask_roi).setTo(255);
+                    cuda_masks.push_back(cuda_mask);
+                  }
 
                 // save crops if requested
                 if (save_crops)
@@ -194,6 +212,15 @@ namespace dd
 #endif
               {
                 cv::Mat cropped_img = imgs.at(i)(roi).clone();
+
+                // Generate mask for diffusion models
+                if (gen_mask)
+                  {
+                    cv::Mat mask(cropped_img.rows, cropped_img.cols, CV_8UC1,
+                                 cv::Scalar(0));
+                    cv::rectangle(mask, mask_roi, 255, cv::FILLED);
+                    masks.push_back(mask);
+                  }
 
                 // save crops if requested
                 if (save_crops)
@@ -218,11 +245,15 @@ namespace dd
     if (!cropped_cuda_imgs.empty())
       {
         action_out.add("data_cuda_img", cropped_cuda_imgs);
+        if (gen_mask)
+          action_out.add("cuda_mask", cuda_masks);
       }
     else
 #endif
       {
         action_out.add("data_raw_img", cropped_imgs);
+        if (gen_mask)
+          action_out.add("mask", masks);
       }
     action_out.add("cids", bbox_ids);
     cdata.add_action_data(_action_id, action_out);

@@ -57,7 +57,8 @@ namespace dd
                 "model calibration (size="
                 + std::to_string(_input_size * _max_batch_size) + ")");
 #ifdef USE_CUDA_CV
-          _conn->_cuda_buf = static_cast<float *>(_input_buf);
+          _conn->_cuda_bufs.clear();
+          _conn->_cuda_bufs.push_back(static_cast<float *>(_input_buf));
 #endif
         }
     }
