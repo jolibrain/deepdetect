@@ -124,6 +124,13 @@ namespace dd
       }
       DTO_FIELD(Float64, padding_ratio) = 0.0;
 
+      DTO_FIELD_INFO(generate_mask)
+      {
+        info->description
+            = "[crop] [temp] generate mask based on bbox for diffusion models";
+      }
+      DTO_FIELD(Boolean, generate_mask) = false;
+
       DTO_FIELD_INFO(save_crops)
       {
         info->description = "[crop] whether to save crops to `save_path`";

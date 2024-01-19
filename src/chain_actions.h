@@ -158,6 +158,23 @@ namespace dd
     void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
   };
 
+  /** Transform a bounding box to a mask  */
+  class ImgsBboxToMaskAction : public ChainAction
+  {
+  public:
+    ImgsBboxToMaskAction(oatpp::Object<DTO::ChainCall> call_dto,
+                         const std::shared_ptr<spdlog::logger> chain_logger)
+        : ChainAction(call_dto, chain_logger)
+    {
+    }
+
+    ~ImgsBboxToMaskAction()
+    {
+    }
+
+    void apply(oatpp::Object<DTO::PredictBody> &model_out, ChainData &cdata);
+  };
+
   class ImgsDrawBBoxAction : public ChainAction
   {
   public:

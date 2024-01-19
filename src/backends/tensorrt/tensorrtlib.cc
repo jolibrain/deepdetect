@@ -132,9 +132,10 @@ namespace dd
     _regression = tl._regression;
     _need_nms = tl._need_nms;
     _template = tl._template;
-    _inputIndex = tl._inputIndex;
-    _outputIndex0 = tl._outputIndex0;
-    _outputIndex1 = tl._outputIndex1;
+    _inputNames = tl._inputNames;
+    _inputIndices = tl._inputIndices;
+    _outputNames = tl._outputNames;
+    _outputIndices = tl._outputIndices;
     _explicit_batch = tl._explicit_batch;
     _floatOut = tl._floatOut;
     _keepCount = tl._keepCount;
@@ -248,6 +249,10 @@ namespace dd
             this->_mltype = "detection";
             _need_nms = true;
           }
+        else if (_template == "consistency")
+          {
+            // ...
+          }
         else
           throw MLLibBadParamException("Unknown template " + _template);
       }
@@ -346,13 +351,8 @@ namespace dd
                    TMLModel>::clear_mllib(const APIData &ad)
   {
     (void)ad;
-    if (!_buffers.empty())
-      {
-        cudaFree(_buffers.at(_inputIndex));
-        cudaFree(_buffers.at(_outputIndex0));
-        if (_bbox)
-          cudaFree(_buffers.at(_outputIndex1));
-      }
+    for (size_t i = 0; i < _buffers.size(); ++i)
+      cudaFree(_buffers.at(i));
 
     // remove compiled model files.
     std::vector<std::string> extensions
@@ -494,6 +494,24 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
+  void TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                   TMLModel>::allocate_buffer_array()
+  {
+    _buffers.resize(_inputNames.size() + _outputNames.size());
+    _inputIndices.clear();
+    _outputIndices.clear();
+
+    for (size_t i = 0; i < _buffers.size(); ++i)
+      {
+        if (i < _inputNames.size())
+          _inputIndices.push_back(i);
+        else
+          _outputIndices.push_back(i);
+      }
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
   oatpp::Object<DTO::PredictBody>
   TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
               TMLModel>::predict(const APIData &ad)
@@ -616,7 +634,7 @@ namespace dd
           }
 
         if (_nclasses <= 0)
-          this->_logger->error("could not determine number of classes");
+          this->_logger->warn("could not determine number of classes");
 
         bool engineRead = false;
         std::string engine_path = this->_mlmodel._repo + "/" + _engineFileName
@@ -755,15 +773,18 @@ namespace dd
 
         try
           {
-            _inputName = _engine->getIOTensorName(0);
+            // Set some inputs after building engine
+            std::string in_blob = _engine->getIOTensorName(0);
+            _inputNames.push_back(in_blob);
+
             if (out_blob == "last")
-              _outputName0
-                  = _engine->getIOTensorName(_engine->getNbIOTensors() - 1);
+              _outputNames.push_back(
+                  _engine->getIOTensorName(_engine->getNbIOTensors() - 1));
             else
-              _outputName0 = out_blob;
+              _outputNames.push_back(out_blob);
 
             // Get dimensions
-            _dims = _engine->getTensorShape(_outputName0.c_str());
+            _dims = _engine->getTensorShape(_outputNames[0].c_str());
             if (_dims.nbDims >= 2)
               {
                 this->_logger->info(
@@ -798,23 +819,24 @@ namespace dd
                       "Bbox model requires 3 output dimensions, found "
                       + std::to_string(_dims.nbDims));
 
-                _outputName1 = "keep_count";
-                _buffers.resize(3);
+                _outputNames.push_back("keep_count");
+                allocate_buffer_array();
+
                 int det_out_size
                     = _max_batch_size * _results_height * _dims.d[2];
                 _floatOut.resize(det_out_size);
                 _keepCount.resize(_max_batch_size);
                 if (inputc._bw)
-                  cudaMalloc(&_buffers.data()[_inputIndex],
+                  cudaMalloc(&_buffers[_inputIndices[0]],
                              _max_batch_size * inputc._height * inputc._width
                                  * sizeof(float));
                 else
-                  cudaMalloc(&_buffers.data()[_inputIndex],
+                  cudaMalloc(&_buffers[_inputIndices[0]],
                              _max_batch_size * 3 * inputc._height
                                  * inputc._width * sizeof(float));
-                cudaMalloc(&_buffers.data()[_outputIndex0],
+                cudaMalloc(&_buffers[_outputIndices[0]],
                            det_out_size * sizeof(float));
-                cudaMalloc(&_buffers.data()[_outputIndex1],
+                cudaMalloc(&_buffers[_outputIndices[1]],
                            _max_batch_size * sizeof(int));
               }
             else if (_ctc)
@@ -830,38 +852,48 @@ namespace dd
             // GAN / raw output
             else if (!extract_layer.empty())
               {
-                _buffers.resize(2);
+                // Add mask input for consistency
+                if (_template == "consistency")
+                  _inputNames.push_back("mask");
+                allocate_buffer_array();
+
                 if (_dims.nbDims == 4)
                   _floatOut.resize(_max_batch_size * _dims.d[1] * _dims.d[2]
                                    * _dims.d[3]);
                 else
                   throw MLLibBadParamException(
                       "raw/image output model requires 4 output dimensions");
+
                 if (inputc._bw)
-                  cudaMalloc(&_buffers.data()[_inputIndex],
+                  cudaMalloc(&_buffers[_inputIndices[0]],
                              _max_batch_size * inputc._height * inputc._width
                                  * sizeof(float));
                 else
-                  cudaMalloc(&_buffers.data()[_inputIndex],
+                  cudaMalloc(&_buffers[_inputIndices[0]],
                              _max_batch_size * 3 * inputc._height
                                  * inputc._width * sizeof(float));
-                cudaMalloc(&_buffers.data()[_outputIndex0],
+                if (_template == "consistency") // add mask
+                  cudaMalloc(&_buffers[_inputIndices[1]],
+                             _max_batch_size * 3 * inputc._width
+                                 * inputc._height * sizeof(float));
+
+                cudaMalloc(&_buffers[_outputIndices[0]],
                            _max_batch_size * _dims.d[1] * _dims.d[2]
                                * _dims.d[3] * sizeof(float));
               }
             else // classification / regression
               {
-                _buffers.resize(2);
+                allocate_buffer_array();
                 _floatOut.resize(_max_batch_size * this->_nclasses);
                 if (inputc._bw)
-                  cudaMalloc(&_buffers.data()[_inputIndex],
+                  cudaMalloc(&_buffers[_inputIndices[0]],
                              _max_batch_size * inputc._height * inputc._width
                                  * sizeof(float));
                 else
-                  cudaMalloc(&_buffers.data()[_inputIndex],
+                  cudaMalloc(&_buffers[_inputIndices[0]],
                              _max_batch_size * 3 * inputc._height
                                  * inputc._width * sizeof(float));
-                cudaMalloc(&_buffers.data()[_outputIndex0],
+                cudaMalloc(&_buffers[_outputIndices[0]],
                            _max_batch_size * _nclasses * sizeof(float));
               }
           }
@@ -874,7 +906,11 @@ namespace dd
     TOutputConnectorStrategy tout(this->_outputc);
     this->_stats.transform_start();
 #ifdef USE_CUDA_CV
-    inputc._cuda_buf = static_cast<float *>(_buffers.at(_inputIndex));
+    // Input will be loaded inplace in the connector (0 copy)
+    inputc._cuda_bufs.clear();
+    for (int id : _inputIndices)
+      inputc._cuda_bufs.push_back(static_cast<float *>(_buffers.at(id)));
+
     auto cv_stream = cv::cuda::StreamAccessor::wrapStream(cstream);
     inputc._cuda_stream = &cv_stream;
 #endif
@@ -909,7 +945,6 @@ namespace dd
     bool enqueue_success = false;
     while (true)
       {
-
         int num_processed = inputc.process_batch(_max_batch_size);
         if (num_processed == 0)
           break;
@@ -929,15 +964,24 @@ namespace dd
 #endif
               {
                 if (inputc._bw)
-                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+                  cudaMemcpyAsync(_buffers[_inputIndices[0]], inputc.data(),
                                   num_processed * inputc._height
                                       * inputc._width * sizeof(float),
                                   cudaMemcpyHostToDevice, cstream);
                 else
-                  cudaMemcpyAsync(_buffers.data()[_inputIndex], inputc.data(),
+                  cudaMemcpyAsync(_buffers[_inputIndices[0]], inputc.data(),
                                   num_processed * 3 * inputc._height
                                       * inputc._width * sizeof(float),
                                   cudaMemcpyHostToDevice, cstream);
+
+                if (_inputIndices.size() >= 2)
+                  {
+                    size_t mask_size
+                        = num_processed * 3 * inputc._height * inputc._width;
+                    cudaMemcpyAsync(_buffers[_inputIndices[1]], inputc.data(1),
+                                    mask_size * sizeof(float),
+                                    cudaMemcpyHostToDevice, cstream);
+                  }
               }
 
             if (!_explicit_batch)
@@ -950,15 +994,13 @@ namespace dd
               }
             else
               {
-                _context->setTensorAddress(_inputName.c_str(),
-                                           _buffers.data()[_inputIndex]);
-                _context->setTensorAddress(_outputName0.c_str(),
-                                           _buffers.data()[_outputIndex0]);
-                if (_buffers.size() >= 3)
-                  {
-                    _context->setTensorAddress(_outputName1.c_str(),
-                                               _buffers.data()[_outputIndex1]);
-                  }
+                for (size_t i = 0; i < _inputNames.size(); ++i)
+                  _context->setTensorAddress(_inputNames[i].c_str(),
+                                             _buffers[_inputIndices[i]]);
+
+                for (size_t i = 0; i < _outputNames.size(); ++i)
+                  _context->setTensorAddress(_outputNames[i].c_str(),
+                                             _buffers[_outputIndices[i]]);
 
                 enqueue_success = _context->enqueueV3(cstream);
               }
@@ -967,12 +1009,10 @@ namespace dd
 
             if (_bbox)
               {
-                cudaMemcpyAsync(_floatOut.data(),
-                                _buffers.data()[_outputIndex0],
+                cudaMemcpyAsync(_floatOut.data(), _buffers[_outputIndices[0]],
                                 _floatOut.size() * sizeof(float),
                                 cudaMemcpyDeviceToHost, cstream);
-                cudaMemcpyAsync(_keepCount.data(),
-                                _buffers.data()[_outputIndex1],
+                cudaMemcpyAsync(_keepCount.data(), _buffers[_outputIndices[1]],
                                 num_processed * sizeof(int),
                                 cudaMemcpyDeviceToHost, cstream);
                 cudaStreamSynchronize(cstream);
@@ -990,16 +1030,14 @@ namespace dd
             // GAN/raw output
             else if (!extract_layer.empty())
               {
-                cudaMemcpyAsync(_floatOut.data(),
-                                _buffers.data()[_outputIndex0],
+                cudaMemcpyAsync(_floatOut.data(), _buffers[_outputIndices[0]],
                                 _floatOut.size() * sizeof(float),
                                 cudaMemcpyDeviceToHost, cstream);
                 cudaStreamSynchronize(cstream);
               }
             else // classification / regression
               {
-                cudaMemcpyAsync(_floatOut.data(),
-                                _buffers.data()[_outputIndex0],
+                cudaMemcpyAsync(_floatOut.data(), _buffers[_outputIndices[0]],
                                 num_processed * _nclasses * sizeof(float),
                                 cudaMemcpyDeviceToHost, cstream);
                 cudaStreamSynchronize(cstream);

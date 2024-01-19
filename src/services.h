@@ -1098,12 +1098,23 @@ namespace dd
               call_dto->_data_raw_img_cuda
                   = act_data.get("data_cuda_img")
                         .get<std::vector<cv::cuda::GpuMat>>();
+              if (act_data.has("cuda_mask"))
+                {
+                  call_dto->_masks_cuda
+                      = act_data.get("cuda_mask")
+                            .get<std::vector<cv::cuda::GpuMat>>();
+                }
             }
 #endif
           else if (act_data.has("data_raw_img")) // raw images
             {
               call_dto->_data_raw_img
                   = act_data.get("data_raw_img").get<std::vector<cv::Mat>>();
+              if (act_data.has("mask"))
+                {
+                  call_dto->_masks
+                      = act_data.get("mask").get<std::vector<cv::Mat>>();
+                }
             }
           call_dto->_ids
               = act_data.get("cids")
