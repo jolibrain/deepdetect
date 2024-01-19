@@ -52,6 +52,8 @@ static std::string caffe_age_repo = "../examples/caffe/age_real";
 static std::string trt_detect_repo = "../examples/trt/yolox_onnx_trt_nowrap/";
 static std::string trt_gan_repo
     = "../examples/trt/cyclegan_resnet_attn_onnx_trt";
+static std::string trt_consistency_repo
+    = "../examples/trt/noglasses2glasses_cm_128";
 
 static std::string test_img_folder = "../examples/all/images";
 
@@ -509,6 +511,84 @@ TEST(chain, chain_trt_detection_gan)
                                     + get_trt_archi() + "_bs1"));
 }
 
+// With masks
+TEST(chain, chain_trt_consistency)
+{
+  // create service
+  JsonAPI japi;
+  std::string detect_sname = "detect";
+  std::string jstr
+      = "{\"mllib\":\"tensorrt\",\"description\":\"yolox\","
+        "\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + trt_detect_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":"
+          "\"image\",\"height\":640,\"width\":640},\"mllib\":{"
+          "\"maxWorkspaceSize\":256,\"gpuid\":0,"
+          "\"template\":\"yolox\",\"nclasses\":81,\"datatype\":\"fp16\"}}}";
+  std::string joutstr = japi.jrender(japi.service_create(detect_sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  std::string cm_sname = "consistency";
+  jstr = "{\"mllib\":\"tensorrt\",\"description\":\"consistency\",\"type\":"
+         "\"supervised\",\"model\":{\"repository\":\""
+         + trt_consistency_repo
+         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+           "128,\"width\":128,\"rgb\":true,\"scale\":0.0039,\"mean\":[0.5, "
+           "0.5,0.5],\"std\":[0.5,0.5,0.5]},\"mllib\":{\"maxBatchSize\":1,"
+           "\"maxWorkspaceSize\":1024,\"gpuid\":0,\"datatype\":\"fp16\","
+           "\"template\":\"consistency\"}}}";
+  joutstr = japi.jrender(japi.service_create(cm_sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // chain predict
+  std::string jchainstr
+      = "{\"chain\":{\"name\":\"chain\",\"calls\":["
+        "{\"service\":\""
+        + detect_sname
+        + "\",\"parameters\":{\"input\":{\"keep_orig\":true},\"output\":{"
+          "\"bbox\":true,\"best_bbox\":1}},\"data\":[\""
+        + trt_consistency_repo
+        + "/glasses.png\"]},"
+          "{\"id\":\"crop\",\"action\":{\"type\":\"crop\",\"parameters\":{"
+          "\"fixed_width\":256,\"fixed_height\":256,\"generate_mask\":true}}}"
+          ",{\"service\":\""
+        + cm_sname
+        + "\",\"parent_id\":\"crop\",\"parameters\":{\"mllib\":{\"extract_"
+          "layer\":\"last\"},\"output\":{}}}"
+          "]}}";
+  joutstr = japi.jrender(japi.service_chain("chain", jchainstr));
+  // very long outstr is truncated
+  std::cout << "joutstr=" << joutstr.substr(0, 500)
+            << (joutstr.size() > 500
+                    ? " ... " + joutstr.substr(joutstr.size() - 500)
+                    : "")
+            << std::endl;
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 1);
+  ASSERT_TRUE(
+      jd["body"]["predictions"][0]["classes"][0][cm_sname.c_str()].IsObject());
+
+  auto &cm_pred = jd["body"]["predictions"][0]["classes"][0][cm_sname.c_str()];
+  ASSERT_TRUE(cm_pred["vals"].IsArray());
+  ASSERT_EQ(cm_pred["vals"].Size(), 128 * 128 * 3);
+
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(detect_sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  joutstr = japi.jrender(japi.service_delete(cm_sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  ASSERT_TRUE(!fileops::file_exists(trt_detect_repo + "/TRTengine_arch"
+                                    + get_trt_archi() + "_bs1"));
+  ASSERT_TRUE(!fileops::file_exists(trt_consistency_repo + "/TRTengine_arch"
+                                    + get_trt_archi() + "_bs1"));
+}
+
 // Test internal call without json
 TEST(chain, chain_trt_dto)
 {
@@ -587,4 +667,4 @@ TEST(chain, chain_trt_dto)
                                     + get_trt_archi() + "_bs1"));
 }
 
-#endif
+#endif // USE_TENSORRT

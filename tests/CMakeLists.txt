@@ -390,6 +390,13 @@ if (USE_TENSORRT)
     "cyclegan_resnet_attn_onnx_trt.tar.gz"
     "cyclegan_resnet_attn_onnx_trt"
   )
+  DOWNLOAD_DATASET(
+    "ONNX Consistency model"
+    "https://deepdetect.com/dd/examples/tensorrt/noglasses2glasses_cm_128.tar.gz"
+    "examples/trt"
+    "noglasses2glasses_cm_128.tar.gz"
+    "noglasses2glasses_cm_128"
+  )
 
   if(USE_JSON_API)
     REGISTER_TEST(ut_tensorrtapi ut-tensorrtapi.cc)
