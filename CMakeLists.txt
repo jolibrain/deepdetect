@@ -120,7 +120,7 @@ if (APPLE)
     set(USE_CUDNN OFF)
     set(USE_CUDA_CV OFF)
 else()
-    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++14 -Wl,--no-as-needed -ltcmalloc_minimal")
+    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17 -Wl,--no-as-needed -ltcmalloc_minimal")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -866,7 +866,7 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v2.0.1)
+    set(PYTORCH_COMMIT v2.1.2)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if (APPLE)
@@ -936,7 +936,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.15.2") # 0.15.2 & torch 2.0.1
+  set(PYTORCH_VISION_COMMIT "v0.16.2") # 0.16.2 & torch 2.1.2
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   # set(PYTORCH_VISION_PATCHES
   #   ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
@@ -945,7 +945,7 @@ if (USE_TORCH)
   set(PYTORCH_VISION_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch_vision-complete)
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
 
-  file(WRITE ${CMAKE_BINARY_DIR}/build_pytorch_vision.sh "sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh PYTORCH_VISION ${CMAKE_BINARY_DIR}/pytorch_vision ${PYTORCH_VISION_COMPLETE} src/pytorch_vision src/pytorch_vision-build ${N} \"install\" ${CMAKE_COMMAND} ${PYTORCH_VISION_FLAGS} -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION} -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR} \"-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_STANDARD=14\" \"-DTORCH_CUDA_ARCH_LIST=${CUDA_ARCH}\" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc")
+  file(WRITE ${CMAKE_BINARY_DIR}/build_pytorch_vision.sh "sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh PYTORCH_VISION ${CMAKE_BINARY_DIR}/pytorch_vision ${PYTORCH_VISION_COMPLETE} src/pytorch_vision src/pytorch_vision-build ${N} \"install\" ${CMAKE_COMMAND} ${PYTORCH_VISION_FLAGS} -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION} -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR} \"-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_STANDARD=17\" \"-DTORCH_CUDA_ARCH_LIST=${CUDA_ARCH}\" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc")
 
   ExternalProject_Add(
     pytorch_vision
