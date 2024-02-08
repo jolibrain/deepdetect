@@ -37,6 +37,17 @@ Then to export a pretrained model before using it with DeepDetect:
 python3 trace_yolox.py yolox-m -o /path/to/output/ --yolox_path /path/to/YOLOX/ --backbone_weights /path/to/pretrained/yolox_m.pth --num_classes 2 --img_width 300 --img_height 300
 ```
 
+* `trace_clip.py`
+
+CLIP needs a patch to be used in DeepDetect.
+```bash
+pip install git+https://github.com/jolibrain/transformers.git@trace_clip
+```
+Then to export a CLIP model:
+```bash
+python3 trace_clip.py -v
+```
+
 ## Export segformer model
 
 First install our version of mmsegmentation with a modified export script
