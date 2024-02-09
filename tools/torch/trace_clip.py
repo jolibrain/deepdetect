@@ -16,30 +16,7 @@ from transformers import CLIPVisionModelWithProjection, TensorType
 import torchvision.transforms as T
 from torchvision.transforms import InterpolationMode
 from typing import Tuple
-import argparse
-import logging
-
-class CLIPWrapper(nn.Module):
-  def __init__(self, visionmodel):
-    super(CLIPWrapper, self).__init__()
-    self.visionmodel = visionmodel
-    self.visionmodel.eval()
-    # If you prefer to script the wrapper, you can uncomment the following to internally trace the visionmodel's forward method
-    # and also remove torch.jit.script from the self.transforms
-    # self.visionmodel = torch.jit.trace(self.visionmodel.forward, example_kwarg_inputs={'pixel_values': torch.rand([1, 3, 336, 336])})
-
-    self.transforms = torch.jit.script(nn.Sequential(
-      T.ConvertImageDtype(torch.float),
-      T.Resize(size=[336,], interpolation=InterpolationMode.BICUBIC, antialias=True), # Resize to 336 on shortest edge
-      T.CenterCrop([336, 336]), # Center crop a square of 336x336
-      T.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
-    ))
-
-  def forward(self, x: torch.Tensor):
-    with torch.no_grad():
-      x = self.transforms(x)
-      return self.visionmodel(pixel_values=x)[0]
-
+import argparse, logging, os
 
 parser = argparse.ArgumentParser(description="Trace CLIP-based vision models from pytorch-transformers (only tested on openai/clip-vit-large-patch14-336 and its derivatives)")
 parser.add_argument(
@@ -65,6 +42,11 @@ parser.add_argument(
   help="Output directory for traced models",
   default=".",
 )
+parser.add_argument(
+  '--script-wrapper',
+  action='store_true',
+  help="Script the entire wrapper instead of just the transforms",
+)
 args = parser.parse_args()
 
 if args.verbose:
@@ -75,6 +57,34 @@ logging.info(f"transformers version {transformers.__version__}, from {transforme
 logging.info(f"torchvision version {torchvision.__version__}, from {torchvision.__file__}")
 
 
+class CLIPWrapper(nn.Module):
+  def __init__(self, visionmodel):
+    super(CLIPWrapper, self).__init__()
+    self.visionmodel = visionmodel
+    self.visionmodel.eval()
+    
+    if args.script_wrapper:
+      self.visionmodel = torch.jit.trace(self.visionmodel.forward, example_kwarg_inputs={'pixel_values': torch.rand([1, 3, 336, 336])})
+      self.transforms = torch.jit.script(nn.Sequential(
+      T.ConvertImageDtype(torch.float),
+      T.Resize(size=[336,], interpolation=InterpolationMode.BICUBIC, antialias=True), # Resize to 336 on shortest edge
+      T.CenterCrop([336, 336]), # Center crop a square of 336x336
+      T.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
+    ))
+    else:  
+      self.transforms = torch.jit.script(nn.Sequential(
+        T.ConvertImageDtype(torch.float),
+        T.Resize(size=[336,], interpolation=InterpolationMode.BICUBIC, antialias=True), # Resize to 336 on shortest edge
+        T.CenterCrop([336, 336]), # Center crop a square of 336x336
+        T.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
+      ))
+
+  def forward(self, x: torch.Tensor):
+    with torch.no_grad():
+      x = self.transforms(x)
+      return self.visionmodel(pixel_values=x)[0]
+
+
 # use cache dir if you want to specify a custom huggingface cache dir
 visionmodel = CLIPVisionModelWithProjection.from_pretrained(args.model, torchscript=True, cache_dir=args.cache_dir)
 
@@ -82,10 +92,15 @@ model = CLIPWrapper(visionmodel)
 model.eval()
 
 # Uncomment if you prefer to script the wrapper
-# traced_model = torch.jit.script(model, torch.rand([1, 3, 1366, 1024]))
-traced_model = torch.jit.trace(model, torch.rand([1, 3, 1366, 1024]))
+if args.script_wrapper:
+  logging.info(f"Scripting wrapper (underlying visionmodel.forward method will still be traced)")
+  traced_model = torch.jit.script(model, torch.rand([1, 3, 1366, 1024]))
+  outputfilename = f"{os.path.join(args.output_dir, args.model.replace('/', '-'))}-scripted.pt"
+else:
+  logging.info(f"Tracing wrapper (underlying transforms will still be traced)")
+  traced_model = torch.jit.trace(model, torch.rand([1, 3, 1366, 1024]))
+  outputfilename = f"{os.path.join(args.output_dir, args.model.replace('/', '-'))}-traced.pt"
 
-outputfilename = f"{os.path.join(args.output_dir, args.model.replace('/', '-'))}.pt"
 logging.info(f"Saving to {outputfilename}")
 torch.jit.save(traced_model, outputfilename)
 logging.info("Done")
