@@ -97,7 +97,7 @@ if args.script_wrapper:
   traced_model = torch.jit.script(model, torch.rand([1, 3, 1366, 1024]))
   outputfilename = f"{os.path.join(args.output_dir, args.model.replace('/', '-'))}-scripted.pt"
 else:
-  logging.info(f"Tracing wrapper (underlying transforms will still be traced)")
+  logging.info(f"Tracing wrapper (underlying transforms will still be scripted)")
   traced_model = torch.jit.trace(model, torch.rand([1, 3, 1366, 1024]))
   outputfilename = f"{os.path.join(args.output_dir, args.model.replace('/', '-'))}-traced.pt"
 
