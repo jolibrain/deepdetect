@@ -357,8 +357,12 @@ namespace dd
                       has_test_data = true;
                       break;
                     }
-                if (_test_split > 0.0 && !has_test_data)
+                if (_test_split > 0.0)
                   {
+                    if (has_test_data)
+                      throw InputConnectorBadParamException(
+                          "User specified both a test split "
+                          + std::to_string(_test_split) + " and a test set");
                     tests_lfiles.resize(1);
                     split_dataset<int>(lfiles, tests_lfiles[0]);
                   }
@@ -438,8 +442,12 @@ namespace dd
                       has_test_data = true;
                       break;
                     }
-                if (_test_split > 0.0 && !has_test_data)
+                if (_test_split > 0.0)
                   {
+                    if (has_test_data)
+                      throw InputConnectorBadParamException(
+                          "User specified both a test split "
+                          + std::to_string(_test_split) + " and a test set");
                     tests_lfiles.resize(1);
                     split_dataset<std::string>(lfiles, tests_lfiles[0]);
                   }
@@ -489,8 +497,12 @@ namespace dd
                       has_test_data = true;
                       break;
                     }
-                if (_test_split > 0.0 && !has_test_data)
+                if (_test_split > 0.0)
                   {
+                    if (has_test_data)
+                      throw InputConnectorBadParamException(
+                          "User specified both a test split "
+                          + std::to_string(_test_split) + " and a test set");
                     tests_lfiles.resize(1);
                     split_dataset<std::string>(lfiles, tests_lfiles[0]);
                   }
@@ -539,8 +551,12 @@ namespace dd
                       has_test_data = true;
                       break;
                     }
-                if (_test_split > 0.0 && !has_test_data)
+                if (_test_split > 0.0)
                   {
+                    if (has_test_data)
+                      throw InputConnectorBadParamException(
+                          "User specified both a test split "
+                          + std::to_string(_test_split) + " and a test set");
                     tests_lfiles.resize(1);
                     split_dataset<std::string>(lfiles, tests_lfiles[0]);
                   }
@@ -621,8 +637,12 @@ namespace dd
                       has_test_data = true;
                       break;
                     }
-                if (_test_split > 0.0 && !has_test_data)
+                if (_test_split > 0.0)
                   {
+                    if (has_test_data)
+                      throw InputConnectorBadParamException(
+                          "User specified both a test split "
+                          + std::to_string(_test_split) + " and a test set");
                     tests_lfiles.resize(1);
                     split_dataset<std::vector<double>>(lfiles,
                                                        tests_lfiles[0]);

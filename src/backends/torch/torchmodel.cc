@@ -22,6 +22,8 @@
 #include "torchmodel.h"
 #include "utils/utils.hpp"
 
+#include <boost/algorithm/string/predicate.hpp>
+
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
@@ -31,9 +33,9 @@ namespace dd
       const std::shared_ptr<spdlog::logger> &logger)
   {
 
-    const std::string head_weights = ".ptw";
-    const std::string native = ".npt";
-    const std::string traced = ".pt";
+    const std::string head_weights_ext = ".ptw";
+    const std::string native_ext = ".npt";
+    const std::string traced_ext = ".pt";
     const std::string corresp = "corresp";
     // solver. may lead to _solver.prototxt when generated from caffe generator
     // we save solver states as solver-##.pt where ## is iteration number
@@ -64,7 +66,7 @@ namespace dd
                 sstate_t = lm;
               }
           }
-        else if (file.find(head_weights) != std::string::npos)
+        else if (boost::algorithm::ends_with(file, head_weights_ext))
           {
             if (head_weights_t < lm)
               {
@@ -72,7 +74,7 @@ namespace dd
                 head_weights_t = lm;
               }
           }
-        else if (file.find(traced) != std::string::npos)
+        else if (boost::algorithm::ends_with(file, traced_ext))
           {
             if (traced_t < lm)
               {
@@ -80,7 +82,7 @@ namespace dd
                 traced_t = lm;
               }
           }
-        else if (file.find(native) != std::string::npos)
+        else if (boost::algorithm::ends_with(file, native_ext))
           {
             if (native_t < lm)
               {

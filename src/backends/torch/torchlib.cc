@@ -417,9 +417,14 @@ namespace dd
         this->_logger->error("traced: {}, proto: {}, template: {}",
                              this->_mlmodel._traced, this->_mlmodel._proto,
                              _template);
-        throw MLLibInternalException(
-            "Only one of these must be provided: traced net, protofile or "
-            "native template");
+        if (_finetuning && NativeFactory::valid_template_def(_template))
+          throw MLLibInternalException(
+              "If you want to finetune a model using a native template, move "
+              "the weights to a .npt file");
+        else
+          throw MLLibInternalException(
+              "Only one of these must be provided: traced net, protofile or "
+              "native template");
       }
 
     // FIXME(louis): out of if(bert) because we allow not to specify template
