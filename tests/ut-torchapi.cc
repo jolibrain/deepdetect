@@ -4431,8 +4431,7 @@ TEST(torchapi, service_train_ranger)
           "\"test_interval\":"
         + iterations_resnet50
         + "},\"net\":{\"batch_size\":4},\"nclasses\":2,\"resume\":false},"
-          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,\"test_"
-          "split\":0.1},"
+          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
           "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
         + resnet50_train_data + "\",\"" + resnet50_test_data + "\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -4513,8 +4512,7 @@ TEST(torchapi, service_train_madgrad)
           "\"test_interval\":"
         + iterations_resnet50
         + "},\"net\":{\"batch_size\":4},\"nclasses\":2,\"resume\":false},"
-          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,\"test_"
-          "split\":0.1},"
+          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
           "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
         + resnet50_train_data + "\",\"" + resnet50_test_data + "\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
@@ -4594,8 +4592,7 @@ TEST(torchapi, service_train_radam)
           "\"test_interval\":"
         + iterations_resnet50
         + "},\"net\":{\"batch_size\":4},\"nclasses\":2,\"resume\":false},"
-          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true,\"test_"
-          "split\":0.1},"
+          "\"input\":{\"seed\":12345,\"db\":true,\"shuffle\":true},"
           "\"output\":{\"measure\":[\"f1\",\"acc\"]}},\"data\":[\""
         + resnet50_train_data + "\",\"" + resnet50_test_data + "\"]}";
   joutstr = japi.jrender(japi.service_train(jtrainstr));
