@@ -45,6 +45,38 @@ namespace dd
       DTO_FIELD(Int32, test_batch_size) = 1;
     };
 
+    // Torch JIT compiler
+    /** This parameters are set using the function setFusionStrategy:
+     * https://github.com/pytorch/pytorch/blob/4c074a9b8bd2e6d8940b40a41ce399e6c4a463a9/torch/csrc/jit/runtime/profiling_graph_executor_impl.cpp#L131
+     */
+    class JitCompilerParameters : public oatpp::DTO
+    {
+      DTO_INIT(JitCompilerParameters, DTO)
+
+      DTO_FIELD_INFO(fusion_static)
+      {
+        info->description
+            = "Set number of STATIC specializations that can occur when "
+              "compiling jit models. In STATIC fusion, fused ops are compiled "
+              "to have fixed shapes. See "
+              "https://pytorch.org/docs/stable/generated/"
+              "torch.jit.set_fusion_strategy.html for more details.";
+      }
+      DTO_FIELD(Int32, fusion_static) = 2;
+
+      DTO_FIELD_INFO(fusion_dynamic)
+      {
+        info->description
+            = "Set number of DYNAMIC specializations that can occur when "
+              "compiling jit models. In DYNAMIC fusion, fused ops are "
+              "compiled to have variable input shape, so that this "
+              "specialization can be used with multiple shapes. See "
+              "https://pytorch.org/docs/stable/generated/"
+              "torch.jit.set_fusion_strategy.html for more details";
+      }
+      DTO_FIELD(Int32, fusion_dynamic) = 10;
+    };
+
     class MLLib : public oatpp::DTO
     {
       DTO_INIT(MLLib, DTO /* extends */)
@@ -190,6 +222,16 @@ namespace dd
         info->description = "Enable/disable concurrent predict for the model";
       }
       DTO_FIELD(Boolean, concurrent_predict) = true;
+
+      DTO_FIELD_INFO(jit_compiler_params)
+      {
+        info->description
+            = "[experimental] Modify torch jit compiler parameters. This can "
+              "be useful when the model takes too long to compile, for "
+              "example. Beware, this parameter applies instantly for all dede "
+              "services.";
+      }
+      DTO_FIELD(Object<JitCompilerParameters>, jit_compiler_params);
 
       // Libtorch predict options
       DTO_FIELD_INFO(forward_method)
