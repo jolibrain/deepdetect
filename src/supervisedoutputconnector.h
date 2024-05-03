@@ -885,6 +885,30 @@ namespace dd
                                                               / ap_count));
                         }
                     }
+
+                  // false positives
+                  std::map<int, float> fp_by_cls;
+                  std::map<int, float> recall_by_cls;
+
+                  // TODO conf_thres as a parameter
+                  APIData bad = ad_res.getobj("0");
+                  // TODO chose policy to select iou threshold
+                  std::string key = "map-" + std::to_string(thresholds.at(0));
+                  if (bad.has(key))
+                    bad = bad.getobj(key);
+                  int pos_count = ad_res.get("pos_count").get<int>();
+
+                  compute_positives(pos_count, bad, fp_by_cls, recall_by_cls,
+                                    0.5);
+                  double fp_mean = 0;
+                  for (auto e : fp_by_cls)
+                    {
+                      std::string key = "fp_" + std::to_string(e.first);
+                      meas_out.add(key, static_cast<double>(e.second));
+                      fp_mean += static_cast<double>(e.second);
+                    }
+                  fp_mean /= fp_by_cls.size();
+                  meas_out.add("fp", fp_mean);
                 }
 
               bool raw = (std::find(measures.begin(), measures.end(), "raw")
@@ -2542,6 +2566,61 @@ namespace dd
       if (APs_count_all == 0)
         return 0.0;
       return mmAP / static_cast<double>(APs_count_all);
+    }
+
+    /** Compute recall and number of false positives (fp) */
+    static void compute_positives(int pos_count, const APIData &bad,
+                                  std::map<int, float> &recall_by_cls,
+                                  std::map<int, float> &fp_by_cls,
+                                  float conf_thres)
+    {
+      std::map<int, float> count_by_cls;
+
+      for (int i = 0; i < pos_count; i++)
+        {
+          std::vector<APIData> vbad = bad.getv(std::to_string(i));
+          for (size_t j = 0; j < vbad.size(); j++)
+            {
+              std::vector<double> tp_d
+                  = vbad.at(j).get("tp_d").get<std::vector<double>>();
+              std::vector<int> tp_i
+                  = vbad.at(j).get("tp_i").get<std::vector<int>>();
+              int num_pos = vbad.at(j).get("num_pos").get<int>();
+              int label = vbad.at(j).get("label").get<int>();
+              double recall = 0, fp = 0;
+
+              for (size_t k = 0; k < tp_d.size(); k++)
+                {
+                  if (tp_d[k] > conf_thres)
+                    {
+                      if (tp_i.at(k) == 1)
+                        recall += 1.0 / num_pos;
+                      else
+                        fp += 1;
+                    }
+                  else
+                    break; // Assume preds are sorted by confidence threshold
+                }
+
+              if (fp_by_cls.find(label) == fp_by_cls.end())
+                {
+                  recall_by_cls[label] = recall;
+                  fp_by_cls[label] = fp;
+                  count_by_cls[label] = num_pos;
+                }
+              else
+                {
+                  recall_by_cls[label] += recall;
+                  fp_by_cls[label] += fp;
+                  count_by_cls[label] += num_pos;
+                }
+            }
+        }
+
+      for (auto &e : count_by_cls)
+        {
+          fp_by_cls[e.first] /= e.second;
+        }
     }
 
     // measure: AUC
