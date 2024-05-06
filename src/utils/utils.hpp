@@ -34,6 +34,7 @@
 
 #include "apidata.h"
 #include "dd_types.h"
+#include "dd_spdlog.h"
 
 namespace dd
 {
@@ -167,6 +168,24 @@ namespace dd
             throw;
         }
       return false;
+    }
+
+    template <class ExceptCls>
+    inline void rethrow_exception(std::exception_ptr &eptr,
+                                  std::shared_ptr<spdlog::logger> logger)
+    {
+      try
+        {
+          if (eptr)
+            {
+              std::rethrow_exception(eptr);
+            }
+        }
+      catch (const std::exception &e)
+        {
+          logger->error(std::string("Caught error: ") + e.what());
+          throw ExceptCls(std::string("Caught error: ") + e.what());
+        }
     }
 
 #ifdef WIN32
