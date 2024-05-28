@@ -27,15 +27,15 @@ num_classes = 81
 img_size = 640
 
 
-def get_detection_input(batch_size=1):
+def get_detection_input(device, batch_size=1):
     """
     Sample input for detection models, usable for tracing or testing
     """
     return (
-        torch.rand(batch_size, 3, 224, 224),
-        torch.full((batch_size,), 0).long(),
-        torch.Tensor([1, 1, 200, 200]).repeat((batch_size, 1)),
-        torch.full((batch_size,), 1).long(),
+        torch.rand((batch_size, 3, 224, 224), device=device),
+        torch.full((batch_size,), 0, device=device).long(),
+        torch.tensor([1, 1, 200, 200], device=device).repeat((batch_size, 1)),
+        torch.full((batch_size,), 1, device=device).long(),
     )
 
 
@@ -81,7 +81,27 @@ class TestYOLXExport(unittest.TestCase):
         self.assertTrue(os.path.exists(model_file), model_file)
 
         # Load and check
-        # TODO
+        jit_model = torch.jit.load(model_file)
+        jit_model.cuda()
+
+        # Test training
+        jit_model.train()
+        detection_inputs = get_detection_input(device="cuda")
+        losses, preds = jit_model(*detection_inputs)
+        print("losses:", losses)
+        self.assertTrue("total_loss" in losses)
+        self.assertTrue("iou_loss" in losses)
+        self.assertTrue("conf_loss" in losses)
+        self.assertTrue("l1_loss" in losses)
+
+        # Test predictions
+        jit_model.eval()
+        losses, preds = jit_model(detection_inputs[0])
+        print("preds:", preds)
+        self.assertTrue(len(preds) == 1)
+        self.assertTrue("boxes" in preds[0])
+        self.assertTrue("scores" in preds[0])
+        self.assertTrue("labels" in preds[0])
 
         # Export to onnx
         subprocess.run(
