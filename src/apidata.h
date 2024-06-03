@@ -561,7 +561,6 @@ namespace dd
     JDoc *_jd = nullptr;
     JVal *_jv = nullptr;
   };
-
 }
 
 #endif

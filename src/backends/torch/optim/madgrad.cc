@@ -128,8 +128,7 @@ namespace dd
 
             TORCH_CHECK(!grad.is_sparse(),
                         "Madgrad does not support sparse gradients");
-            auto param_state
-                = state_.find(c10::guts::to_string(p.unsafeGetTensorImpl()));
+            auto param_state = state_.find(p.unsafeGetTensorImpl());
             auto &options = static_cast<MadgradOptions &>(group.options());
 
             // State initialization
@@ -146,15 +145,14 @@ namespace dd
                 state->slow_buffer(torch::empty_like(
                     p.data(), torch::MemoryFormat::Preserve));
                 state->slow_buffer().copy_(p.data());
-                state_[c10::guts::to_string(p.unsafeGetTensorImpl())]
-                    = std::move(state);
+                state_[p.unsafeGetTensorImpl()] = std::move(state);
                 if (options.swa())
                   state->swa_buffer(torch::zeros_like(
                       p.data(), torch::MemoryFormat::Preserve));
               }
 
             auto &state = static_cast<MadgradParamState &>(
-                *state_[c10::guts::to_string(p.unsafeGetTensorImpl())]);
+                *state_[p.unsafeGetTensorImpl()]);
 
             auto &grad_sum_sq = state.grad_sum_sq();
             auto &s = state.s();
@@ -225,7 +223,7 @@ namespace dd
         for (auto &p : group.params())
           {
             auto &state = static_cast<MadgradParamState &>(
-                *state_[c10::guts::to_string(p.unsafeGetTensorImpl())]);
+                *state_[p.unsafeGetTensorImpl()]);
             auto &swa_buf = state.swa_buffer();
 
             auto tmp = torch::empty_like(p.data());
