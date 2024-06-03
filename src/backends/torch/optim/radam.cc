@@ -119,8 +119,7 @@ namespace dd
             auto grad = p.grad();
             TORCH_CHECK(
                 !grad.is_sparse(), "RAdam does not support sparse gradients" /*, please consider SparseRAdam instead*/);
-            auto param_state
-                = state_.find(c10::guts::to_string(p.unsafeGetTensorImpl()));
+            auto param_state = state_.find(p.unsafeGetTensorImpl());
             auto &options = static_cast<RAdamOptions &>(group.options());
 
             // State initialization
@@ -134,12 +133,11 @@ namespace dd
                 // Exponential moving average of squared gradient values
                 state->exp_avg_sq(
                     torch::zeros_like(p, torch::MemoryFormat::Preserve));
-                state_[c10::guts::to_string(p.unsafeGetTensorImpl())]
-                    = std::move(state);
+                state_[p.unsafeGetTensorImpl()] = std::move(state);
               }
 
             auto &state = static_cast<RAdamParamState &>(
-                *state_[c10::guts::to_string(p.unsafeGetTensorImpl())]);
+                *state_[p.unsafeGetTensorImpl()]);
             auto &exp_avg = state.exp_avg();
             auto &exp_avg_sq = state.exp_avg_sq();
 
