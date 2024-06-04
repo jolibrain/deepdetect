@@ -705,6 +705,15 @@ namespace dd
             this->_logger->info("mirror: {}", has_mirror);
             bool has_rotate
                 = ad_mllib.has("rotate") && ad_mllib.get("rotate").get<bool>();
+
+            // disable rotate for non square image size
+            if (inputc.width() != inputc.height() && has_rotate)
+              {
+                has_rotate = 0;
+                this->_logger->warn(
+                    "rotate augment was not applied. To enable rotate, select "
+                    "img_width and img_height to be equal.");
+              }
             this->_logger->info("rotate: {}", has_rotate);
             CropParams crop_params;
             if (ad_mllib.has("crop_size"))
@@ -1879,7 +1888,7 @@ namespace dd
                 if (imgsize
                     != (*bit).second.first
                            * (*bit).second.second) // resizing output
-                  // segmentation array
+                                                   // segmentation array
                   {
                     vals = ImgInputFileConn::img_resize_vector(
                         vals, inputc.height(), inputc.width(),
