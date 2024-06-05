@@ -3,6 +3,7 @@
 set_source_files_properties(
   ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
   ${CMAKE_BINARY_DIR}/src/caffe.pb.h
+  ${CMAKE_BINARY_DIR}/dd_config.cc
   PROPERTIES GENERATED TRUE)
 set_source_files_properties(
   ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
@@ -23,7 +24,7 @@ set(ddetect_SOURCES deepdetect.h deepdetect.cc mllibstrategy.h mlmodel.h
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
     txtinputfileconn.cc apidata.h apidata.cc chain_actions.h chain_actions.cc
     service_stats.h service_stats.cc chain.h chain.cc resources.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc
-    utils/oatpp.cc dto/ddtypes.cc utils/db.cpp utils/db_lmdb.cpp ${CMAKE_BINARY_DIR}/src/caffe.pb.cc)
+    utils/oatpp.cc dto/ddtypes.cc utils/db.cpp utils/db_lmdb.cpp ${CMAKE_BINARY_DIR}/src/caffe.pb.cc ${CMAKE_BINARY_DIR}/dd_config.cc)
 
 if (USE_JSON_API)
   list(APPEND ddetect_SOURCES jsonapi.h jsonapi.cc)
@@ -32,7 +33,7 @@ if (USE_HTTP_SERVER)
   list(APPEND ddetect_SOURCES httpjsonapi.cc httpjsonapi.h)
 endif()
 if (USE_HTTP_SERVER_OATPP)
-  list(APPEND ddetect_SOURCES oatppjsonapi.cc oatppjsonapi.h http/app_component.hpp http/swagger_component.hpp http/controller.hpp http/error_handler.hpp http/error_handler.cpp http/access_log.cpp)
+  list(APPEND ddetect_SOURCES oatppjsonapi.cc oatppjsonapi.h http/app_component.hpp http/swagger_component.hpp http/controller.hpp http/error_handler.hpp http/error_handler.cpp http/access_log.cpp http/documentation.cc)
 endif()
 if (USE_HTTP_SERVER OR USE_HTTP_SERVER_OATPP)
   list(APPEND ddetect_SOURCES http/flags.h)

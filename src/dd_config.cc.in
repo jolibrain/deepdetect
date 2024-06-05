@@ -1,0 +1,6 @@
+#include "dd_config.h"
+
+std::string GET_API_DOC() {
+    static std::string API_DOC = R"apidocumentation(@API_DOC@)apidocumentation";
+    return API_DOC;
+}
