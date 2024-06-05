@@ -92,6 +92,7 @@ curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
 - templates for the most useful neural architectures (e.g. Googlenet, Alexnet, ResNet, convnet, character-based convnet, mlp, logistic regression, SSD, DeepLab, PSPNet, U-Net, CRNN, ShuffleNet, SqueezeNet, MobileNet, RefineDet, VOVNet, ...)
 - support for sparse features and computations on both GPU and CPU
 - built-in similarity indexing and search of predicted features, images, objects and probability distributions
+- auto-generated documentation based on [Swagger](https://swagger.io/)
 
 
 ## Machine Learning functionalities per library
