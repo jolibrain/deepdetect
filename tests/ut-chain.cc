@@ -535,7 +535,7 @@ TEST(chain, chain_trt_consistency)
          + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
            "128,\"width\":128,\"rgb\":true,\"scale\":0.0039,\"mean\":[0.5, "
            "0.5,0.5],\"std\":[0.5,0.5,0.5]},\"mllib\":{\"maxBatchSize\":1,"
-           "\"maxWorkspaceSize\":1024,\"gpuid\":0,\"datatype\":\"fp16\","
+           "\"maxWorkspaceSize\":512,\"gpuid\":0,\"datatype\":\"fp16\","
            "\"template\":\"consistency\"}}}";
   joutstr = japi.jrender(japi.service_create(cm_sname, jstr));
   ASSERT_EQ(created_str, joutstr);
