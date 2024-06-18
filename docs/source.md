@@ -20,10 +20,6 @@ sudo apt-get install cmake kitware-archive-keyring
 ## Choosing interfaces :
 
 DeepDetect can be used:
-- directly from command line for caffe models. To build the executable use:
-```
-cmake .. -DUSE_COMMAND_LINE=ON
-```
 - from command line using the JSON API. To build the executable use:
 ```
 cmake .. -DUSE_COMMAND_LINE=ON -DUSE_JSON_API=ON
@@ -38,13 +34,11 @@ cmake .. -DUSE_JSON_API=ON -DUSE_HTTP_SERVER_OATPP=OFF -DUSE_COMMAND_LINE=OFF
 
 ```
 
-## Default build with Caffe
-For compiling along with Caffe:
+## Default build with Opencv
+For compiling along with OpenCV:
 ```
-mkdir build
-cd build
-cmake ..
-make
+mkdir build & cd build
+DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=gpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON ../build.sh
 ```
 
 If you are building for one or more GPUs, you may need to add CUDA to your ld path:
@@ -57,11 +51,6 @@ If you would like to build with cuDNN, your `cmake` line should be:
 cmake .. -DUSE_CUDNN=ON
 ```
 
-To target the build of underlying Caffe to a specific CUDA architecture (e.g. Pascal), you can use:
-```
-cmake .. -DCUDA_ARCH="-gencode arch=compute_61,code=sm_61"
-```
-
 If you would like to build on NVidia Jetson TX1:
 ```
 cmake .. -DCUDA_ARCH="-gencode arch=compute_53,code=sm_53" -DUSE_CUDNN=ON -DJETSON=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
@@ -71,11 +60,6 @@ On Jetson TX2, use `-DCUDA_ARCH="-gencode arch=compute_62,code=sm_62"`
 If you would like a CPU only build, use:
 ```
 cmake .. -DUSE_CPU_ONLY=ON
-```
-
-If you would like to constrain Caffe to CPU only, use:
-```
-cmake .. -DUSE_CAFFE_CPU_ONLY=ON
 ```
 
 ## Build with XGBoost support
@@ -159,13 +143,6 @@ Specify the following option via cmake:
 cmake .. -DUSE_TORCH=ON
 ```
 If you call cmake with the `-DUSE_CPU_ONLY` option, a cpu-only version of libtorch will be used.
-
-## Build with Caffe2 support
-
-Specify the option via cmake:
-```
-cmake .. -DUSE_CAFFE2=ON
-```
 
 ## Build without Caffe
 
