@@ -18,7 +18,7 @@ RUN echo CUDNN_VERSION=${DD_CUDNN_VERSION} >> /image-info
 #RUN echo TENSORRT_VERSION=${DD_TENSORRT_VERSION} >> /image-info
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && apt-get install -y python-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
+    apt-get update -y && apt-get install -y python3-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
 RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
 RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
 
