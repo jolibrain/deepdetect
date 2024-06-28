@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <torch/csrc/jit/runtime/graph_executor.h>
 
 #include "native/native.h"
 #include "torchsolver.h"
@@ -188,9 +189,20 @@ namespace dd
   void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                 TMLModel>::init_mllib(const APIData &lib_ad)
   {
-    // Get parameters
     auto mllib_dto = lib_ad.createSharedDTO<DTO::MLLib>();
 
+    // experimental: jit compiler parameters
+    if (mllib_dto->jit_compiler_params)
+      {
+        auto jit_params = mllib_dto->jit_compiler_params;
+        torch::jit::FusionStrategy strat = {
+          { torch::jit::FusionBehavior::STATIC, jit_params->fusion_static },
+          { torch::jit::FusionBehavior::DYNAMIC, jit_params->fusion_dynamic }
+        };
+        auto old_strat = torch::jit::setFusionStrategy(strat);
+      }
+
+    // publish model (from existing repository)
     if (mllib_dto->from_repository != nullptr)
       {
         this->_mlmodel.copy_to_target(mllib_dto->from_repository,
