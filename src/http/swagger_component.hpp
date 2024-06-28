@@ -44,8 +44,8 @@ public:
 
     std::ostringstream version;
     version << GIT_VERSION << " (" << BUILD_TYPE << ")";
-    builder.setTitle("DeepDetect")
-        .setDescription("DeepDetect REST API")
+    builder.setTitle("DeepDetect API Documentation")
+        .setDescription(GET_API_DOC())
         .setVersion(version.str().c_str())
         .setContactName("Jolibrain")
         .setContactUrl("https://deepdetect.com/")

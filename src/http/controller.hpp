@@ -39,6 +39,7 @@
 #include "dto/service_create.hpp"
 #include "dto/stream.hpp"
 #include "dto/resource.hpp"
+#include "documentation.hpp"
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
 
@@ -64,7 +65,8 @@ public:
 
   ENDPOINT_INFO(get_info)
   {
-    info->summary = "Retrieve server information";
+    info->summary = "Returns general information about the deepdetect server, "
+                    "including the list of existing services.";
     info->addResponse<Object<dd::DTO::InfoResponse>>(Status::CODE_200,
                                                      "application/json");
   }
@@ -100,7 +102,7 @@ public:
 
   ENDPOINT_INFO(get_service)
   {
-    info->summary = "Retrieve a service detail";
+    info->summary = "Returns information on an existing service";
   }
   ENDPOINT("GET", "services/{service-name}", get_service,
            PATH(oatpp::String, service_name, "service-name"),
@@ -138,7 +140,7 @@ public:
 
   ENDPOINT_INFO(create_service)
   {
-    info->summary = "Create a service";
+    info->summary = "Create a new machine learning service";
     info->addConsumes<Object<dd::DTO::ServiceCreate>>("application/json");
   }
   ENDPOINT("POST", "services/{service-name}", create_service,
@@ -164,6 +166,13 @@ public:
   ENDPOINT_INFO(delete_service)
   {
     info->summary = "Delete a service";
+    info->queryParams.add("clear", String::Class::getType()).description
+        = "`full`, `lib`, `mem`, `dir` or `index`. `full` clears the model "
+          "and service repository, `lib` removes model files only according "
+          "to the behavior specified by the service's ML library, `mem` "
+          "removes the service from memory without affecting the files, `dir` "
+          "removes the whole directory, `index` removes the index when using "
+          "similarity search. default=`mem`";
   }
   ENDPOINT("DELETE", "services/{service-name}", delete_service,
            PATH(oatpp::String, service_name, "service-name"),
@@ -199,7 +208,9 @@ public:
 
   ENDPOINT_INFO(post_train)
   {
-    info->summary = "Do a training";
+    info->summary
+        = "Launches a blocking or asynchronous training job from a service.";
+    info->body.description = dd::GET_TRAIN_PARAMETERS();
   }
   ENDPOINT("POST", "train", post_train, BODY_STRING(oatpp::String, train_data))
   {
@@ -219,7 +230,7 @@ public:
   }
   ENDPOINT_INFO(delete_train)
   {
-    info->summary = "Delete a training";
+    info->summary = "Stop and delete a training job";
   }
   ENDPOINT("DELETE", "train", delete_train, QUERIES(QueryParams, queryParams))
   {
@@ -230,7 +241,8 @@ public:
 
   ENDPOINT_INFO(create_chain)
   {
-    info->summary = "Run a chain";
+    info->summary = "Run a chain call, that allows to call multiple models "
+                    "sequentially";
   }
   ENDPOINT("POST", "chain/{chain-name}", create_chain,
            PATH(oatpp::String, chain_name, "chain-name"),
