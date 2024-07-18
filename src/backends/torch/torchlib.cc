@@ -2242,7 +2242,7 @@ namespace dd
             output = torch::softmax(output, 1);
             torch::Tensor target = batch.target.at(0).to(torch::kFloat64);
             torch::Tensor segmap
-                = torch::flatten(torch::argmax(output.squeeze(), 0))
+                = torch::flatten(torch::argmax(output.squeeze(), 1))
                       .contiguous()
                       .to(torch::kFloat64)
                       .to(cpu); // squeeze removes the batch size
