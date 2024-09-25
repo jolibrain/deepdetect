@@ -248,6 +248,11 @@ add_custom_target(
     DEPENDS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
 )
 
+# read documentation
+file(
+    READ "${CMAKE_SOURCE_DIR}/docs/api_swagger.md"
+    API_DOC
+)
 
 # dependency on Eigen for confusion matrix fast computation
 if (USE_TF)
@@ -1392,6 +1397,10 @@ endif()
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/dd_config.h.in"
   "${PROJECT_BINARY_DIR}/dd_config.h"
+)
+configure_file (
+  "${PROJECT_SOURCE_DIR}/src/dd_config.cc.in"
+  "${PROJECT_BINARY_DIR}/dd_config.cc"
 )
 
 # status
