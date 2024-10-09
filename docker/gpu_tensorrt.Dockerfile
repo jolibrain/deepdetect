@@ -83,8 +83,9 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     bash-completion
 
 # Fix  ModuleNotFoundError: No module named 'dataclasses', 'typing_extensions' for torch 1.8.0
-RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install dataclasses typing_extensions
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+RUN python -m pip install --upgrade pip
+RUN python -m pip install dataclasses typing_extensions
 
 WORKDIR /tmp/
 

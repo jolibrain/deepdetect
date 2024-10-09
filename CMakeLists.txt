@@ -856,7 +856,7 @@ if (USE_TORCH)
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_113_new_logger.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_23_use_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_241_use_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_23_cloneable.patch
   )
   if (APPLE)
@@ -867,7 +867,7 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v2.3.0)
+    set(PYTORCH_COMMIT v2.4.1)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if (APPLE)
@@ -937,7 +937,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.18.0") # 0.18.0 & torch 2.3.0
+  set(PYTORCH_VISION_COMMIT "v0.19.1")
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   # set(PYTORCH_VISION_PATCHES
   #   ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
