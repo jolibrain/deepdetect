@@ -1,0 +1,76 @@
+diff --git a/c10/CMakeLists.txt b/c10/CMakeLists.txt
+index 82eb969038..df150a2c72 100644
+--- a/c10/CMakeLists.txt
++++ b/c10/CMakeLists.txt
+@@ -21,6 +21,7 @@ endif()
+   # ---[ Configure macro file.
+   set(C10_USE_GFLAGS ${USE_GFLAGS}) # used in cmake_macros.h.in
+   set(C10_USE_GLOG ${USE_GLOG}) # used in cmake_macros.h.in
++  set(C10_USE_DDLOG ${USE_DDLOG}) # used in cmake_macros.h.in
+   set(C10_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS}) # used in cmake_macros.h.in
+   set(C10_USE_NUMA ${USE_NUMA})
+   set(C10_USE_MSVC_STATIC_RUNTIME ${CAFFE2_USE_MSVC_STATIC_RUNTIME})
+diff --git a/c10/macros/cmake_macros.h.in b/c10/macros/cmake_macros.h.in
+index 76c185b552..bd4d5e7205 100644
+--- a/c10/macros/cmake_macros.h.in
++++ b/c10/macros/cmake_macros.h.in
+@@ -6,6 +6,7 @@
+ 
+ #cmakedefine C10_BUILD_SHARED_LIBS
+ #cmakedefine C10_USE_GLOG
++#cmakedefine C10_USE_DDLOG
+ #cmakedefine C10_USE_GFLAGS
+ #cmakedefine C10_USE_NUMA
+ #cmakedefine C10_USE_MSVC_STATIC_RUNTIME
+diff --git a/c10/util/Logging.cpp b/c10/util/Logging.cpp
+index 66a24980a4..6e7ce41511 100644
+--- a/c10/util/Logging.cpp
++++ b/c10/util/Logging.cpp
+@@ -240,6 +240,19 @@ C10_DEFINE_int32(v, 0, "Equivalent to glog verbose");
+ C10_DEFINE_bool(logtostderr, false, "Equivalent to glog logtostderr");
+ #endif // !defined(c10_USE_GLOG)
+ 
++#if defined(C10_USE_DDLOG)
++namespace c10 {
++bool InitCaffeLogging(int* argc, char** argv) {
++  return true;
++}
++void UpdateLoggingLevelsFromFlags() {}
++} // namespace c10
++C10_DEFINE_int(
++    caffe2_log_level,
++    0,
++    "The minimum log level that caffe2 will output.");
++
++#else
+ #ifdef C10_USE_GLOG
+ 
+ // Provide easy access to the above variables, regardless whether GLOG is
+@@ -460,6 +473,7 @@ MessageLogger::~MessageLogger() {
+ } // namespace c10
+ 
+ #endif // !C10_USE_GLOG
++#endif // !C10_USE_DDLOG
+ 
+ namespace c10::detail {
+ namespace {
+diff --git a/c10/util/Logging.h b/c10/util/Logging.h
+index a2349e423d..5bde0def87 100644
+--- a/c10/util/Logging.h
++++ b/c10/util/Logging.h
+@@ -23,11 +23,15 @@
+ #endif // CAFFE2_LOG_THRESHOLD
+ 
+ // Below are different implementations for glog and non-glog cases.
++#ifdef C10_USE_DDLOG
++#include <c10/util/logging_is_dd_log.h>
++#else
+ #ifdef C10_USE_GLOG
+ #include <c10/util/logging_is_google_glog.h>
+ #else // !C10_USE_GLOG
+ #include <c10/util/logging_is_not_google_glog.h>
+ #endif // C10_USE_GLOG
++#endif // C10_USE_DDLOG
+ 
+ C10_DECLARE_int(caffe2_log_level);
+ C10_DECLARE_bool(caffe2_use_fatal_for_enforce);

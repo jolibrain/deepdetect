@@ -46,7 +46,7 @@ pipeline {
             sh '''
 
 cd clients/python/
-tox -e pep8,py38
+tox -e pep8,py310
 cd ../..
 
 export CCACHE_DIR=/ccache
