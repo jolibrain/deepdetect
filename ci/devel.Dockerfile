@@ -1,45 +1,38 @@
 # syntax = docker/dockerfile:1.0-experimental
 
-ARG DD_UBUNTU_VERSION=20.04
+ARG DD_UBUNTU_VERSION=22.04
 ARG DD_CUDA_VERSION=11.8.0
 ARG DD_CUDNN_VERSION=8
-#ARG DD_TENSORRT_VERSION=7.2.2-1+cuda11.1
-
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-devel-ubuntu${DD_UBUNTU_VERSION}
 
-ARG DD_UBUNTU_VERSION
-ARG DD_CUDA_VERSION
-ARG DD_CUDNN_VERSION
-ARG DD_TENSORRT_VERSION
 
 RUN echo UBUNTU_VERSION=${DD_UBUNTU_VERSION} >> /image-info
 RUN echo CUDA_VERSION=${DD_CUDA_VERSION} >> /image-info
 RUN echo CUDNN_VERSION=${DD_CUDNN_VERSION} >> /image-info
-#RUN echo TENSORRT_VERSION=${DD_TENSORRT_VERSION} >> /image-info
+
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && apt-get install -y python3-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
-RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
-RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
+    apt-get update -y && apt-get upgrade -y && apt-get install -y ca-certificates gpg  wget 
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y 
+RUN rm /usr/share/keyrings/kitware-archive-keyring.gpg
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y kitware-archive-keyring
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y cmake
 
-# python2 pycompile + docker-buildkit is a bit buggy, it's slow as hell, so disable it for dev
-# bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
-RUN cp /bin/true /usr/bin/pycompile
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && apt-get install -y \
+    apt-get install -y \
+    build-essential \
     git \
     ccache \
     automake \
     rsync \
-    clang-format-10 \
+    clang-format\
     build-essential \
     openjdk-8-jdk \
     pkg-config \
-    cmake \
     zip \
-    g++ \
-    gcc-7 g++-7 \
     zlib1g-dev \
     libgoogle-glog-dev \
     libgflags-dev \
@@ -72,20 +65,14 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     libmapbox-variant-dev \
     autoconf \
     libtool-bin \
-    python-numpy \
-    python-yaml \
-    python-typing \
     swig \
     curl \
     unzip \
     python-setuptools \
-    python-dev \
     python3-dev \
     python3-pip \
     tox \
     python-six \
-    python-enum34 \
-    python3-yaml \
     unzip \
     libgoogle-perftools-dev \
     curl \
@@ -95,14 +82,15 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     schedtool \
     util-linux \
     googletest \
-    googletest-tools
+    googletest-tools \
+    python3-yaml \
+    python3-numpy 
 
-RUN for url in \
-        https://github.com/bazelbuild/bazel/releases/download/0.24.1/bazel_0.24.1-linux-x86_64.deb \
-        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+RUN python -m pip install --upgrade pip
+RUN python -m pip install  torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+RUN python -m pip install onnx
 
-RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install torch==2.0.1 torchvision==0.15.2 onnx
 
 RUN apt clean -y
 ADD ci/gitconfig /etc/gitconfig

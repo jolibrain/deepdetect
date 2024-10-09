@@ -405,18 +405,18 @@ endif()
 
 if (USE_TORCH)
   DOWNLOAD_DATASET(
-    "Torch test Resnet 50 model"
-    "https://www.deepdetect.com/dd/examples/torch/resnet50_torch.tar.gz"
-    "examples/torch"
-    "resnet50_torch.tar.gz"
-    "resnet50_torch"
+      "Torch test Resnet 50 model"
+      "https://www.deepdetect.com/dd/examples/torch/resnet50_torch241.tar.gz"
+      "examples/torch"
+      "resnet50_torch241.tar.gz"
+      "resnet50_torch241"
     )
   DOWNLOAD_DATASET(
     "Torch training Resnet 50 model"
-    "https://www.deepdetect.com/dd/examples/torch/resnet50_training_torch_small.tar.gz"
+    "https://www.deepdetect.com/dd/examples/torch/resnet50_training_torch241_small.tar.gz"
     "examples/torch"
-    "resnet50_training_torch_small.tar.gz"
-    "resnet50_training_torch_small"
+    "resnet50_training_torch241_small.tar.gz"
+    "resnet50_training_torch241_small"
     )
   DOWNLOAD_DATASET(
     "Torch native Resnet 50 model"
@@ -484,10 +484,10 @@ if (USE_TORCH)
     )
   DOWNLOAD_DATASET(
     "Torch BERT classification test model"
-    "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch.tar.gz"
+    "https://www.deepdetect.com/dd/examples/torch/bert_inference_torch241.tar.gz"
     "examples/torch"
-    "bert_inference_torch.tar.gz"
-    "bert_inference_torch"
+    "bert_inference_torch241.tar.gz"
+    "bert_inference_torch241"
     )
   DOWNLOAD_DATASET(
     "Torch Torch BERT training test model"

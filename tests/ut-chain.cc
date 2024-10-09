@@ -42,7 +42,7 @@ static std::string not_found_str
 static std::string gpuid = "0"; // change as needed
 
 static std::string torch_detect_repo = "../examples/torch/fasterrcnn_torch";
-static std::string torch_classif_repo = "../examples/torch/resnet50_torch";
+static std::string torch_classif_repo = "../examples/torch/resnet50_torch241";
 
 static std::string caffe_word_detect_repo = "../examples/caffe/word_detect_v2";
 static std::string caffe_ocr_repo = "../examples/caffe/multiword_ocr";

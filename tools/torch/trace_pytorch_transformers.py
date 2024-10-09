@@ -139,9 +139,7 @@ for mname in args.models:
     else:
         raise ValueError("there is no method to trace this model: %s" % mname)
     
-    filename = os.path.join(args.output_dir, mname + 
-        ("-" + mtemplate if args.template in mclass.pretrained_model_archive_map else "") +
-        ("-pretrained" if args.pretrained else "") + ".pt")
+    filename = os.path.join(args.output_dir, mname +      ("-pretrained" if args.pretrained else "") + ".pt")
     logging.info("Saving to %s", filename)
     traced_model.save(filename)
 

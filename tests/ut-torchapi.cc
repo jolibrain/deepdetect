@@ -47,7 +47,7 @@ static std::string bad_param_str
 static std::string not_found_str
     = "{\"status\":{\"code\":404,\"msg\":\"NotFound\"}}";
 
-static std::string incept_repo = "../examples/torch/resnet50_torch/";
+static std::string incept_repo = "../examples/torch/resnet50_torch241/";
 static std::string detect_repo = "../examples/torch/fasterrcnn_torch/";
 static std::string seg_repo = "../examples/torch/deeplabv3_torch/";
 // static std::string detect_train_repo_fasterrcnn
@@ -58,24 +58,24 @@ static std::string detect_train_repo_fasterrcnn
 static std::string detect_train_repo_yolox
     = "../examples/torch/yolox_train_torch";
 static std::string resnet50_train_repo
-    = "../examples/torch/resnet50_training_torch_small/";
+    = "../examples/torch/resnet50_training_torch241_small/";
 static std::string resnet50_train_data
-    = "../examples/torch/resnet50_training_torch_small/train/";
+    = "../examples/torch/resnet50_training_torch241_small/train/";
 static std::string resnet50_train_data_reg
-    = "../examples/torch/resnet50_training_torch_small/"
+    = "../examples/torch/resnet50_training_torch241_small/"
       "list_all_shuf_rel.txt";
 static std::string resnet50_train_data_reg2
-    = "../examples/torch/resnet50_training_torch_small/"
+    = "../examples/torch/resnet50_training_torch241_small/"
       "list_all_shuf_rel2.txt";
 static std::string resnet50_train_data_classif
-    = "../examples/torch/resnet50_training_torch_small/"
+    = "../examples/torch/resnet50_training_torch241_small/"
       "list_all_shuf_rel_classif.txt";
 static std::string resnet50_test_data
-    = "../examples/torch/resnet50_training_torch_small/test/";
+    = "../examples/torch/resnet50_training_torch241_small/test/";
 static std::string resnet50_test_cats_data
-    = "../examples/torch/resnet50_training_torch_small/test_cats/";
+    = "../examples/torch/resnet50_training_torch241_small/test_cats/";
 static std::string resnet50_test_image
-    = "../examples/torch/resnet50_training_torch_small/train/cats/"
+    = "../examples/torch/resnet50_training_torch241_small/train/cats/"
       "cat.10097.jpg";
 
 static std::string resnet18_ocr_train_repo
@@ -106,7 +106,7 @@ static std::string resnet50_native_weights
 static std::string vit_train_repo = "../examples/torch/vit_training_torch/";
 
 static std::string bert_classif_repo
-    = "../examples/torch/bert_inference_torch/";
+    = "../examples/torch/bert_inference_torch241/";
 static std::string bert_train_repo
     = "../examples/torch/bert_training_torch_140_transformers_251/";
 static std::string bert_train_data
@@ -1041,7 +1041,7 @@ TEST(torchapi, service_train_resume)
   remove(
       (resnet50_train_repo + "solver-" + iterations_resnet50 + ".pt").c_str());
 
-  // Recreate service
+  // Recrea1te service
   japi.service_delete(sname, "");
 
   joutstr = japi.jrender(japi.service_create(sname, jstr));
