@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04 AS build
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -14,26 +14,26 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y python3-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
 
-# CMake
-RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
-RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
-
-# python2 pycompile + docker-buildkit is a bit buggy, it's slow as hell, so disable it for dev
-# bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
-RUN cp /bin/true /usr/bin/pycompile
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update -y && apt-get upgrade -y && apt-get install -y ca-certificates gpg  wget 
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y 
+RUN rm /usr/share/keyrings/kitware-archive-keyring.gpg
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y kitware-archive-keyring
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y cmake
 
 # Don't install opencv-ml-dev, it will install libprotobuf dans link dede to 2 versions of protobuf
 RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
     export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && apt-get install -y \
+    apt-get install -y \
     git \
     ccache \
     automake \
     build-essential \
     openjdk-8-jdk \
     pkg-config \
-    cmake \
     zip \
     g++ \
     gcc-7 g++-7 \
@@ -94,8 +94,9 @@ RUN for url in \
 # RUN pip install future pyyaml typing
 
 # Fix  ModuleNotFoundError: No module named 'dataclasses', 'typing_extensions' for torch 1.8.0
-RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install dataclasses typing_extensions
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+RUN python -m pip install --upgrade pip
+RUN python -m pip install dataclasses typing_extensions
 
 ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/
@@ -111,7 +112,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04 AS runtime
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 
