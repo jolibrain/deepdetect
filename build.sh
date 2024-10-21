@@ -140,7 +140,7 @@ else
 cd $DEEPDETECT_OPENCV4_BUILD_PATH
 fi
 cmake -D CMAKE_BUILD_TYPE=DEBUG \
--D CMAKE_INSTALL_PREFIX=/tmp/ \
+-D CMAKE_INSTALL_PREFIX=$HOME/tmp/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
 -D WITH_TBB=ON \
