@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=22.04
-ARG DD_CUDA_VERSION=11.8.0
+ARG DD_CUDA_VERSION=12.1.1
 ARG DD_CUDNN_VERSION=8
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-devel-ubuntu${DD_UBUNTU_VERSION}
 
