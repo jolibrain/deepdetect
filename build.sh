@@ -131,11 +131,11 @@ show_interactive_platform_selector() {
 if [[ ${BUILD_OPENCV} == "ON" ]]; then
 echo "Opencv will be built from source"
 # Build OpenCV 4 with CUDA
-DEEPDETECT_OPENCV4_BUILD_PATH="$(git rev-parse --show-toplevel)/build/opencv/opencv-4.7.0/build"
+DEEPDETECT_OPENCV4_BUILD_PATH="$(git rev-parse --show-toplevel)/build/opencv/opencv-4.10.0/build"
 if [ ! -d opencv ]; then
 echo "Downloading opencv"
-mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.7.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.7.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
-cd "opencv-4.7.0" && mkdir build && cd build
+mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.10.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.10.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
+cd "opencv-4.10.0" && mkdir build && cd build
 else
 cd $DEEPDETECT_OPENCV4_BUILD_PATH
 fi
@@ -162,7 +162,7 @@ cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D OPENCV_ENABLE_NONFREE=ON \
 -D BUILD_opencv_python2=OFF \
 -D BUILD_opencv_python3=OFF \
--D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.7.0/modules \
+-D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.10.0/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
 -D INSTALL_C_EXAMPLES=OFF \
 -D BUILD_EXAMPLES=OFF \
