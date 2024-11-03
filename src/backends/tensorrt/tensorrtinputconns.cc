@@ -263,7 +263,7 @@ namespace dd
             cv::Mat img = this->_images.at(_batch_index);
             CVMatToRTBuffer(img, 0, i);
 
-            if (!_masks_cuda.empty())
+            if (!_masks.empty())
               {
                 cv::Mat &mask = _masks.at(_batch_index);
                 if (_mask_num_channels == 3)
