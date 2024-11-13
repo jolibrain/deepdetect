@@ -455,6 +455,20 @@ if (USE_TORCH)
     "yolox_train_torch"
     )
   DOWNLOAD_DATASET(
+    "Torch training DETR Model"
+    "https://www.deepdetect.com/dd/examples/torch/detr_train_torch.tar.gz"
+    "examples/torch"
+    "detr_train_torch.tar.gz"
+    "detr_train_torch"
+    )
+  DOWNLOAD_DATASET(
+    "Torch training RT-DETRv2 Model"
+    "https://www.deepdetect.com/dd/examples/torch/rtdetrv2_train_torch.tar.gz"
+    "examples/torch"
+    "rtdetrv2_train_torch.tar.gz"
+    "rtdetrv2_train_torch"
+    )
+  DOWNLOAD_DATASET(
     "Torchvision training Resnet18 backbone for OCR"
     "https://www.deepdetect.com/dd/examples/torch/resnet18_training_torch_ocr.tar.gz"
     "examples/torch"

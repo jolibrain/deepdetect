@@ -228,6 +228,7 @@ namespace dd
     int _linear_in = 0;     /**<id of the input of the final linear layer */
     int _loss_id = -1; /**<id of the loss output. If >= 0, forward returns this
                           output only during training */
+    bool _detr = false;
     bool _hidden_states = false; /**< Take BERT hidden states as input. */
 
     unsigned int _nclasses = 0; /**< number of classes */
@@ -277,6 +278,11 @@ namespace dd
      * load linear layer weights only from pt format
      */
     void crnn_head_load();
+
+    /**
+     * DETR postprocessing
+     */
+    c10::IValue detr_postprocess(std::vector<c10::IValue> &source);
   };
 }
 #endif

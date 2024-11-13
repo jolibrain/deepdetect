@@ -57,6 +57,10 @@ static std::string detect_train_repo_fasterrcnn
     = "../examples/torch/fasterrcnn_train_torch111";
 static std::string detect_train_repo_yolox
     = "../examples/torch/yolox_train_torch";
+static std::string detect_train_repo_detr
+    = "../examples/torch/detr_train_torch";
+static std::string detect_train_repo_rtdetrv2
+    = "../examples/torch/rtdetrv2_train_torch";
 static std::string resnet50_train_repo
     = "../examples/torch/resnet50_training_torch241_small/";
 static std::string resnet50_train_data
@@ -3015,6 +3019,173 @@ TEST(torchapi, service_train_object_detection_yolox_any_size)
   fileops::clear_directory(detect_train_repo_yolox + "test_0.lmdb");
   fileops::remove_dir(detect_train_repo_yolox + "train.lmdb");
   fileops::remove_dir(detect_train_repo_yolox + "test_0.lmdb");
+}
+
+TEST(torchapi, service_train_object_detection_detr)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  // create service
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"detr\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_train_repo_detr
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "640,\"width\":640,\"rgb\":true,\"scale\":0.003921569,\"bbox\":true,"
+          "\"db\":true},\"mllib\":{\"template\":\"detr\",\"gpu\":true,"
+          "\"nclasses\":2}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"detectserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":3,\"clip\":true,\"clip_norm\":"
+        "0.1,\"solver_type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_"
+        "size\":2,\"test_batch_size\":2},\"resume\":false},\"input\":{"
+        "\"seed\":12347,\"db\":true,\"shuffle\":true},\"output\":{\"measure\":"
+        "[\"map\"]}},\"data\":[\""
+        + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
+
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+
+  // check metrics
+  auto &meas = jd["body"]["measure"];
+  ASSERT_TRUE(meas.HasMember("loss_bbox"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_0"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_1"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_2"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_3"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_4"));
+  ASSERT_TRUE(meas.HasMember("loss_ce"));
+  ASSERT_TRUE(meas.HasMember("loss_ce_0"));
+  ASSERT_TRUE(meas.HasMember("loss_ce_1"));
+  ASSERT_TRUE(meas.HasMember("loss_ce_2"));
+  ASSERT_TRUE(meas.HasMember("loss_ce_3"));
+  ASSERT_TRUE(meas.HasMember("loss_ce_4"));
+  ASSERT_TRUE(meas.HasMember("loss_giou"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_0"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_1"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_2"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_3"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_4"));
+  ASSERT_TRUE(meas.HasMember("total_loss"));
+
+  // check that predict works fine
+  std::string jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                            "\"input\":{\"height\":640,"
+                            "\"width\":640},\"output\":{\"bbox\":true, "
+                            "\"confidence_threshold\":0.8}},\"data\":[\""
+                            + detect_train_repo_fasterrcnn
+                            + "/imgs/la_melrose_ave-000020.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  // clear directory
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  fileops::remove_dir(detect_train_repo_detr);
+}
+
+TEST(torchapi, service_train_object_detection_rtdetrv2)
+{
+  setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8", true);
+  torch::manual_seed(torch_seed);
+  at::globalContext().setDeterministicCuDNN(true);
+
+  // create service
+  JsonAPI japi;
+  std::string sname = "detectserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"rtdetrv2\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + detect_train_repo_rtdetrv2
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "640,\"width\":640,\"rgb\":true,\"scale\":0.003921569,\"bbox\":true,"
+          "\"db\":true},\"mllib\":{\"template\":\"detr\",\"gpu\":true,"
+          "\"nclasses\":2}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // train
+  std::string jtrainstr
+      = "{\"service\":\"detectserv\",\"async\":false,\"parameters\":{"
+        "\"mllib\":{\"solver\":{\"iterations\":3,\"clip\":true,\"clip_norm\":"
+        "0.1,\"solver_type\":\"ADAM\",\"test_interval\":200},\"net\":{\"batch_"
+        "size\":2,\"test_batch_size\":2},\"resume\":false},\"input\":{"
+        "\"seed\":12347,\"db\":true,\"shuffle\":true},\"output\":{\"measure\":"
+        "[\"map\"]}},\"data\":[\""
+        + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
+
+  joutstr = japi.jrender(japi.service_train(jtrainstr));
+  JDoc jd;
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
+
+  // check metrics
+  auto &meas = jd["body"]["measure"];
+  ASSERT_TRUE(meas.HasMember("loss_bbox"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_aux_0"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_aux_1"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_dn_0"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_dn_1"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_dn_2"));
+  ASSERT_TRUE(meas.HasMember("loss_bbox_enc_0"));
+  ASSERT_TRUE(meas.HasMember("loss_giou"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_aux_0"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_aux_1"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_dn_0"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_dn_1"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_dn_2"));
+  ASSERT_TRUE(meas.HasMember("loss_giou_enc_0"));
+  ASSERT_TRUE(meas.HasMember("loss_vfl"));
+  ASSERT_TRUE(meas.HasMember("loss_vfl_aux_0"));
+  ASSERT_TRUE(meas.HasMember("loss_vfl_aux_1"));
+  ASSERT_TRUE(meas.HasMember("loss_vfl_dn_0"));
+  ASSERT_TRUE(meas.HasMember("loss_vfl_dn_1"));
+  ASSERT_TRUE(meas.HasMember("loss_vfl_dn_2"));
+  ASSERT_TRUE(meas.HasMember("loss_vfl_enc_0"));
+  ASSERT_TRUE(meas.HasMember("total_loss"));
+
+  // check that predict works fine
+  std::string jpredictstr = "{\"service\":\"detectserv\",\"parameters\":{"
+                            "\"input\":{\"height\":640,"
+                            "\"width\":640},\"output\":{\"bbox\":true, "
+                            "\"confidence_threshold\":0.8}},\"data\":[\""
+                            + detect_train_repo_fasterrcnn
+                            + "/imgs/la_melrose_ave-000020.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  jd = JDoc();
+  std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+
+  // clear directory
+  jstr = "{\"clear\":\"full\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+  fileops::remove_dir(detect_train_repo_rtdetrv2);
 }
 
 TEST(torchapi, service_train_images_native)

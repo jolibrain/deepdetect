@@ -468,6 +468,8 @@ namespace dd
       }
     else if (_template == "detr")
       {
+        _module._loss_id = 0;
+        _module._detr = true;
       }
     else if (!_template.empty())
       {
