@@ -2,38 +2,32 @@ defaults:
   actions:
     queue:
       name: default
-      method: rebase
-
 queue_rules:
   - name: default
-    conditions:
-        # - "status-success=Semantic Pull Request"
-      - "status-success=Jenkins - Unit tests GPU"
-      - "status-success=Jenkins - TensorRT Unit tests GPU"
-      - or:
-        - "label!=ci:docker"
-        - "status-success=Jenkins - Docker build"
-      
-pull_request_rules:
-  - name: "automatic merge with 2 reviews"
-    conditions:
+    queue_conditions:
       - "base=master"
       - "label!=process:manual-merge"
       - "#changes-requested-reviews-by=0"
+      - "status-success=Jenkins - Unit tests GPU"
+      - "status-success=Jenkins - TensorRT Unit tests GPU"
+      - or:
+          - "label!=ci:docker"
+          - "status-success=Jenkins - Docker build"
+      - or:
+          - "label=process:no-need-review"
+          - and:
+              - "#approved-reviews-by>=2"
+              - "label=process:ready-to-review"
+    merge_conditions:
         # - "status-success=Semantic Pull Request"
       - "status-success=Jenkins - Unit tests GPU"
       - "status-success=Jenkins - TensorRT Unit tests GPU"
       - or:
-        - "label!=ci:docker"
-        - "status-success=Jenkins - Docker build"
-      - or:
-        - "label=process:no-need-review"
-        - and:
-          - "#approved-reviews-by>=2"
-          - "label=process:ready-to-review"
-    actions:
-      queue:
+          - "label!=ci:docker"
+          - "status-success=Jenkins - Docker build"
+    merge_method: rebase
 
+pull_request_rules:
   - name: "request review"
     conditions:
       - "label=process:ready-to-review"
@@ -73,8 +67,8 @@ pull_request_rules:
     actions:
       label:
         add:
-            - ci:docker
-            
+          - ci:docker
+
   - name: add merge-queued label
     conditions:
       - queue-position>=0
@@ -82,7 +76,7 @@ pull_request_rules:
       label:
         add:
           - process:merge-queued
-          
+
   - name: remove merge-queued label
     conditions:
       - queue-position<0
@@ -90,3 +84,7 @@ pull_request_rules:
       label:
         remove:
           - process:merge-queued
+  - name: refactored queue action rule
+    conditions: []
+    actions:
+      queue:
