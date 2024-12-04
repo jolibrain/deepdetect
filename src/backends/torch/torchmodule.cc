@@ -24,6 +24,7 @@
 #include "graph/graph.h"
 #include "native/native.h"
 #include "torchutils.h"
+#include "utils/rectangular_lsap.h"
 
 namespace dd
 {
@@ -346,6 +347,9 @@ namespace dd
             source = torch_utils::unwrap_c10_vector(output);
           }
       }
+
+    if (_training && _detr)
+      return detr_postprocess(source);
 
     if (_training && _loss_id >= 0)
       {
@@ -749,6 +753,51 @@ namespace dd
                   long_number_to_str(total_param_count));
     _params_count = total_param_count;
     _frozen_params_count = total_frozen_count;
+  }
+
+  c10::IValue TorchModule::detr_postprocess(std::vector<c10::IValue> &source)
+  {
+    // DETR matcher outputs a List[Tuple[Tensor, Tensor]]
+    // https://github.com/facebookresearch/detr/blob/main/models/matcher.py#L82
+    // which seems impossible/difficult to wrap in IValue
+    // https://github.com/pytorch/pytorch/issues/90398
+    // we output a List[Tensor] of 2D tensors instead and unwrap it later
+    std::vector<torch::Tensor> out_list;
+
+    // solve the linear_sum_assignment problems
+    // TODO: do it in parallel?
+    auto in_list_raw = source.at(3); // detr_indices
+    auto in_list = torch_utils::unwrap_c10_vector(in_list_raw);
+    for (auto &in_item_raw : in_list)
+      {
+        auto in_item = in_item_raw.toTensor().to(torch::kFloat64);
+        auto shape = in_item.sizes();
+        int rows = shape[0];
+        int cols = shape[1];
+        auto out_item = torch::zeros({ 2, cols }, torch::kInt64);
+        auto ret = scipy::solve_rectangular_linear_sum_assignment(
+            rows, cols, in_item.data_ptr<double>(), false,
+            out_item[0].data_ptr<int64_t>(), out_item[1].data_ptr<int64_t>());
+        if (ret)
+          throw MLLibBadParamException(
+              "detr_postprocess: linear_sum_assignment error");
+        out_list.push_back(out_item);
+      }
+
+    // call loss
+    if (!_traced)
+      throw MLLibBadParamException("detr_postprocess: model is not traced");
+    auto method = _traced->find_method("loss");
+    if (!method)
+      throw MLLibBadParamException("detr_postprocess: loss method not found");
+    auto output = (*method)({
+        source.at(1), // detr_outputs
+        source.at(2), // detr_targets
+        out_list      // detr_indices
+    });
+
+    // return a dictionary of losses, with total_loss key used as custom loss
+    return output;
   }
 
   template void TorchModule::post_transform(
