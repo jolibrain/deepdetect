@@ -20,7 +20,7 @@
 #ifndef TENSORRTLIB_H
 #define TENSORRTLIB_H
 
-#include "NvCaffeParser.h"
+//#include "NvCaffeParser.h"
 #include "NvInfer.h"
 
 #include "apidata.h"
@@ -128,7 +128,7 @@ namespace dd
 
     //!< The TensorRT engine used to run the network
     std::shared_ptr<TRTErrorRecorder> _error_recorder = nullptr;
-    std::shared_ptr<nvinfer1::IInt8Calibrator> _calibrator = nullptr;
+    // std::shared_ptr<nvinfer1::IInt8Calibrator> _calibrator = nullptr;
     std::shared_ptr<nvinfer1::ICudaEngine> _engine = nullptr;
     std::shared_ptr<nvinfer1::IBuilder> _builder = nullptr;
     std::shared_ptr<nvinfer1::IExecutionContext> _context = nullptr;
@@ -168,7 +168,8 @@ namespace dd
         _net_mutex; /**< mutex around net, e.g. no concurrent predict calls as
                        net is not re-instantiated. Use batches instead. */
 
-    nvinfer1::ICudaEngine *read_engine_from_caffe(const std::string &out_blob);
+    // nvinfer1::ICudaEngine *read_engine_from_caffe(const std::string
+    // &out_blob);
 
     nvinfer1::ICudaEngine *read_engine_from_onnx();
 
