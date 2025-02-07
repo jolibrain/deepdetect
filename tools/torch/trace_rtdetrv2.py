@@ -186,7 +186,7 @@ configs = {
     "rtdetrv2_s": "rtdetrv2_r18vd_120e_coco.yml",
     "rtdetrv2_m": "rtdetrv2_r50vd_m_7x_coco.yml",
     "rtdetrv2_l": "rtdetrv2_r50vd_6x_coco.yml",
-    "rtdetrv2_x": "rtdetrv2/rtdetrv2_r101vd_6x_coco.yml",
+    "rtdetrv2_x": "rtdetrv2_r101vd_6x_coco.yml",
     # discrete sampling
     "rtdetrv2_s_dsp": "rtdetrv2_r18vd_dsp_3x_coco.yml",
     "rtdetrv2_m_dsp": "rtdetrv2_r50vd_m_dsp_3x_coco.yml",
