@@ -83,7 +83,7 @@ class WrappedRTDETR(torch.nn.Module):
         bboxes = self.box_xyxy_to_cxcywh(bboxes)
 
         # and to relative [0, 1] coordinates
-        scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=0).cuda()
+        scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=0).to(bboxes.device)
         bboxes = bboxes / scale_fct
 
         # convert ids, bboxes, labels to DETR targets
@@ -123,7 +123,7 @@ class WrappedRTDETR(torch.nn.Module):
         """
         l_x = [x[i] for i in range(x.shape[0])]
         sample = x
-        image_sizes = torch.zeros([len(l_x), 2]).cuda()
+        image_sizes = torch.zeros([len(l_x), 2]).to(x.device)
         i = 0
         for x in l_x:
             image_sizes[i][0] = x.shape[1]
