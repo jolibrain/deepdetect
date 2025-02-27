@@ -80,7 +80,7 @@ class PostProcessTrain(torch.nn.Module):
         bboxes = self.box_xyxy_to_cxcywh(bboxes)
 
         # and to relative [0, 1] coordinates
-        scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=0).cuda()
+        scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=0).to(bboxes.device)
         bboxes = bboxes / scale_fct
 
         # convert ids, bboxes, labels to DETR targets
