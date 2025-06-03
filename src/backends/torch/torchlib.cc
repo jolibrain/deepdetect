@@ -2255,11 +2255,10 @@ namespace dd
               output = torch_utils::to_tensor_safe(out_ivalue);
             output = torch::softmax(output, 1);
             torch::Tensor target = batch.target.at(0).to(torch::kFloat64);
-            torch::Tensor segmap
-                = torch::flatten(torch::argmax(output.squeeze(), 1))
-                      .contiguous()
-                      .to(torch::kFloat64)
-                      .to(cpu); // squeeze removes the batch size
+            torch::Tensor segmap = torch::flatten(torch::argmax(output, 1))
+                                       .contiguous()
+                                       .to(torch::kFloat64)
+                                       .to(cpu);
             double *startout = segmap.data_ptr<double>();
             double *target_arr = target.data_ptr<double>();
             int tensormap_size = output.size(2) * output.size(3);
