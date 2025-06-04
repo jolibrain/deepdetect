@@ -95,3 +95,6 @@ RUN python -m pip install onnx
 RUN apt clean -y
 ADD ci/gitconfig /etc/gitconfig
 WORKDIR /root
+
+# Workaround for dependencies with old cmake_minimum_required
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5

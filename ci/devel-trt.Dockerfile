@@ -93,6 +93,9 @@ WORKDIR /tmp
 RUN wget http://www.deepdetect.com/stuff/Video_Codec_SDK_11.1.5.zip && unzip Video_Codec_SDK_11.1.5.zip
 RUN cd Video_Codec_SDK_11.1.5 && cp Interface/* /usr/local/cuda/targets/x86_64-linux/include/ && cp Lib/linux/stubs/x86_64/* /usr/local/cuda/targets/x86_64-linux/lib/stubs/
 
+# Workaround for dependencies with old cmake_minimum_required
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
+
 # Build OpenCV 4 with CUDA
 RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.7.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.7.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
 RUN cd /tmp/opencv/opencv-4.7.0 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
