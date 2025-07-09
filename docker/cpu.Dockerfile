@@ -23,6 +23,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y
 RUN rm /usr/share/keyrings/kitware-archive-keyring.gpg
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y kitware-archive-keyring
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y cmake
+RUN cmake --version
 
 # python2 pycompile + docker-buildkit is a bit buggy, it's slow as hell, so disable it for dev
 # bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
