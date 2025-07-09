@@ -53,14 +53,17 @@ import os
 import sys
 import argparse
 import torch
+import torchvision
+import math
 
 
 class WrappedRTDETR(torch.nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, nms_threshold):
         super().__init__()
         self.model = cfg.model.deploy()
         self.postprocessor = cfg.postprocessor.deploy()
         self.criterion = cfg.criterion
+        self.nms_threshold = nms_threshold
 
     def box_xyxy_to_cxcywh(self, x):
         x0, y0, x1, y1 = x.unbind(-1)
@@ -77,7 +80,7 @@ class WrappedRTDETR(torch.nn.Module):
         # https://github.com/facebookresearch/detr/blob/main/models/detr.py#L153
 
         # assume all images in the batch are the same size
-        img_h, img_w = target_sizes[0].unbind(0)
+        img_w, img_h = target_sizes[0].unbind(0)
 
         # convert to [xc, yc, w, h] format
         bboxes = self.box_xyxy_to_cxcywh(bboxes)
@@ -85,6 +88,12 @@ class WrappedRTDETR(torch.nn.Module):
         # and to relative [0, 1] coordinates
         scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=0).to(bboxes.device)
         bboxes = bboxes / scale_fct
+
+        # remove no bbox
+        valids = labels > 0
+        ids = ids[valids]
+        bboxes = bboxes[valids]
+        labels = labels[valids]
 
         # convert ids, bboxes, labels to DETR targets
         # DD uses ids, DETR expects lists of boxes, labels
@@ -114,20 +123,26 @@ class WrappedRTDETR(torch.nn.Module):
             {"scores": s, "labels": l, "boxes": b}
             for s, l, b in zip(scores, labels, boxes)
         ]
+        # apply nms
+        if self.nms_threshold is not None:
+            for result in results:
+                keep = torchvision.ops.batched_nms(result["boxes"], result["scores"], result["labels"], self.nms_threshold)
+                for k in result.keys():
+                    result[k] = result[k][keep]
         return results
 
     def forward(self, x, ids=None, bboxes=None, labels=None):
         # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor])
         """
-        x: one image of dimensions [batch size, channel count, width, height]
+        x: one image of dimensions [batch size, channel count, height, width]
         """
         l_x = [x[i] for i in range(x.shape[0])]
         sample = x
         image_sizes = torch.zeros([len(l_x), 2]).to(x.device)
         i = 0
         for x in l_x:
-            image_sizes[i][0] = x.shape[1]
-            image_sizes[i][1] = x.shape[2]
+            image_sizes[i][0] = x.shape[2]
+            image_sizes[i][1] = x.shape[1]
             i += 1
 
         # default placeholders
@@ -153,10 +168,14 @@ class WrappedRTDETR(torch.nn.Module):
                 detr_indices += self.criterion.matcher(last_outputs, detr_targets)
                 if "aux_outputs" in detr_outputs:
                     for aux_outputs in detr_outputs["aux_outputs"]:
-                        detr_indices += self.criterion.matcher(aux_outputs, detr_targets)
+                        detr_indices += self.criterion.matcher(
+                            aux_outputs, detr_targets
+                        )
                 if "enc_aux_outputs" in detr_outputs:
                     for aux_outputs in detr_outputs["enc_aux_outputs"]:
-                        detr_indices += self.criterion.matcher(aux_outputs, detr_targets)
+                        detr_indices += self.criterion.matcher(
+                            aux_outputs, detr_targets
+                        )
         else:
             with torch.no_grad():
                 # converting detr to torchvision detection format
@@ -170,7 +189,9 @@ class WrappedRTDETR(torch.nn.Module):
         # convert List[Tensor] of 2D tensors indices to List[Tuple[Tensor, Tensor]] as expected by DETR criterion
         indices = [(x[0], x[1]) for x in indices]
         # split the indices by targets
-        indices = [indices[i : i + len(targets)] for i in range(0, len(indices), len(targets))]
+        indices = [
+            indices[i : i + len(targets)] for i in range(0, len(indices), len(targets))
+        ]
         # losses are already weighted by criterion
         losses = self.criterion(outputs, targets, indices)
         # make sure we consumed all the indices
@@ -209,6 +230,27 @@ parser.add_argument(
 parser.add_argument(
     "--num_classes", type=int, default=81, help="Number of classes of the model"
 )
+parser.add_argument(
+    "--num_queries", default=300, type=int, help="Number of query slots"
+)
+parser.add_argument(
+    "--img_width",
+    type=int,
+    default=640,
+    help="Width of eval_spatial_size",
+)
+parser.add_argument(
+    "--img_height",
+    type=int,
+    default=640,
+    help="Height of eval_spatial_size",
+)
+parser.add_argument(
+    "--nms_threshold",
+    type=float,
+    default=None,
+    help="Enable NMS with the specified IoU threshold"
+)
 args = parser.parse_args()
 
 # DETR already reserves a no-object class
@@ -218,15 +260,19 @@ args.num_classes -= 1
 sys.path.append(args.path_to_rtdetrv2)
 from src.core import YAMLConfig
 
-# TODO handle cfg eval_spatial_size, 640x640 by default
-config = args.path_to_rtdetrv2 + "/configs/rtdetrv2/" + configs[args.model]
-
 # from https://github.com/lyuwenyu/RT-DETR/blob/main/rtdetrv2_pytorch/tools/export_onnx.py
+config = args.path_to_rtdetrv2 + "/configs/rtdetrv2/" + configs[args.model]
 cfg = YAMLConfig(
     config,
     resume=args.model_in_file,
+    eval_spatial_size=[args.img_height, args.img_width],
     num_classes=args.num_classes,
     PResNet={"pretrained": args.model_in_file is not None},
+    RTDETRTransformerv2={
+        "num_queries": args.num_queries,
+        "num_denoising": math.ceil(args.num_queries / 3),
+    },
+    RTDETRPostProcessor={"num_top_queries": args.num_queries},
 )
 
 # load checkpoint
@@ -260,16 +306,40 @@ if args.model_in_file:
             )
         }
 
+    # remove keys incompatible with resolution
+    if args.img_width != 640 or args.img_height != 640:
+        state = {
+            k: v
+            for k, v in state.items()
+            if not any(
+                k.startswith(x)
+                for x in [
+                    "decoder.anchors",
+                    "decoder.valid_mask",
+                ]
+            )
+        }
+
     cfg.model.load_state_dict(state, strict=False)
 
 # wrap model
-model = WrappedRTDETR(cfg)
+model = WrappedRTDETR(cfg, args.nms_threshold)
 model.cuda()
 model.eval()
 filename = os.path.join(
     args.output_dir,
-    args.model + "_cls" + str(args.num_classes + 1)
-    + ("_pretrained" if args.model_in_file else "") + ".pt",
+    args.model
+    + "_"
+    + str(args.img_width)
+    + "x"
+    + str(args.img_height)
+    + "_cls"
+    + str(args.num_classes + 1)
+    + "_queries"
+    + str(args.num_queries)
+    + ("_nms" + str(args.nms_threshold) if args.nms_threshold else "")
+    + ("_pretrained" if args.model_in_file else "")
+    + ".pt",
 )
 print("Attempting jit export...")
 model_jit = torch.jit.script(model)
