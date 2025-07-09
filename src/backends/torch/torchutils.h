@@ -158,8 +158,9 @@ namespace dd
 
     /** Converts a tensor to a CV image that can be saved on the disk.
      * XXX(louis) this function is currently debug only, and makes strong
-     * assumptions on the input tensor format. */
-    cv::Mat tensorToImage(torch::Tensor tensor);
+     * assumptions on the input tensor format.
+     * \param rgb wether the tensor image is rgb */
+    cv::Mat tensorToImage(torch::Tensor tensor, bool rgb = false);
   }
 }
 #endif
