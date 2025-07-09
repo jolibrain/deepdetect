@@ -22,7 +22,7 @@
 #include "tensorrtlib.h"
 #include "utils/apitools.h"
 #include "tensorrtinputconns.h"
-#include "tensorrtcalibrator.hpp"
+//#include "tensorrtcalibrator.hpp"
 #include "NvInferPlugin.h"
 #include "../parsers/onnx/NvOnnxParser.h"
 #include "protoUtils.h"
@@ -34,6 +34,8 @@
 #endif
 #include "utils/bbox.hpp"
 #include "models/yolo.hpp"
+
+#include <cuda_runtime.h>
 
 namespace dd
 {
@@ -56,6 +58,42 @@ namespace dd
         throw MLLibInternalException("Unsupported datatype: "
                                      + std::to_string(int(dtype)));
       }
+  }
+
+  // Replacement function for platformHasFastFp16()
+  bool platformHasFastFp16()
+  {
+    int device;
+    cudaGetDevice(&device);
+
+    cudaDeviceProp prop;
+    if (cudaGetDeviceProperties(&prop, device) != cudaSuccess)
+      {
+        std::cerr << "Error: Unable to retrieve CUDA device properties."
+                  << std::endl;
+        return false;
+      }
+
+    // FP16 support requires compute capability 5.3 or higher
+    return (prop.major > 5 || (prop.major == 5 && prop.minor >= 3));
+  }
+
+  // Replacement function for platformHasFastInt8()
+  bool platformHasFastInt8()
+  {
+    int device;
+    cudaGetDevice(&device);
+
+    cudaDeviceProp prop;
+    if (cudaGetDeviceProperties(&prop, device) != cudaSuccess)
+      {
+        std::cerr << "Error: Unable to retrieve CUDA device properties."
+                  << std::endl;
+        return false;
+      }
+
+    // INT8 support requires compute capability 6.1 or higher
+    return (prop.major > 6 || (prop.major == 6 && prop.minor >= 1));
   }
 
   static int findEngineBS(std::string repo, std::string engineFileName,
@@ -141,7 +179,7 @@ namespace dd
     _keepCount = tl._keepCount;
     _dims = tl._dims;
     _error_recorder = tl._error_recorder;
-    _calibrator = tl._calibrator;
+    //_calibrator = tl._calibrator;
     _engine = tl._engine;
     _builder = tl._builder;
     _context = tl._context;
@@ -155,7 +193,7 @@ namespace dd
               TMLModel>::~TensorRTLib()
   {
     // Delete objects in the correct order
-    _calibrator = nullptr;
+    //_calibrator = nullptr;
     _context = nullptr;
     _engine = nullptr;
     _builderc = nullptr;
@@ -302,7 +340,8 @@ namespace dd
       {
         if (_datatype == nvinfer1::DataType::kHALF)
           {
-            if (!_builder->platformHasFastFp16())
+            // if (!_builder->platformHasFastFp16())
+            if (platformHasFastFp16())
               {
                 _builderc->setFlag(nvinfer1::BuilderFlag::kFP16);
                 this->_logger->info("Setting FP16 mode");
@@ -312,7 +351,8 @@ namespace dd
           }
         else if (_datatype == nvinfer1::DataType::kINT8)
           {
-            if (_builder->platformHasFastInt8())
+            // if (_builder->platformHasFastInt8())
+            if (platformHasFastInt8())
               {
                 _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
                 this->_logger->info("Setting INT8 mode");
@@ -371,7 +411,7 @@ namespace dd
     return 0;
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+  /*  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
   nvinfer1::ICudaEngine *
   TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
@@ -421,11 +461,11 @@ namespace dd
 #pragma GCC diagnostic pop
 
     _builderc->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
-                                  _max_workspace_size);
-    if (_calibrator)
-      _builderc->setInt8Calibrator(_calibrator.get());
+    _max_workspace_size);*/
+  /*if (_calibrator)
+    _builderc->setInt8Calibrator(_calibrator.get());*/
 
-    network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
+  /*    network->getLayer(0)->setPrecision(nvinfer1::DataType::kFLOAT);
 
     nvinfer1::ILayer *outl = NULL;
     int idx = network->getNbLayers() - 1;
@@ -444,7 +484,7 @@ namespace dd
     nvinfer1::IHostMemory *n
         = _builder->buildSerializedNetwork(*network, *_builderc);
     return _runtime->deserializeCudaEngine(n->data(), n->size());
-  }
+    }*/
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -452,11 +492,10 @@ namespace dd
   TensorRTLib<TInputConnectorStrategy, TOutputConnectorStrategy,
               TMLModel>::read_engine_from_onnx()
   {
-    const auto explicitBatch
-        = 1U << static_cast<uint32_t>(
-              nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+    // const auto explicitBatch = 1U << static_cast<uint32_t>();
+    // nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     std::unique_ptr<nvinfer1::INetworkDefinition> network(
-        _builder->createNetworkV2(explicitBatch));
+        _builder->createNetworkV2(0)); // explicitBatch));
     _explicit_batch = true;
 
     nvonnxparser::IParser *onnxParser
@@ -475,8 +514,8 @@ namespace dd
             "TensorRT");
       }
 
-    if (_calibrator)
-      _builderc->setInt8Calibrator(_calibrator.get());
+    /*if (_calibrator)
+      _builderc->setInt8Calibrator(_calibrator.get());*/
 
     // TODO check with onnx models dynamic shape
     this->_logger->warn("Onnx model: max batch size not used");
@@ -725,7 +764,7 @@ namespace dd
                       }
                   }
 
-                bool calibrate_from_cache = !calibration;
+                /*bool calibrate_from_cache = !calibration;
                 if (calibrate_from_cache)
                   this->_logger->info(
                       "Setting up the int8 calibrator using cache");
@@ -734,16 +773,17 @@ namespace dd
                       "Setting up the int8 calibrator using test data");
                 _calibrator.reset(new TRTCalibrator<TInputConnectorStrategy>(
                     &inputc, this->_mlmodel._repo, _max_batch_size,
-                    calibrate_from_cache, this->_logger));
+                    calibrate_from_cache, this->_logger));*/
               }
 
-            if (this->_mlmodel._model.find("net_tensorRT.proto")
-                    != std::string::npos
-                || !this->_mlmodel._def.empty())
-              {
-                le = read_engine_from_caffe(out_blob);
-              }
-            else if (this->_mlmodel._source_type == "onnx")
+            /*if (this->_mlmodel._model.find("net_tensorRT.proto")
+                != std::string::npos
+            || !this->_mlmodel._def.empty())
+          {
+            le = read_engine_from_caffe(out_blob);
+          }
+          else */
+            if (this->_mlmodel._source_type == "onnx")
               {
                 le = read_engine_from_onnx();
               }
@@ -764,7 +804,7 @@ namespace dd
               }
 
             // once the engine is built, calibrator is not needed anymore
-            _calibrator = nullptr;
+            //_calibrator = nullptr;
           }
         else
           {
@@ -852,7 +892,8 @@ namespace dd
             else if (_timeserie)
               {
                 throw MLLibBadParamException(
-                    "timeseries not yet implemented over tensorRT backend");
+                    "timeseries not yet implemented over tensorRT "
+                    "backend");
               }
             // GAN / raw output
             else if (!extract_layer.empty())
@@ -867,7 +908,8 @@ namespace dd
                                    * _dims.d[3]);
                 else
                   throw MLLibBadParamException(
-                      "raw/image output model requires 4 output dimensions");
+                      "raw/image output model requires 4 output "
+                      "dimensions");
 
                 if (inputc._bw)
                   cudaMalloc(&_buffers[_inputIndices[0]],
@@ -993,8 +1035,8 @@ namespace dd
               {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-                enqueue_success = _context->enqueue(
-                    num_processed, _buffers.data(), cstream, nullptr);
+                enqueue_success = _context->enqueueV3(cstream);
+                // num_processed, _buffers.data(), cstream, nullptr);
 #pragma GCC diagnostic pop
               }
             else
@@ -1030,7 +1072,8 @@ namespace dd
             else if (_timeserie)
               {
                 throw MLLibBadParamException(
-                    "timeseries not yet implemented over tensorRT backend");
+                    "timeseries not yet implemented over tensorRT "
+                    "backend");
               }
             // GAN/raw output
             else if (!extract_layer.empty())
@@ -1153,7 +1196,8 @@ namespace dd
 
                 if (_need_nms)
                   {
-                    // We assume that bboxes are already sorted in model output
+                    // We assume that bboxes are already sorted in model
+                    // output
                     bbox_utils::nms_sorted_bboxes(
                         bboxes, probs, cats,
                         (double)output_params->nms_threshold,
