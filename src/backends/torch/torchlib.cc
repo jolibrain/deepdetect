@@ -24,8 +24,10 @@
 
 #include "outputconnectorstrategy.h"
 
+#ifdef USE_CAFFE
 #include "generators/net_caffe.h"
 #include "generators/net_caffe_recurrent.h"
+#endif
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -362,11 +364,13 @@ namespace dd
       {
         _ctc = true;
       }
+#ifdef USE_CAFFE
     else if (_template.find("recurrent") != std::string::npos
              || NativeFactory::is_timeserie(_template))
       {
         _timeserie = true;
       }
+#endif
     if (!_regression && !_timeserie && !_bbox && !_segmentation && !_ctc
         && self_supervised.empty())
       _classification = true; // classification is default
@@ -392,6 +396,7 @@ namespace dd
     _module._logger = this->_logger;
     _module._finetuning = _finetuning;
 
+#ifdef USE_CAFFE
     if (_template == "recurrent")
       {
         // call caffe net generator before everything else
@@ -411,6 +416,7 @@ namespace dd
           }
         this->_mlmodel._proto = dest_net;
       }
+#endif
 
     bool model_not_found = this->_mlmodel._traced.empty()
                            && this->_mlmodel._proto.empty()
@@ -475,7 +481,11 @@ namespace dd
       {
         bool model_allocated_at_train = NativeFactory::is_timeserie(_template)
                                         || NativeFactory::is_ctc(_template)
+#ifdef USE_CAFFE
                                         || _template == "recurrent";
+#else
+	;
+#endif
 
         if (model_allocated_at_train)
           this->_logger->info("Model allocated during training");
