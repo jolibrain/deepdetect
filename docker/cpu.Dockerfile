@@ -111,6 +111,9 @@ WORKDIR /opt/deepdetect/
 ENV CCACHE_DIR=/ccache
 ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+# Workaround for dependencies with old cmake_minimum_required
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
+
 # Build Deepdetect
 ENV TERM=xterm
 RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
