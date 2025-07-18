@@ -30,9 +30,9 @@ cmake ..  \
     -DUSE_SIMSEARCH=ON  \
     -DUSE_TSNE=ON  \
     -DUSE_XGBOOST=ON  \
-    -DUSE_CAFFE=ON \
+    -DUSE_CAFFE=OFF \
     -DUSE_TORCH=ON  \
-    -DUSE_NCNN=ON  \
+    -DUSE_NCNN=OFF  \
     -DUSE_TENSORRT=OFF  \
     -DUSE_TENSORRT_OSS=OFF  \
     -DCUDA_ARCH_FLAGS="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_86,code=sm_86" \
