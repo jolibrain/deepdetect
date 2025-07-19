@@ -50,7 +50,8 @@ inline std::string get_trt_archi()
   return std::to_string(prop.major) + std::to_string(prop.minor);
 }
 
-TEST(tensorrtapi, service_predict_best)
+// TRT from caffe models is not supported yet in TRT 10+
+/*TEST(tensorrtapi, service_predict_best)
 {
   // create service
   JsonAPI japi;
@@ -92,7 +93,7 @@ TEST(tensorrtapi, service_predict_best)
   ASSERT_TRUE(!fileops::file_exists(squeezv1_repo + "net_tensorRT.proto"));
   ASSERT_TRUE(!fileops::file_exists(squeezv1_repo + "TRTengine_arch"
                                     + get_trt_archi() + "_fp32_bs1"));
-}
+                                    }*/
 
 TEST(tensorrtapi, service_predict_onnx)
 {
@@ -306,7 +307,8 @@ TEST(tensorrtapi, service_predict_gan_onnx)
                                     + get_trt_archi() + "_fp16_bs1"));
 }
 
-TEST(tensorrtapi, service_predict_gan_int8)
+// Implicit quantization is no more supported in TRT 10+
+/*TEST(tensorrtapi, service_predict_gan_int8)
 {
   // create service
   JsonAPI japi;
@@ -335,7 +337,8 @@ TEST(tensorrtapi, service_predict_gan_int8)
   std::cout << "joutstr=" << joutstr << std::endl;
   JDoc jd;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
-  ASSERT_TRUE(fileops::file_exists(cyclegan_onnx_repo + "calibration_table"));
+  // ASSERT_TRUE(fileops::file_exists(cyclegan_onnx_repo +
+  // "calibration_table"));
   ASSERT_TRUE(fileops::file_exists(cyclegan_onnx_repo + "TRTengine_arch"
                                    + get_trt_archi() + "_int8_bs1"));
 
@@ -360,7 +363,8 @@ TEST(tensorrtapi, service_predict_gan_int8)
   jstr = "{\"clear\":\"lib\"}";
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
-  ASSERT_TRUE(!fileops::file_exists(cyclegan_onnx_repo + "calibration_table"));
+  // ASSERT_TRUE(!fileops::file_exists(cyclegan_onnx_repo +
+  // "calibration_table"));
   ASSERT_TRUE(!fileops::file_exists(cyclegan_onnx_repo + "TRTengine_arch"
                                     + get_trt_archi() + "_int8_bs1"));
-}
+                                    }*/
