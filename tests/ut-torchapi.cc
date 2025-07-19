@@ -231,9 +231,10 @@ TEST(torchapi, service_predict_native_bw)
         + "\",\"create_repository\":true},\"parameters\":{\"input\":{"
           "\"connector\":\"image\",\"bw\":true,"
           "\"width\":224,\"height\":224,\"db\":true},"
-          "\"mllib\":{\"nclasses\":2,\"gpu\":true,\"template\":\"resnet50\"}}"
+          "\"mllib\":{\"nclasses\":2,\"template\":\"resnet50\"}}"
           "}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  std::cout << "joutstr=" << joutstr << std::endl;
 
   std::string jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
@@ -502,6 +503,40 @@ TEST(torchapi, service_predict_segmentation)
   ASSERT_TRUE(confs.IsArray());
   ASSERT_TRUE(preds.Size() == 500 * 374);
   ASSERT_TRUE(confs.Size() == 500 * 374);
+}
+
+TEST(torchapi, service_predict_segmentation_cf)
+{
+  JsonAPI japi;
+  std::string sname = "segserv";
+  std::string jstr
+      = "{\"mllib\":\"torch\",\"description\":\"deeplabv3\",\"type\":"
+        "\"supervised\",\"model\":{\"repository\":\""
+        + seg_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"segmentation\":true,\"nclasses\":21}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+  std::string jpredictstr
+      = "{\"service\":\"segserv\",\"parameters\":{"
+        "\"input\":{\"height\":224,"
+        "\"width\":224},\"output\":{\"segmentation\":true, "
+        "\"confidence_threshold\":0.1}},\"data\":[\""
+        + seg_repo + "cat.jpg\"]}";
+
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  // std::cout << "joutstr=" << joutstr << std::endl;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  auto &preds = jd["body"]["predictions"][0]["vals"];
+  ASSERT_TRUE(preds.IsArray());
+  ASSERT_TRUE(preds.Size() == 500 * 374);
 }
 
 TEST(torchapi, service_predict_txt_classification)

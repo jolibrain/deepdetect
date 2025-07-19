@@ -1869,10 +1869,28 @@ namespace dd
                                  .to(cpu);
                   }
                 else
-                  segmap = torch::flatten(torch::argmax(output.squeeze(), 0))
-                               .contiguous()
-                               .to(torch::kFloat64)
-                               .to(cpu); // squeeze removes the batch size
+                  {
+                    if (confidence_threshold == 0)
+                      segmap
+                          = torch::flatten(torch::argmax(output.squeeze(), 0))
+                                .contiguous()
+                                .to(torch::kFloat64)
+                                .to(cpu); // squeeze removes the batch size
+
+                    else // filter out classes with confidence_threshold
+                      {
+                        auto non_bg = output.squeeze().narrow(
+                            0, 1, output.size(0) - 1);
+                        const float neg_inf
+                            = -std::numeric_limits<float>::infinity();
+                        non_bg.masked_fill_(non_bg < confidence_threshold,
+                                            neg_inf);
+                        segmap = torch::flatten(std::get<1>(output.max(1)))
+                                     .contiguous()
+                                     .to(torch::kFloat64)
+                                     .to(cpu);
+                      }
+                  }
 
                 APIData rad;
                 std::string uri;
