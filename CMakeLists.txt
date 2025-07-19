@@ -114,13 +114,13 @@ else()
 endif()
 
 if (APPLE)
-    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17")
+    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17" )
 
     message(STATUS "Apple build: CUDA is disabled")
     set(USE_CUDNN OFF)
     set(USE_CUDA_CV OFF)
 else()
-    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17 -Wl,--no-as-needed -ltcmalloc_minimal")
+    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17 -Wl,--no-as-needed -Wno-dangling-reference -Wno-redundant-move -Wno-error=array-bounds -ltcmalloc_minimal")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -179,13 +179,14 @@ endif()
 
 # use protobuf same version as pytorch one
 if (BUILD_PROTOBUF)
-    set(PROTOBUF_VERSION 3.11.4)
+    #set(PROTOBUF_VERSION 3.11.4)
+    set(PROTOBUF_VERSION 3.20.1)
     ExternalProject_Add(
         protobuf
         PREFIX protobuf
         UPDATE_DISCONNECTED 1
         URL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
-        URL_HASH SHA256=ba4bbc3e6b58d2ccfe406e616576ef48710a2aae205f463618025fc691549cfe
+        #URL_HASH SHA256=ba4bbc3e6b58d2ccfe406e616576ef48710a2aae205f463618025fc691549cfe
         SOURCE_SUBDIR cmake
         CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
@@ -931,7 +932,7 @@ if (USE_TORCH)
     set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -llmdb)
 
     if (USE_TORCH_CPU_ONLY)
-      list(APPEND TORCH_LIB_DEPS iomp5)
+      list(APPEND TORCH_LIB_DEPS)
     else()
       list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
     endif()
