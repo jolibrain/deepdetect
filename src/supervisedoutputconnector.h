@@ -898,7 +898,7 @@ namespace dd
                     bad = bad.getobj(key);
                   int pos_count = ad_res.get("pos_count").get<int>();
 
-                  compute_positives(pos_count, bad, fp_by_cls, recall_by_cls,
+                  compute_positives(pos_count, bad, recall_by_cls, fp_by_cls,
                                     0.5);
                   double fp_mean = 0;
                   for (auto e : fp_by_cls)
