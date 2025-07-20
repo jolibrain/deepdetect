@@ -3,7 +3,7 @@
 set -e
 
 # Deepdetect architecture and build profiles
-deepdetect_arch=(cpu gpu)
+deepdetect_arch=(cpu gpu jetson)
 deepdetect_cpu_build_profiles=(default tf armv7)
 deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
 
@@ -18,6 +18,7 @@ if [ ! "$DEEPDETECT_CUDA_ARCH_FLAGS" ]; then
 fi
 
 DEEPDETECT_CUDA_ARCH="5.0;5.2;6.0;6.1;6.2;7.0;7.2;7.5;8.0;8.6"
+DEEPDETECT_JETSON_ARCH="8.7" # Orin only
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
 
@@ -123,7 +124,7 @@ show_interactive_platform_selector() {
     if [ ${DEEPDETECT_ARCH} == "cpu" ]; then
         select_cpu_build_profile
     fi
-    if [ ${DEEPDETECT_ARCH} == "gpu" ]; then
+    if [ ${DEEPDETECT_ARCH} == "gpu" ] || ${DEEPDETECT_ARCH} == "jetson" ]; then
         select_gpu_build_profile
     fi
 }
@@ -173,7 +174,7 @@ cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D BUILD_opencv_videoio=ON \
 -D BUILD_opencv_highgui=ON ..
 
-make -j20
+make -j8
 make install
 cd ../../..
 else
@@ -219,6 +220,13 @@ gpu_build() {
     make -j6
 }
 
+jetson_build() {
+    local default_flags="-DUSE_FAISS=OFF -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_TORCH=OFF -DJETSON=ON -DUSE_TENSORRT=ON -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
+
+    cmake .. $default_flags -DCUDA_ARCH="${DEEPDETECT_JETSON_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}"
+    make -j6
+}
+
 # If no arguments provided, display usage information
 if [ -z "$DEEPDETECT_ARCH" ] && [ $# -eq 0 ]; then
     show_interactive_platform_selector
@@ -242,6 +250,15 @@ elif [[ ${DEEPDETECT_ARCH} == "gpu" ]]; then
     echo "  DEEPDETECT_OPENCV4_BUILD_PATH : ${DEEPDETECT_OPENCV4_BUILD_PATH}"
     echo ""
     gpu_build
+elif [[ ${DEEPDETECT_ARCH} == "jetson" ]]; then
+    echo ""
+    echo "Deepdetect build params :"
+    echo "  DEEPDETECT_ARCH      : ${DEEPDETECT_ARCH}"
+    echo "  DEEPDETECT_BUILD     : ${DEEPDETECT_BUILD}"
+    echo "  DEEPDETECT_CUDA_ARCH : ${DEEPDETECT_JETSON_ARCH}"
+    echo "  DEEPDETECT_OPENCV4_BUILD_PATH : ${DEEPDETECT_OPENCV4_BUILD_PATH}"
+    echo ""
+    jetson_build
 else
     echo "Missing DEEPDETECT_ARCH variable to select build profile: cpu or gpu"
 fi
