@@ -7,17 +7,17 @@ deepdetect_arch=(cpu gpu jetson)
 deepdetect_cpu_build_profiles=(default tf armv7)
 deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
 
-# NOTE(beniz): list of all supported card by CUDA 11.1
-# https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+# https://developer.nvidia.com/cuda-legacy-gpus
+# https://developer.nvidia.com/cuda-gpus
 if [ ! "$DEEPDETECT_CUDA_ARCH_FLAGS" ]; then
-    for card in 50 52 60 61 62 70 72 75 80 86; do
+    for card in 61 62 70 72 75 80 86; do
         DEEPDETECT_CUDA_ARCH_FLAGS="$DEEPDETECT_CUDA_ARCH_FLAGS -gencode arch=compute_${card},code=sm_${card}"
     done
     # trim spaces
     DEEPDETECT_CUDA_ARCH_FLAGS="$(echo ${DEEPDETECT_CUDA_ARCH_FLAGS} | xargs)"
 fi
 
-DEEPDETECT_CUDA_ARCH="5.0;5.2;6.0;6.1;6.2;7.0;7.2;7.5;8.0;8.6"
+DEEPDETECT_CUDA_ARCH="6.1;6.2;7.0;7.2;7.5;8.0;8.6"
 DEEPDETECT_JETSON_ARCH="8.7" # Orin only
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
