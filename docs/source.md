@@ -4,17 +4,32 @@ Below are instructions for 20.04 LTS. For other Linux and Unix systems, steps ma
 
 Beware of [dependencies](https://github.com/jolibrain/deepdetect/tree/master/docs/dependencies.md), typically on Debian/Ubuntu Linux, do:
 ```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libboost-all-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python3-dev python3-six python-enum34 libarchive-dev rapidjson-dev libmapbox-variant-dev wget libboost-test-dev libboost-stacktrace-dev python3-typing-extensions python3-numpy
+sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libboost-all-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python3-dev python3-six libarchive-dev rapidjson-dev libmapbox-variant-dev wget libboost-test-dev libboost-stacktrace-dev python3-typing-extensions python3-numpy
 ```
 
-With CUDA 11+, a more recent version of cmake than that of Ubuntu 20.04 is required, and needs to be installed beforehand:
+## Default GPU build with OpenCV CUDA support
+For compiling along with OpenCV:
 
 ```
-sudo apt-get install apt-transport-https ca-certificates gnupg software-properties-common
-wget -q -O- https://apt.kitware.com/keys/kitware-archive-latest.asc | sudo apt-key add -
-sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
-sudo apt-get update
-sudo apt-get install cmake kitware-archive-keyring
+mkdir build & cd build
+DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=gpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON ../build.sh
+```
+
+If you are building for one or more GPUs, you may need to add CUDA to your ld path:
+```
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+```
+
+## Default CPU build
+
+```
+DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=cpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=OFF ../build.sh
+```
+
+## Build for Jetson Orin
+
+```
+DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=jetson DEEPDETECT_BUILD=tensorrt DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON BUILD_TESTS=ON ../build.sh
 ```
 
 ## Choosing interfaces :
@@ -34,34 +49,6 @@ cmake .. -DUSE_JSON_API=ON -DUSE_HTTP_SERVER_OATPP=OFF -DUSE_COMMAND_LINE=OFF
 
 ```
 
-## Default build with Opencv
-For compiling along with OpenCV:
-```
-mkdir build & cd build
-DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=gpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON ../build.sh
-```
-
-If you are building for one or more GPUs, you may need to add CUDA to your ld path:
-```
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
-```
-
-If you would like to build with cuDNN, your `cmake` line should be:
-```
-cmake .. -DUSE_CUDNN=ON
-```
-
-If you would like to build on NVidia Jetson TX1:
-```
-cmake .. -DCUDA_ARCH="-gencode arch=compute_53,code=sm_53" -DUSE_CUDNN=ON -DJETSON=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
-```
-On Jetson TX2, use `-DCUDA_ARCH="-gencode arch=compute_62,code=sm_62"`
-
-If you would like a CPU only build, use:
-```
-cmake .. -DUSE_CPU_ONLY=ON
-```
-
 ## Build with XGBoost support
 
 If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` parameter to `cmake`:
@@ -72,29 +59,6 @@ cmake .. -DUSE_XGBOOST=ON
 If you would like to build the GPU support for XGBoost (experimental from DMLC), use the `-DUSE_XGBOOST_GPU=ON` parameter to `cmake`:
 ```
 cmake .. -DUSE_XGBOOST=ON -DUSE_XGBOOST_GPU=ON
-```
-
-## Build with Tensorflow support
-First you must install [Bazel](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu) and Cmake with version > 3.
-
-And other dependencies:
-```
-sudo apt-get install python-numpy swig python-dev python-wheel unzip
-```
-
-If you would like to build with Tensorflow, include the `-DUSE_TF=ON` paramter to `cmake`:
-```
-cmake .. -DUSE_TF=ON -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF
-```
-
-If you would like to constrain Tensorflow to CPU, use:
-```
-cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON
-```
-
-You can combine with XGBoost support with:
-```
-cmake .. -DUSE_TF=ON -DUSE_XGBOOST=ON
 ```
 
 ## Build with T-SNE support
@@ -123,12 +87,6 @@ Some NVidia libraires from TensorRT need to be installed first:
 apt install libnvinfer-plugin-dev libnvparsers-dev libnvonnxparsers-dev
 ```
 
-Specify the following option via cmake:
-```$xslt
-cmake .. -DUSE_TENSORRT=ON
-```
-TensorRT requires GPU and CUDNN, they are automatically switched on.
-
 ## Build with TensorRT support + TRT oss parts
 Specify the following option via cmake:
 ```$xslt
@@ -143,13 +101,6 @@ Specify the following option via cmake:
 cmake .. -DUSE_TORCH=ON
 ```
 If you call cmake with the `-DUSE_CPU_ONLY` option, a cpu-only version of libtorch will be used.
-
-## Build without Caffe
-
-Caffe remains the default backend for DeepDetect though it can be deactivated with cmake. However, at least one library needs to be specified:
-```
-cmake .. -DUSE_CAFFE=OFF -DUSE_XGBOOST=ON
-```
 
 ## Build with similarity search support
 
@@ -171,7 +122,7 @@ Note: running tests requires the automated download of ~75Mb of datasets, and co
 
 To prepare for tests, install numpy:
 ```
-sudo apt install python-numpy
+sudo apt install python-numpy libgtest-dev
 ```
 then compile with:
 ```
