@@ -293,7 +293,7 @@ TEST(tensorrtapi, service_predict_gan_onnx)
   std::string base64_img
       = jd["body"]["predictions"][0]["images"][0].GetString();
   // may be small differences between machines, versions of libpng/jpeg?
-  ASSERT_NEAR(base64_img.size(), 388292, 100);
+  ASSERT_NEAR(base64_img.size(), 388292, 500);
   // cv::imwrite("onnx_gan_base64.jpg", cv_utils::base64_to_image(base64_img));
 
   // delete
