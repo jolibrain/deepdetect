@@ -120,7 +120,7 @@ if (APPLE)
     set(USE_CUDNN OFF)
     set(USE_CUDA_CV OFF)
 else()
-    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17 -Wl,--no-as-needed -Wno-dangling-reference -Wno-redundant-move -Wno-error=array-bounds -ltcmalloc_minimal")
+    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17 -Wl,--no-as-needed -Wno-dangling-reference -Wno-redundant-move -Wno-error=array-bounds -Wno-class-memaccess -ltcmalloc_minimal")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
