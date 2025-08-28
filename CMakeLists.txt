@@ -278,10 +278,10 @@ if (BUILD_SPDLOG)
         spdlog
         UPDATE_DISCONNECTED 1
         PREFIX spdlog
-        URL https://github.com/gabime/spdlog/archive/v1.8.2.tar.gz
-        URL_HASH SHA256=e20e6bd8f57e866eaf25a5417f0a38a116e537f1a77ac7b5409ca2b180cec0d5
+        URL https://github.com/gabime/spdlog/archive/refs/tags/v1.15.3.tar.gz
+        URL_HASH SHA256=15a04e69c222eb6c01094b5c7ff8a249b36bb22788d72519646fb85feb267e67
         BUILD_IN_SOURCE true
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/spdlog/build -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/spdlog/build -DCMAKE_POSITION_INDEPENDENT_CODE=ON 
     )
     set(SPDLOG_LIB_DEPS ${CMAKE_BINARY_DIR}/spdlog/build/lib/libspdlog.a)
     set(SPDLOG_LIB_DIR ${CMAKE_BINARY_DIR}/spdlog/build/lib)
@@ -856,13 +856,14 @@ if (USE_TORCH)
     set(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-as-needed")
   endif()
 
-  set(PYTORCH_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch)
+  set(PYTORCH_PATCHES_PATH ${CMAKE_SOURCE_DIR}/patches/pytorch)
 
   set(PYTORCH_PATCHES
     ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_113_new_logger.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_241_use_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_280_use_new_logger.patch
     ${PYTORCH_PATCHES_PATH}/pytorch_23_cloneable.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_280_fix_logging.patch
   )
   if (APPLE)
     list(APPEND PYTORCH_PATCHES ${PYTORCH_PATCHES_PATH}/pytorch_113_apple_includes.patch)
@@ -872,7 +873,7 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v2.4.1)
+    set(PYTORCH_COMMIT v2.8.0)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if (APPLE)
@@ -892,7 +893,7 @@ if (USE_TORCH)
         GIT_CONFIG advice.detachedHead=false
         UPDATE_DISCONNECTED 1
         PATCH_COMMAND "" test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
-        CONFIGURE_COMMAND "" cd ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/third_party/fmt/ && git checkout 7.1.0
+        CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || ${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:${PROTOBUF_INCLUDE_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 BUILD_TEST=0 USE_MPS=${PYTORCH_USE_MPS} USE_DDLOG=1 USE_TENSORRT=0 "CMAKE_CXX_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}" "CMAKE_CUDA_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}" CMAKE_PREFIX_PATH="${PROTOBUF_LIB_DIR}/cmake" MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
         INSTALL_COMMAND ""
@@ -915,7 +916,7 @@ if (USE_TORCH)
         GIT_CONFIG advice.detachedHead=false
         UPDATE_DISCONNECTED 1
         PATCH_COMMAND "" test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
-        CONFIGURE_COMMAND "" cd ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/third_party/fmt/ && git checkout 7.1.0
+        CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || sh ${CMAKE_BINARY_DIR}/build_pytorch.sh
         INSTALL_COMMAND ""
@@ -942,7 +943,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.19.1")
+  set(PYTORCH_VISION_COMMIT "v0.23.0")
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   # set(PYTORCH_VISION_PATCHES
   #   ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
@@ -970,6 +971,18 @@ if (USE_TORCH)
   list(APPEND TORCH_INC_DIR "${TORCHVISION_LOCATION}/include/")
   list(APPEND TORCH_LIB_DIR "${TORCHVISION_LOCATION}/lib/")
   list(APPEND TORCH_LIB_DEPS torchvision)
+else()
+    ExternalProject_Add(
+      fmt
+      PREFIX fmt
+      UPDATE_DISCONNECTED 1
+      URL https://github.com/fmtlib/fmt/archive/refs/tags/11.2.0.tar.gz
+      URL_HASH SHA256=bc23066d87ab3168f27cef3e97d545fa63314f5c79df5ea444d41d56f962c6af
+      CMAKE_ARGS -DFMT_TEST=OFF -DFMT_DOC=OFF -DFMT_INSTALL=OFF
+      INSTALL_COMMAND ""
+    )
+  set(FMT_INC_DIR ${CMAKE_BINARY_DIR}/fmt/src/fmt/include)
+  set(FMT_LIB_DIR ${CMAKE_BINARY_DIR}/fmt/src/fmt/lib)
 endif()
 
 # XGBoost
@@ -1041,6 +1054,7 @@ if (USE_TSNE)
    )
   set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
   set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE-build)
+    
 endif()
 
 if (USE_TENSORRT)
@@ -1048,6 +1062,7 @@ if (USE_TENSORRT)
   if (EXISTS ${TENSORRT_DIR}/libprotobuf.a)
     message(ERROR "there is a protobuf in ${TENSORRT_DIR}, it is very likely to cause link problem, you should remove it, we use system or internal ones")
   endif()
+
 
   if (JETSON)
     set(TRTTESTDIR /usr/lib/aarch64-linux-gnu)
@@ -1249,6 +1264,7 @@ include_directories(
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
     ${NCNN_INC_DIR}
+    ${FMT_INC_DIR}
 )
 include_directories(
     SYSTEM ${TENSORRT_INC_DIR}

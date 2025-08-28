@@ -25,6 +25,17 @@
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 
+#include <fmt/format.h>
+#include "oatpp/core/data/mapping/type/Primitive.hpp"
+
+using OatppInt32 = oatpp::data::mapping::type::Primitive<
+    int32_t, oatpp::data::mapping::type::__class::Int32>;
+
+namespace fmt
+{
+  FMT_FORMAT_AS(OatppInt32, int32_t);
+}
+
 namespace dd
 {
   namespace DTO
