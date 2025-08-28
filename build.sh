@@ -21,6 +21,7 @@ DEEPDETECT_CUDA_ARCH="5.0;5.2;6.0;6.1;6.2;7.0;7.2;7.5;8.0;8.6"
 DEEPDETECT_JETSON_ARCH="8.7" # Orin only
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
+BUILD_TESTS=${BUILD_TESTS:-OFF}
 
 # Help menu with arguments descriptions
 help_menu() {
@@ -36,6 +37,7 @@ help_menu() {
     echo "   -a, --deepdetect-arch          Choose Deepdetect architecture : ${deepdetect_arch[*]}"
     echo "   -b, --deepdetect-build         Choose Deepdetect build profile : CPU (${deepdetect_cpu_build_profiles[*]}) / GPU (${deepdetect_gpu_build_profiles[*]})"
     echo "   -c, --deepdetect-cuda-arch     Choose Deepdetect cuda arch (default: ${deepdetect_cuda_arch})"
+    echo "   -t, --build-tests              Build unit tests (ON/OFF)"
     echo
     exit 1
 }
@@ -53,6 +55,10 @@ while (("$#")); do
         ;;
     -c | --deepdetect-cuda-arch)
         DEEPDETECT_CUDA_ARCH=$2
+        shift 2
+        ;;
+    -t | --build-tests)
+        BUILD_TESTS=$2
         shift 2
         ;;
     -h | --help)
@@ -187,19 +193,19 @@ cpu_build() {
     case ${DEEPDETECT_BUILD} in
 
     "tf")
-        cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH} 
+        cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
-        ;;
+        ;; 
 
     "armv7")
-        cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_TORCH=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
+        cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_TORCH=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
-        ;;
+        ;; 
 
     *)
-        cmake .. -DUSE_XGBOOST=OFF -DUSE_CAFFE=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
+        cmake .. -DUSE_XGBOOST=OFF -DUSE_CAFFE=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
-        ;;
+        ;; 
     esac
 
 }
@@ -209,23 +215,24 @@ gpu_build() {
     local default_flags="-DUSE_FAISS=OFF -DUSE_CUDNN=ON -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_TORCH=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
 
     case ${DEEPDETECT_BUILD} in
-        "tf") extra_flags="$default_flags -DUSE_TF=ON" ;;
-        "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;;
+        "tf") extra_flags="$default_flags -DUSE_TF=ON" ;; 
+        "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;; 
         "tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
         *) extra_flags="$default_flags";;
     esac
     echo $extra_flags
 
-    cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}" -DOpenCV_DIR="${DEEPDETECT_OPENCV4_BUILD_PATH}"
+    cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}" -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR="${DEEPDETECT_OPENCV4_BUILD_PATH}"
     make -j6
 }
 
 jetson_build() {
-    local default_flags="-DUSE_FAISS=OFF -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_TORCH=OFF -DJETSON=ON -DUSE_TENSORRT=ON -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH} -DBUILD_TESTS=ON"
+    local default_flags="-DUSE_FAISS=OFF -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_TORCH=OFF -DJETSON=ON -DUSE_TENSORRT=ON -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH} -DBUILD_TESTS=${BUILD_TESTS}"
 
     cmake .. $default_flags -DCUDA_ARCH="${DEEPDETECT_JETSON_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}"
     make -j6
 }
+
 
 # If no arguments provided, display usage information
 if [ -z "$DEEPDETECT_ARCH" ] && [ $# -eq 0 ]; then
