@@ -12,7 +12,7 @@ For compiling along with OpenCV:
 
 ```
 mkdir build & cd build
-DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=gpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON ../build.sh
+DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=gpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON BUILD_TESTS=OFF ../build.sh
 ```
 
 If you are building for one or more GPUs, you may need to add CUDA to your ld path:
