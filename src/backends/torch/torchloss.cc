@@ -199,6 +199,20 @@ namespace dd
 
             return 1.0 - torch::mean(2.0 * intersect / (denom + smooth));
           }
+        else if (_loss == "focal")
+          {
+            // Focal loss implementation for segmentation
+            double gamma = 2.0;
+            auto log_softmax = torch::log_softmax(y_pred, 1);
+            int n_class = y_pred.size(1);
+            auto nll_loss = torch::nll_loss(
+                log_softmax.permute({ 0, 2, 3, 1 }).reshape({ -1, n_class }),
+                y.squeeze(1).reshape({ -1 }).to(torch::kLong), {},
+                torch::Reduction::None);
+            auto pt = torch::exp(-nll_loss);
+            auto focal_term = torch::pow(1.0 - pt, gamma);
+            loss = (focal_term * nll_loss).mean();
+          }
         else
           throw MLLibBadParamException("unknown loss: " + _loss);
       }
