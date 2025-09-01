@@ -119,6 +119,17 @@ namespace dd
                                  / static_cast<double>(currMaxDim);
                   cv::resize(src, dst, cv::Size(), scale, scale,
                              select_cv_interp());
+                  if (_aspect_ratio_pad)
+                    {
+                      int target_dim = std::max(_width, _height);
+                      int top = (target_dim - dst.rows) / 2;
+                      int bottom = target_dim - dst.rows - top;
+                      int left = (target_dim - dst.cols) / 2;
+                      int right = target_dim - dst.cols - left;
+                      cv::copyMakeBorder(dst, dst, top, bottom, left, right,
+                                         cv::BORDER_CONSTANT,
+                                         cv::Scalar(0, 0, 0));
+                    }
                 }
             }
           else
@@ -218,6 +229,18 @@ namespace dd
                                  / static_cast<double>(currMaxDim);
                   cv::cuda::resize(src, dst, cv::Size(), scale, scale,
                                    select_cv_interp(), *_cuda_stream);
+                  if (_aspect_ratio_pad)
+                    {
+                      int target_dim = std::max(_width, _height);
+                      int top = (target_dim - dst.rows) / 2;
+                      int bottom = target_dim - dst.rows - top;
+                      int left = (target_dim - dst.cols) / 2;
+                      int right = target_dim - dst.cols - left;
+                      cv::cuda::copyMakeBorder(dst, dst, top, bottom, left,
+                                               right, cv::BORDER_CONSTANT,
+                                               cv::Scalar(0, 0, 0),
+                                               *_cuda_stream);
+                    }
                 }
             }
           else
@@ -535,6 +558,7 @@ namespace dd
     bool _keep_orig = false;
     bool _b64 = false;
     std::string _interp = "cubic";
+    bool _aspect_ratio_pad = false;
 #ifdef USE_CUDA_CV
     bool _cuda = false;
     std::vector<cv::cuda::GpuMat> _cuda_imgs;
@@ -559,7 +583,7 @@ namespace dd
           _has_mean_scalar(i._has_mean_scalar), _scale(i._scale),
           _scaled(i._scaled), _scale_min(i._scale_min),
           _scale_max(i._scale_max), _keep_orig(i._keep_orig),
-          _interp(i._interp)
+          _interp(i._interp), _aspect_ratio_pad(i._aspect_ratio_pad)
 #ifdef USE_CUDA_CV
           ,
           _cuda(i._cuda)
@@ -673,6 +697,10 @@ namespace dd
       if (params->interp)
         _interp = params->interp;
 
+      // aspect ratio padding
+      if (params->aspect_ratio_pad)
+        _aspect_ratio_pad = params->aspect_ratio_pad;
+
       // timeout
       this->set_timeout(params);
 
@@ -698,6 +726,7 @@ namespace dd
       dimg._scale_max = _scale_max;
       dimg._keep_orig = _keep_orig;
       dimg._interp = _interp;
+      dimg._aspect_ratio_pad = _aspect_ratio_pad;
 #ifdef USE_CUDA_CV
       dimg._cuda = _cuda;
       dimg._cuda_stream = _cuda_stream;
@@ -1108,6 +1137,7 @@ namespace dd
     int _scale_max = 1000;
     bool _keep_orig = false;
     std::string _interp = "cubic";
+    bool _aspect_ratio_pad = false;
 #ifdef USE_CUDA_CV
     bool _cuda = false;
     cv::cuda::Stream *_cuda_stream = &cv::cuda::Stream::Null();
