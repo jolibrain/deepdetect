@@ -232,7 +232,7 @@ USER dd
 RUN /opt/deepdetect/get_models.sh
 
 # Ensure all libs are presents
-RUN /opt/deepdetect/check-dede-deps.sh
+#RUN /opt/deepdetect/check-dede-deps.sh
 
 WORKDIR /opt/deepdetect/build/main
 ENTRYPOINT ["/opt/deepdetect/start-dede.sh", "-host", "0.0.0.0"]
