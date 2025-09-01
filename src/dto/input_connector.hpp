@@ -93,6 +93,13 @@ namespace dd
       DTO_FIELD(Boolean, keep_orig);
       DTO_FIELD(String, interp);
 
+      DTO_FIELD_INFO(aspect_ratio_pad)
+      {
+        info->description
+            = "When resizing with aspect ratio, pad image to a square";
+      }
+      DTO_FIELD(Boolean, aspect_ratio_pad);
+
       DTO_FIELD_INFO(bbox)
       {
         info->description = "[training] true if data contains a bbox dataset";
