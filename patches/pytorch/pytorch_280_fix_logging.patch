@@ -1,0 +1,13 @@
+diff --git a/torch/csrc/distributed/c10d/symm_mem/SymmetricMemory.cpp b/torch/csrc/distributed/c10d/symm_mem/SymmetricMemory.cpp
+index 59e0bb54fc8..4b4f7c4376a 100644
+--- a/torch/csrc/distributed/c10d/symm_mem/SymmetricMemory.cpp
++++ b/torch/csrc/distributed/c10d/symm_mem/SymmetricMemory.cpp
+@@ -38,7 +38,7 @@ class AllocatorMap {
+   }
+ 
+   ~AllocatorMap() {
+-    LOG(INFO) << "Destroying Symmetric Memory Allocators";
++    // LOG(INFO) << "Destroying Symmetric Memory Allocators";
+     is_finalizing_ = true;
+   }
+ 
