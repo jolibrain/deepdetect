@@ -10,14 +10,14 @@ deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
 # https://developer.nvidia.com/cuda-legacy-gpus
 # https://developer.nvidia.com/cuda-gpus
 if [ ! "$DEEPDETECT_CUDA_ARCH_FLAGS" ]; then
-    for card in 61 62 70 72 75 80 86; do
+    for card in 61 62 70 72 75 80 86 89 120 121; do
         DEEPDETECT_CUDA_ARCH_FLAGS="$DEEPDETECT_CUDA_ARCH_FLAGS -gencode arch=compute_${card},code=sm_${card}"
     done
     # trim spaces
     DEEPDETECT_CUDA_ARCH_FLAGS="$(echo ${DEEPDETECT_CUDA_ARCH_FLAGS} | xargs)"
 fi
 
-DEEPDETECT_CUDA_ARCH="6.1;6.2;7.0;7.2;7.5;8.0;8.6"
+DEEPDETECT_CUDA_ARCH="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0;12.1"
 DEEPDETECT_JETSON_ARCH="8.7" # Orin only
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
@@ -158,7 +158,7 @@ cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D BUILD_opencv_cudacodec=ON \
 -D WITH_CUDNN=ON \
 -D OPENCV_DNN_CUDA=OFF \
--D CUDA_ARCH_BIN="6.1 7.5 8.6 8.7" \
+-D CUDA_ARCH_BIN="6.1 7.5 8.6 8.7 8.9 12.0 12.1" \
 -D WITH_V4L=ON \
 -D WITH_QT=OFF \
 -D WITH_OPENGL=ON \
