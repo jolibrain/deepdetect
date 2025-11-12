@@ -256,7 +256,7 @@ namespace dd
       torch_utils::copy_weights(jit_module, module, device, logger, strict);
     }
 
-    cv::Mat tensorToImage(torch::Tensor tensor)
+    cv::Mat tensorToImage(torch::Tensor tensor, bool rgb)
     {
       // 4 channels: batch size, chan, width, height
       auto dims = tensor.sizes();
@@ -285,6 +285,13 @@ namespace dd
                 }
             }
         }
+
+      // convert to bgr
+      if (rgb)
+        {
+          cv::cvtColor(vals_mat, vals_mat, cv::COLOR_RGB2BGR);
+        }
+
       return vals_mat;
     }
   }

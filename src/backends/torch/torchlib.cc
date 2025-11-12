@@ -2068,6 +2068,7 @@ namespace dd
   {
     APIData ad_res;
     APIData ad_bbox;
+    APIData ad_res_bbox;
     APIData ad_out = ad.getobj("parameters").getobj("output");
     int nclasses = _masked_lm ? inputc.vocab_size() : _nclasses;
 
@@ -2213,6 +2214,59 @@ namespace dd
                     ad_bbox_per_iou[iou_thres].add(std::to_string(entry_id),
                                                    vbad);
                   }
+
+                // Raw results
+                APIData bad;
+                // predictions
+                auto bboxes_acc = bboxes_tensor.accessor<float, 2>();
+                auto labels_acc = labels_tensor.accessor<int64_t, 1>();
+                auto score_acc = score_tensor.accessor<float, 1>();
+                std::vector<APIData> pred_vad;
+
+                for (int k = 0; k < labels_tensor.size(0); k++)
+                  {
+                    APIData pred_ad;
+                    pred_ad.add("label", labels_acc[k]);
+                    pred_ad.add("prob", static_cast<double>(score_acc[k]));
+                    APIData bbox_ad;
+                    bbox_ad.add("xmin", static_cast<double>(bboxes_acc[k][0]));
+                    bbox_ad.add("ymin", static_cast<double>(bboxes_acc[k][1]));
+                    bbox_ad.add("xmax", static_cast<double>(bboxes_acc[k][2]));
+                    bbox_ad.add("ymax", static_cast<double>(bboxes_acc[k][3]));
+                    pred_ad.add("bbox", bbox_ad);
+                    pred_vad.push_back(pred_ad);
+                  }
+                bad.add("predictions", pred_vad);
+                // targets
+                auto targ_bboxes_acc = targ_bboxes.accessor<float, 2>();
+                auto targ_labels_acc = targ_labels.accessor<int64_t, 1>();
+                std::vector<APIData> targ_vad;
+
+                for (int k = start; k < stop; k++)
+                  {
+                    APIData targ_ad;
+                    targ_ad.add("label", targ_labels_acc[k]);
+                    APIData bbox_ad;
+                    bbox_ad.add("xmin",
+                                static_cast<double>(targ_bboxes_acc[k][0]));
+                    bbox_ad.add("ymin",
+                                static_cast<double>(targ_bboxes_acc[k][1]));
+                    bbox_ad.add("xmax",
+                                static_cast<double>(targ_bboxes_acc[k][2]));
+                    bbox_ad.add("ymax",
+                                static_cast<double>(targ_bboxes_acc[k][3]));
+                    targ_ad.add("bbox", bbox_ad);
+                    targ_vad.push_back(targ_ad);
+                  }
+                bad.add("targets", targ_vad);
+                // pred image
+                std::vector<cv::Mat> img_vec;
+                img_vec.push_back(torch_utils::tensorToImage(
+                    batch.data.at(0).index(
+                        { torch::indexing::Slice(i, i + 1) }),
+                    /* rgb = */ true));
+                bad.add("image", img_vec);
+                ad_res_bbox.add(std::to_string(entry_id), bad);
                 ++entry_id;
               }
           }
@@ -2393,12 +2447,17 @@ namespace dd
                         ad_bbox_per_iou[iou_thres]);
           }
         ad_res.add("0", ad_bbox);
+        // raw bbox results
+        ad_res.add("raw_bboxes", ad_res_bbox);
       }
     else if (_segmentation)
       ad_res.add("segmentation", true);
     ad_res.add("batch_size",
                entry_id); // here batch_size = tested entries count
     SupervisedOutput::measure(ad_res, ad_out, out, test_id, test_name);
+    SupervisedOutput::create_visuals(
+        ad_res, ad_out, this->_mlmodel._repo + this->_mlmodel._visuals_dir,
+        test_id);
     _module.train();
     return 0;
   }
