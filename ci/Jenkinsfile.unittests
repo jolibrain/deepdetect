@@ -79,7 +79,7 @@ fi
 
 if [ -f CMakeFiles/cache_present ]
 then
-    for lib in protobuf spdlog caffe_dd pytorch pytorch_vision Multicore-TSNE ncnn xgboost oatpp oatpp-swagger oatpp-zlib 
+    for lib in protobuf spdlog pytorch pytorch_vision Multicore-TSNE ncnn xgboost oatpp oatpp-swagger oatpp-zlib 
     do
         touch "${lib}/src/${lib}-stamp/${lib}-mkdir"*
         touch "${lib}/src/${lib}-stamp/${lib}-download"*
