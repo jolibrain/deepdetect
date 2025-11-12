@@ -1,0 +1,210 @@
+# syntax=docker/dockerfile:1.3
+
+FROM nvcr.io/nvidia/l4t-jetpack:r36.4.0 AS build
+
+# Install build dependencies
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
+    --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
+    export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update -y && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget curl
+
+# updates and packages
+RUN export DEBIAN_FRONTEND=noninteractive && apt update -y && apt upgrade -y
+RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
+    --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
+    export DEBIAN_FRONTEND=noninteractive && \
+    apt-get install -y \
+    git \
+    ccache \
+    automake \
+    build-essential \
+    openjdk-8-jdk \
+    pkg-config \
+    cmake \
+    zip \
+    gcc-11 g++-11 \
+    zlib1g-dev \
+    libgoogle-glog-dev \
+    libgflags-dev \
+    libeigen3-dev \
+    libboost-dev \
+    libboost-filesystem-dev \
+    libboost-thread-dev \
+    libboost-system-dev \
+    libboost-iostreams-dev \
+    libboost-program-options-dev \
+    libboost-test-dev \
+    libboost-regex-dev \
+    libboost-date-time-dev \
+    libboost-chrono-dev \
+    libboost-stacktrace-dev \
+    libssl-dev \
+    libcurlpp-dev \
+    libcurl4-openssl-dev \
+    libopenblas-dev \
+    libhdf5-dev \
+    libleveldb-dev \
+    libsnappy-dev \
+    liblmdb-dev \
+    libutfcpp-dev \
+    rapidjson-dev \
+    libmapbox-variant-dev \
+    autoconf \
+    libtool-bin \
+    swig \
+    curl \
+    unzip \
+    python-setuptools \
+    unzip \
+    libgoogle-perftools-dev \
+    curl \
+    libarchive-dev \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+    gstreamer1.0-gl \
+    bash-completion \
+    python3-pip \
+    libgtest-dev
+    
+
+# Fix missing Nvidia libs by copying them from the host
+#ADD tegra-libs.tar /usr/lib/aarch64-linux-gnu/
+RUN wget https://www.deepdetect.com/dd/libs/tegra-libs.tar && tar xf tegra-libs.tar && mv tegra /usr/lib/aarch64-linux-gnu/
+RUN ldconfig
+
+# Required modules
+RUN python -m pip install --upgrade pip
+RUN python -m pip install dataclasses typing_extensions
+
+# Build GTest library
+RUN cd /usr/src/googletest && \
+    cmake . && \
+    cmake --build . --target install
+
+WORKDIR /tmp/
+
+ENV CCACHE_DIR=/ccache
+ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Install NVidia video codec (optional)
+#RUN wget http://www.deepdetect.com/stuff/Video_Codec_SDK_11.1.5.zip && unzip Video_Codec_SDK_11.1.5.zip
+#RUN cd Video_Codec_SDK_11.1.5 && cp Interface/* /usr/local/cuda/targets/x86_64-linux/include/ && \
+#cp Lib/linux/stubs/x86_64/* /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
+#cd /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
+#ln -s libcuda.so libcuda.so.1 && ln -s libnvcuvid.so libnvcuvid.so.1 && ln -s libnvidia-encode.so libnvidia-encode.so.1
+
+# Build Deepdetect
+ADD . /opt/deepdetect
+WORKDIR /opt/deepdetect
+ENV TERM=xterm
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs
+RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=jetson DEEPDETECT_BUILD=tensorrt DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON BUILD_TESTS=ON ../build.sh
+
+# Copy libs to /tmp/libs for next build stage
+RUN ./docker/get_libs.sh
+
+# Cleanup of the build
+RUN find . -name '*o' -type f -delete
+
+###############################################################################################
+# Build final Docker image
+FROM nvcr.io/nvidia/l4t-tensorrt:r10.3.0-runtime AS runtime
+
+ARG DEEPDETECT_ARCH=jetson
+
+LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
+LABEL maintainer="emmanuel.benazera@jolibrain.com"
+
+# Install tools and dependencies
+RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
+    --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
+    export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update -y && apt-get install -y \
+    wget \
+    curl \
+    libopenblas-base \
+    liblmdb0 \
+    libleveldb1d \
+    libboost-regex1.74.0 \
+    libgoogle-glog0v5 \
+    libgflags2.2 \
+    libcurl4 \
+    libcurlpp0 \
+    libhdf5-cpp-103 \
+    libboost-atomic1.74.0 \
+    libboost-chrono1.74.0 \
+    libboost-date-time1.74.0 \
+    libboost-filesystem1.74.0 \
+    libboost-thread1.74.0 \
+    libboost-iostreams1.74.0 \
+    libboost-regex1.74.0 \
+    libboost-stacktrace1.74.0 \
+    libboost-system1.74.0 \
+    libarchive13 \
+    libtbb12 \
+    libgstreamer1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    libavcodec58 \
+    libavformat58 \
+    libavutil56 \
+    libswscale5 \
+    libavdevice58 \
+    libswresample3 \
+    libtcmalloc-minimal4
+
+# Cudnn
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/arm64/cuda-keyring_1.1-1_all.deb && dpkg -i cuda-keyring_1.1-1_all.deb && apt update && apt install -y cudnn
+
+# Fix permissions
+RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
+    ln -sf /dev/stderr /var/log/deepdetect.log
+
+RUN useradd -ms /bin/bash dd && \
+    chown -R dd:dd /opt
+
+# Copy stubs for libraries checking
+# XXX: some version of buildkit fail when copying to simlink, using cuda true path instead
+COPY --from=build /usr/lib/aarch64-linux-gnu/tegra /usr/lib/aarch64-linux-gnu/
+
+USER dd
+
+# Copy Deepdetect binaries from previous step
+COPY --from=build /opt/deepdetect/build/main /opt/deepdetect/build/main
+COPY --from=build /opt/deepdetect/build/oatpp-swagger/src/oatpp-swagger/res/ /opt/deepdetect/build/oatpp-swagger/src/oatpp-swagger/res/
+COPY --from=build /tmp/lib/* /opt/deepdetect/build/lib/
+COPY --from=build /opt/deepdetect/templates /opt/deepdetect/build/templates
+
+# Copy useful scripts
+COPY --from=build /opt/deepdetect/docker/check-dede-deps.sh /opt/deepdetect/
+COPY --from=build /opt/deepdetect/docker/start-dede.sh /opt/deepdetect/
+
+# External volume to be mapped, e.g. for models or training data
+WORKDIR /opt/models
+
+USER root
+RUN chown -R dd:dd /opt/models
+
+USER dd
+#RUN /opt/deepdetect/get_models.sh
+
+# Ensure all libs are presents
+RUN /opt/deepdetect/check-dede-deps.sh
+
+WORKDIR /opt/deepdetect/build/main
+ENTRYPOINT ["/opt/deepdetect/start-dede.sh", "-host", "0.0.0.0"]
+VOLUME ["/data"]
+EXPOSE 8080
