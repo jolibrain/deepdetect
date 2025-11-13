@@ -1,9 +1,9 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=22.04
-ARG DD_CUDA_VERSION=12.1.1
+ARG DD_CUDA_VERSION=12.8.1
 ARG DD_CUDNN_VERSION=8
-FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-devel-ubuntu${DD_UBUNTU_VERSION}
+FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION}
 
 
 RUN echo UBUNTU_VERSION=${DD_UBUNTU_VERSION} >> /image-info
@@ -88,8 +88,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 RUN python -m pip install --upgrade pip
-RUN python -m pip install  torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-RUN python -m pip install onnx
+RUN python -m pip install  torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+RUN python -m pip install onnx onnxscript
 
 
 RUN apt clean -y
