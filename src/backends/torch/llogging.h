@@ -80,6 +80,9 @@ private:
 #undef DFATAL
 #undef LOG_DFATAL
 #undef LOG_EVERY_N
+#undef TORCH_CHECK_NOTNULL
+#undef TORCH_DCHECK_NOTNULL
+#undef TORCH_CHECK_OP
 
 #ifdef CAFFE_THROW_ON_ERROR
 #include <sstream>

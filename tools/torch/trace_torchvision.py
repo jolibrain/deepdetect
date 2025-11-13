@@ -31,29 +31,90 @@ import torch
 import torchvision
 import torchvision.models as M
 from torchvision.models.segmentation.deeplabv3 import DeepLabHead
-from torchvision.models.feature_extraction import create_feature_extractor, get_graph_node_names
+from torchvision.models.feature_extraction import (
+    create_feature_extractor,
+    get_graph_node_names,
+)
 
-parser = argparse.ArgumentParser(description="Trace image processing models from torchvision")
-parser.add_argument('models', type=str, nargs='*', help="Models to trace.")
-parser.add_argument('--backbone', type=str, help="Backbone for detection models")
-parser.add_argument('--extract', type=str, nargs='+', help="Which features to extract from model")
-parser.add_argument('--print-models', action='store_true', help="Print all the available models names and exit")
-parser.add_argument('--print-extract', action='store_true', help="Print all the available extractable nodes for the selected model and exit")
-parser.add_argument('--to-dd-native', action='store_true', help="Prepare the model so that the weights can be loaded on native model with dede")
-parser.add_argument('--to-onnx', action="store_true", help="If specified, export to onnx instead of jit.")
-parser.add_argument('--onnx_out', type=str, default="prob", help="Name of onnx output")
-parser.add_argument('--weights', type=str, help="If not None, these weights will be embedded in the model before exporting")
-parser.add_argument('-a', "--all", action='store_true', help="Export all available models")
-parser.add_argument('-v', "--verbose", action='store_true', help="Set logging level to INFO")
-parser.add_argument('-o', "--output-dir", default=".", type=str, help="Output directory for traced models")
-parser.add_argument('-p', "--not-pretrained", dest="pretrained", action='store_false',
-                    help="Whether the exported models should not be pretrained")
-parser.add_argument('--cpu', action='store_true', help="Force models to be exported for CPU device")
-parser.add_argument('--num_classes', type=int, help="Number of classes")
-parser.add_argument('--trace', action='store_true', help="Whether to trace model instead of scripting")
-parser.add_argument('--batch_size', type=int, default=1, help="When exporting with fixed batch size, this will be the batch size of the model")
-parser.add_argument('--img_width', type=int, default=224, help="Width of the image when exporting with fixed image size")
-parser.add_argument('--img_height', type=int, default=224, help="Height of the image when exporting with fixed image size")
+parser = argparse.ArgumentParser(
+    description="Trace image processing models from torchvision"
+)
+parser.add_argument("models", type=str, nargs="*", help="Models to trace.")
+parser.add_argument("--backbone", type=str, help="Backbone for detection models")
+parser.add_argument(
+    "--extract", type=str, nargs="+", help="Which features to extract from model"
+)
+parser.add_argument(
+    "--print-models",
+    action="store_true",
+    help="Print all the available models names and exit",
+)
+parser.add_argument(
+    "--print-extract",
+    action="store_true",
+    help="Print all the available extractable nodes for the selected model and exit",
+)
+parser.add_argument(
+    "--to-dd-native",
+    action="store_true",
+    help="Prepare the model so that the weights can be loaded on native model with dede",
+)
+parser.add_argument(
+    "--to-onnx",
+    action="store_true",
+    help="If specified, export to onnx instead of jit.",
+)
+parser.add_argument("--onnx_out", type=str, default="prob", help="Name of onnx output")
+parser.add_argument(
+    "--weights",
+    type=str,
+    help="If not None, these weights will be embedded in the model before exporting",
+)
+parser.add_argument(
+    "-a", "--all", action="store_true", help="Export all available models"
+)
+parser.add_argument(
+    "-v", "--verbose", action="store_true", help="Set logging level to INFO"
+)
+parser.add_argument(
+    "-o",
+    "--output-dir",
+    default=".",
+    type=str,
+    help="Output directory for traced models",
+)
+parser.add_argument(
+    "-p",
+    "--not-pretrained",
+    dest="pretrained",
+    action="store_false",
+    help="Whether the exported models should not be pretrained",
+)
+parser.add_argument(
+    "--cpu", action="store_true", help="Force models to be exported for CPU device"
+)
+parser.add_argument("--num_classes", type=int, help="Number of classes")
+parser.add_argument(
+    "--trace", action="store_true", help="Whether to trace model instead of scripting"
+)
+parser.add_argument(
+    "--batch_size",
+    type=int,
+    default=1,
+    help="When exporting with fixed batch size, this will be the batch size of the model",
+)
+parser.add_argument(
+    "--img_width",
+    type=int,
+    default=224,
+    help="Width of the image when exporting with fixed image size",
+)
+parser.add_argument(
+    "--img_height",
+    type=int,
+    default=224,
+    help="Height of the image when exporting with fixed image size",
+)
 
 args = parser.parse_args()
 
@@ -66,6 +127,7 @@ class Wrapper(torch.nn.Module):
     Dede native models are wrapped into a NativeModuleWrapper,
     so we mimic the structure here.
     """
+
     def __init__(self, wrapped):
         super(Wrapper, self).__init__()
         self.wrapped = wrapped
@@ -78,12 +140,13 @@ class DetectionModel(torch.nn.Module):
     """
     Adapt input and output of detection model to make it usable by dede.
     """
+
     def __init__(self, model):
         super(DetectionModel, self).__init__()
         self.model = model
         self.str = ""
 
-    def forward(self, x, ids = None, bboxes = None, labels = None):
+    def forward(self, x, ids=None, bboxes=None, labels=None):
         # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tuple[Dict[str,Tensor], List[Dict[str, Tensor]]]
         """
         x: one image of dimensions [batch size, channel count, width, height]
@@ -98,7 +161,7 @@ class DetectionModel(torch.nn.Module):
             assert bboxes is not None
             assert labels is not None
 
-            l_targs : List[Dict[str, Tensor]] = []
+            l_targs: List[Dict[str, Tensor]] = []
             stop = 0
 
             for i in range(x.shape[0]):
@@ -131,6 +194,7 @@ class DetectionModel_PredictOnly(torch.nn.Module):
     Adapt input and output of the model to make it exportable to
     ONNX
     """
+
     def __init__(self, model):
         super(DetectionModel_PredictOnly, self).__init__()
         self.model = model
@@ -142,27 +206,37 @@ class DetectionModel_PredictOnly(torch.nn.Module):
         pred_list = list()
         for i in range(x.shape[0]):
             pred_list.append(
-                    torch.cat((
-                        torch.full(predictions[i]["labels"].shape, i, dtype=float).unsqueeze(1),
+                torch.cat(
+                    (
+                        torch.full(
+                            predictions[i]["labels"].shape, i, dtype=float
+                        ).unsqueeze(1),
                         predictions[i]["labels"].unsqueeze(1).float(),
                         predictions[i]["scores"].unsqueeze(1),
-                        predictions[i]["boxes"]), dim=1))
+                        predictions[i]["boxes"],
+                    ),
+                    dim=1,
+                )
+            )
 
         return torch.cat(pred_list)
 
+
 def get_image_input(batch_size=1, img_width=224, img_height=224):
     return torch.rand(batch_size, 3, img_width, img_height)
+
 
 def get_detection_input(batch_size=1, img_width=224, img_height=224):
     """
     Sample input for detection models, usable for tracing or testing
     """
     return (
-            torch.rand(batch_size, 3, img_width, img_height),
-            torch.arange(0, batch_size).long(),
-            torch.Tensor([1, 1, 200, 200]).repeat((batch_size, 1)),
-            torch.full((batch_size,), 1).long(),
+        torch.rand(batch_size, 3, img_width, img_height),
+        torch.arange(0, batch_size).long(),
+        torch.Tensor([1, 1, 200, 200]).repeat((batch_size, 1)),
+        torch.full((batch_size,), 1).long(),
     )
+
 
 model_classes = {
     "alexnet": M.alexnet,
@@ -199,14 +273,13 @@ model_classes = {
     "mnasnet0_5": M.mnasnet0_5,
     "mnasnet0_75": M.mnasnet0_75,
     "mnasnet1_0": M.mnasnet1_0,
-    "mnasnet1_3": M.mnasnet1_3
+    "mnasnet1_3": M.mnasnet1_3,
 }
 detection_model_classes = {
     "fasterrcnn": M.detection.FasterRCNN,
     "fasterrcnn_resnet50_fpn": M.detection.fasterrcnn_resnet50_fpn,
     "fasterrcnn_mobilenet_v3_large_fpn": M.detection.fasterrcnn_mobilenet_v3_large_fpn,
     "fasterrcnn_mobilenet_v3_large_320_fpn": M.detection.fasterrcnn_mobilenet_v3_large_320_fpn,
-
     "retinanet": M.detection.RetinaNet,
     "retinanet_resnet50_fpn": M.detection.retinanet_resnet50_fpn,
 }
@@ -217,7 +290,7 @@ segmentation_model_classes = {
     "deeplabv3_resnet50": M.segmentation.deeplabv3_resnet50,
     "deeplabv3_resnet101": M.segmentation.deeplabv3_resnet101,
     "deeplabv3_mobilenet_v3_large": M.segmentation.deeplabv3_mobilenet_v3_large,
-    "lraspp_mobilenet_v3_large": M.segmentation.lraspp_mobilenet_v3_large
+    "lraspp_mobilenet_v3_large": M.segmentation.lraspp_mobilenet_v3_large,
 }
 model_classes.update(segmentation_model_classes)
 
@@ -234,7 +307,7 @@ elif not args.models:
     sys.stderr.write("Please specify at least one model to be exported\n")
     sys.exit(-1)
 
-device = 'cuda' if torch.cuda.is_available() and not args.cpu else 'cpu'
+device = "cuda" if torch.cuda.is_available() and not args.cpu else "cpu"
 logging.info("Device: %s", device)
 
 # An instance of your model.
@@ -250,35 +323,57 @@ for mname in args.models:
             print(node)
         continue
 
-    logging.info("Exporting model %s %s", mname, "(pretrained)" if args.pretrained else "")
+    logging.info(
+        "Exporting model %s %s", mname, "(pretrained)" if args.pretrained else ""
+    )
     detection = mname in detection_model_classes
     segmentation = mname in segmentation_model_classes
-    
+
     if detection:
-        if "fasterrcnn" in mname and version.parse(torchvision.__version__) < version.parse("0.10.0"):
-            raise RuntimeError("Fasterrcnn needs torchvision >= 0.10.0 (current = %s)" % torchvision.__version__)
+        if "fasterrcnn" in mname and version.parse(
+            torchvision.__version__
+        ) < version.parse("0.10.0"):
+            raise RuntimeError(
+                "Fasterrcnn needs torchvision >= 0.10.0 (current = %s)"
+                % torchvision.__version__
+            )
 
         if mname in ["fasterrcnn", "retinanet"]:
             if args.backbone and args.backbone in model_classes:
                 if "resnet" in args.backbone or "resnext" in args.backbone:
-                    backbone = M.detection.backbone_utils.resnet_fpn_backbone(args.backbone, pretrained = args.pretrained)
+                    backbone = M.detection.backbone_utils.resnet_fpn_backbone(
+                        args.backbone, pretrained=args.pretrained
+                    )
                 elif "mobilenet" in args.backbone:
-                    backbone = M.detection.backbone_utils.mobilenet_backbone(args.backbone, pretrained = args.pretrained, fpn = True)
+                    backbone = M.detection.backbone_utils.mobilenet_backbone(
+                        args.backbone, pretrained=args.pretrained, fpn=True
+                    )
                 else:
-                    raise RuntimeError("Backbone not supported: %s. Supported backbones are resnet, resnext or mobilenet." % args.backbone)
+                    raise RuntimeError(
+                        "Backbone not supported: %s. Supported backbones are resnet, resnext or mobilenet."
+                        % args.backbone
+                    )
             else:
                 raise RuntimeError("Please specify a backbone for model %s" % mname)
 
             if args.pretrained:
-                logging.warn("Pretrained models are not available for custom backbones. " +
-                            "Output model (except the backbone) will be untrained.")
+                logging.warn(
+                    "Pretrained models are not available for custom backbones. "
+                    + "Output model (except the backbone) will be untrained."
+                )
                 args.pretrained = False
 
             model = model_classes[mname](backbone, args.num_classes)
         else:
             if args.backbone:
-                raise RuntimeError("--backbone is only supported with models \"fasterrcnn\" or \"retinanet\".")
-            model = model_classes[mname](pretrained=args.pretrained, pretrained_backbone=args.pretrained, progress=args.verbose)
+                raise RuntimeError(
+                    '--backbone is only supported with models "fasterrcnn" or "retinanet".'
+                )
+            model = model_classes[mname](
+                pretrained=args.pretrained,
+                pretrained_backbone=args.pretrained,
+                progress=args.verbose,
+            )
 
             if args.num_classes:
                 logging.info("Using num_classes = %d" % args.num_classes)
@@ -287,12 +382,18 @@ for mname in args.models:
                     # get number of input features for the classifier
                     in_features = model.roi_heads.box_predictor.cls_score.in_features
                     # replace the pre-trained head with a new one
-                    model.roi_heads.box_predictor = M.detection.faster_rcnn.FastRCNNPredictor(in_features, args.num_classes)
+                    model.roi_heads.box_predictor = (
+                        M.detection.faster_rcnn.FastRCNNPredictor(
+                            in_features, args.num_classes
+                        )
+                    )
                 elif "retinanet" in mname:
                     in_channels = model.backbone.out_channels
                     num_anchors = model.head.classification_head.num_anchors
                     # replace pretrained head
-                    model.head = M.detection.retinanet.RetinaNetHead(in_channels, num_anchors, args.num_classes)
+                    model.head = M.detection.retinanet.RetinaNetHead(
+                        in_channels, num_anchors, args.num_classes
+                    )
 
         if args.to_onnx:
             model = DetectionModel_PredictOnly(model)
@@ -312,18 +413,18 @@ for mname in args.models:
             logging.info("Using num_classes = %d" % args.num_classes)
             kwargs["num_classes"] = args.num_classes
 
-        model = model_classes[mname](pretrained=args.pretrained, progress=args.verbose, **kwargs)
+        model = model_classes[mname](
+            pretrained=args.pretrained, progress=args.verbose, **kwargs
+        )
 
         if args.extract != None:
             logging.info("Extract layers: " + ", ".join(args.extract))
-            return_nodes = {
-                layer: layer for layer in args.extract
-            }
+            return_nodes = {layer: layer for layer in args.extract}
             model = create_feature_extractor(model, return_nodes=return_nodes)
 
-        if segmentation and 'deeplabv3' in mname:
+        if segmentation and "deeplabv3" in mname:
             model.classifier = DeepLabHead(2048, args.num_classes)
-        
+
         if args.to_dd_native:
             # Make model NativeModuleWrapper compliant
             model = Wrapper(model)
@@ -332,24 +433,25 @@ for mname in args.models:
 
         # tracing or scripting model (default)
         if args.trace:
-            example = get_image_input(args.batch_size, args.img_width, args.img_height) 
+            example = get_image_input(args.batch_size, args.img_width, args.img_height)
             script_module = torch.jit.trace(model, example)
         else:
             script_module = torch.jit.script(model)
 
     filename = os.path.join(
-            args.output_dir,
-            mname
-            + ("-pretrained" if args.pretrained else "")
-            + ("-" + args.backbone if args.backbone else "")
-            + ("-" + "_".join(args.extract) if args.extract else "")
-            + ("-cls" + str(args.num_classes) if args.num_classes else "")
-            + ".pt")
-    
+        args.output_dir,
+        mname
+        + ("-pretrained" if args.pretrained else "")
+        + ("-" + args.backbone if args.backbone else "")
+        + ("-" + "_".join(args.extract) if args.extract else "")
+        + ("-cls" + str(args.num_classes) if args.num_classes else "")
+        + ".pt",
+    )
+
     if args.weights:
         # load weights
         weights = torch.jit.load(args.weights).state_dict()
-        
+
         if args.to_onnx:
             logging.info("Apply weights from %s to the onnx model" % args.weights)
             model.load_state_dict(weights, strict=True)
@@ -361,14 +463,21 @@ for mname in args.models:
         logging.info("Export model to onnx (%s)" % filename)
         # remove extension
         filename = filename[:-3] + ".onnx"
-        example = get_image_input(args.batch_size, args.img_width, args.img_height) 
+        example = get_image_input(args.batch_size, args.img_width, args.img_height)
 
         # change for detection
         torch.onnx.export(
-                model, example, filename,
-                export_params=True, verbose=args.verbose,
-                opset_version=11, do_constant_folding=True,
-                input_names=["input"], output_names=[args.onnx_out])
+            model,
+            example,
+            filename,
+            export_params=True,
+            verbose=args.verbose,
+            opset_version=11,
+            do_constant_folding=True,
+            input_names=["input"],
+            output_names=[args.onnx_out],
+            dynamo=False,
+        )
         # dynamic_axes={"input":{0:"batch_size"},"output":{0:"batch_size"}}
     else:
         logging.info("Saving to %s", filename)
