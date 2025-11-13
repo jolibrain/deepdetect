@@ -1,0 +1,79 @@
+diff --git a/c10/CMakeLists.txt b/c10/CMakeLists.txt
+index f82e460cafc..b06eda0406b 100644
+--- a/c10/CMakeLists.txt
++++ b/c10/CMakeLists.txt
+@@ -20,6 +20,7 @@ endif()
+ 
+ set(C10_USE_GFLAGS ${USE_GFLAGS})  # also used in torch/headeronly
+ set(C10_USE_GLOG ${USE_GLOG})  # also used in torch/headeronly
++set(C10_USE_DDLOG ${USE_DDLOG}) # used in cmake_macros.h.in
+ set(C10_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})  # also used in torch/headeronly
+ set(C10_USE_NUMA ${USE_NUMA})  # also used in torch/headeronly
+ set(C10_USE_MSVC_STATIC_RUNTIME ${CAFFE2_USE_MSVC_STATIC_RUNTIME})  # also used in torch/headeronly
+diff --git a/c10/util/Logging.cpp b/c10/util/Logging.cpp
+index 555ab685c0b..7631110cc83 100644
+--- a/c10/util/Logging.cpp
++++ b/c10/util/Logging.cpp
+@@ -281,6 +281,22 @@ C10_DEFINE_int32(v, 0, "Equivalent to glog verbose")
+ C10_DEFINE_bool(logtostderr, false, "Equivalent to glog logtostderr")
+ #endif // !defined(c10_USE_GLOG)
+ 
++
++#if defined(C10_USE_DDLOG)
++namespace c10 {
++  bool InitCaffeLogging(int* argc, char** argv) {
++    return true;
++  }
++
++  void UpdateLoggingLevelsFromFlags() {}
++}
++C10_DEFINE_int(
++ caffe2_log_level,
++ 0,
++ "The minimum log level that caffe2 will output.");
++#else
++
++
+ #ifdef C10_USE_GLOG
+ 
+ // Provide easy access to the above variables, regardless whether GLOG is
+@@ -501,6 +517,7 @@ MessageLogger::~MessageLogger() {
+ } // namespace c10
+ 
+ #endif // !C10_USE_GLOG
++#endif // !C10_USE_DDLOG
+ 
+ namespace c10::detail {
+ namespace {
+diff --git a/c10/util/Logging.h b/c10/util/Logging.h
+index 2a08b1f1ce6..3bf46d183bb 100644
+--- a/c10/util/Logging.h
++++ b/c10/util/Logging.h
+@@ -23,11 +23,15 @@
+ #endif // CAFFE2_LOG_THRESHOLD
+ 
+ // Below are different implementations for glog and non-glog cases.
++#ifdef C10_USE_DDLOG
++#include <c10/util/logging_is_dd_log.h>
++#else
+ #ifdef C10_USE_GLOG
+ #include <c10/util/logging_is_google_glog.h>
+ #else // !C10_USE_GLOG
+ #include <c10/util/logging_is_not_google_glog.h>
+ #endif // C10_USE_GLOG
++#endif // C10_USE_DDLOG
+ 
+ C10_DECLARE_int(caffe2_log_level);
+ C10_DECLARE_bool(caffe2_use_fatal_for_enforce);
+diff --git a/torch/headeronly/macros/cmake_macros.h.in b/torch/headeronly/macros/cmake_macros.h.in
+index e624221202d..805c1bad49e 100644
+--- a/torch/headeronly/macros/cmake_macros.h.in
++++ b/torch/headeronly/macros/cmake_macros.h.in
+@@ -6,6 +6,7 @@
+ 
+ #cmakedefine C10_BUILD_SHARED_LIBS
+ #cmakedefine C10_USE_GLOG
++#cmakedefine C10_USE_DDLOG
+ #cmakedefine C10_USE_GFLAGS
+ #cmakedefine C10_USE_NUMA
+ #cmakedefine C10_USE_MSVC_STATIC_RUNTIME
