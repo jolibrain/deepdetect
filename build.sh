@@ -10,14 +10,14 @@ deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
 # https://developer.nvidia.com/cuda-legacy-gpus
 # https://developer.nvidia.com/cuda-gpus
 if [ ! "$DEEPDETECT_CUDA_ARCH_FLAGS" ]; then
-    for card in 61 62 70 72 75 80 86 89 120 121; do
+    for card in 61 62 70 72 75 80 86 89 90; do
         DEEPDETECT_CUDA_ARCH_FLAGS="$DEEPDETECT_CUDA_ARCH_FLAGS -gencode arch=compute_${card},code=sm_${card}"
     done
     # trim spaces
     DEEPDETECT_CUDA_ARCH_FLAGS="$(echo ${DEEPDETECT_CUDA_ARCH_FLAGS} | xargs)"
 fi
 
-DEEPDETECT_CUDA_ARCH="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0;12.1"
+DEEPDETECT_CUDA_ARCH="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;9.0"
 DEEPDETECT_JETSON_ARCH="8.7" # Orin only
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
@@ -146,10 +146,12 @@ cd "opencv-4.10.0" && mkdir build && cd build
 else
 cd $DEEPDETECT_OPENCV4_BUILD_PATH
 fi
+export CMAKE_POLICY_VERSION_MINIMUM=3.5
 cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D CMAKE_INSTALL_PREFIX=/tmp/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
+-D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
 -D WITH_TBB=ON \
 -D ENABLE_FAST_MATH=1 \
 -D CUDA_FAST_MATH=1 \
@@ -158,7 +160,7 @@ cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D BUILD_opencv_cudacodec=ON \
 -D WITH_CUDNN=ON \
 -D OPENCV_DNN_CUDA=OFF \
--D CUDA_ARCH_BIN="6.1 7.5 8.6 8.7 8.9 12.0 12.1" \
+-D CUDA_ARCH_BIN="6.1 7.5 8.6 8.7 8.9 9.0" \
 -D WITH_V4L=ON \
 -D WITH_QT=OFF \
 -D WITH_OPENGL=ON \
@@ -222,7 +224,7 @@ gpu_build() {
     esac
     echo $extra_flags
 
-    cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}" -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR="${DEEPDETECT_OPENCV4_BUILD_PATH}"
+    cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}" -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR="${DEEPDETECT_OPENCV4_BUILD_PATH}" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     make -j6
 }
 
