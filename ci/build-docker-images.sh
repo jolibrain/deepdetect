@@ -13,10 +13,10 @@ fi
 NAMES="$@"
 
 declare -A TARGETS
-TARGETS[cpu]="cpu/default"
+#TARGETS[cpu]="cpu/default"
 TARGETS[gpu]="gpu/default"
-TARGETS[gpu_tf]="gpu/tf"
-TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
+#TARGETS[gpu_tf]="gpu/tf"
+#TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
 
 PR_NUMBER=$(echo $GIT_BRANCH | sed -n '/^PR-/s/PR-//gp')
 if [ "$TAG_NAME" ]; then

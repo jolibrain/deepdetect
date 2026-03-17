@@ -1,14 +1,15 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=22.04
-ARG DD_CUDA_VERSION=12.1.1
-ARG DD_CUDNN_VERSION=8
-FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-devel-ubuntu${DD_UBUNTU_VERSION} AS build
+ARG DD_CUDA_VERSION=13.2.0
+ARG DD_CUDA_MAJOR_MINOR=13.2
+FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION} AS build
 
+ARG DD_UBUNTU_VERSION
+ARG DD_CUDA_VERSION
 
 RUN echo UBUNTU_VERSION=${DD_UBUNTU_VERSION} >> /image-info
 RUN echo CUDA_VERSION=${DD_CUDA_VERSION} >> /image-info
-RUN echo CUDNN_VERSION=${DD_CUDNN_VERSION} >> /image-info
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -118,7 +119,9 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn${DD_CUDNN_VERSION}-runtime-ubuntu${DD_UBUNTU_VERSION} AS runtime
+FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-runtime-ubuntu${DD_UBUNTU_VERSION} AS runtime
+
+ARG DD_CUDA_MAJOR_MINOR
 
 ARG DEEPDETECT_ARCH=gpu
 
@@ -179,7 +182,7 @@ COPY --from=build /opt/deepdetect/get_models.sh /opt/deepdetect/
 COPY --from=build /opt/deepdetect/docker/check-dede-deps.sh /opt/deepdetect/
 COPY --from=build /opt/deepdetect/docker/start-dede.sh /opt/deepdetect/
 
-COPY --from=build /usr/local/cuda-12.1/targets/x86_64-linux/lib/libcupti* /usr/local/cuda-12.1/targets/x86_64-linux/lib/
+COPY --from=build /usr/local/cuda-${DD_CUDA_MAJOR_MINOR}/targets/x86_64-linux/lib/libcupti* /usr/local/cuda-${DD_CUDA_MAJOR_MINOR}/targets/x86_64-linux/lib/
 
 # External volume to be mapped, e.g. for models or training data
 WORKDIR /opt/models
