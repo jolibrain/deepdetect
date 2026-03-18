@@ -3,13 +3,16 @@
 ARG DD_UBUNTU_VERSION=22.04
 ARG DD_CUDA_VERSION=13.2.0
 ARG DD_CUDA_MAJOR_MINOR=13.2
+ARG DEEPDETECT_GPU_VARIANT=default
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION} AS build
 
 ARG DD_UBUNTU_VERSION
 ARG DD_CUDA_VERSION
+ARG DEEPDETECT_GPU_VARIANT
 
 RUN echo UBUNTU_VERSION=${DD_UBUNTU_VERSION} >> /image-info
 RUN echo CUDA_VERSION=${DD_CUDA_VERSION} >> /image-info
+RUN echo GPU_VARIANT=${DEEPDETECT_GPU_VARIANT} >> /image-info
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -113,7 +116,8 @@ ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 
 # Build Deepdetect
 ENV TERM=xterm
-RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
+RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && \
+    DD_CUDA_VERSION=${DD_CUDA_VERSION} DEEPDETECT_GPU_VARIANT=${DEEPDETECT_GPU_VARIANT} ../build.sh
 
 # Copy libs to /tmp/libs for next build stage
 RUN ./docker/get_libs.sh

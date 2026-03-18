@@ -6,22 +6,71 @@ set -e
 deepdetect_arch=(cpu gpu jetson)
 deepdetect_cpu_build_profiles=(default tf armv7)
 deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
+deepdetect_gpu_variants=(default legacy61)
 
-# https://developer.nvidia.com/cuda-legacy-gpus
-# https://developer.nvidia.com/cuda-gpus
-if [ ! "$DEEPDETECT_CUDA_ARCH_FLAGS" ]; then
-    for card in 61 62 70 72 75 80 86 89 120 121; do
-        DEEPDETECT_CUDA_ARCH_FLAGS="$DEEPDETECT_CUDA_ARCH_FLAGS -gencode arch=compute_${card},code=sm_${card}"
-    done
-    # trim spaces
-    DEEPDETECT_CUDA_ARCH_FLAGS="$(echo ${DEEPDETECT_CUDA_ARCH_FLAGS} | xargs)"
-fi
-
-DEEPDETECT_CUDA_ARCH="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0;12.1"
+DEEPDETECT_GPU_VARIANT=${DEEPDETECT_GPU_VARIANT:-default}
 DEEPDETECT_JETSON_ARCH="8.7" # Orin only
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
 BUILD_TESTS=${BUILD_TESTS:-OFF}
+
+build_cuda_arch_flags() {
+    local flags=
+    local card=
+
+    for card in "$@"; do
+        flags="${flags} -gencode arch=compute_${card},code=sm_${card}"
+    done
+
+    echo "${flags}" | xargs
+}
+
+configure_gpu_variant() {
+    local default_cuda_arch=
+    local default_cuda_arch_cards=
+
+    case "${DEEPDETECT_GPU_VARIANT}" in
+    "default")
+        default_cuda_arch="7.5;8.0;8.6;8.9;12.0;12.1"
+        default_cuda_arch_cards="75 80 86 89 120 121"
+        ;;
+    "legacy61")
+        default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9"
+        default_cuda_arch_cards="61 62 70 72 75 80 86 89"
+        ;;
+    *)
+        echo "Unknown DEEPDETECT_GPU_VARIANT value: ${DEEPDETECT_GPU_VARIANT}"
+        echo "Supported GPU variants: ${deepdetect_gpu_variants[*]}"
+        exit 1
+        ;;
+    esac
+
+    DEEPDETECT_CUDA_ARCH=${DEEPDETECT_CUDA_ARCH:-${default_cuda_arch}}
+    DEEPDETECT_CUDA_ARCH_FLAGS=${DEEPDETECT_CUDA_ARCH_FLAGS:-$(build_cuda_arch_flags ${default_cuda_arch_cards})}
+    DEEPDETECT_OPENCV_CUDA_ARCH_BIN=${DEEPDETECT_OPENCV_CUDA_ARCH_BIN:-${DEEPDETECT_CUDA_ARCH//;/ }}
+}
+
+validate_gpu_variant() {
+    local cuda_major=
+
+    if [ "${DD_CUDA_VERSION}" ]; then
+        cuda_major=${DD_CUDA_VERSION%%.*}
+    fi
+
+    if [ "${DEEPDETECT_GPU_VARIANT}" = "legacy61" ] && [ "${cuda_major}" -ge 13 ] 2>/dev/null; then
+        echo "DEEPDETECT_GPU_VARIANT=legacy61 requires DD_CUDA_VERSION < 13, got ${DD_CUDA_VERSION}"
+        exit 1
+    fi
+
+    case ";${DEEPDETECT_CUDA_ARCH};" in
+    *";12.1;"*)
+        if [ "${cuda_major}" ] && [ "${cuda_major}" -lt 13 ] 2>/dev/null; then
+            echo "Compute capability 12.1 requires DD_CUDA_VERSION >= 13, got ${DD_CUDA_VERSION}"
+            exit 1
+        fi
+        ;;
+    esac
+}
 
 # Help menu with arguments descriptions
 help_menu() {
@@ -29,6 +78,7 @@ help_menu() {
     echo "Deepdetect build script"
     echo ""
     echo "Env variables usage: DEEPDETECT_ARCH=${deepdetect_arch[*]} DEEPDETECT_BUILD=${deepdetect_cpu_build_profiles[*]},[...] $0 "
+    echo "GPU only: DEEPDETECT_GPU_VARIANT=${deepdetect_gpu_variants[*]}"
     echo ""
     echo "or"
     echo ""
@@ -36,7 +86,8 @@ help_menu() {
     echo
     echo "   -a, --deepdetect-arch          Choose Deepdetect architecture : ${deepdetect_arch[*]}"
     echo "   -b, --deepdetect-build         Choose Deepdetect build profile : CPU (${deepdetect_cpu_build_profiles[*]}) / GPU (${deepdetect_gpu_build_profiles[*]})"
-    echo "   -c, --deepdetect-cuda-arch     Choose Deepdetect cuda arch (default: ${deepdetect_cuda_arch})"
+    echo "   -c, --deepdetect-cuda-arch     Choose Deepdetect cuda arch (default: ${DEEPDETECT_CUDA_ARCH})"
+    echo "   -g, --deepdetect-gpu-variant   Choose Deepdetect GPU variant : ${deepdetect_gpu_variants[*]}"
     echo "   -t, --build-tests              Build unit tests (ON/OFF)"
     echo
     exit 1
@@ -57,6 +108,10 @@ while (("$#")); do
         DEEPDETECT_CUDA_ARCH=$2
         shift 2
         ;;
+    -g | --deepdetect-gpu-variant)
+        DEEPDETECT_GPU_VARIANT=$2
+        shift 2
+        ;;
     -t | --build-tests)
         BUILD_TESTS=$2
         shift 2
@@ -75,6 +130,9 @@ if [[ -v DEEPDETECT_OPENCV4_BUILD_PATH ]] && [[ -v BUILD_OPENCV ]]; then
 	echo "Use BUILD_OPENCV if you wish for opencv to be built for you"
 	exit
 fi
+
+configure_gpu_variant
+validate_gpu_variant
 
 # Deepdetect platform selector
 select_platform() {
@@ -158,7 +216,7 @@ cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D BUILD_opencv_cudacodec=ON \
 -D WITH_CUDNN=ON \
 -D OPENCV_DNN_CUDA=OFF \
--D CUDA_ARCH_BIN="6.1 7.5 8.6 8.7 8.9 12.0 12.1" \
+-D CUDA_ARCH_BIN="${DEEPDETECT_OPENCV_CUDA_ARCH_BIN}" \
 -D WITH_V4L=ON \
 -D WITH_QT=OFF \
 -D WITH_OPENGL=ON \
@@ -252,6 +310,7 @@ elif [[ ${DEEPDETECT_ARCH} == "gpu" ]]; then
     echo "Deepdetect build params :"
     echo "  DEEPDETECT_ARCH      : ${DEEPDETECT_ARCH}"
     echo "  DEEPDETECT_BUILD     : ${DEEPDETECT_BUILD}"
+    echo "  DEEPDETECT_GPU_VARIANT : ${DEEPDETECT_GPU_VARIANT}"
     echo "  DEEPDETECT_CUDA_ARCH : ${DEEPDETECT_CUDA_ARCH}"
     echo "  DEEPDETECT_CUDA_ARCH_FLAGS : ${DEEPDETECT_CUDA_ARCH_FLAGS}"
     echo "  DEEPDETECT_OPENCV4_BUILD_PATH : ${DEEPDETECT_OPENCV4_BUILD_PATH}"
