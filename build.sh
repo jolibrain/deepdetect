@@ -31,8 +31,8 @@ configure_gpu_variant() {
 
     case "${DEEPDETECT_GPU_VARIANT}" in
     "default")
-        default_cuda_arch="7.5;8.0;8.6;8.9;12.0;12.1"
-        default_cuda_arch_cards="75 80 86 89 120 121"
+        default_cuda_arch="7.5;8.0;8.6;8.9;12.0"
+        default_cuda_arch_cards="75 80 86 89 120"
         ;;
     "legacy61")
         default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9"
