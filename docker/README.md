@@ -67,7 +67,7 @@ Params usage: ./build.sh [options...]
 
 * DEEPDETECT_BUILD : Change cmake arguments, checkout build script documentation.
 * DEEPDETECT_DEFAULT_MODELS : [**true**/false] Enable or disable default models in deepdetect docker image. Default models size is about 160MB.
-* DEEPDETECT_GPU_VARIANT : [`default`/**legacy61**] GPU-only arch preset. `default` tracks the current Dockerfile CUDA line and targets compute capabilities `7.5+`, while `legacy61` switches the build targets to include compute capability `6.1`.
+* DEEPDETECT_GPU_VARIANT : [`default`/**legacy61**] GPU-only arch preset. `default` tracks the current Dockerfile CUDA line and targets compute capabilities `7.5+`. Compute capability `12.1` is enabled only for `DEEPDETECT_BUILD=tensorrt`. `legacy61` switches the build targets to include compute capability `6.1`.
 * DD_CUDA_VERSION / DD_CUDA_MAJOR_MINOR : Optional CUDA image overrides. They are only needed when building the `legacy61` GPU variant with the raw `docker build` command.
 
 #### Build examples

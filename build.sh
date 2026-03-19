@@ -31,8 +31,13 @@ configure_gpu_variant() {
 
     case "${DEEPDETECT_GPU_VARIANT}" in
     "default")
-        default_cuda_arch="7.5;8.0;8.6;8.9;12.0"
-        default_cuda_arch_cards="75 80 86 89 120"
+        if [ "${DEEPDETECT_BUILD}" = "tensorrt" ]; then
+            default_cuda_arch="7.5;8.0;8.6;8.9;12.0;12.1"
+            default_cuda_arch_cards="75 80 86 89 120 121"
+        else
+            default_cuda_arch="7.5;8.0;8.6;8.9;12.0"
+            default_cuda_arch_cards="75 80 86 89 120"
+        fi
         ;;
     "legacy61")
         default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9"
@@ -64,6 +69,10 @@ validate_gpu_variant() {
 
     case ";${DEEPDETECT_CUDA_ARCH};" in
     *";12.1;"*)
+        if [ "${DEEPDETECT_BUILD}" != "tensorrt" ]; then
+            echo "Compute capability 12.1 is only enabled for DEEPDETECT_BUILD=tensorrt"
+            exit 1
+        fi
         if [ "${cuda_major}" ] && [ "${cuda_major}" -lt 13 ] 2>/dev/null; then
             echo "Compute capability 12.1 requires DD_CUDA_VERSION >= 13, got ${DD_CUDA_VERSION}"
             exit 1
