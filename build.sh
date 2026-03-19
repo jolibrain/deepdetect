@@ -29,19 +29,19 @@ configure_gpu_variant() {
     local default_cuda_arch=
     local default_cuda_arch_cards=
 
+    # Keep legacy61 aligned with the current default while CUDA 12.x remains
+    # the main toolchain. This lets us preserve the interface for the later
+    # CUDA 13 split without changing today's build outputs.
     case "${DEEPDETECT_GPU_VARIANT}" in
     "default")
-        if [ "${DEEPDETECT_BUILD}" = "tensorrt" ]; then
-            default_cuda_arch="7.5;8.0;8.6;8.9;12.0;12.1"
-            default_cuda_arch_cards="75 80 86 89 120 121"
-        else
-            default_cuda_arch="7.5;8.0;8.6;8.9;12.0"
-            default_cuda_arch_cards="75 80 86 89 120"
-        fi
-        ;;
     "legacy61")
-        default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9"
-        default_cuda_arch_cards="61 62 70 72 75 80 86 89"
+        if [ "${DEEPDETECT_BUILD}" = "tensorrt" ]; then
+            default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0;12.1"
+            default_cuda_arch_cards="61 62 70 72 75 80 86 89 120 121"
+        else
+            default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0"
+            default_cuda_arch_cards="61 62 70 72 75 80 86 89 120"
+        fi
         ;;
     *)
         echo "Unknown DEEPDETECT_GPU_VARIANT value: ${DEEPDETECT_GPU_VARIANT}"
@@ -60,11 +60,6 @@ validate_gpu_variant() {
 
     if [ "${DD_CUDA_VERSION}" ]; then
         cuda_major=${DD_CUDA_VERSION%%.*}
-    fi
-
-    if [ "${DEEPDETECT_GPU_VARIANT}" = "legacy61" ] && [ "${cuda_major}" -ge 13 ] 2>/dev/null; then
-        echo "DEEPDETECT_GPU_VARIANT=legacy61 requires DD_CUDA_VERSION < 13, got ${DD_CUDA_VERSION}"
-        exit 1
     fi
 
     case ";${DEEPDETECT_CUDA_ARCH};" in

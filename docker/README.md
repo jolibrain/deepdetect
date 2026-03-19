@@ -67,8 +67,8 @@ Params usage: ./build.sh [options...]
 
 * DEEPDETECT_BUILD : Change cmake arguments, checkout build script documentation.
 * DEEPDETECT_DEFAULT_MODELS : [**true**/false] Enable or disable default models in deepdetect docker image. Default models size is about 160MB.
-* DEEPDETECT_GPU_VARIANT : [`default`/**legacy61**] GPU-only arch preset. `default` tracks the current Dockerfile CUDA line and targets compute capabilities `7.5+`. Compute capability `12.1` is enabled only for `DEEPDETECT_BUILD=tensorrt`. `legacy61` switches the build targets to include compute capability `6.1`.
-* DD_CUDA_VERSION / DD_CUDA_MAJOR_MINOR : Optional CUDA image overrides. They are only needed when building the `legacy61` GPU variant with the raw `docker build` command.
+* DEEPDETECT_GPU_VARIANT : [`default`/**legacy61**] GPU-only arch preset. Today, both variants track the current Dockerfile CUDA line and support compute capability `6.1+`. Compute capability `12.1` is enabled only for `DEEPDETECT_BUILD=tensorrt`. `legacy61` is kept as a compatibility alias so the later CUDA 13 split can happen without changing the interface.
+* DD_CUDA_VERSION / DD_CUDA_MAJOR_MINOR : Optional CUDA image overrides if you want to test another CUDA image explicitly.
 
 #### Build examples
 
@@ -112,12 +112,10 @@ docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -t jolibrain/deepdetect
 export DOCKER_BUILDKIT=1
 docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
 
-# Build the legacy61 variant with CUDA 12.8.1
+# Build the legacy61 compatibility alias
 export DOCKER_BUILDKIT=1
 docker build \
   --build-arg DEEPDETECT_GPU_VARIANT=legacy61 \
-  --build-arg DD_CUDA_VERSION=12.8.1 \
-  --build-arg DD_CUDA_MAJOR_MINOR=12.8 \
   -t jolibrain/deepdetect_gpu:legacy61 \
   --no-cache \
   -f docker/gpu.Dockerfile .
