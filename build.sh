@@ -33,8 +33,7 @@ configure_gpu_variant() {
     # the main toolchain. This lets us preserve the interface for the later
     # CUDA 13 split without changing today's build outputs.
     case "${DEEPDETECT_GPU_VARIANT}" in
-    "default")
-    "legacy61")
+    "default"|"legacy61")
         if [ "${DEEPDETECT_BUILD}" = "tensorrt" ]; then
             default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0;12.1"
             default_cuda_arch_cards="61 62 70 72 75 80 86 89 120 121"
