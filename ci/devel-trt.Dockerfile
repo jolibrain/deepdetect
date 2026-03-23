@@ -3,6 +3,8 @@
 FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS build
 
 ARG DD_CUDA_VERSION
+ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.13.0/build
+ARG DEEPDETECT_TENSORRT_VERSION=main
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget curl
@@ -54,33 +56,52 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     swig \
     curl \
     unzip \
-    python-setuptools \
+    python3-setuptools \
     tox \
     unzip \
     libgoogle-perftools-dev \
     curl \
     git \
     libarchive-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+    gstreamer1.0-gl \
+    libgtk-3-dev \
     bash-completion \
     schedtool \
     util-linux \
     libgstreamer1.0-dev
 
 RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install torch==2.0.1
 
-WORKDIR /tmp
+WORKDIR /tmp/
+
+ENV CCACHE_DIR=/ccache
+ENV PATH=/usr/lib/ccache:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs
+ENV DEEPDETECT_OPENCV4_BUILD_PATH=${DEEPDETECT_OPENCV4_BUILD_PATH}
+ENV DEEPDETECT_TENSORRT_VERSION=${DEEPDETECT_TENSORRT_VERSION}
 
 # Install NVidia video codec
 RUN wget http://www.deepdetect.com/stuff/Video_Codec_SDK_11.1.5.zip && unzip Video_Codec_SDK_11.1.5.zip
-RUN cd Video_Codec_SDK_11.1.5 && cp Interface/* /usr/local/cuda/targets/x86_64-linux/include/ && cp Lib/linux/stubs/x86_64/* /usr/local/cuda/targets/x86_64-linux/lib/stubs/
+RUN cd Video_Codec_SDK_11.1.5 && cp Interface/* /usr/local/cuda/targets/x86_64-linux/include/ && \
+    cp Lib/linux/stubs/x86_64/* /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
+    cd /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
+    ln -s libcuda.so libcuda.so.1 && ln -s libnvcuvid.so libnvcuvid.so.1 && ln -s libnvidia-encode.so libnvidia-encode.so.1
 
 # Workaround for dependencies with old cmake_minimum_required
 ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 
 # Build OpenCV 4 with CUDA
-RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.10.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.10.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
-RUN cd /tmp/opencv/opencv-4.10.0 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.13.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.13.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
+RUN cd /tmp/opencv/opencv-4.13.0 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D CMAKE_CXX_STANDARD=17 \
 -D CMAKE_CXX_STANDARD_REQUIRED=ON \
 -D CMAKE_CUDA_STANDARD=17 \
@@ -101,18 +122,18 @@ RUN cd /tmp/opencv/opencv-4.10.0 && mkdir build && cd build && cmake -D CMAKE_BU
 -D WITH_QT=OFF \
 -D WITH_OPENGL=ON \
 -D WITH_GSTREAMER=ON \
--D WITH_NVCUVID=ON \
--D OPENCV_GENERATE_PKGCONFIG=ON \
--D OPENCV_PC_FILE_NAME=opencv.pc \
--D OPENCV_ENABLE_NONFREE=ON \
--D BUILD_opencv_python2=OFF \
--D BUILD_opencv_python3=OFF \
--D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.10.0/modules \
--D INSTALL_PYTHON_EXAMPLES=OFF \
--D INSTALL_C_EXAMPLES=OFF \
--D BUILD_EXAMPLES=OFF ..
+    -D WITH_NVCUVID=ON \
+    -D OPENCV_GENERATE_PKGCONFIG=ON \
+    -D OPENCV_PC_FILE_NAME=opencv.pc \
+    -D OPENCV_ENABLE_NONFREE=ON \
+    -D BUILD_opencv_python2=OFF \
+    -D BUILD_opencv_python3=OFF \
+    -D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.13.0/modules \
+    -D INSTALL_PYTHON_EXAMPLES=OFF \
+    -D INSTALL_C_EXAMPLES=OFF \
+    -D BUILD_EXAMPLES=OFF ..
 
-WORKDIR /tmp/opencv/opencv-4.10.0/build
+WORKDIR /tmp/opencv/opencv-4.13.0/build
 RUN make -j20
 RUN make install
 
