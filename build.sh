@@ -208,6 +208,10 @@ else
 cd $DEEPDETECT_OPENCV4_BUILD_PATH
 fi
 cmake -D CMAKE_BUILD_TYPE=DEBUG \
+-D CMAKE_CXX_STANDARD=17 \
+-D CMAKE_CXX_STANDARD_REQUIRED=ON \
+-D CMAKE_CUDA_STANDARD=17 \
+-D CMAKE_CUDA_STANDARD_REQUIRED=ON \
 -D CMAKE_INSTALL_PREFIX=/tmp/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
@@ -278,13 +282,18 @@ gpu_build() {
     case ${DEEPDETECT_BUILD} in
         "tf") extra_flags="$default_flags -DUSE_TF=ON" ;; 
         "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;; 
-        "tensorrt") extra_flags="-DUSE_TENSORRT=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}";;
+        "tensorrt")
+            extra_flags="-DUSE_TENSORRT=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
+            if [ "${DEEPDETECT_TENSORRT_VERSION}" ]; then
+                extra_flags="${extra_flags} -DTENSORRT_VERSION=${DEEPDETECT_TENSORRT_VERSION}"
+            fi
+            ;;
         *) extra_flags="$default_flags";;
     esac
     echo $extra_flags
 
     cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}" -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR="${DEEPDETECT_OPENCV4_BUILD_PATH}"
-    make -j6
+    make -j1
 }
 
 jetson_build() {

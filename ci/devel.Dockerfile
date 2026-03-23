@@ -2,13 +2,11 @@
 
 ARG DD_UBUNTU_VERSION=22.04
 ARG DD_CUDA_VERSION=12.8.1
-ARG DD_CUDNN_VERSION=8
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION}
 
 
 RUN echo UBUNTU_VERSION=${DD_UBUNTU_VERSION} >> /image-info
 RUN echo CUDA_VERSION=${DD_CUDA_VERSION} >> /image-info
-RUN echo CUDNN_VERSION=${DD_CUDNN_VERSION} >> /image-info
 
 
 RUN export DEBIAN_FRONTEND=noninteractive && \

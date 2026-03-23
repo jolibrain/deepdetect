@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=22.04
-ARG DD_CUDA_VERSION=12.8.0
+ARG DD_CUDA_VERSION=12.8.1
 ARG DD_CUDA_MAJOR_MINOR=12.8
 ARG DEEPDETECT_GPU_VARIANT=default
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION} AS build

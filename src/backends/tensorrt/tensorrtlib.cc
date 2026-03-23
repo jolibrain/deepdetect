@@ -24,6 +24,7 @@
 #include "tensorrtinputconns.h"
 //#include "tensorrtcalibrator.hpp"
 #include "NvInferPlugin.h"
+#include "NvInferVersion.h"
 #include "../parsers/onnx/NvOnnxParser.h"
 #include "protoUtils.h"
 #include <cuda_runtime_api.h>
@@ -39,6 +40,30 @@
 
 namespace dd
 {
+
+#if (NV_TENSORRT_MAJOR > 10) || (NV_TENSORRT_MAJOR == 10 && NV_TENSORRT_MINOR >= 12)
+#define DD_TRT_LEGACY_PRECISION_BUILDER_FLAGS 0
+#else
+#define DD_TRT_LEGACY_PRECISION_BUILDER_FLAGS 1
+#endif
+
+#if (NV_TENSORRT_MAJOR > 10) || (NV_TENSORRT_MAJOR == 10 && NV_TENSORRT_MINOR >= 12)
+#define DD_TRT_LEGACY_PRECISION_CONSTRAINT_FLAGS 0
+#else
+#define DD_TRT_LEGACY_PRECISION_CONSTRAINT_FLAGS 1
+#endif
+
+#if (NV_TENSORRT_MAJOR > 10) || (NV_TENSORRT_MAJOR == 10 && NV_TENSORRT_MINOR >= 7)
+#define DD_TRT_LEGACY_DIRECT_IO_FLAG 0
+#else
+#define DD_TRT_LEGACY_DIRECT_IO_FLAG 1
+#endif
+
+#if (NV_TENSORRT_MAJOR > 10) || (NV_TENSORRT_MAJOR == 10 && NV_TENSORRT_MINOR >= 10)
+#define DD_TRT_LEGACY_REJECT_EMPTY_ALGORITHMS_FLAG 0
+#else
+#define DD_TRT_LEGACY_REJECT_EMPTY_ALGORITHMS_FLAG 1
+#endif
 
   static TRTLogger trtLogger;
 
@@ -96,8 +121,8 @@ namespace dd
     return (prop.major > 6 || (prop.major == 6 && prop.minor >= 1));
   }
 
-  static int findEngineBS(std::string repo, std::string engineFileName,
-                          std::string arch, nvinfer1::DataType dtype)
+	  static int findEngineBS(std::string repo, std::string engineFileName,
+	                          std::string arch, nvinfer1::DataType dtype)
   {
     std::unordered_set<std::string> lfiles;
     fileops::list_directory(repo, true, false, false, lfiles);
@@ -295,13 +320,59 @@ namespace dd
           throw MLLibBadParamException("Unknown template " + _template);
       }
 
-    _builder = std::shared_ptr<nvinfer1::IBuilder>(
-        nvinfer1::createInferBuilder(trtLogger));
-    _builderc = std::shared_ptr<nvinfer1::IBuilderConfig>(
-        _builder->createBuilderConfig());
+	    _builder = std::shared_ptr<nvinfer1::IBuilder>(
+	        nvinfer1::createInferBuilder(trtLogger));
+	    _builderc = std::shared_ptr<nvinfer1::IBuilderConfig>(
+	        _builder->createBuilderConfig());
 
-    if (_dla != -1)
-      {
+        auto apply_requested_precision = [&](bool dla_mode) {
+          if (_datatype == nvinfer1::DataType::kINT8)
+            {
+#if DD_TRT_LEGACY_PRECISION_BUILDER_FLAGS
+              _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
+              this->_logger->info("Setting INT8 mode");
+#else
+              if (dla_mode)
+                {
+                  throw MLLibBadParamException(
+                      "TensorRT "
+                      + std::to_string(NV_TENSORRT_MAJOR) + "."
+                      + std::to_string(NV_TENSORRT_MINOR)
+                      + " deprecates BuilderFlag::kINT8; DLA precision "
+                        "selection requires a strong-typing/explicit "
+                        "quantization migration");
+                }
+              this->_logger->warn(
+                  "TensorRT {}.{} deprecates BuilderFlag::kINT8; keeping "
+                  "default engine precision for now",
+                  NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR);
+#endif
+            }
+          else if (_datatype == nvinfer1::DataType::kHALF)
+            {
+#if DD_TRT_LEGACY_PRECISION_BUILDER_FLAGS
+              _builderc->setFlag(nvinfer1::BuilderFlag::kFP16);
+              this->_logger->info("Setting FP16 mode");
+#else
+              if (dla_mode)
+                {
+                  throw MLLibBadParamException(
+                      "TensorRT "
+                      + std::to_string(NV_TENSORRT_MAJOR) + "."
+                      + std::to_string(NV_TENSORRT_MINOR)
+                      + " deprecates BuilderFlag::kFP16; DLA precision "
+                        "selection requires a strong-typing migration");
+                }
+              this->_logger->warn(
+                  "TensorRT {}.{} deprecates BuilderFlag::kFP16; keeping "
+                  "default engine precision for now",
+                  NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR);
+#endif
+            }
+        };
+
+	    if (_dla != -1)
+	      {
         if (_builder->getNbDLACores() == 0)
           this->_logger->info("Trying to use DLA core on a platform  that "
                               "doesn't have any DLA cores");
@@ -317,48 +388,45 @@ namespace dd
                 this->_logger->info(
                     "asked for float32 on dla : forcing float16");
                 _datatype = nvinfer1::DataType::kHALF;
-              }
-            _builderc->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
-            if (_datatype == nvinfer1::DataType::kINT8)
-              {
-                _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
-              }
-            else
-              {
-                _builderc->setFlag(nvinfer1::BuilderFlag::kFP16);
-              }
-            _builderc->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-            _builderc->setDLACore(_dla);
-            _builderc->setFlag(
-                nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
-            _builderc->setFlag(nvinfer1::BuilderFlag::kDIRECT_IO);
-            _builderc->setFlag(
-                nvinfer1::BuilderFlag::kREJECT_EMPTY_ALGORITHMS);
-          }
-      }
+	              }
+	            _builderc->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+	            apply_requested_precision(true);
+	            _builderc->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+	            _builderc->setDLACore(_dla);
+#if DD_TRT_LEGACY_PRECISION_CONSTRAINT_FLAGS
+	            _builderc->setFlag(
+	                nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
+#endif
+#if DD_TRT_LEGACY_DIRECT_IO_FLAG
+	            _builderc->setFlag(nvinfer1::BuilderFlag::kDIRECT_IO);
+#endif
+#if DD_TRT_LEGACY_REJECT_EMPTY_ALGORITHMS_FLAG
+	            _builderc->setFlag(
+	                nvinfer1::BuilderFlag::kREJECT_EMPTY_ALGORITHMS);
+#endif
+	          }
+	      }
     else
       {
-        if (_datatype == nvinfer1::DataType::kHALF)
-          {
-            // if (!_builder->platformHasFastFp16())
-            if (platformHasFastFp16())
-              {
-                _builderc->setFlag(nvinfer1::BuilderFlag::kFP16);
-                this->_logger->info("Setting FP16 mode");
-              }
-            else
-              this->_logger->info("Platform does not have fast FP16 mode");
+	        if (_datatype == nvinfer1::DataType::kHALF)
+	          {
+	            // if (!_builder->platformHasFastFp16())
+	            if (platformHasFastFp16())
+	              {
+	                apply_requested_precision(false);
+	              }
+	            else
+	              this->_logger->info("Platform does not have fast FP16 mode");
           }
-        else if (_datatype == nvinfer1::DataType::kINT8)
-          {
-            // if (_builder->platformHasFastInt8())
-            if (platformHasFastInt8())
-              {
-                _builderc->setFlag(nvinfer1::BuilderFlag::kINT8);
-                this->_logger->info("Setting INT8 mode");
-              }
-            else
-              this->_logger->info("Platform does not have fast INT8 mode");
+	        else if (_datatype == nvinfer1::DataType::kINT8)
+	          {
+	            // if (_builder->platformHasFastInt8())
+	            if (platformHasFastInt8())
+	              {
+	                apply_requested_precision(false);
+	              }
+	            else
+	              this->_logger->info("Platform does not have fast INT8 mode");
           }
         else
           {
