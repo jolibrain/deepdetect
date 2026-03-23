@@ -1,11 +1,12 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM nvcr.io/nvidia/tensorrt:24.10-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=tensorrt
 ARG DEEPDETECT_DEFAULT_MODELS=true
-ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.10.0/build
+ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.13.0/build
+ARG DEEPDETECT_TENSORRT_VERSION=main
 
 # Install build dependencies
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
@@ -64,7 +65,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     swig \
     curl \
     unzip \
-    python-setuptools \
+    python3-setuptools \
     unzip \
     libgoogle-perftools-dev \
     curl \
@@ -80,12 +81,8 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     gstreamer1.0-tools \
     gstreamer1.0-x \
     gstreamer1.0-gl \
+    libgtk-3-dev \
     bash-completion
-
-# Fix  ModuleNotFoundError: No module named 'dataclasses', 'typing_extensions' for torch 1.8.0
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
-RUN python -m pip install --upgrade pip
-RUN python -m pip install dataclasses typing_extensions
 
 WORKDIR /tmp/
 
@@ -100,8 +97,12 @@ cd /usr/local/cuda/targets/x86_64-linux/lib/stubs/ && \
 ln -s libcuda.so libcuda.so.1 && ln -s libnvcuvid.so libnvcuvid.so.1 && ln -s libnvidia-encode.so libnvidia-encode.so.1
 
 # Build OpenCV 4 with CUDA
-RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.10.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.10.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
-RUN cd /tmp/opencv/opencv-4.10.0 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.13.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.13.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
+RUN cd /tmp/opencv/opencv-4.13.0 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_CXX_STANDARD=17 \
+-D CMAKE_CXX_STANDARD_REQUIRED=ON \
+-D CMAKE_CUDA_STANDARD=17 \
+-D CMAKE_CUDA_STANDARD_REQUIRED=ON \
 -D CMAKE_INSTALL_PREFIX=/tmp/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
@@ -124,12 +125,12 @@ RUN cd /tmp/opencv/opencv-4.10.0 && mkdir build && cd build && cmake -D CMAKE_BU
 -D OPENCV_ENABLE_NONFREE=ON \
 -D BUILD_opencv_python2=OFF \
 -D BUILD_opencv_python3=OFF \
--D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.10.0/modules \
+-D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv/opencv_contrib-4.13.0/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
 -D INSTALL_C_EXAMPLES=OFF \
 -D BUILD_EXAMPLES=OFF ..
 
-WORKDIR /tmp/opencv/opencv-4.10.0/build
+WORKDIR /tmp/opencv/opencv-4.13.0/build
 RUN make -j20
 RUN make install
 
@@ -138,13 +139,14 @@ ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect
 ENV TERM=xterm
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs
-RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
+RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && \
+    DEEPDETECT_TENSORRT_VERSION=${DEEPDETECT_TENSORRT_VERSION} ../build.sh
 
 # Copy libs to /tmp/libs for next build stage
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM nvcr.io/nvidia/tensorrt:24.10-py3 AS runtime
+FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_CUDA_VERSION=12.1
@@ -159,24 +161,24 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     apt-get update -y && apt-get install -y \
     wget \
     curl \
-	libopenblas-base \
+	libopenblas0 \
 	liblmdb0 \
 	libleveldb1d \
-    libboost-regex1.74.0 \
-	libgoogle-glog0v5 \
+    libboost-regex1.83.0 \
+	libgoogle-glog0v6t64 \
 	libgflags2.2 \
 	libcurl4 \
 	libcurlpp0 \
-	libhdf5-cpp-103 \
-    libboost-atomic1.74.0 \
-    libboost-chrono1.74.0 \
-    libboost-date-time1.74.0 \
-	libboost-filesystem1.74.0 \
-	libboost-thread1.74.0 \
-	libboost-iostreams1.74.0 \
-    libboost-regex1.74.0 \
-    libboost-stacktrace1.74.0 \
-    libboost-system1.74.0 \
+	libhdf5-cpp-103-1t64 \
+    libboost-atomic1.83.0 \
+    libboost-chrono1.83.0 \
+    libboost-date-time1.83.0 \
+	libboost-filesystem1.83.0 \
+	libboost-thread1.83.0 \
+	libboost-iostreams1.83.0 \
+    libboost-regex1.83.0 \
+    libboost-stacktrace1.83.0 \
+    libboost-system1.83.0 \
 	libarchive13 \
     libtbb12 \
 	libgstreamer1.0-0 \
@@ -185,12 +187,12 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav \
-    libavcodec58 \
-    libavformat58 \
-    libavutil56 \
-    libswscale5 \
-    libavdevice58 \
-    libswresample3
+    libavcodec60 \
+    libavformat60 \
+    libavutil58 \
+    libswscale7 \
+    libavdevice60 \
+    libswresample4
 
 
 # Fix permissions

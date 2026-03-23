@@ -1,25 +1,11 @@
 # syntax = docker/dockerfile:1.0-experimental
 
-ARG DD_CUDA_VERSION=12.6
-ARG DD_CUDNN_VERSION=9.5
-ARG DD_TENSORRT_VERSION=10.5.0+cuda12.6
-
-FROM nvcr.io/nvidia/tensorrt:24.10-py3 AS build
+FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS build
 
 ARG DD_CUDA_VERSION
-ARG DD_CUDNN_VERSION
-ARG DD_TENSORRT_VERSION
-
-RUN echo CUDA_VERSION=${DD_CUDA_VERSION} >> /image-info
-RUN echo CUDNN_VERSION=${DD_CUDNN_VERSION} >> /image-info
-RUN echo TENSORRT_VERSION=${DD_TENSORRT_VERSION} >> /image-info
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget curl
-
-# python2 pycompile + docker-buildkit is a bit buggy, it's slow as hell, so disable it for dev
-# bug closed as won't fix as python2 is eol: https://github.com/docker/for-linux/issues/502
-# RUN cp /bin/true /usr/bin/pycompile
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y \
@@ -95,6 +81,10 @@ ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 # Build OpenCV 4 with CUDA
 RUN mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.10.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.10.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
 RUN cd /tmp/opencv/opencv-4.10.0 && mkdir build && cd build && cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_CXX_STANDARD=17 \
+-D CMAKE_CXX_STANDARD_REQUIRED=ON \
+-D CMAKE_CUDA_STANDARD=17 \
+-D CMAKE_CUDA_STANDARD_REQUIRED=ON \
 -D CMAKE_INSTALL_PREFIX=/usr/local/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
