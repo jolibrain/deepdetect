@@ -21,7 +21,6 @@ import warnings
 import cv2
 import requests
 
-
 DD_TIMEOUT = 2000  # seconds, for long blocking training calls, as needed
 
 API_METHODS_URL = {
