@@ -66,9 +66,26 @@ ccache -s
             docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
               sh '''
               export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed -n -e "s/[^,]* GPU \\([^[0-9,]]\\)*/\\1/gp")
+              export LD_LIBRARY_PATH="/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/compat:${LD_LIBRARY_PATH}"
               echo "****************************"
               echo
-              python3 -c 'import torch, sys; c=torch.cuda.device_count() ; print(f"CUDA VISIBLE GPU: {c}"); sys.exit(bool(c == 0 ))'
+              python3 - <<'PY'
+import ctypes
+import sys
+
+cuda = ctypes.CDLL("libcuda.so.1")
+count = ctypes.c_int()
+
+rc = cuda.cuInit(0)
+if rc != 0:
+    print(f"CUDA init failed: {rc}")
+    sys.exit(1)
+
+rc = cuda.cuDeviceGetCount(ctypes.byref(count))
+visible = count.value if rc == 0 else 0
+print(f"CUDA VISIBLE GPU: {visible}")
+sys.exit(0 if rc == 0 and visible > 0 else 1)
+PY
               echo
               echo "****************************"
               cd build && ctest -V -E "multigpu|python"
