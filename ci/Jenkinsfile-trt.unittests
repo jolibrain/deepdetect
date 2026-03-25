@@ -2,6 +2,9 @@ pipeline {
   environment {
     DOCKER_IMAGE = "ci-devel-trt:${BRANCH_NAME}.${BUILD_ID}"
     DOCKER_PARAMS = "-v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
+    DEEPDETECT_GPU_VARIANT = "default"
+    DEEPDETECT_OPENCV4_BUILD_PATH = "/tmp/opencv/opencv-4.13.0/build"
+    DEEPDETECT_TENSORRT_VERSION = "v10.15"
   }
   agent { node { label 'gpu' } }
   stages {
@@ -17,7 +20,12 @@ pipeline {
     stage('Prepare docker image') {
       steps {
         script {
-          docker.build(env.DOCKER_IMAGE, "-f ci/devel-trt.Dockerfile --no-cache .")
+          docker.build(
+            env.DOCKER_IMAGE,
+            "--build-arg DEEPDETECT_OPENCV4_BUILD_PATH=${env.DEEPDETECT_OPENCV4_BUILD_PATH} " +
+            "--build-arg DEEPDETECT_TENSORRT_VERSION=${env.DEEPDETECT_TENSORRT_VERSION} " +
+            "-f ci/devel-trt.Dockerfile --no-cache ."
+          )
         }
         // post can't access to ${env.XX} so we have to use stupid hack, thx Jenkins...
         sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
@@ -33,22 +41,15 @@ mkdir -p build/tmp
 export CCACHE_DIR=/ccache
 export PATH="/usr/lib/ccache/:$PATH"
 export TMPDIR=$(pwd)/build/tmp
+export DEEPDETECT_ARCH=gpu
+export DEEPDETECT_BUILD=tensorrt
+export DEEPDETECT_GPU_VARIANT="${DEEPDETECT_GPU_VARIANT}"
+export DEEPDETECT_OPENCV4_BUILD_PATH="${DEEPDETECT_OPENCV4_BUILD_PATH}"
+export DEEPDETECT_TENSORRT_VERSION="${DEEPDETECT_TENSORRT_VERSION}"
+export BUILD_TESTS=ON
 cd build
-cmake .. \
-    -DBUILD_TESTS=ON  \
-    -DBUILD_SPDLOG=ON \
-    -DUSE_HTTP_SERVER_OATPP=ON \
-    -DUSE_CUDA_CV=ON  \
-    -DUSE_TORCH=OFF  \
-    -DUSE_TENSORRT=ON  \
-    -DUSE_TENSORRT_OSS=ON  \
-    -DUSE_OPENCV_VERSION=4 \
-    -DOpenCV_DIR=/tmp/opencv/opencv-5.4.3/build \
-    -DCUDA_ARCH_FLAGS="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_86,code=sm_86" \
-    -DCUDA_ARCH="6.1;7.5;8.6"
-
+schedtool -B -n 1 -e ionice -n 1 bash ../build.sh
 make clang-format-check
-schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
 '''
           }

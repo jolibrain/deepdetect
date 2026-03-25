@@ -6,7 +6,7 @@ ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=tensorrt
 ARG DEEPDETECT_DEFAULT_MODELS=true
 ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.13.0/build
-ARG DEEPDETECT_TENSORRT_VERSION=main
+ARG DEEPDETECT_TENSORRT_VERSION=v10.15
 
 # Install build dependencies
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
