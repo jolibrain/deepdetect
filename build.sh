@@ -293,7 +293,7 @@ gpu_build() {
     echo $extra_flags
 
     cmake .. $extra_flags -DCUDA_ARCH_FLAGS="${DEEPDETECT_CUDA_ARCH_FLAGS}" -DCUDA_ARCH="${DEEPDETECT_CUDA_ARCH}" -DRELEASE="${DEEPDETECT_RELEASE}" -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR="${DEEPDETECT_OPENCV4_BUILD_PATH}"
-    make -j1
+    make -j6
 }
 
 jetson_build() {
