@@ -2,6 +2,8 @@ pipeline {
   environment {
     DOCKER_IMAGE = "ci-devel:${BRANCH_NAME}.${BUILD_ID}"
     DOCKER_PARAMS = "-u root:root -v ${WORKSPACE}:/app -v ${WORKSPACE}/build:/app/build -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
+    DD_CUDA_VERSION = "12.8.1"
+    DEEPDETECT_GPU_VARIANT = "default"
   }
   agent { node { label 'gpu' } }
   stages {
@@ -17,7 +19,12 @@ pipeline {
     stage('Prepare docker image') {
       steps {
         script {
-          docker.build(env.DOCKER_IMAGE, "-f ci/devel.Dockerfile --no-cache .")
+          docker.build(
+            env.DOCKER_IMAGE,
+            "--build-arg DD_CUDA_VERSION=${env.DD_CUDA_VERSION} " +
+            "--build-arg DEEPDETECT_GPU_VARIANT=${env.DEEPDETECT_GPU_VARIANT} " +
+            "-f ci/devel.Dockerfile --no-cache ."
+          )
         }
         // post can't access to ${env.XX} so we have to use stupid hack, thx Jenkins...
         sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
@@ -52,56 +59,14 @@ cd ../..
 export CCACHE_DIR=/ccache
 export PATH="/usr/lib/ccache/:$PATH"
 export TMPDIR=$(pwd)/build/tmp
+export DD_CUDA_VERSION="${DD_CUDA_VERSION}"
+export DEEPDETECT_ARCH=gpu
+export DEEPDETECT_BUILD=default
+export DEEPDETECT_GPU_VARIANT="${DEEPDETECT_GPU_VARIANT}"
+export BUILD_TESTS=ON
 cd build
-cmake .. \
-    -DBUILD_TESTS=ON  \
-    -DBUILD_SPDLOG=ON \
-    -DUSE_HTTP_SERVER_OATPP=ON \
-    -DUSE_CUDNN=ON  \
-    -DUSE_FAISS=OFF  \
-    -DUSE_SIMSEARCH=OFF  \
-    -DUSE_CAFFE=OFF \
-    -DUSE_TSNE=OFF  \
-    -DUSE_XGBOOST=OFF  \
-    -DUSE_TORCH=ON  \
-    -DUSE_NCNN=OFF  \
-    -DUSE_TENSORRT=OFF  \
-    -DUSE_TENSORRT_OSS=OFF  \
-    -DCUDA_ARCH_FLAGS="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_86,code=sm_86" \
-    -DCUDA_ARCH="6.1;7.5;8.6"
-
+schedtool -B -n 1 -e ionice -n 1 bash ../build.sh
 make clang-format-check
-
-if [ -f spdlog/src/spdlog-stamp/spdlog-done ]
-then
-    touch CMakeFiles/cache_present
-fi
-
-if [ -f CMakeFiles/cache_present ]
-then
-    for lib in protobuf spdlog caffe_dd pytorch pytorch_vision Multicore-TSNE ncnn xgboost oatpp oatpp-swagger oatpp-zlib 
-    do
-        touch "${lib}/src/${lib}-stamp/${lib}-mkdir"*
-        touch "${lib}/src/${lib}-stamp/${lib}-download"*
-        touch "${lib}/src/${lib}-stamp/${lib}-patch"*
-        touch "${lib}/src/${lib}-stamp/${lib}-update"*
-        touch "${lib}/src/${lib}-stamp/${lib}-urlinfo.txt"*
-        touch "${lib}/src/${lib}-stamp/download-${lib}.cmake"
-        touch "${lib}/src/${lib}-stamp/extract-${lib}.cmake"
-        touch "${lib}/src/${lib}-stamp/verify-${lib}.cmake"
-    done
-fi
-
-if [ -f CMakeFiles/cache_present ]
-then
-    for lib in spdlog protobuf oatpp caffe_dd Multicore-TSNE ncnn xgboost oatpp-swagger oatpp-zlib pytorch pytorch_vision
-    do
-        touch "${lib}/src/${lib}-stamp/"*
-        touch "CMakeFiles/${lib}-complete"
-    done
-fi
-
-schedtool -B -n 1 -e ionice -n 1 make -j 6
 ccache -s
 '''
           }

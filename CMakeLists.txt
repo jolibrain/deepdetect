@@ -1090,7 +1090,7 @@ if (USE_TENSORRT)
 
     if (NOT TENSORRT_VERSION)
         if (EXISTS "${TRTTESTDIR}/libnvinfer.so.10")
-            set(TENSORRT_VERSION v10.5.0)
+            set(TENSORRT_VERSION v10.15)
             message(STATUS "Found TensorRT libraries version 10")
         else()
             message(FATAL_ERROR "No supported TensorRT version found")
