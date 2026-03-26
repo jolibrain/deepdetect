@@ -63,6 +63,8 @@ export DD_CUDA_VERSION="${DD_CUDA_VERSION}"
 export DEEPDETECT_ARCH=gpu
 export DEEPDETECT_BUILD=default
 export DEEPDETECT_GPU_VARIANT="${DEEPDETECT_GPU_VARIANT}"
+export DEEPDETECT_CUDA_ARCH="6.1;6.2;7.0;7.5;8.0;8.6;8.9;12.0"
+export DEEPDETECT_CUDA_ARCH_FLAGS="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_120,code=sm_120"
 export BUILD_TESTS=ON
 cd build
 schedtool -B -n 1 -e ionice -n 1 bash ../build.sh
