@@ -64,14 +64,21 @@ $ yarn
 $ ci/release.sh
 ```
 
-If the result is OK, publish the release note on GitHub and push tags:
+If the result is OK, publish the draft GitHub release and push the release
+commit on `master`:
 
 ```
-$ git push --follow-tags origin master
+$ git push origin master
 ```
 
 The script `ci/release.sh` updates CHANGELOG.md, commits it, creates a tag, and
-creates the GitHub release.
+pushes that tag to `origin` before creating the draft GitHub release.
+
+To preview the next release without changing files, tags or GitHub state:
+
+```bash
+$ ci/release.sh --dry-run
+```
 
 ## Docker images
 
