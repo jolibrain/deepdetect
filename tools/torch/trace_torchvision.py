@@ -30,7 +30,9 @@ from packaging import version
 import torch
 import torchvision
 import torchvision.models as M
+from torchvision.models.segmentation.fcn import FCNHead
 from torchvision.models.segmentation.deeplabv3 import DeepLabHead
+from torchvision.models.segmentation.lraspp import LRASPPHead
 from torchvision.models.feature_extraction import (
     create_feature_extractor,
     get_graph_node_names,
@@ -222,6 +224,87 @@ class DetectionModel_PredictOnly(torch.nn.Module):
         return torch.cat(pred_list)
 
 
+def replace_classification_head(model, num_classes):
+    if hasattr(model, "fc") and isinstance(model.fc, torch.nn.Linear):
+        model.fc = torch.nn.Linear(
+            model.fc.in_features, num_classes, bias=model.fc.bias is not None
+        )
+        if hasattr(model, "aux1") and model.aux1 is not None:
+            model.aux1.fc2 = torch.nn.Linear(
+                model.aux1.fc2.in_features,
+                num_classes,
+                bias=model.aux1.fc2.bias is not None,
+            )
+        if hasattr(model, "aux2") and model.aux2 is not None:
+            model.aux2.fc2 = torch.nn.Linear(
+                model.aux2.fc2.in_features,
+                num_classes,
+                bias=model.aux2.fc2.bias is not None,
+            )
+    elif hasattr(model, "classifier") and isinstance(model.classifier, torch.nn.Linear):
+        model.classifier = torch.nn.Linear(
+            model.classifier.in_features,
+            num_classes,
+            bias=model.classifier.bias is not None,
+        )
+    elif hasattr(model, "classifier") and isinstance(
+        model.classifier, torch.nn.Sequential
+    ):
+        for idx in range(len(model.classifier) - 1, -1, -1):
+            classifier = model.classifier[idx]
+            if isinstance(classifier, torch.nn.Linear):
+                model.classifier[idx] = torch.nn.Linear(
+                    classifier.in_features,
+                    num_classes,
+                    bias=classifier.bias is not None,
+                )
+                break
+            if isinstance(classifier, torch.nn.Conv2d):
+                model.classifier[idx] = torch.nn.Conv2d(
+                    classifier.in_channels,
+                    num_classes,
+                    kernel_size=classifier.kernel_size,
+                    stride=classifier.stride,
+                    padding=classifier.padding,
+                    dilation=classifier.dilation,
+                    groups=classifier.groups,
+                    bias=classifier.bias is not None,
+                    padding_mode=classifier.padding_mode,
+                )
+                break
+        else:
+            raise RuntimeError(
+                "Unsupported classifier head for model %s" % type(model).__name__
+            )
+    else:
+        raise RuntimeError(
+            "Unsupported classification head for model %s" % type(model).__name__
+        )
+
+    if hasattr(model, "num_classes"):
+        model.num_classes = num_classes
+
+
+def replace_segmentation_head(model, num_classes):
+    if isinstance(model.classifier, DeepLabHead):
+        model.classifier = DeepLabHead(
+            model.classifier[0].convs[0][0].in_channels, num_classes
+        )
+    elif isinstance(model.classifier, FCNHead):
+        model.classifier = FCNHead(model.classifier[0].in_channels, num_classes)
+    elif isinstance(model.classifier, LRASPPHead):
+        model.classifier = LRASPPHead(
+            model.classifier.low_classifier.in_channels,
+            model.classifier.cbr[0].in_channels,
+            num_classes,
+            model.classifier.cbr[0].out_channels,
+        )
+    else:
+        raise RuntimeError(
+            "Unsupported segmentation head for model %s" % type(model).__name__
+        )
+
+
 def get_image_input(batch_size=1, img_width=224, img_height=224):
     return torch.rand(batch_size, 3, img_width, img_height)
 
@@ -408,22 +491,23 @@ for mname in args.models:
             args.num_classes = 91
 
     else:
-        kwargs = {}
-        if args.num_classes and not segmentation:
+        if args.num_classes is not None:
             logging.info("Using num_classes = %d" % args.num_classes)
-            kwargs["num_classes"] = args.num_classes
 
         model = model_classes[mname](
-            pretrained=args.pretrained, progress=args.verbose, **kwargs
+            pretrained=args.pretrained, progress=args.verbose
         )
+
+        if args.num_classes is not None:
+            if segmentation:
+                replace_segmentation_head(model, args.num_classes)
+            else:
+                replace_classification_head(model, args.num_classes)
 
         if args.extract != None:
             logging.info("Extract layers: " + ", ".join(args.extract))
             return_nodes = {layer: layer for layer in args.extract}
             model = create_feature_extractor(model, return_nodes=return_nodes)
-
-        if segmentation and "deeplabv3" in mname:
-            model.classifier = DeepLabHead(2048, args.num_classes)
 
         if args.to_dd_native:
             # Make model NativeModuleWrapper compliant

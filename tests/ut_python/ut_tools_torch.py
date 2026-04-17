@@ -34,6 +34,26 @@ class TestTorchvisionExport(unittest.TestCase):
         onnx_file = os.path.join(_temp_dir, "resnet50.onnx")
         self.assertTrue(os.path.exists(onnx_file), onnx_file)
 
+    def test_resnet50_export_with_custom_num_classes(self):
+        subprocess.run(
+            [
+                "python3",
+                "trace_torchvision.py",
+                "-vp",
+                "resnet50",
+                "-o",
+                _temp_dir,
+                "--num_classes",
+                "5",
+            ]
+        )
+        model_file = os.path.join(_temp_dir, "resnet50-cls5.pt")
+        self.assertTrue(os.path.exists(model_file), model_file)
+
+        model = torch.jit.load(model_file)
+        output = model(torch.rand(1, 3, 224, 224))
+        self.assertEqual(output.shape, (1, 5))
+
     def test_fasterrcnn_export(self):
         # Export model (not pretrained because we don't have permission for the cache)
         subprocess.run(["python3", "trace_torchvision.py", "-vp", "fasterrcnn_resnet50_fpn", "-o", _temp_dir])
