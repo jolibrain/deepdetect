@@ -54,6 +54,26 @@ class TestTorchvisionExport(unittest.TestCase):
         output = model(torch.rand(1, 3, 224, 224))
         self.assertEqual(output.shape, (1, 5))
 
+    def test_convnext_tiny_export_with_custom_num_classes(self):
+        subprocess.run(
+            [
+                "python3",
+                "trace_torchvision.py",
+                "-vp",
+                "convnext_tiny",
+                "-o",
+                _temp_dir,
+                "--num_classes",
+                "5",
+            ]
+        )
+        model_file = os.path.join(_temp_dir, "convnext_tiny-cls5.pt")
+        self.assertTrue(os.path.exists(model_file), model_file)
+
+        model = torch.jit.load(model_file)
+        output = model(torch.rand(1, 3, 224, 224))
+        self.assertEqual(output.shape, (1, 5))
+
     def test_fasterrcnn_export(self):
         # Export model (not pretrained because we don't have permission for the cache)
         subprocess.run(["python3", "trace_torchvision.py", "-vp", "fasterrcnn_resnet50_fpn", "-o", _temp_dir])
@@ -80,6 +100,30 @@ class TestTorchvisionExport(unittest.TestCase):
         subprocess.run(["python3", "trace_torchvision.py", "-vp", "fasterrcnn_resnet50_fpn", "-o", _temp_dir, "--to-onnx", "--weights", model_file])
         onnx_file = os.path.join(_temp_dir, "fasterrcnn_resnet50_fpn-cls91.onnx")
         self.assertTrue(os.path.exists(onnx_file), onnx_file)
+
+    def test_fasterrcnn_v2_export(self):
+        subprocess.run(
+            [
+                "python3",
+                "trace_torchvision.py",
+                "-vp",
+                "fasterrcnn_resnet50_fpn_v2",
+                "-o",
+                _temp_dir,
+            ]
+        )
+        model_file = os.path.join(_temp_dir, "fasterrcnn_resnet50_fpn_v2-cls91.pt")
+        self.assertTrue(os.path.exists(model_file), model_file)
+
+        rfcnn = torch.jit.load(model_file)
+        rfcnn.train()
+        model_losses, model_preds = rfcnn(*get_detection_input())
+        self.assertTrue("total_loss" in model_losses)
+        self.assertTrue(model_losses["total_loss"] > 0)
+
+        rfcnn.eval()
+        model_losses, model_preds = rfcnn(torch.rand(1, 3, 224, 224))
+        self.assertTrue("boxes" in model_preds[0])
 
     def tearDown(self):
         print("Removing all files in %s" % _temp_dir)
