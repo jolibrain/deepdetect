@@ -114,7 +114,7 @@ RUN cd /tmp/opencv/opencv-4.13.0 && mkdir build && cd build && cmake -D CMAKE_BU
 -D BUILD_opencv_cudacodec=ON \
 -D WITH_CUDNN=ON \
 -D OPENCV_DNN_CUDA=OFF \
--D CUDA_ARCH_BIN="7.5 8.0 8.6 8.9 12.0 12.1" \
+-D CUDA_ARCH_BIN="7.5 8.0 8.6 8.9 9.0 10.0 12.0" \
 -D WITH_V4L=ON \
 -D WITH_QT=OFF \
 -D WITH_OPENGL=ON \
@@ -149,7 +149,7 @@ RUN ./docker/get_libs.sh
 FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
-ARG DEEPDETECT_CUDA_VERSION=12.1
+ARG DEEPDETECT_CUDA_VERSION=13.0
 
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"

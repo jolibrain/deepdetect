@@ -35,8 +35,8 @@ cmake ..  \
     -DUSE_NCNN=OFF  \
     -DUSE_TENSORRT=OFF  \
     -DUSE_TENSORRT_OSS=OFF  \
-    -DCUDA_ARCH_FLAGS="-gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_86,code=sm_86" \
-    -DCUDA_ARCH="6.1;7.5;8.6"
+    -DCUDA_ARCH_FLAGS="-gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_100,code=sm_100 -gencode arch=compute_120,code=sm_120" \
+    -DCUDA_ARCH="7.5;8.0;8.6;8.9;9.0;10.0;12.0"
 make
 ccache -s
 

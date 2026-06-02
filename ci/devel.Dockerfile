@@ -1,12 +1,14 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=22.04
-ARG DD_CUDA_VERSION=12.8.1
+ARG DD_CUDA_VERSION=13.0.2
+ARG PYTORCH_CUDA_INDEX=cu130
 ARG DEEPDETECT_GPU_VARIANT=default
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION}
 
 ARG DD_UBUNTU_VERSION
 ARG DD_CUDA_VERSION
+ARG PYTORCH_CUDA_INDEX
 ARG DEEPDETECT_GPU_VARIANT
 
 
@@ -16,7 +18,7 @@ RUN echo GPU_VARIANT=${DEEPDETECT_GPU_VARIANT} >> /image-info
 
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && apt-get upgrade -y && apt-get install -y ca-certificates gpg  wget 
+    apt-get update -y && apt-get install -y ca-certificates gpg wget
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
 RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y 
@@ -92,7 +94,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 RUN python -m pip install --upgrade pip
-RUN python -m pip install  torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+RUN python -m pip install torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}
 RUN python -m pip install onnx onnxscript
 
 

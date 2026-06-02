@@ -859,10 +859,10 @@ if (USE_TORCH)
   set(PYTORCH_PATCHES_PATH ${CMAKE_SOURCE_DIR}/patches/pytorch)
 
   set(PYTORCH_PATCHES
-    ${PYTORCH_PATCHES_PATH}/pytorch_15_compile.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_113_new_logger.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_290_use_new_logger.patch
-    ${PYTORCH_PATCHES_PATH}/pytorch_23_cloneable.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_212_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_212_use_new_logger.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_212_cloneable.patch
+    ${PYTORCH_PATCHES_PATH}/pytorch_212_list_inl_typename.patch
   )
   if (APPLE)
     list(APPEND PYTORCH_PATCHES ${PYTORCH_PATCHES_PATH}/pytorch_113_apple_includes.patch)
@@ -870,9 +870,10 @@ if (USE_TORCH)
 
   message(STATUS "Configuring libtorch")
   add_definitions(-DUSE_TORCH)
+  add_definitions(-DFMT_HEADER_ONLY)
 
   if (NOT TORCH_LOCATION)
-    set(PYTORCH_COMMIT v2.9.1)
+    set(PYTORCH_COMMIT v2.12.0)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if (APPLE)
@@ -892,7 +893,7 @@ if (USE_TORCH)
         GIT_CONFIG advice.detachedHead=false
         UPDATE_DISCONNECTED 1
         PATCH_COMMAND "" test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
-        CONFIGURE_COMMAND ""
+CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || ${CMAKE_COMMAND} -E env PATH=${PROTOBUF_LIB_DIR}:${PROTOBUF_INCLUDE_DIR}:$ENV{PATH} BUILD_CUSTOM_PROTOBUF=0 BUILD_TEST=0 USE_MPS=${PYTORCH_USE_MPS} USE_DDLOG=1 USE_TENSORRT=0 "CMAKE_CXX_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}" "CMAKE_CUDA_FLAGS=-isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}" CMAKE_PREFIX_PATH="${PROTOBUF_LIB_DIR}/cmake" MAX_JOBS=8 python3 ../pytorch/tools/build_libtorch.py
         INSTALL_COMMAND ""
@@ -915,7 +916,7 @@ if (USE_TORCH)
         GIT_CONFIG advice.detachedHead=false
         UPDATE_DISCONNECTED 1
         PATCH_COMMAND "" test -f ${PYTORCH_COMPLETE} && echo Skipping || git apply ${PYTORCH_PATCHES} && echo Applying ${PYTORCH_PATCHES}
-        CONFIGURE_COMMAND ""
+CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || sh ${CMAKE_BINARY_DIR}/build_pytorch.sh
         INSTALL_COMMAND ""
@@ -942,7 +943,7 @@ if (USE_TORCH)
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.24.1")
+  set(PYTORCH_VISION_COMMIT "v0.27.0")
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   # set(PYTORCH_VISION_PATCHES
   #   ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here
