@@ -15,8 +15,17 @@ NAMES="$@"
 declare -A TARGETS
 TARGETS[cpu]="cpu/default"
 TARGETS[gpu]="gpu/default"
+TARGETS[gpu_legacy61]="gpu/default"
 #TARGETS[gpu_tf]="gpu/tf"
 TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
+
+declare -A GPU_VARIANTS
+declare -A CUDA_VERSIONS
+declare -A CUDA_MAJOR_MINORS
+GPU_VARIANTS[gpu]="default"
+GPU_VARIANTS[gpu_legacy61]="legacy61"
+CUDA_VERSIONS[gpu_legacy61]="12.6.3"
+CUDA_MAJOR_MINORS[gpu_legacy61]="12.6"
 
 PR_NUMBER=$(echo $GIT_BRANCH | sed -n '/^PR-/s/PR-//gp')
 if [ "$TAG_NAME" ]; then
@@ -42,6 +51,9 @@ for name in $NAMES; do
     arch=${target%%/*}
     build=${target##*/}
     image_url="${image_url_prefix}_${name}"
+    gpu_variant=${GPU_VARIANTS[$name]:-default}
+    cuda_version=${CUDA_VERSIONS[$name]}
+    cuda_major_minor=${CUDA_MAJOR_MINORS[$name]}
     release="OFF"
     if [ "$TAG_NAME" ]; then
         already_exists=$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME 2>/dev/null || true)
@@ -52,12 +64,21 @@ for name in $NAMES; do
         release="ON"
     fi
 
+    build_args=(
+        --build-arg DEEPDETECT_BUILD=$build
+        --build-arg DEEPDETECT_RELEASE=$release
+    )
+    if [ "$arch" = "gpu" ]; then
+        build_args+=(--build-arg DEEPDETECT_GPU_VARIANT=$gpu_variant)
+        [ "$cuda_version" ] && build_args+=(--build-arg DD_CUDA_VERSION=$cuda_version)
+        [ "$cuda_major_minor" ] && build_args+=(--build-arg DD_CUDA_MAJOR_MINOR=$cuda_major_minor)
+    fi
+
     # BUILD
     docker build \
         -t $image_url:$TMP_TAG \
         --progress plain \
-        --build-arg DEEPDETECT_BUILD=$build \
-        --build-arg DEEPDETECT_RELEASE=$release \
+        "${build_args[@]}" \
         -f docker/${arch}.Dockerfile \
         .
 

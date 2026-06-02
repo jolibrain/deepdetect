@@ -1,0 +1,37 @@
+diff --git a/torch/csrc/api/include/torch/nn/cloneable.h b/torch/csrc/api/include/torch/nn/cloneable.h
+index aaf30d90974..bd41c8d7271 100644
+--- a/torch/csrc/api/include/torch/nn/cloneable.h
++++ b/torch/csrc/api/include/torch/nn/cloneable.h
+@@ -21,7 +21,7 @@ namespace nn {
+ /// because then storing a module would always require templatizing it.
+ template <typename Derived>
+ // NOLINTNEXTLINE(bugprone-exception-escape)
+-class Cloneable : public Module {
++class Cloneable : public virtual Module {
+  public:
+   using Module::Module;
+ 
+@@ -90,7 +90,7 @@ class Cloneable : public Module {
+         clone != nullptr,
+         "Attempted to clone submodule, but it is of a "
+         "different type than the submodule it was to be cloned into");
+-    static_cast<Derived&>(*this) = *clone;
++    static_cast<Derived&>(*this) = std::move(*clone);
+   }
+ };
+ 
+diff --git a/torch/csrc/api/include/torch/nn/module.h b/torch/csrc/api/include/torch/nn/module.h
+index de8d243533a..20d1024ad41 100644
+--- a/torch/csrc/api/include/torch/nn/module.h
++++ b/torch/csrc/api/include/torch/nn/module.h
+@@ -81,10 +81,6 @@ class TORCH_API Module : public std::enable_shared_from_this<Module> {
+   /// The name of the submodule is inferred via RTTI (if possible) the first
+   /// time `.name()` is invoked.
+   Module();
+-  Module(const Module&) = default;
+-  Module& operator=(const Module&) = default;
+-  Module(Module&&) noexcept = default;
+-  Module& operator=(Module&&) noexcept = default;
+ 
+   virtual ~Module() = default;
+ 

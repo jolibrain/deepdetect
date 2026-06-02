@@ -1,0 +1,22 @@
+diff --git a/modules/cudev/include/opencv2/cudev/ptr2d/zip.hpp b/modules/cudev/include/opencv2/cudev/ptr2d/zip.hpp
+index 1bce9b6..74a9b60 100644
+--- a/modules/cudev/include/opencv2/cudev/ptr2d/zip.hpp
++++ b/modules/cudev/include/opencv2/cudev/ptr2d/zip.hpp
+@@ -179,7 +179,7 @@ template <class PtrTuple> struct PtrTraits< ZipPtrSz<PtrTuple> > : PtrTraitsBase
+ }}
+ 
+ #if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ > 12 || (__CUDACC_VER_MAJOR__ == 12 && __CUDACC_VER_MINOR__ >= 4))
+-_LIBCUDACXX_BEGIN_NAMESPACE_STD
++_CCCL_BEGIN_NAMESPACE_STD
+ 
+ template< class... Types >
+ struct tuple_size< cv::cudev::ZipPtr<tuple<Types...> > >
+@@ -202,7 +202,7 @@ template<size_t N, class... Types >
+ struct tuple_element<N, cv::cudev::ZipPtrSz<tuple<Types...> > >
+ : tuple_element<N, tuple<Types...> > { };
+ 
+-_LIBCUDACXX_END_NAMESPACE_STD
++_CCCL_END_NAMESPACE_STD
+ 
+ #endif
+ #endif

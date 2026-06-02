@@ -1,0 +1,15 @@
+diff --git a/aten/src/ATen/core/List_inl.h b/aten/src/ATen/core/List_inl.h
+index 4ff98611d8f..47d7efa60b2 100644
+--- a/aten/src/ATen/core/List_inl.h
++++ b/aten/src/ATen/core/List_inl.h
+@@ -198,7 +198,9 @@ typename List<T>::internal_const_reference_type List<T>::operator[](size_type po
+ template<class T>
+ typename List<T>::internal_reference_type List<T>::operator[](size_type pos) {
+   static_cast<void>(impl_->list.at(pos)); // Throw the exception if it is out of range.
+-  return {impl_->list.begin() + static_cast<typename decltype(impl_->list)::difference_type>(pos)};
++  auto offset = impl_->list.begin() - impl_->list.begin();
++  offset = static_cast<decltype(offset)>(pos);
++  return internal_reference_type(impl_->list.begin() + offset);
+ }
+ 
+ template<class T>

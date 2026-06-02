@@ -29,18 +29,14 @@ configure_gpu_variant() {
     local default_cuda_arch=
     local default_cuda_arch_cards=
 
-    # Keep legacy61 aligned with the current default while CUDA 12.x remains
-    # the main toolchain. This lets us preserve the interface for the later
-    # CUDA 13 split without changing today's build outputs.
     case "${DEEPDETECT_GPU_VARIANT}" in
-    "default"|"legacy61")
-        if [ "${DEEPDETECT_BUILD}" = "tensorrt" ]; then
-            default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0;12.1"
-            default_cuda_arch_cards="61 62 70 72 75 80 86 89 120 121"
-        else
-            default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;12.0"
-            default_cuda_arch_cards="61 62 70 72 75 80 86 89 120"
-        fi
+    "default")
+        default_cuda_arch="7.5;8.0;8.6;8.9;9.0;10.0;12.0"
+        default_cuda_arch_cards="75 80 86 89 90 100 120"
+        ;;
+    "legacy61")
+        default_cuda_arch="6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;9.0"
+        default_cuda_arch_cards="61 62 70 72 75 80 86 89 90"
         ;;
     *)
         echo "Unknown DEEPDETECT_GPU_VARIANT value: ${DEEPDETECT_GPU_VARIANT}"
@@ -61,18 +57,16 @@ validate_gpu_variant() {
         cuda_major=${DD_CUDA_VERSION%%.*}
     fi
 
-    case ";${DEEPDETECT_CUDA_ARCH};" in
-    *";12.1;"*)
-        if [ "${DEEPDETECT_BUILD}" != "tensorrt" ]; then
-            echo "Compute capability 12.1 is only enabled for DEEPDETECT_BUILD=tensorrt"
+    if [ "${cuda_major}" ]; then
+        if [ "${DEEPDETECT_GPU_VARIANT}" = "default" ] && [ "${cuda_major}" -lt 13 ] 2>/dev/null; then
+            echo "DEEPDETECT_GPU_VARIANT=default requires DD_CUDA_VERSION >= 13, got ${DD_CUDA_VERSION}"
             exit 1
         fi
-        if [ "${cuda_major}" ] && [ "${cuda_major}" -lt 13 ] 2>/dev/null; then
-            echo "Compute capability 12.1 requires DD_CUDA_VERSION >= 13, got ${DD_CUDA_VERSION}"
+        if [ "${DEEPDETECT_GPU_VARIANT}" = "legacy61" ] && [ "${cuda_major}" -ge 13 ] 2>/dev/null; then
+            echo "DEEPDETECT_GPU_VARIANT=legacy61 requires a CUDA 12.x image, got ${DD_CUDA_VERSION}"
             exit 1
         fi
-        ;;
-    esac
+    fi
 }
 
 # Help menu with arguments descriptions
@@ -199,19 +193,32 @@ show_interactive_platform_selector() {
 if [[ ${BUILD_OPENCV} == "ON" ]]; then
 echo "Opencv will be built from source"
 # Build OpenCV 4 with CUDA
-DEEPDETECT_OPENCV4_BUILD_PATH="$(git rev-parse --show-toplevel)/build/opencv/opencv-4.10.0/build"
-if [ ! -d opencv ]; then
+DEEPDETECT_ROOT="$(git rev-parse --show-toplevel)"
+DEEPDETECT_OPENCV4_BUILD_PATH="${DEEPDETECT_ROOT}/build/opencv/opencv-4.13.0/build"
+mkdir -p opencv
+cd opencv
+if [ ! -d opencv-4.13.0 ]; then
 echo "Downloading opencv"
-mkdir opencv && cd opencv && wget -O opencv.zip https://github.com/opencv/opencv/archive/refs/tags/4.10.0.zip && wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.10.0.zip && unzip opencv.zip && unzip opencv_contrib.zip
-cd "opencv-4.10.0" && mkdir build && cd build
-else
-cd $DEEPDETECT_OPENCV4_BUILD_PATH
+wget -O opencv-4.13.0.zip https://github.com/opencv/opencv/archive/refs/tags/4.13.0.zip
+wget -O opencv_contrib-4.13.0.zip https://github.com/opencv/opencv_contrib/archive/refs/tags/4.13.0.zip
+unzip opencv-4.13.0.zip
+unzip opencv_contrib-4.13.0.zip
+fi
+mkdir -p opencv-4.13.0/build
+cd opencv-4.13.0/build
+if grep -q "_LIBCUDACXX_BEGIN_NAMESPACE_STD" ../../opencv_contrib-4.13.0/modules/cudev/include/opencv2/cudev/ptr2d/zip.hpp; then
+patch -d ../../opencv_contrib-4.13.0 -p1 < "${DEEPDETECT_ROOT}/patches/opencv/opencv_contrib_413_cuda13_cccl.patch"
+fi
+if ! grep -q "#include <thrust/tuple.h>" ../../opencv_contrib-4.13.0/modules/videostab/src/cuda/global_motion.cu; then
+patch -d ../../opencv_contrib-4.13.0 -p1 < "${DEEPDETECT_ROOT}/patches/opencv/opencv_contrib_413_videostab_cuda13_thrust_tuple.patch"
 fi
 cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D CMAKE_CXX_STANDARD=17 \
 -D CMAKE_CXX_STANDARD_REQUIRED=ON \
 -D CMAKE_CUDA_STANDARD=17 \
 -D CMAKE_CUDA_STANDARD_REQUIRED=ON \
+-D CMAKE_CUDA_FLAGS="--std=c++17" \
+-D CUDA_NVCC_FLAGS="--std=c++17" \
 -D CMAKE_INSTALL_PREFIX=/tmp/ \
 -D CMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
 -D CMAKE_CXX_FLAGS="-Wl,--allow-shlib-undefined" \
@@ -226,7 +233,7 @@ cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D CUDA_ARCH_BIN="${DEEPDETECT_OPENCV_CUDA_ARCH_BIN}" \
 -D WITH_V4L=ON \
 -D WITH_QT=OFF \
--D WITH_OPENGL=ON \
+-D WITH_OPENGL=OFF \
 -D WITH_GSTREAMER=ON \
 -D WITH_NVCUVID=ON \
 -D OPENCV_GENERATE_PKGCONFIG=ON \
@@ -234,7 +241,7 @@ cmake -D CMAKE_BUILD_TYPE=DEBUG \
 -D OPENCV_ENABLE_NONFREE=ON \
 -D BUILD_opencv_python2=OFF \
 -D BUILD_opencv_python3=OFF \
--D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.10.0/modules \
+-D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.13.0/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
 -D INSTALL_C_EXAMPLES=OFF \
 -D BUILD_EXAMPLES=OFF \

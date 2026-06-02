@@ -1,9 +1,10 @@
 pipeline {
   environment {
-    DOCKER_IMAGE = "ci-devel:${BRANCH_NAME}.${BUILD_ID}"
+    DOCKER_IMAGE = "ci-devel-legacy61:${BRANCH_NAME}.${BUILD_ID}"
     DOCKER_PARAMS = "-u root:root -v ${WORKSPACE}:/app -v ${WORKSPACE}/build:/app/build -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
-    DD_CUDA_VERSION = "13.0.2"
-    DEEPDETECT_GPU_VARIANT = "default"
+    DD_CUDA_VERSION = "12.6.3"
+    DEEPDETECT_GPU_VARIANT = "legacy61"
+    PYTORCH_CUDA_INDEX = "cu126"
   }
   agent { node { label 'gpu' } }
   stages {
@@ -23,6 +24,7 @@ pipeline {
             env.DOCKER_IMAGE,
             "--build-arg DD_CUDA_VERSION=${env.DD_CUDA_VERSION} " +
             "--build-arg DEEPDETECT_GPU_VARIANT=${env.DEEPDETECT_GPU_VARIANT} " +
+            "--build-arg PYTORCH_CUDA_INDEX=${env.PYTORCH_CUDA_INDEX} " +
             "-f ci/devel.Dockerfile --no-cache ."
           )
         }

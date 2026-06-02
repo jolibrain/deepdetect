@@ -1,8 +1,8 @@
 # syntax = docker/dockerfile:1.0-experimental
 
 ARG DD_UBUNTU_VERSION=22.04
-ARG DD_CUDA_VERSION=12.8.1
-ARG DD_CUDA_MAJOR_MINOR=12.8
+ARG DD_CUDA_VERSION=13.0.2
+ARG DD_CUDA_MAJOR_MINOR=13.0
 ARG DEEPDETECT_GPU_VARIANT=default
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION} AS build
 
@@ -28,7 +28,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     apt-get update -y && apt-get install -y python3-dev apt-transport-https ca-certificates gnupg software-properties-common wget curl
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update -y && apt-get upgrade -y && apt-get install -y ca-certificates gpg  wget 
+    apt-get update -y && apt-get install -y ca-certificates gpg wget
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
 RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y 
