@@ -291,7 +291,7 @@ gpu_build() {
         "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;; 
         "tensorrt")
             extra_flags="-DUSE_TENSORRT=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
-            if [ "${DEEPDETECT_TENSORRT_VERSION}" ]; then
+            if [ "${DEEPDETECT_TENSORRT_VERSION}" ] && [ "${DEEPDETECT_TENSORRT_VERSION}" != "null" ]; then
                 extra_flags="${extra_flags} -DTENSORRT_VERSION=${DEEPDETECT_TENSORRT_VERSION}"
             fi
             ;;

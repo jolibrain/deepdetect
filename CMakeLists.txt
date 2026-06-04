@@ -1105,18 +1105,39 @@ if (USE_TENSORRT)
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
 	set(TENSORRT_LIBS ${TENSORRT_NVINFER_LIB} nvinfer_plugin nvonnxparser )
 
+    if (TENSORRT_VERSION STREQUAL "null")
+        unset(TENSORRT_VERSION CACHE)
+    endif()
+
     if (NOT TENSORRT_VERSION)
-        if (TENSORRT_NVINFER_LIB MATCHES "libnvinfer[.]so.*11")
-            set(TENSORRT_VERSION v11.0)
-            message(STATUS "Found TensorRT libraries version 11")
-        elseif (TENSORRT_NVINFER_LIB MATCHES "libnvinfer[.]so.*10[.]16")
-            set(TENSORRT_VERSION v10.16)
-            message(STATUS "Found TensorRT libraries version 10.16")
-        elseif (TENSORRT_NVINFER_LIB MATCHES "libnvinfer[.]so.*10")
-            set(TENSORRT_VERSION v10.15)
-            message(STATUS "Found TensorRT libraries version 10")
+        find_file(TENSORRT_VERSION_HEADER
+          NAMES NvInferVersion.h
+          HINTS ${TENSORRT_INC_DIR} ${TENSORRT_INC_DIR}/include)
+
+        if (TENSORRT_VERSION_HEADER)
+            file(STRINGS "${TENSORRT_VERSION_HEADER}" TENSORRT_MAJOR_LINE
+              REGEX "^#define NV_TENSORRT_MAJOR +[0-9]+")
+            file(STRINGS "${TENSORRT_VERSION_HEADER}" TENSORRT_MINOR_LINE
+              REGEX "^#define NV_TENSORRT_MINOR +[0-9]+")
+            string(REGEX REPLACE ".*NV_TENSORRT_MAJOR +([0-9]+).*" "\\1"
+              TENSORRT_MAJOR "${TENSORRT_MAJOR_LINE}")
+            string(REGEX REPLACE ".*NV_TENSORRT_MINOR +([0-9]+).*" "\\1"
+              TENSORRT_MINOR "${TENSORRT_MINOR_LINE}")
+        endif()
+
+        if (TENSORRT_MAJOR MATCHES "^[0-9]+$" AND TENSORRT_MINOR MATCHES "^[0-9]+$")
+            set(TENSORRT_VERSION "v${TENSORRT_MAJOR}.${TENSORRT_MINOR}")
+            message(STATUS "Found TensorRT version ${TENSORRT_MAJOR}.${TENSORRT_MINOR} from ${TENSORRT_VERSION_HEADER}")
         else()
-            message(FATAL_ERROR "No supported TensorRT version found from ${TENSORRT_NVINFER_LIB}")
+            get_filename_component(TENSORRT_NVINFER_REALPATH
+              "${TENSORRT_NVINFER_LIB}" REALPATH)
+            if (TENSORRT_NVINFER_REALPATH MATCHES "libnvinfer[.]so[.]([0-9]+)[.]([0-9]+)")
+                set(TENSORRT_VERSION "v${CMAKE_MATCH_1}.${CMAKE_MATCH_2}")
+                message(STATUS "Found TensorRT version ${CMAKE_MATCH_1}.${CMAKE_MATCH_2} from ${TENSORRT_NVINFER_REALPATH}")
+            else()
+                message(FATAL_ERROR
+                  "Could not determine TensorRT version from ${TENSORRT_NVINFER_LIB}; set TENSORRT_VERSION explicitly")
+            endif()
         endif()
     endif()
     add_definitions(-DTENSORRT_VERSION=${TENSORRT_VERSION})
