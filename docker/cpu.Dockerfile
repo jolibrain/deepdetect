@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.0-experimental
-FROM ubuntu:22.04 AS build
+FROM ubuntu:24.04 AS build
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=cpu
@@ -18,7 +18,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get upgrade -y && apt-get install -y ca-certificates gpg  wget 
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
+RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y 
 RUN rm /usr/share/keyrings/kitware-archive-keyring.gpg
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y kitware-archive-keyring
@@ -37,7 +37,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     ccache \
     automake \
     build-essential \
-    openjdk-8-jdk \
+    default-jdk \
     pkg-config \
     zip \
     g++ \
@@ -88,8 +88,8 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libarchive-dev \
     libtcmalloc-minimal4 \
     bash-completion \
-    libomp-15-dev \
-    libomp5-15 \
+    libomp-dev \
+    libomp5 \
     python3-yaml
 
 #RUN for url in \
@@ -97,13 +97,12 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 #        ; do curl -L -s -o /tmp/p.deb $url && dpkg -i /tmp/p.deb && rm -rf /tmp/p.deb; done
 
 # Fix "ImportError: No module named builtins"
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 
-# Fix  ModuleNotFoundError: No module named 'dataclasses', 'typing_extensions' for torch 1.8.0
-RUN python -m pip install --upgrade pip
-RUN python -m pip install future pyyaml typing
-RUN python -m pip install dataclasses typing_extensions
+# Install Python compatibility helpers
+RUN python -m pip install --break-system-packages --upgrade pip
+RUN python -m pip install --break-system-packages future pyyaml typing_extensions
 
 ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/
@@ -122,7 +121,7 @@ RUN --mount=type=cache,target=/ccache/ mkdir build && cd build && ../build.sh
 RUN ./docker/get_libs.sh
 
 # Build final Docker image
-FROM ubuntu:22.04 AS runtime
+FROM ubuntu:24.04 AS runtime
 
 ARG DEEPDETECT_ARCH=cpu
 
@@ -138,30 +137,26 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     curl \
     libopenblas-base \
     liblmdb0 \
-    libleveldb1d \
-    libboost-regex1.74.0 \
-    libgoogle-glog0v5 \
-    libopencv-core4.5d \
-    libopencv-contrib4.5d \
-    libopencv-video4.5d \
-    libopencv-videoio4.5d \
+    libleveldb-dev \
+    libboost-atomic-dev \
+    libboost-chrono-dev \
+    libboost-date-time-dev \
+    libboost-filesystem-dev \
+    libboost-thread-dev \
+    libboost-iostreams-dev \
+    libboost-regex-dev \
+    libboost-stacktrace-dev \
+    libboost-system-dev \
+    libgoogle-glog-dev \
+    libopencv-dev \
     libgflags2.2 \
     libcurl4 \
-    libcurlpp0 \
-    libhdf5-cpp-103 \
-    libboost-atomic1.74.0 \
-    libboost-chrono1.74.0 \
-    libboost-date-time1.74.0 \
-    libboost-filesystem1.74.0 \
-    libboost-thread1.74.0 \
-    libboost-iostreams1.74.0 \
-    libboost-regex1.74.0 \
-    libboost-stacktrace1.74.0 \
-    libboost-system1.74.0 \
-    libarchive13 \
+    libcurlpp-dev \
+    libhdf5-dev \
+    libarchive-dev \
     libtcmalloc-minimal4 \
-    libomp-15-dev \
-    libomp5-15
+    libomp-dev \
+    libomp5
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \

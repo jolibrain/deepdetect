@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1.0-experimental
 
-ARG DD_UBUNTU_VERSION=22.04
+ARG DD_UBUNTU_VERSION=24.04
 ARG DD_CUDA_VERSION=13.0.2
 ARG PYTORCH_CUDA_INDEX=cu130
 ARG DEEPDETECT_GPU_VARIANT=default
@@ -20,7 +20,7 @@ RUN echo GPU_VARIANT=${DEEPDETECT_GPU_VARIANT} >> /image-info
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y ca-certificates gpg wget
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
+RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y 
 RUN rm /usr/share/keyrings/kitware-archive-keyring.gpg
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y kitware-archive-keyring
@@ -36,7 +36,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     rsync \
     clang-format\
     build-essential \
-    openjdk-8-jdk \
+    default-jdk \
     pkg-config \
     zip \
     zlib1g-dev \
@@ -74,11 +74,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     swig \
     curl \
     unzip \
-    python-setuptools \
+    python3-setuptools \
     python3-dev \
     python3-pip \
     tox \
-    python-six \
+    python3-six \
     unzip \
     libgoogle-perftools-dev \
     curl \
@@ -88,14 +88,12 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     schedtool \
     util-linux \
     googletest \
-    googletest-tools \
     python3-yaml \
     python3-numpy 
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
-RUN python -m pip install --upgrade pip
-RUN python -m pip install torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}
-RUN python -m pip install onnx onnxscript
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+RUN python -m pip install --break-system-packages torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}
+RUN python -m pip install --break-system-packages onnx onnxscript
 
 
 RUN apt clean -y

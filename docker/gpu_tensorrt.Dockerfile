@@ -18,7 +18,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 
 # CMake
 # RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
-# RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ jammy main'
+# RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ noble main'
 
 # Don't install opencv-ml-dev, it will install libprotobuf dans link dede to 2 versions of protobuf
 RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
@@ -29,7 +29,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     ccache \
     automake \
     build-essential \
-    openjdk-8-jdk \
+    default-jdk \
     pkg-config \
     cmake \
     zip \
@@ -163,13 +163,13 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     curl \
 	libopenblas0 \
 	liblmdb0 \
-	libleveldb1d \
+	libleveldb-dev \
     libboost-regex1.83.0 \
 	libgoogle-glog0v6t64 \
 	libgflags2.2 \
 	libcurl4 \
-	libcurlpp0 \
-	libhdf5-cpp-103-1t64 \
+	libcurlpp-dev \
+	libhdf5-dev \
     libboost-atomic1.83.0 \
     libboost-chrono1.83.0 \
     libboost-date-time1.83.0 \
@@ -179,7 +179,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libboost-regex1.83.0 \
     libboost-stacktrace1.83.0 \
     libboost-system1.83.0 \
-	libarchive13 \
+	libarchive-dev \
     libtbb12 \
 	libgstreamer1.0-0 \
     gstreamer1.0-plugins-base \

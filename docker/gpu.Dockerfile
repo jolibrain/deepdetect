@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1.0-experimental
 
-ARG DD_UBUNTU_VERSION=22.04
+ARG DD_UBUNTU_VERSION=24.04
 ARG DD_CUDA_VERSION=13.0.2
 ARG DD_CUDA_MAJOR_MINOR=13.0
 ARG DEEPDETECT_GPU_VARIANT=default
@@ -30,7 +30,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y ca-certificates gpg wget
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
+RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main' |  tee /etc/apt/sources.list.d/kitware.list >/dev/null
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -y 
 RUN rm /usr/share/keyrings/kitware-archive-keyring.gpg
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -y kitware-archive-keyring
@@ -45,7 +45,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     ccache \
     automake \
     build-essential \
-    openjdk-8-jdk \
+    default-jdk \
     pkg-config \
     zip \
     g++ \
@@ -83,11 +83,11 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     swig \
     curl \
     unzip \
-    python-setuptools \
+    python3-setuptools \
     python3-dev \
     python3-dev \
     python3-pip \
-    python-six \
+    python3-six \
     python3-yaml \
     unzip \
     libgoogle-perftools-dev \
@@ -98,12 +98,12 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 
 
 # Fix "ImportError: No module named builtins"
-# RUN pip install future pyyaml typing
+# RUN pip install future pyyaml typing_extensions
 
-# Fix  ModuleNotFoundError: No module named 'dataclasses', 'typing_extensions' for torch 1.8.0
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
-RUN python -m pip install --upgrade pip
-RUN python -m pip install dataclasses typing_extensions
+# Install Python compatibility helpers
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+RUN python -m pip install --break-system-packages --upgrade pip
+RUN python -m pip install --break-system-packages typing_extensions
 
 ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/
@@ -139,30 +139,26 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     apt-get update -y && apt-get install -y \
     wget \
     curl \
-	libopenblas-base \
-	liblmdb0 \
-	libleveldb1d \
-    libboost-regex1.74.0 \
-	libgoogle-glog0v5 \
-    libopencv-core4.5d \
-    libopencv-contrib4.5d \
-    libopencv-video4.5d \
-    libopencv-videoio4.5d \
-	libgflags2.2 \
-	libcurl4 \
-	libcurlpp0 \
-	libhdf5-cpp-103 \
-    libboost-atomic1.74.0 \
-    libboost-chrono1.74.0 \
-    libboost-date-time1.74.0 \
-	libboost-filesystem1.74.0 \
-	libboost-thread1.74.0 \
-	libboost-iostreams1.74.0 \
-    libboost-regex1.74.0 \
-    libboost-stacktrace1.74.0 \
-    libboost-system1.74.0 \
-	libarchive13 \
-	libtcmalloc-minimal4
+    libopenblas-base \
+    liblmdb0 \
+    libleveldb-dev \
+    libboost-atomic-dev \
+    libboost-chrono-dev \
+    libboost-date-time-dev \
+    libboost-filesystem-dev \
+    libboost-thread-dev \
+    libboost-iostreams-dev \
+    libboost-regex-dev \
+    libboost-stacktrace-dev \
+    libboost-system-dev \
+    libgoogle-glog-dev \
+    libopencv-dev \
+    libgflags2.2 \
+    libcurl4 \
+    libcurlpp-dev \
+    libhdf5-dev \
+    libarchive-dev \
+    libtcmalloc-minimal4
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \
