@@ -108,10 +108,10 @@ $ docker build -t dd-dev -f ci/devel.Dockerfile --progress=plain .
 ### Want to try another cuda, tensorrt, cudnn or ubuntu ?
 ```
 $ docker build -t dd-dev -f ci/devel.Dockerfile --progress=plain \
-    --build-arg DD_UBUNTU_VERSION=20.04 \
-    --build-arg DD_CUDA_VERSION=11.1 \
-    --build-arg DD_CUDNN_VERSION=8 \
-    --build-arg DD_TENSORRT_VERSION=7.2.1-1+cuda11.1 \
+    --build-arg DD_UBUNTU_VERSION=24.04 \
+    --build-arg DD_CUDA_VERSION=13.0.2 \
+    --build-arg DEEPDETECT_GPU_VARIANT=default \
+    --build-arg DEEPDETECT_TENSORRT_VERSION= \
     .
 ```
 

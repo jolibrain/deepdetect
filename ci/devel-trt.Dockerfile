@@ -17,7 +17,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     rsync \
     clang-format-14 \
     build-essential \
-    openjdk-8-jdk \
+    default-jdk \
     pkg-config \
     cmake \
     zip \
@@ -79,7 +79,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     util-linux \
     libgstreamer1.0-dev
 
-RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --break-system-packages --upgrade pip
 
 WORKDIR /tmp/
 
