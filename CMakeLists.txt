@@ -1073,34 +1073,57 @@ if (USE_TENSORRT)
     set(TENSORRT_LIB_DIR  ${TENSORRT_DIR}/lib )
     set(TENSORRT_INC_DIR ${TENSORRT_DIR}/include)
   elseif (DEFINED TENSORRT_LIB_DIR AND DEFINED TENSORRT_INC_DIR)
-    set(TRTTESTDIR TENSORRT_LIB_DIR)
+    set(TRTTESTDIR ${TENSORRT_LIB_DIR})
   else()
     set(TRTTESTDIR /usr/lib/x86_64-linux-gnu)
     set(TENSORRT_LIB_DIR  /usr/lib/x86_64-linux-gnu)
     set(TENSORRT_INC_DIR /usr/include/x86_64-linux-gnu)
   endif()
 
-  if (NOT EXISTS "${TRTTESTDIR}/libnvinfer.so.10")
-    message(FATAL_ERROR "Could not find TensorRT ${TRTTESTDIR}/libnvinfer.so.10, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
-  else()
-    message(STATUS "Found TensorRT libraries : ${TRTTESTDIR}/libnvinfer.so.10")
+  find_library(TENSORRT_NVINFER_LIB
+    NAMES nvinfer
+    HINTS ${TENSORRT_LIB_DIR} ${TRTTESTDIR}
+    NO_DEFAULT_PATH)
+  if (NOT TENSORRT_NVINFER_LIB)
+    file(GLOB TENSORRT_NVINFER_LIB_CANDIDATES
+      "${TRTTESTDIR}/libnvinfer.so*"
+      "${TENSORRT_LIB_DIR}/libnvinfer.so*")
+    list(FILTER TENSORRT_NVINFER_LIB_CANDIDATES EXCLUDE REGEX ".*libnvinfer_(plugin|vc_plugin|lean|dispatch|safe).*")
+    list(SORT TENSORRT_NVINFER_LIB_CANDIDATES)
+    list(REVERSE TENSORRT_NVINFER_LIB_CANDIDATES)
+    list(LENGTH TENSORRT_NVINFER_LIB_CANDIDATES TENSORRT_NVINFER_LIB_CANDIDATE_COUNT)
+    if (TENSORRT_NVINFER_LIB_CANDIDATE_COUNT GREATER 0)
+      list(GET TENSORRT_NVINFER_LIB_CANDIDATES 0 TENSORRT_NVINFER_LIB)
+    endif()
   endif()
 
+  if (NOT TENSORRT_NVINFER_LIB)
+    message(FATAL_ERROR "Could not find TensorRT libnvinfer.so in ${TRTTESTDIR}, please provide tensorRT location as TENSORRT_DIR or (TENSORRT_LIB_DIR _and_ TENSORRT_INC_DIR)")
+  endif()
+  message(STATUS "Found TensorRT library: ${TENSORRT_NVINFER_LIB}")
+
     set(TENSORRT_LIB_DIR ${CMAKE_BINARY_DIR}/tensorrt-oss/bin/ ${TENSORRT_LIB_DIR})
-	set(TENSORRT_LIBS nvinfer nvinfer_plugin nvonnxparser )
+	set(TENSORRT_LIBS ${TENSORRT_NVINFER_LIB} nvinfer_plugin nvonnxparser )
 
     if (NOT TENSORRT_VERSION)
-        if (EXISTS "${TRTTESTDIR}/libnvinfer.so.10")
+        if (TENSORRT_NVINFER_LIB MATCHES "libnvinfer[.]so.*11")
+            set(TENSORRT_VERSION v11.0)
+            message(STATUS "Found TensorRT libraries version 11")
+        elseif (TENSORRT_NVINFER_LIB MATCHES "libnvinfer[.]so.*10[.]16")
+            set(TENSORRT_VERSION v10.16)
+            message(STATUS "Found TensorRT libraries version 10.16")
+        elseif (TENSORRT_NVINFER_LIB MATCHES "libnvinfer[.]so.*10")
             set(TENSORRT_VERSION v10.15)
             message(STATUS "Found TensorRT libraries version 10")
         else()
-            message(FATAL_ERROR "No supported TensorRT version found")
+            message(FATAL_ERROR "No supported TensorRT version found from ${TENSORRT_NVINFER_LIB}")
         endif()
     endif()
     add_definitions(-DTENSORRT_VERSION=${TENSORRT_VERSION})
 
     set(TRT_FLAGS
       -DTRT_OUT_DIR=${CMAKE_BINARY_DIR}/tensorrt-oss/bin
+      -Dnvinfer_LIB_PATH=${TENSORRT_NVINFER_LIB}
       -DCMAKE_CXX_STANDARD=17
       -DCMAKE_CXX_STANDARD_REQUIRED=ON
       -DCMAKE_CXX_EXTENSIONS=OFF

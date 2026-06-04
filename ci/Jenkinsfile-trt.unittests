@@ -4,7 +4,7 @@ pipeline {
     DOCKER_PARAMS = "-v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
     DEEPDETECT_GPU_VARIANT = "default"
     DEEPDETECT_OPENCV4_BUILD_PATH = "/tmp/opencv/opencv-4.13.0/build"
-    DEEPDETECT_TENSORRT_VERSION = "v10.15"
+    DEEPDETECT_TENSORRT_VERSION = ""
   }
   agent { node { label 'gpu' } }
   stages {

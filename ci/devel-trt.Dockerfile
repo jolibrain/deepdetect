@@ -4,7 +4,7 @@ FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS build
 
 ARG DD_CUDA_VERSION
 ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.13.0/build
-ARG DEEPDETECT_TENSORRT_VERSION=v10.15
+ARG DEEPDETECT_TENSORRT_VERSION=
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget curl
