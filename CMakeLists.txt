@@ -3,10 +3,6 @@ cmake_minimum_required(VERSION 3.10)
 
 option(RELEASE "release mode" OFF)
 option(WARNING "enable warning" ON)
-option(USE_CAFFE "build caffe backend" OFF)
-option(USE_CAFFE_DEBUG "enable caffe debug" OFF)
-option(USE_CAFFE2 "build caffe2 backend" OFF)
-option(USE_TF "use TF backend" OFF)
 option(USE_NCNN "use NCNN backend" OFF)
 option(USE_TORCH "use libtorch backend" ON)
 option(USE_HDF5 "use HDF5" ON)
@@ -25,24 +21,20 @@ option(BUILD_PROTOBUF "build PROTOBUF instead of using system library" ON)
 option(USE_BOOST_BACKTRACE "use boost backtrace" ON)
 option(USE_OPENMP "use OpenMP" ON)
 
-if (USE_CAFFE)
-  add_definitions(-DUSE_CAFFE)
-endif()
+foreach(RETIRED_BACKEND_FLAG
+    USE_CAFFE USE_CAFFE_DEBUG USE_CAFFE_CPU_ONLY
+    USE_CAFFE2 USE_CAFFE2_CPU_ONLY
+    USE_TF USE_TF_CPU_ONLY)
+  if (DEFINED ${RETIRED_BACKEND_FLAG} AND ${RETIRED_BACKEND_FLAG})
+    message(FATAL_ERROR
+      "${RETIRED_BACKEND_FLAG}=ON is no longer supported: the Caffe, Caffe2, "
+      "and TensorFlow backends were removed. Migrate services to Torch or "
+      "ONNX/TensorRT before upgrading.")
+  endif()
+endforeach()
 
 if (USE_TENSORRT_OSS)
   set(USE_TENSORRT ON)
-endif()
-
-if (USE_TF AND USE_CAFFE2)
-  message(FATAL_ERROR "Building with tensorflow AND caffe2 can't be build together")
-endif()
-
-if (USE_TORCH AND USE_CAFFE2)
-  message(FATAL_ERROR "Building with torch AND caffe2 can't be build together")
-endif()
-
-if (USE_TF AND USE_TORCH)
-  message(FATAL_ERROR "Building with tensorflow AND torch can't be build together")
 endif()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -137,9 +129,7 @@ else()
 endif()
 
 if (USE_COMMAND_LINE)
-  if (NOT USE_CAFFE)
-    set(USE_JSON_API ON)
-  endif()
+  set(USE_JSON_API ON)
   string(APPEND CMAKE_CXX_FLAGS " -DUSE_COMMAND_LINE")
 endif()
 
@@ -208,7 +198,7 @@ if (BUILD_PROTOBUF)
     link_directories(${PROTOBUF_LIB_DIR})
     include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIR})
 else()
-    if (USE_CAFFE OR USE_TORCH)
+    if (USE_TORCH)
         find_package(Protobuf REQUIRED 3.11.4)
     else()
         find_package(Protobuf REQUIRED)
@@ -255,18 +245,9 @@ file(
 )
 
 # dependency on Eigen for confusion matrix fast computation
-if (USE_TF)
-  set(TENSORFLOW_CC_DIR ${CMAKE_BINARY_DIR}/tensorflow_cc/src/tensorflow_cc-build/)
-  set(EIGEN3_INCLUDE_DIR ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/eigen/)
-elseif (USE_CAFFE2)
-  set(PYTORCH_PATH ${CMAKE_BINARY_DIR}/pytorch/src/pytorch)
-  set(DETECTRON_PATH ${CMAKE_BINARY_DIR}/detectron/src/detectron)
-  set(EIGEN3_INCLUDE_DIR ${PYTORCH_PATH}/third_party/eigen)
-else()
-   find_package(PkgConfig)
-   pkg_search_module(Eigen3 REQUIRED eigen3)
-   set(EIGEN3_INCLUDE_DIR "/usr/include/eigen3")
-endif()
+find_package(PkgConfig)
+pkg_search_module(Eigen3 REQUIRED eigen3)
+set(EIGEN3_INCLUDE_DIR "/usr/include/eigen3")
 
 set(eigen_archive_hash "50812b426b7c")
 
@@ -285,7 +266,6 @@ if (BUILD_SPDLOG)
     )
     set(SPDLOG_LIB_DEPS ${CMAKE_BINARY_DIR}/spdlog/build/lib/libspdlog.a)
     set(SPDLOG_LIB_DIR ${CMAKE_BINARY_DIR}/spdlog/build/lib)
-    set(SPDLOG_CAFFE_LIB_DEPS :libspdlog.a)
     set(SPDLOG_INCLUDE_DIR ${CMAKE_BINARY_DIR}/spdlog/build/include)
     include_directories(SYSTEM ${SPDLOG_INCLUDE_DIR})
 else()
@@ -316,11 +296,8 @@ endif()
 
 # CUDA OR CPU options
 option(USE_XGBOOST_CPU_ONLY "use XGBOOST without CUDA" ON)
-option(USE_TF_CPU_ONLY "use TF without CUDA" OFF)
 option(USE_TORCH_CPU_ONLY "use TORCH without CUDA" OFF)
-option(USE_CAFFE_CPU_ONLY "use CAFFE without CUDA" OFF)
 option(USE_DLIB_CPU_ONLY "use DLIB without CUDA" OFF)
-option(USE_CAFFE2_CPU_ONLY "use CAFFE2 without CUDA" OFF)
 option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
 
 # Dlib AVX option
@@ -333,10 +310,7 @@ endif()
 
 if (USE_CPU_ONLY)
   set(USE_XGBOOST_CPU_ONLY ON)
-  set(USE_CAFFE_CPU_ONLY ON)
   set(USE_DLIB_CPU_ONLY ON)
-  set(USE_TF_CPU_ONLY ON)
-  set(USE_CAFFE2_CPU_ONLY ON)
   set(USE_TORCH_CPU_ONLY ON)
   set(USE_FAISS_CPU_ONLY ON)
   set(USE_CUDNN OFF)
@@ -350,12 +324,6 @@ if (NOT APPLE AND NOT CUDA_FOUND)
   if (USE_TENSORRT)
       message(FATAL, "USE_TENSORRT=ON needs CUDA installed")
   endif()
-  if (USE_TF AND NOT USE_TF_CPU_ONLY)
-      message(FATAL, "USE_TF=ON needs CUDA installed")
-  endif()
-  if (USE_CAFFE AND NOT USE_CAFFE_CPU_ONLY)
-      message(FATAL, "USE_CAFFE=ON needs CUDA installed")
-  endif()
   if (USE_DLIB AND NOT USE_DLIB_CPU_ONLY)
       message(FATAL, "USE_DLIB=ON needs CUDA installed")
       if (USE_CUDNN)
@@ -365,16 +333,13 @@ if (NOT APPLE AND NOT CUDA_FOUND)
   if (USE_TORCH AND NOT USE_TORCH_CPU_ONLY)
       message(FATAL, "USE_TORCH=ON needs CUDA installed")
   endif()
-  if (USE_CAFFE2 AND NOT USE_CAFFE2_CPU_ONLY)
-      message(FATAL, "USE_CAFFE2=ON needs CUDA installed")
-  endif()
   if (USE_FAISS AND NOT USE_FAISS_CPU_ONLY)
       message(FATAL, "USE_FAISS=ON needs CUDA installed")
   endif()
 endif()
 
 # annoy
-if (USE_CAFFE OR USE_TORCH)
+if (USE_TORCH)
   if (USE_SIMSEARCH)
     if (USE_FAISS AND USE_ANNOY)
       message (STATUS "ANNOY selected, using ANNOY as simsearch backend")
@@ -504,167 +469,6 @@ if (USE_DLIB)
     message(STATUS "Dlib will be built")
 endif()
 
-set(CAFFE_DD_USER jolibrain)
-set(CAFFE_DD_BRANCH master)
-
-if (USE_CAFFE2)
-
-  message(DEPRECATION "CAFFE2 backend is deprecated and will be removed in the future")
-
-  add_definitions(-DUSE_CAFFE2)
-  list(APPEND CAFFE2_LIB_DEPS -lcaffe2)
-  if (NOT USE_CAFFE2_CPU_ONLY)
-    list(APPEND CAFFE2_LIB_DEPS -lcaffe2_gpu)
-  endif()
-
-  include_directories(
-    ${PYTORCH_PATH}
-    ${PYTORCH_PATH}-build
-    ${PYTORCH_PATH}/aten/src
-  )
-  set(CAFFE2_PATCHES ${CMAKE_BINARY_DIR}/patches/caffe2)
-
-  set(PYTORCH_SUPPORTED_COMMIT ff608a9) # Pre-release v1.0rc1
-  set(PYTORCH_PATCHES
-    ${CAFFE2_PATCHES}/pytorch/0001-eigen.patch
-    ${CAFFE2_PATCHES}/pytorch/0002-logging.patch
-    ${CAFFE2_PATCHES}/pytorch/0003-collect_proposals.patch
-    )
-
-  set(DETECTRON_SUPPORTED_COMMIT 8181a32) # Nov 7, 2018
-  set(DETECTRON_PATCHES
-    ${CAFFE2_PATCHES}/detectron/0001-dependencies.patch
-    ${CAFFE2_PATCHES}/detectron/0002-compiled.patch
-    ${CAFFE2_PATCHES}/detectron/0003-ops.patch
-    ${CAFFE2_PATCHES}/detectron/0004-import.patch
-    ${CAFFE2_PATCHES}/detectron/0005-visual_genome.patch
-    ${CAFFE2_PATCHES}/detectron/0006-pkl_cache.patch
-    ${CAFFE2_PATCHES}/detectron/0007-weight_transfer.patch
-    )
-
-  list(APPEND CAFFE2_OPS
-    ${CAFFE2_PATCHES}/custom_ops/bbox_to_roi_op.h
-    ${CAFFE2_PATCHES}/custom_ops/bbox_to_roi_op.cc
-    ${CAFFE2_PATCHES}/custom_ops/segment_mask_op.h
-    ${CAFFE2_PATCHES}/custom_ops/segment_mask_op.cc
-    ${CAFFE2_PATCHES}/custom_ops/multi_level_roi_op.h
-    ${CAFFE2_PATCHES}/custom_ops/multi_level_roi_op.cc
-  )
-
-  list(APPEND PYTORCH_FLAGS
-
-    -DBUILD_CUSTOM_PROTOBUF=OFF
-    -DCAFFE2_LINK_LOCAL_PROTOBUF=0
-
-    -DUSE_OPENMP=ON
-    -DUSE_MPI=OFF
-
-    -DUSE_GFLAGS=OFF
-    -DUSE_GLOG=OFF
-
-    -DBUILD_TEST=OFF
-    -DBUILD_BINARY=OFF
-    -DBUILD_DOCS=OFF
-  )
-
-  # Only a few submodules are currently used by caffe2
-  # (No need to log, benchmark, compile for IOS, make python libraries, ...)
-  list(APPEND PYTORCH_SUBMODULES
-    third_party/cpuinfo
-    third_party/cub
-    third_party/eigen
-    third_party/FP16
-    third_party/FXdiv
-    third_party/gloo
-    third_party/NNPACK
-    third_party/onnx
-    third_party/psimd
-    third_party/pthreadpool
-    third_party/pybind11
-    third_party/python-peachpy
-    third_party/sleef
-    )
-
-  # Pytorch
-  set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
-  ExternalProject_Add(
-    pytorch
-    PREFIX pytorch
-    GIT_REPOSITORY https://github.com/pytorch/pytorch.git
-    GIT_SUBMODULES ${PYTORCH_SUBMODULES}
-    UPDATE_DISCONNECTED 1
-    GIT_TAG ${PYTORCH_SUPPORTED_COMMIT}
-    PATCH_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || echo cp modules/detectron/*_op.* caffe2/operators | bash && cp ${CAFFE2_OPS} caffe2/operators && git am ${PYTORCH_PATCHES}
-    CONFIGURE_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} cmake ../pytorch ${PYTORCH_FLAGS}
-    BUILD_COMMAND test -f ${PYTORCH_COMPLETE} && echo Skipping || make -j${N}
-    INSTALL_COMMAND ""
-    DEPENDS protobuf
-  )
-
-  # Detectron
-  set(DETECTRON_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/detectron-complete)
-  ExternalProject_Add(
-    detectron
-    PREFIX detectron
-    GIT_REPOSITORY https://github.com/facebookresearch/Detectron
-    UPDATE_DISCONNECTED 1
-    GIT_TAG ${DETECTRON_SUPPORTED_COMMIT}
-    PATCH_COMMAND test -f ${DETECTRON_COMPLETE} && echo Skipping || git am ${DETECTRON_PATCHES}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    DEPENDS protobuf
-  )
-
-  # Python path
-  if (NOT EXISTS ${CMAKE_BINARY_DIR}/python_path)
-    execute_process(COMMAND mkdir -p ${CMAKE_BINARY_DIR}/python_path)
-    execute_process(COMMAND ln -s ${PYTORCH_PATH}-build
-      ${CMAKE_BINARY_DIR}/python_path/pytorch)
-    execute_process(COMMAND ln -s ${DETECTRON_PATH}
-      ${CMAKE_BINARY_DIR}/python_path/detectron)
-  endif()
-
-endif()
-
-if (USE_TF)
-  # Tensorflow
-  message(STATUS "Fetching Tensorflow")
-  add_definitions(-DUSE_TF)
-  set(TF_LIB_DEPS -ltensorflow_cc)
-
-  if (USE_TF_CPU_ONLY)
-    add_definitions(-DUSE_TF_CPU_ONLY)
-    ExternalProject_Add(
-      tensorflow_cc
-      PREFIX tensorflow_cc
-      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
-      GIT_TAG v1.15.0
-      SOURCE_SUBDIR tensorflow_cc
-      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON -DALLOW_CUDA=OFF
-      INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
-  else()
-    ExternalProject_Add(
-      tensorflow_cc
-      PREFIX tensorflow_cc
-      GIT_REPOSITORY https://github.com/FloopCZ/tensorflow_cc.git
-      GIT_TAG v1.15.0
-      SOURCE_SUBDIR tensorflow_cc
-      CMAKE_ARGS -DTENSORFLOW_STATIC=OFF -DTENSORFLOW_SHARED=ON
-      INSTALL_COMMAND ""
-      BUILD_IN_SOURCE 1
-      )
-  endif()
-
-  set(TF_INC_DIR ${TENSORFLOW_CC_DIR}/tensorflow/ ${TENSORFLOW_CC_DIR}/tensorflow/bazel-genfiles/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public/ ${TENSORFLOW_CC_DIR}/tensorflow/tensorflow/contrib/makefile/downloads/absl/)
-  set(TF_LIB_DIR ${TENSORFLOW_CC_DIR}/tensorflow/bazel-bin/tensorflow/)
-
-  include_directories("${TF_INC_DIR}")
-
-endif() # USE_TF
-
 # OpenCV
 set(OPENCV_MODULES core imgproc highgui imgcodecs videoio)
 if (USE_CUDA_CV)
@@ -690,119 +494,6 @@ message(STATUS "OpenCV ${OPENCV_VERSION} (${OpenCV_VERSION}) found (${OpenCV_CON
 if (USE_CUDA_CV)
   message(STATUS "Using CUDA OpenCV")
   add_definitions(-DUSE_CUDA_CV)
-endif()
-
-# customized Caffe as external project
-if (CAFFE_INC_DIR AND CAFFE_LIB_DIR)
-  # do nothing
-elseif(USE_CAFFE)
-  message(STATUS "Configuring customized caffe")
-
-  if (USE_DD_SYSLOG)
-    set(USE_SYSLOG 1)
-  else()
-    set(USE_SYSLOG 0)
-  endif()
-
-
-  # Set config file
-  if (USE_CAFFE_CPU_ONLY)
-    add_definitions(-DUSE_CAFFE_CPU_ONLY)
-    set(CAFFE_DD_CONFIG_FILE Makefile.config.cpu)
-  else()
-    if (HAVE_CUDNN AND USE_CUDNN)
-      if(JETSON)
-	set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu.cudnn.jetson)
-      else()
-	set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu.cudnn)
-      endif()
-    else() # HAVE_CUDNN
-      set(CAFFE_DD_CONFIG_FILE Makefile.config.gpu)
-    endif() # HAVE_CUDNN
-  endif()
-
-  if (RPI3)
-    set(CAFFE_DD_CONFIG_FILE Makefile.config.pi3)
-  endif()
-
-  # Set caffe DEBUG mode
-  if (USE_CAFFE_DEBUG)
-    set(CAFFE_DEBUG 1)
-  else()
-    set(CAFFE_DEBUG 0)
-  endif()
-
-  message(STATUS "include_dirs : ${INCLUDE_DIRS}")
-
-  set(CAFFE_DD_TARBALL_HASH "6d340fff2213c37886e058d188c9b54458a0747422d54bc294db4e5029a68aa0")
-
-  ExternalProject_Add(
-    caffe_dd
-    PREFIX caffe_dd
-    URL https://github.com/${CAFFE_DD_USER}/caffe/archive/${CAFFE_DD_BRANCH}.tar.gz
-    URL_HASH SHA256=${CAFFE_DD_TARBALL_HASH}
-    CONFIGURE_COMMAND
-        sh -c "\
-            diff ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release/src/caffe/proto/caffe.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/src/caffe.pb.cc > /dev/null 2>&1 \
-            && ( echo 'caffe version of caffe.pb.h/caffe.pb.cc is already up to date') \
-            || ( echo 'caffe.pb.h/caffe.pb.cc have change rebuilding caffe' && rm -rf ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/.build_release ) \
-        " &&
-        ln -sf ${CAFFE_DD_CONFIG_FILE} Makefile.config &&
-        echo "OPENCV_VERSION:=${OPENCV_VERSION}" >> Makefile.config &&
-        echo "USE_SYSLOG:=${USE_SYSLOG}" >> Makefile.config &&
-        echo "DEBUG:=${CAFFE_DEBUG}" >> Makefile.config &&
-        echo "INCLUDE_DIRS+=${SPDLOG_INCLUDE_DIR}" >> Makefile.config &&
-        echo "INCLUDE_DIRS+=${PROTOBUF_INCLUDE_DIR}" >> Makefile.config &&
-        echo "INCLUDE_DIRS+=${OpenCV_INCLUDE_DIRS}" >> Makefile.config &&
-        echo "CUDA_ARCH:=${CUDA_ARCH_FLAGS}" >> Makefile.config &&
-        echo "LIBRARIES+=${SPDLOG_CAFFE_LIB_DEPS}" >> Makefile.config &&
-        echo "LIBRARIES+=${OpenCV_LIBS}" >> Makefile.config &&
-        echo "LIBRARY_DIRS+=${SPDLOG_LIB_DIR}" >> Makefile.config &&
-        echo "LIBRARY_DIRS+=${PROTOBUF_LIB_DIR}" >> Makefile.config &&
-        echo "LIBRARY_DIRS+=${OpenCV_CONFIG_PATH}/lib" >> Makefile.config
-    BUILD_COMMAND 
-        ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} proto &&
-        ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}:$ENV{LD_LIBRARY_PATH} PATH=${PROTOBUF_LIB_DIR}:$ENV{PATH} make -j${N} all
-    INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
-    DEPENDS caffe_pb_h protobuf spdlog
-  )
-
-  if (USE_HDF5)
-    if (JETSON)
-      set(HDF5_LIB /usr/lib/aarch64-linux-gnu/hdf5/serial)
-    elseif (RPI3)
-      set(HDF5_LIB /usr/lib/arm-linux-gnueabihf/hdf5/serial)
-    else()
-      set(HDF5_LIB /usr/lib/x86_64-linux-gnu/hdf5/serial)
-    endif()
-  endif()
-
-  if (USE_HDF5)
-    if (USE_CAFFE_CPU_ONLY)
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src /usr/include/hdf5/serial)
-      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB})
-    else()
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
-      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${HDF5_LIB})
-    endif()
-  else()
-    if (USE_CAFFE_CPU_ONLY)
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
-      set(CAFFE_LIB_DIR $ENV{HOME}/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
-    else()
-      set(CAFFE_INC_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/include ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src ${CUDA_INCLUDE_DIRS})
-      set(CAFFE_LIB_DIR ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/lib ${CMAKE_BINARY_DIR}/caffe_dd/src/caffe_dd/build/src)
-    endif()
-  endif()
-endif()
-
-# Caffe dependencies
-if (USE_CAFFE)
-  set(CAFFE_LIB_DEPS -lleveldb -lsnappy -llmdb -lopenblas -lcaffe)
-  if (USE_HDF5)
-    string(APPEND CAFFE_LIB_DEPS " -lhdf5_hl -lhdf5")
-  endif()
 endif()
 
 # NCNN
@@ -1310,7 +1001,6 @@ include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CMAKE_BINARY_DIR}/src)
 
 include_directories(
-    ${CAFFE_INC_DIR}
     ${XGBOOST_INC_DIR}
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
@@ -1321,9 +1011,7 @@ include_directories(
     SYSTEM ${TENSORRT_INC_DIR}
 )
 include_directories(
-    ${CMAKE_SOURCE_DIR}/src/backends/caffe
     ${CMAKE_SOURCE_DIR}/backends/xgb
-    ${CMAKE_SOURCE_DIR}/backends/tf
     ${CMAKE_SOURCE_DIR}/backends/dlib
     ${CMAKE_SOURCE_DIR}/backends/tsne
 )
@@ -1339,16 +1027,13 @@ set(COMMON_INCLUDE_DIRS
     ${HTTP_INCLUDE_DIR}
     ${PROTOBUF_INCLUDE_DIR}
     ${SPDLOG_INCLUDE_DIR}
-    ${CAFFE_INC_DIR}
     ${XGBOOST_INC_DIR}
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
     ${TENSORRT_INC_DIR}
     ${NCNN_INC_DIR}
 
-    ${CMAKE_SOURCE_DIR}/src/backends/caffe
     ${CMAKE_SOURCE_DIR}/backends/xgb
-    ${CMAKE_SOURCE_DIR}/backends/tf
     ${CMAKE_SOURCE_DIR}/backends/dlib
     ${CMAKE_SOURCE_DIR}/backends/tsne
 )
@@ -1360,9 +1045,6 @@ endif()
 set(COMMON_LINK_DIRS
     ${DLIB_LIB_DIR}
     ${TENSORRT_LIB_DIR}
-    ${CAFFE_LIB_DIR}
-    ${CAFFE2_LIB_DIR}
-    ${TF_LIB_DIR}
     ${XGBOOST_LIB_DIR}
     ${TSNE_LIB_DIR}
     ${NCNN_LIB_DIR}
@@ -1376,9 +1058,6 @@ set(COMMON_LINK_LIBS
     ${HTTP_LIB_DEPS}
     ${SPDLOG_LIB_DEPS}
     ${OATPP_LIB_DEPS}
-    ${CAFFE_LIB_DEPS}
-    ${CAFFE2_LIB_DEPS}
-    ${TF_LIB_DEPS}
     ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
     ${NCNN_LIB_DEPS}
@@ -1474,16 +1153,9 @@ message(STATUS "BUILD_SPDLOG:          ${BUILD_SPDLOG}")
 message(STATUS "BUILD_PROTOBUF:        ${BUILD_PROTOBUF}")
 message(STATUS "BUILD_TESTS:           ${BUILD_TESTS}")
 message(STATUS "BUILD_TOOLS:           ${BUILD_TOOLS}")
-message(STATUS "USE_CAFFE:             ${USE_CAFFE}")
-message(STATUS "USE_CAFFE_CPU_ONLY:    ${USE_CAFFE_CPU_ONLY}")
-message(STATUS "USE_CAFFE_DEBUG:       ${USE_CAFFE_DEBUG}")
-message(STATUS "USE_CAFFE2:            ${USE_CAFFE2}")
-message(STATUS "USE_CAFFE2_CPU_ONLY:   ${USE_CAFFE2_CPU_ONLY}")
 message(STATUS "USE_TORCH:             ${USE_TORCH}")
 message(STATUS "USE_TORCH_CPU_ONLY:    ${USE_TORCH_CPU_ONLY}")
 message(STATUS "USE_SIMSEARCH:         ${USE_SIMSEARCH}")
-message(STATUS "USE_TF:                ${USE_TF}")
-message(STATUS "USE_TF_CPU_ONLY:       ${USE_TF_CPU_ONLY}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")

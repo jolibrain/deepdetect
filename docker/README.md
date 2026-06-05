@@ -25,16 +25,11 @@ Description : DEEPDETECT_BUILD build argument change cmake arguments in build.sh
 Expected values :
 
 * CPU
-  * tf
-  * torch
   * default
+  * armv7
 * GPU
-  * tf
-  * tf-cpu
-  * caffe-cpu-tf
-  * caffe-tf
-  * torch
   * default
+  * tensorrt
 
 #### Prepare build environment
 
@@ -49,7 +44,8 @@ cp -a ../build.sh .
 #### Launch build with environments variables
 
 ```bash
-DEEPDETECT_ARCH=cpu,gpu DEEPDETECT_BUILD=default,caffe-tf,armv7,[...] ./build.sh
+DEEPDETECT_ARCH=cpu DEEPDETECT_BUILD=default,armv7 ./build.sh
+DEEPDETECT_ARCH=gpu DEEPDETECT_BUILD=default,tensorrt ./build.sh
 ```
 
 #### Launch build with build script parameters
@@ -58,7 +54,7 @@ DEEPDETECT_ARCH=cpu,gpu DEEPDETECT_BUILD=default,caffe-tf,armv7,[...] ./build.sh
 Params usage: ./build.sh [options...]
 
    -a, --deepdetect-arch          Choose Deepdetect architecture : cpu,gpu
-   -b, --deepdetect-build         Choose Deepdetect build profile : CPU (default,caffe-tf,armv7) / GPU (default,caffe-cpu-tf,caffe-tf,caffe2,p100,volta)
+   -b, --deepdetect-build         Choose Deepdetect build profile : CPU (default,armv7) / GPU (default,tensorrt)
 ```
 
 ### Building an image
@@ -84,10 +80,6 @@ docker build -t jolibrain/deepdetect_cpu --no-cache -f docker/cpu.Dockerfile .
 export DOCKER_BUILDKIT=1
 docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -t jolibrain/deepdetect_cpu --no-cache -f cpu.Dockerfile .
 
-# Build with custom cmake
-export DOCKER_BUILDKIT=1
-docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_cpu --no-cache -f docker/cpu.Dockerfile .
-
 ```
 
 Example with CPU (armv7) image:
@@ -107,10 +99,6 @@ docker build -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
 # Build with default cmake and without default models
 export DOCKER_BUILDKIT=1
 docker build --build-arg DEEPDETECT_DEFAULT_MODELS=false -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
-
-# Build with custom cmake
-export DOCKER_BUILDKIT=1
-docker build --build-arg DEEPDETECT_BUILD=caffe-tf -t jolibrain/deepdetect_gpu --no-cache -f docker/gpu.Dockerfile .
 
 # Build the legacy61 compatibility alias
 export DOCKER_BUILDKIT=1

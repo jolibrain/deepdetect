@@ -14,7 +14,7 @@ It implements support for supervised and unsupervised deep learning of images, t
 
 And it relies on external machine learning libraries through a very generic and flexible API. At the moment it has support for:
 
-- the deep learning libraries [Caffe](https://github.com/BVLC/caffe), [Tensorflow](https://tensorflow.org), [Caffe2](https://caffe2.ai/), [Torch](https://pytorch.org/), [NCNN](https://github.com/Tencent/ncnn) [Tensorrt](https://github.com/NVIDIA/TensorRT) and [Dlib](http://dlib.net/ml.html)
+- deep learning with [Torch](https://pytorch.org/), [TensorRT](https://github.com/NVIDIA/TensorRT), [NCNN](https://github.com/Tencent/ncnn), and [Dlib](http://dlib.net/ml.html)
 - distributed gradient boosting library [XGBoost](https://github.com/dmlc/xgboost)
 - clustering with [T-SNE](https://github.com/DmitryUlyanov/Multicore-TSNE)
 - similarity search with [Annoy](https://github.com/spotify/annoy/) and [FAISS](https://github.com/facebookresearch/faiss)
@@ -49,7 +49,6 @@ curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
   * From Amazon AMI: [GPU](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ)
   * [Mimic Continuous Integration testing](https://github.com/jolibrain/deepdetect/tree/master/docs/ci.md)
 
-* [Models ready to use](#models)
 * Ecosystem
   * [Platform presentation](https://www.deepdetect.com/platform/)
   * [Platform installation with docker-compose](https://github.com/jolibrain/dd_platform_docker)
@@ -74,7 +73,7 @@ curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
 ## Main features
 
 - high-level API for machine learning and deep learning
-- support for Caffe, Tensorflow, XGBoost, T-SNE, Caffe2, NCNN, TensorRT, Pytorch
+- support for Torch, TensorRT, NCNN, Dlib, XGBoost, and T-SNE
 - classification, regression, autoencoders, object detection, segmentation, time-series
 - JSON communication format
 - remote Python and Javacript clients
@@ -97,31 +96,9 @@ curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
 
 ## Machine Learning functionalities per library
 
-|                   | Caffe | Caffe2 | XGBoost | TensorRT | NCNN | Libtorch | Tensorflow | T\-SNE | Dlib |
-|------------------:|:-----:|:------:|:-------:|:--------:|:----:|:--------:|:----------:|:------:|:----:|
-| **Serving**       |       |        |         |          |      |          |            |        |      |
-| Training \(CPU\)  | Y     | Y      | Y       | N/A      | N/A  | Y        | N          | Y      | N    |
-| Training \(GPU\)  | Y     | Y      | Y       | N/A      | N/A  | Y        | N          | Y      | N    |
-| Inference \(CPU\) | Y     | Y      | Y       | N        | Y    | Y        | Y          | N/A    | Y    |
-| Inference \(GPU\) | Y     | Y      | Y       | Y        | N    | Y        | Y          | N/A    | Y    |
-|                   |       |        |         |          |      |          |            |        |      |
-| **Models**        |       |        |         |          |      |          |            |        |      |
-| Classification    | Y     | Y      | Y       | Y        | Y    | Y        | Y          | N/A    | Y    |
-| Object Detection  | Y     | Y      | N       | Y        | Y    | N        | N          | N/A    | Y    |
-| Segmentation      | Y     | N      | N       | N        | N    | N        | N          | N/A    | N    |
-| Regression        | Y     | N      | Y       | N        | N    | Y        | N          | N/A    | N    |
-| Autoencoder       | Y     | N      | N/A     | N        | N    | N        | N          | N/A    | N    |
-| NLP               | Y     | N      | Y       | N        | N    | Y        | N          | Y      | N    |
-| OCR / Seq2Seq     | Y     | N      | N       | N        | Y    | N        | N          | N      | N    |
-| Time\-Series      | Y     | N      | N       | N        | Y    | Y        | N          | N      | N    |
-|                   |       |        |         |          |      |          |            |        |      |
-| **Data**          |       |        |         |          |      |          |            |        |      |
-| CSV               | Y     | N      | Y       | N        |  N   | N        | N          | Y      | N    |
-| SVM               | Y     | N      | Y       | N        |  N   | N        | N          | N      | N    |
-| Text words        | Y     | N      | Y       | N        |  N   | N        | N          | N      | N    |
-| Text characters   | Y     | N      | N       | N        |  N   | N        | N          | Y      | N    |
-| Images            | Y     | Y      | N       | Y        |  Y   | Y        | Y          | Y      | Y    |
-| Time\-Series      | Y     | N      | N       | N        |  Y   | N        | N          | N      | N    |
+Torch is the primary training and serving backend. TensorRT and NCNN provide optimized inference, while Dlib, XGBoost, and T-SNE remain available for their specialized workloads.
+
+Caffe-format protobufs and prototxt templates remain available only as a model interchange format used by Torch, TensorRT, and NCNN. They do not provide a Caffe runtime backend.
 
 ## Tools and Clients
 
@@ -133,67 +110,13 @@ curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
 * Early C# client: https://github.com/jolibrain/deepdetect/pull/98
 * Log DeepDetect training metrics via Tensorboard: https://github.com/jolibrain/dd_board
 
-## Models
+## Backend migration
 
-|                          | Caffe | Tensorflow | Source        | Top-1 Accuracy (ImageNet) |
-|--------------------------|-------|------------|---------------|---------------------------|
-| AlexNet                  | Y     | N          | BVLC          |          57.1%                 |
-| SqueezeNet               | [Y](https://deepdetect.com/models/squeezenet/squeezenet_v1.1.caffemodel)     | N          | DeepScale              |       59.5%                    |
-| Inception v1 / GoogleNet | [Y](https://deepdetect.com/models/ggnet/bvlc_googlenet.caffemodel)     | [Y](https://deepdetect.com/models/tf/inception_v1.pb)          | BVLC / Google |             67.9%              |
-| Inception v2             | N     | [Y](https://deepdetect.com/models/tf/inception_v2.pb)          | Google        |     72.2%                      |
-| Inception v3             | N     | [Y](https://deepdetect.com/models/tf/inception_v3.pb)          | Google        |         76.9%                  |
-| Inception v4             | N     | [Y](https://deepdetect.com/models/tf/inception_v4.pb)          | Google        |         80.2%                  |
-| ResNet 50                | [Y](https://deepdetect.com/models/resnet/ResNet-50-model.caffemodel)     | [Y](https://deepdetect.com/models/tf/resnet_v1_50/resnet_v1_50.pb)          | MSR           |      75.3%                     |
-| ResNet 101               | [Y](https://deepdetect.com/models/resnet/ResNet-101-model.caffemodel)     | [Y](https://deepdetect.com/models/tf/resnet_v1_101/resnet_v1_101.pb)          | MSR           |        76.4%                   |
-| ResNet 152               | [Y](https://deepdetect.com/models/resnet/ResNet-152-model.caffemodel)     | [Y](https://deepdetect.com/models/tf/resnet_v1_152/resnet_v1_152.pb)         | MSR           |               77%            |
-| Inception-ResNet-v2      | N     | [Y](https://deepdetect.com/models/tf/inception_resnet_v2.pb)          | Google        |       79.79%                    |
-| VGG-16                   | [Y](https://deepdetect.com/models/vgg_16/VGG_ILSVRC_16_layers.caffemodel)     | [Y](https://deepdetect.com/models/tf/vgg_16/vgg_16.pb)          | Oxford        |               70.5%            |
-| VGG-19                   | [Y](https://deepdetect.com/models/vgg_19/VGG_ILSVRC_19_layers.caffemodel)     | [Y](https://deepdetect.com/models/tf/vgg_19/vgg_19.pb)          | Oxford        |               71.3%            |
-| ResNext 50                | [Y](https://deepdetect.com/models/resnext/resnext_50)     | N          | https://github.com/terrychenism/ResNeXt           |      76.9%                     |
-| ResNext 101                | [Y](https://deepdetect.com/models/resnext/resnext_101)     | N          | https://github.com/terrychenism/ResNeXt           |      77.9%                     |
-| ResNext 152               | [Y](https://deepdetect.com/models/resnext/resnext_152)     | N          | https://github.com/terrychenism/ResNeXt           |      78.7%                     |
-| DenseNet-121                   | [Y](https://deepdetect.com/models/densenet/densenet_121_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               74.9%            |
-| DenseNet-161                   | [Y](https://deepdetect.com/models/densenet/densenet_161_48/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.6%            |
-| DenseNet-169                   | [Y](https://deepdetect.com/models/densenet/densenet_169_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               76.1%            |
-| DenseNet-201                   | [Y](https://deepdetect.com/models/densenet/densenet_201_32/)     | N          | https://github.com/shicai/DenseNet-Caffe        |               77.3%            |
-| SE-BN-Inception                   | [Y](https://deepdetect.com/models/senets/se_bn_inception/)     | N          | https://github.com/hujie-frank/SENet        |               76.38%            |
-| SE-ResNet-50                   | [Y](https://deepdetect.com/models/senets/se_resnet_50/)     | N          | https://github.com/hujie-frank/SENet        |               77.63%            |
-| SE-ResNet-101                   | [Y](https://deepdetect.com/models/senets/se_resnet_101/)     | N          | https://github.com/hujie-frank/SENet        |               78.25%            |
-| SE-ResNet-152                   | [Y](https://deepdetect.com/models/senets/se_resnet_152/)     | N          | https://github.com/hujie-frank/SENet        |               78.66%            |
-| SE-ResNext-50                   | [Y](https://deepdetect.com/models/senets/se_resnext_50/)     | N          | https://github.com/hujie-frank/SENet        |               79.03%            |
-| SE-ResNext-101                   | [Y](https://deepdetect.com/models/senets/se_resnext_101/)     | N          | https://github.com/hujie-frank/SENet        |               80.19%            |
-| SENet                   | [Y](https://deepdetect.com/models/senets/se_net/)     | N          | https://github.com/hujie-frank/SENet        |               81.32%            |
-| VOC0712 (object detection) | [Y](https://deepdetect.com/models/voc0712_dd.tar.gz) | N | https://github.com/weiliu89/caffe/tree/ssd | 71.2 mAP |
-| InceptionBN-21k | [Y](https://deepdetect.com/models/inception/inception_bn_21k) | N | https://github.com/pertusa/InceptionBN-21K-for-Caffe | 41.9% |
-| Inception v3 5K | N | [Y](https://deepdetect.com/models/tf/openimages_inception_v3) | https://github.com/openimages/dataset |  |
-| [5-point Face Landmarking Model (face detection)](http://dlib.net/files/mmod_human_face_detector.dat.bz2) | N | N | http://blog.dlib.net/2017/09/fast-multiclass-object-detection-in.html |  |
-| [Front/Rear vehicle detection (object detection)](http://dlib.net/files/mmod_front_and_rear_end_vehicle_detector.dat.bz2) | N | N | http://blog.dlib.net/2017/09/fast-multiclass-object-detection-in.html |  |
-
-More models:
-
-- List of free, even for commercial use, deep neural nets for image classification, and character-based convolutional nets for text classification: https://www.deepdetect.com/applications/list_models/
-
-<!---
-#FIXME(sileht): it's a feature detail, should be moved somewhere in deepdetect.com/server/docs/
-## Templates
-
-DeepDetect comes with a built-in system of neural network templates (Caffe backend only at the moment). This allows the creation of custom networks based on recognized architectures, for images, text and data, and with much simplicity.
-
-Usage:
-- specify `template` to use, from `mlp`, `convnet` and `resnet`
-- specify the architecture with the `layers` parameter:
-  - for `mlp`, e.g. `[300,100,10]`
-  - for `convnet`, e.g. `["1CR64","1CR128","2CR256","1024","512"], where the main pattern is `xCRy` where `y` is the number of outputs (feature maps), `CR` stands for Convolution + Activation (with `relu` as default), and `x` specifies the number of chained `CR` blocks without pooling. Pooling is applied between all `xCRy`
-- for `resnets`:
-   - with images, e.g. `["Res50"]` where the main pattern is `ResX` with X the depth of the Resnet
-   - with character-based models (text), use the `xCRy` pattern of convnets instead, with the main difference that `x` now specifies the number of chained `CR` blocks within a resnet block
-   - for Resnets applied to CSV or SVM (sparse data), use the `mlp` pattern. In this latter case, at the moment, the `resnet` is built with blocks made of two layers for each specified layer after the first one. Here is an example: `[300,100,10]` means that a first hidden layer of size `300` is applied followed by a `resnet` block made of two `100` fully connected layer, and another block of two `10` fully connected layers. This is subjected to future changes and more control.
--->
+The Caffe, Caffe2, and TensorFlow backends have been removed. Existing services must be converted to Torch or exported to ONNX for TensorRT before upgrading. Requests using `mllib` values `caffe`, `caffe2`, `tf`, or `tensorflow` return HTTP 400 with DeepDetect error code 1006.
 
 ## References
 
 - DeepDetect (https://www.deepdetect.com/)
-- Caffe (https://github.com/jolibrain/caffe)
 - XGBoost (https://github.com/dmlc/xgboost)
 - T-SNE (https://github.com/DmitryUlyanov/Multicore-TSNE)
 

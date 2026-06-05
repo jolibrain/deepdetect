@@ -12,22 +12,10 @@
 - [utfcpp](http://utfcpp.sourceforge.net/)
 - [gtest](https://code.google.com/p/googletest/) for unit testing (optional);
 
-## Caffe Dependencies
-
-- CUDA 9 or 8 is recommended for GPU mode.
-- BLAS via ATLAS, MKL, or OpenBLAS.
-- [protobuf](https://github.com/google/protobuf)
-- IO libraries hdf5, leveldb, snappy, lmdb
-
 ## XGBoost Dependencies
 
 None outside of C++ compiler and make
 - CUDA 8 is recommended for GPU mode.
-
-## Tensorflow Dependencies
-
-- Cmake > 3
-- [Bazel 0.8.x](https://www.bazel.io/versions/master/docs/install.html#install-on-ubuntu)
 
 ## Dlib Dependencies
 
@@ -39,12 +27,9 @@ None outside of C++ compiler and make
   http://launchpadlibrarian.net/410583808/libopenblas-dev_0.3.5+ds-2_amd64.deb
   and install them with `sudo apt-get install ./package-name.deb` to automatically handle dependencies.
 
-## Caffe version
+## Model-format compatibility
 
-By default DeepDetect automatically relies on a modified version of Caffe, https://github.com/jolibrain/caffe/tree/master
-This version includes many improvements over the original Caffe, such as sparse input data support, exception handling, class weights, object detection, segmentation, and various additional losses and layers.
-
-We use Caffe as default since it has excellent conversion to production inference libraries such as TensorRT and NCNN, that are also supported by DeepDetect.
+Protobuf remains required for Caffe-format model parsing used by Torch, TensorRT, and NCNN. No Caffe runtime library is built or linked.
 
 ## Implementation
 
