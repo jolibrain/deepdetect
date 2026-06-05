@@ -23,9 +23,6 @@
 
 #include "deepdetect.h"
 #ifdef USE_COMMAND_LINE
-#ifdef USE_CAFFE
-#include "commandlineapi.h"
-#endif // USE_CAFFE
 #ifdef USE_JSON_API
 #include "commandlinejsonapi.h"
 #endif // USE_JSON_API
@@ -54,9 +51,6 @@ DEFINE_int32(jsonapi, 0,
 #ifdef USE_JSON_API
              "1: commandline JSON  "
 #endif // USE_JSON_API
-#ifdef USE_CAFFE
-             "2: commandline no JSON  "
-#endif // USE_CAFFE
 #endif // USE_COMMAND_LINE
 #ifdef USE_HTTP_SERVER_OATPP
              "3: HTTP server JSON (oat++ version)"
@@ -106,22 +100,10 @@ int main(int argc, char *argv[])
         dd.boot(argc, argv);
       }
       break;
-#else // USE_JSON_API
+#else  // USE_JSON_API
       invalid_jsonapi_flag("USE_JSON_API and USE_COMMANDLINE");
       return 1;
 #endif // USE_JSON_API
-
-    case 2:
-#if defined(USE_CAFFE) && defined(USE_COMMANDLINE)
-      {
-        DeepDetect<CommandLineAPI> dd;
-        dd.boot(argc, argv);
-      }
-      break;
-#else // USE_CAFFE
-      invalid_jsonapi_flag("USE_CAFFE and USE_COMMANDLINE");
-      return 1;
-#endif // USE_CAFFE
 
     case 3:
 #ifdef USE_HTTP_SERVER_OATPP
@@ -130,7 +112,7 @@ int main(int argc, char *argv[])
         dd.boot(argc, argv);
       }
       break;
-#else // USE_HTTP_SERVER_OATPP
+#else  // USE_HTTP_SERVER_OATPP
       invalid_jsonapi_flag("USE_HTTP_SERVER_OATPP");
       return 1;
 #endif // USE_HTTP_SERVER_OATPP
@@ -142,7 +124,7 @@ int main(int argc, char *argv[])
         dd.boot(argc, argv);
       }
       break;
-#else // USE_HTTP_SERVER
+#else  // USE_HTTP_SERVER
       invalid_jsonapi_flag("USE_HTTP_SERVER");
       return 1;
 #endif // USE_HTTP_SERVER

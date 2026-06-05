@@ -21,9 +21,6 @@
 
 #include "deepdetect.h"
 #ifdef USE_COMMAND_LINE
-#ifdef USE_CAFFE
-#include "commandlineapi.h"
-#endif // USE_CAFFE
 #ifdef USE_JSON_API
 #include "commandlinejsonapi.h"
 #endif // USE_JSON_API
@@ -55,12 +52,6 @@ namespace dd
   template <class TAPIStrategy> DeepDetect<TAPIStrategy>::~DeepDetect()
   {
   }
-
-#ifdef USE_CAFFE
-#ifdef USE_COMMAND_LINE
-  template class DeepDetect<CommandLineAPI>;
-#endif
-#endif
 
 #ifdef USE_JSON_API
 #ifdef USE_COMMAND_LINE

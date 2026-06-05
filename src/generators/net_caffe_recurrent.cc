@@ -589,10 +589,6 @@ namespace dd
     net_param.mutable_layer(0)->mutable_memory_data_param()->set_channels(10);
   }
 
-#ifdef USE_CAFFE
-  template class NetCaffe<NetInputCaffe<CSVTSCaffeInputFileConn>,
-                          NetLayersCaffeRecurrent, NetLossCaffe>;
-#endif
 #ifdef USE_TORCH
   template void configure_recurrent_template<CSVTSTorchInputFileConn>(
       const APIData &ad, CSVTSTorchInputFileConn &inputc,

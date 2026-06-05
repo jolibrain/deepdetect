@@ -644,13 +644,6 @@ namespace dd
 
   }*/
 
-#ifdef USE_CAFFE
-  template class NetInputCaffe<ImgCaffeInputFileConn>;
-  template class NetInputCaffe<CSVCaffeInputFileConn>;
-  template class NetInputCaffe<CSVTSCaffeInputFileConn>;
-  template class NetInputCaffe<TxtCaffeInputFileConn>;
-  template class NetInputCaffe<SVMCaffeInputFileConn>;
-#endif
 #ifdef USE_TORCH
   template class NetInputCaffe<CSVTSTorchInputFileConn>;
   template class NetInputCaffe<ImgTorchInputFileConn>;
