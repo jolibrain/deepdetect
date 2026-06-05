@@ -1,6 +1,6 @@
 # DeepDetect installation from source
 
-Below are instructions for 20.04 LTS. For other Linux and Unix systems, steps may differ, CUDA, Caffe and other libraries may prove difficult to setup.
+Below are instructions for 20.04 LTS. For other Linux and Unix systems, steps may differ, and optional accelerator libraries may require additional setup.
 
 Beware of [dependencies](https://github.com/jolibrain/deepdetect/tree/master/docs/dependencies.md), typically on Debian/Ubuntu Linux, do:
 ```
@@ -219,7 +219,7 @@ The options above can be obtained from running
 Example of creating a service then listing it:
 
 ```
-./dede --jsonapi 1 --service_name test --service_create '{"mllib":"caffe","description":"classification service","type":"supervised","parameters":{"input":{"connector":"image"},"mllib":{"template":"googlenet","nclasses":10}},"model":{"templates":"/path/to/deepdetect/templates/caffe/","repository":"/path/to/model/"}}'
+./dede --jsonapi 1 --service_name test --service_create '{"mllib":"torch","description":"classification service","type":"supervised","parameters":{"input":{"connector":"image"},"mllib":{"template":"resnet50","nclasses":10}},"model":{"repository":"/path/to/model/"}}'
 ```
 
 Note that in command line mode the `--service_xxx` calls are executed sequentially, and synchronously. Also note the logs are those from the server, the JSON API response is not available in pure command line mode.

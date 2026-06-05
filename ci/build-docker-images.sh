@@ -16,7 +16,6 @@ declare -A TARGETS
 TARGETS[cpu]="cpu/default"
 TARGETS[gpu]="gpu/default"
 TARGETS[gpu_legacy61]="gpu/default"
-#TARGETS[gpu_tf]="gpu/tf"
 TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
 
 declare -A GPU_VARIANTS

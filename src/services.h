@@ -44,17 +44,8 @@
 #include "dto/chain.hpp"
 #include "dto/stream.hpp"
 #include "dto/resource.hpp"
-#ifdef USE_CAFFE
-#include "backends/caffe/caffelib.h"
-#endif
-#ifdef USE_TF
-#include "backends/tf/tflib.h"
-#endif
 #ifdef USE_DLIB
 #include "backends/dlib/dliblib.h"
-#endif
-#ifdef USE_CAFFE2
-#include "backends/caffe2/caffe2lib.h"
 #endif
 #ifdef USE_XGBOOST
 #include "backends/xgb/xgblib.h"
@@ -81,50 +72,12 @@ namespace dd
 {
   /* service types as variant type. */
   typedef mapbox::util::variant<
-#ifdef USE_CAFFE
-      MLService<CaffeLib, ImgCaffeInputFileConn, SupervisedOutput, CaffeModel>,
-      MLService<CaffeLib, CSVCaffeInputFileConn, SupervisedOutput, CaffeModel>,
-      MLService<CaffeLib, CSVTSCaffeInputFileConn, SupervisedOutput,
-                CaffeModel>,
-      MLService<CaffeLib, TxtCaffeInputFileConn, SupervisedOutput, CaffeModel>,
-      MLService<CaffeLib, SVMCaffeInputFileConn, SupervisedOutput, CaffeModel>,
-      MLService<CaffeLib, ImgCaffeInputFileConn, UnsupervisedOutput,
-                CaffeModel>,
-      MLService<CaffeLib, CSVCaffeInputFileConn, UnsupervisedOutput,
-                CaffeModel>,
-      MLService<CaffeLib, CSVTSCaffeInputFileConn, UnsupervisedOutput,
-                CaffeModel>,
-      MLService<CaffeLib, TxtCaffeInputFileConn, UnsupervisedOutput,
-                CaffeModel>,
-      MLService<CaffeLib, SVMCaffeInputFileConn, UnsupervisedOutput,
-                CaffeModel>
-#endif
-#ifdef USE_CAFFE2
-#ifdef USE_CAFFE
-      ,
-#endif
-      MLService<Caffe2Lib, ImgCaffe2InputFileConn, SupervisedOutput,
-                Caffe2Model>,
-      MLService<Caffe2Lib, ImgCaffe2InputFileConn, UnsupervisedOutput,
-                Caffe2Model>
-#endif
-#ifdef USE_TF
-#if defined(USE_CAFFE) || defined(USE_CAFFE2)
-      ,
-#endif
-      MLService<TFLib, ImgTFInputFileConn, SupervisedOutput, TFModel>,
-      MLService<TFLib, ImgTFInputFileConn, UnsupervisedOutput, TFModel>
-#endif
 #ifdef USE_DLIB
-#if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)
-      ,
-#endif
       MLService<DlibLib, ImgDlibInputFileConn, SupervisedOutput, DlibModel>,
       MLService<DlibLib, ImgDlibInputFileConn, UnsupervisedOutput, DlibModel>
 #endif
 #ifdef USE_XGBOOST
-#if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)              \
-    || defined(USE_DLIB)
+#ifdef USE_DLIB
       ,
 #endif
       MLService<XGBLib, CSVXGBInputFileConn, SupervisedOutput, XGBModel>,
@@ -132,24 +85,21 @@ namespace dd
       MLService<XGBLib, TxtXGBInputFileConn, SupervisedOutput, XGBModel>
 #endif
 #ifdef USE_TSNE
-#if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)              \
-    || defined(USE_DLIB) || defined(USE_XGBOOST)
+#if defined(USE_DLIB) || defined(USE_XGBOOST)
       ,
 #endif
       MLService<TSNELib, CSVTSNEInputFileConn, UnsupervisedOutput, TSNEModel>,
       MLService<TSNELib, TxtTSNEInputFileConn, UnsupervisedOutput, TSNEModel>
 #endif
 #ifdef USE_NCNN
-#if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)              \
-    || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)
+#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)
       ,
 #endif
       MLService<NCNNLib, CSVTSNCNNInputFileConn, SupervisedOutput, NCNNModel>,
       MLService<NCNNLib, ImgNCNNInputFileConn, SupervisedOutput, NCNNModel>
 #endif
 #ifdef USE_TORCH
-#if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)              \
-    || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)         \
+#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
     || defined(USE_NCNN)
       ,
 #endif
@@ -161,8 +111,7 @@ namespace dd
                 TorchModel>
 #endif
 #ifdef USE_TENSORRT
-#if defined(USE_CAFFE) || defined(USE_CAFFE2) || defined(USE_TF)              \
-    || defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)         \
+#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
     || defined(USE_NCNN) || defined(USE_TORCH)
       ,
 #endif
