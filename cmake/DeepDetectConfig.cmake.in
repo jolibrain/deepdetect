@@ -1,13 +1,9 @@
-set(USE_CPU_ONLY @USE_CPU_ONLY@)
-if (NOT USE_CPU_ONLY)
-    include(@PROJECT_SOURCE_DIR@/cmake/Cuda.cmake) # cuda + cudnn
-endif()
+@PACKAGE_INIT@
 
-set(DeepDetect_VERSION @GIT_VERSION@)
-set(DeepDetect_COMMIT_HASH @GIT_COMMIT_HASH@)
-set(DeepDetect_BRANCH @GIT_BRANCH@)
-set(DeepDetect_CXX_FLAGS "-fopenmp -pthread")
-set(DeepDetect_DEFINITIONS @COMMON_DEFINITIONS@)
-set(DeepDetect_INCLUDE_DIRS @PROJECT_SOURCE_DIR@/src @CMAKE_BINARY_DIR@/src @CMAKE_BINARY_DIR@ @COMMON_INCLUDE_DIRS@ @EIGEN3_INCLUDE_DIR@)
-set(DeepDetect_LIBRARY_DIRS @COMMON_LINK_DIRS@ @CMAKE_BINARY_DIR@/src)
-set(DeepDetect_LIBRARIES @COMMON_LINK_LIBS@ @HTTP_LIB_DEPS@ @OATPP_LIB_DEPS@)
+include("${CMAKE_CURRENT_LIST_DIR}/DeepDetectTargets.cmake")
+
+set(DeepDetect_VERSION "@GIT_VERSION@")
+set(DeepDetect_COMMIT_HASH "@GIT_COMMIT_HASH@")
+set(DeepDetect_BRANCH "@GIT_BRANCH@")
+set(DeepDetect_CUDA_ENABLED "@CUDA_FOUND@")
+set(DeepDetect_CUDNN_ENABLED "@USE_CUDNN@")

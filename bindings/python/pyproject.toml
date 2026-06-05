@@ -1,0 +1,31 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "deepdetect"
+version = "0.1.0"
+description = "In-process Python bindings for DeepDetect"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "LGPL-3.0-or-later"}
+dependencies = ["numpy>=1.23", "Pillow>=9"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.scikit-build]
+cmake.version = ">=3.15"
+wheel.packages = ["deepdetect"]
+sdist.include = [
+  "CMakeLists.txt",
+  "README.md",
+  "deepdetect/*.py",
+  "examples/*.py",
+  "src/native.cpp",
+  "tests/*.py",
+]
+sdist.exclude = [".pytest_cache", "**/__pycache__/**", "**/.pytest_cache/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

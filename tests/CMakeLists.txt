@@ -99,6 +99,7 @@ REGISTER_TEST(ut_common ut-common.cc)
 if (USE_JSON_API)
   REGISTER_TEST(ut_apidata ut-apidata.cc)
   REGISTER_TEST(ut_dto ut-dto.cc)
+  REGISTER_TEST(ut_embedded_runtime ut-embedded-runtime.cc)
   REGISTER_TEST(ut_retired_backends ut-retired-backends.cc)
 endif()
 
