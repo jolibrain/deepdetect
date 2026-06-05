@@ -1,5 +1,8 @@
+cmake_minimum_required(VERSION 3.14)
 project(deepdetect)
-cmake_minimum_required(VERSION 3.10)
+
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 option(RELEASE "release mode" OFF)
 option(WARNING "enable warning" ON)
@@ -315,7 +318,6 @@ if (USE_CPU_ONLY)
   set(USE_FAISS_CPU_ONLY ON)
   set(USE_CUDNN OFF)
 else()
-  cmake_minimum_required(VERSION 3.14)
   include(cmake/Cuda.cmake) # cuda + cudnn
 endif()
 
@@ -897,7 +899,7 @@ ExternalProject_Add(
     URL https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz
     URL_HASH SHA256=e1f80fa8fd7a74da6737e7fee1a4db68b4d7085a3f40e7d550752d6ff5714583
     BUILD_IN_SOURCE true
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
     INSTALL_COMMAND ""
 )
 ExternalProject_Add(
@@ -907,6 +909,7 @@ ExternalProject_Add(
     URL_HASH SHA256=17d85ace758ac3b924802d10473a8ed4cf6ee2ffa125022d5a64debf564cf3c3
     CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DBUILD_SHARED_LIBS=OFF
         -DOATPP_BUILD_TESTS=OFF
         -DOATPP_INSTALL=OFF
@@ -919,9 +922,7 @@ ExternalProject_Add(
 )
 
 set(OATPP_LIB_DEPS
-    ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp.a
     ${CMAKE_BINARY_DIR}/oatpp-zlib/src/oatpp-zlib/src/liboatpp-zlib.a
-    z  # zlib
 )
 include_directories(
     SYSTEM ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src
@@ -942,6 +943,7 @@ if(USE_OATPP_SWAGGER)
         INSTALL_COMMAND ""
         CMAKE_ARGS
             -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DBUILD_SHARED_LIBS=OFF
             -DOATPP_BUILD_TESTS=OFF
             -DOATPP_INSTALL=OFF
@@ -964,6 +966,10 @@ if(USE_OATPP_SWAGGER)
     add_definitions("-DUSE_OATPP_SWAGGER")
     add_definitions("-DOATPP_SWAGGER_RES_PATH=\"${CMAKE_BINARY_DIR}/oatpp-swagger/src/oatpp-swagger/res/\"")
 endif()
+
+list(APPEND OATPP_LIB_DEPS
+    ${CMAKE_BINARY_DIR}/oatpp/src/oatpp/src/liboatpp.a
+    z) # zlib
 
 if (USE_HTTP_SERVER)
         ExternalProject_Add(
@@ -1073,10 +1079,37 @@ endif()
 # configure config.cmake for external application
 get_directory_property(COMMON_DEFINITIONS COMPILE_DEFINITIONS)
 
-configure_file(
+configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DeepDetectConfig.cmake.in
     ${CMAKE_BINARY_DIR}/DeepDetectConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/DeepDetect
 )
+
+write_basic_package_version_file(
+    ${CMAKE_BINARY_DIR}/DeepDetectConfigVersion.cmake
+    VERSION 0.1.0
+    COMPATIBILITY SameMajorVersion)
+
+set(DDETECT_PRIVATE_LINK_LIBS ${COMMON_LINK_LIBS})
+list(REMOVE_ITEM DDETECT_PRIVATE_LINK_LIBS ddetect)
+target_link_directories(ddetect PRIVATE ${COMMON_LINK_DIRS})
+target_link_libraries(ddetect PRIVATE ${DDETECT_PRIVATE_LINK_LIBS})
+
+install(TARGETS ddetect
+    EXPORT DeepDetectTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES include/deepdetect/runtime.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/deepdetect)
+install(EXPORT DeepDetectTargets
+    FILE DeepDetectTargets.cmake
+    NAMESPACE DeepDetect::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/DeepDetect)
+install(FILES
+    ${CMAKE_BINARY_DIR}/DeepDetectConfig.cmake
+    ${CMAKE_BINARY_DIR}/DeepDetectConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/DeepDetect)
 
 add_subdirectory(main)
 

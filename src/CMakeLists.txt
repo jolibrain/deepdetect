@@ -18,7 +18,8 @@ if (USE_HDF5)
   add_definitions(-DUSE_HDF5)
 endif()
 
-set(ddetect_SOURCES deepdetect.h deepdetect.cc mllibstrategy.h mlmodel.h
+set(ddetect_SOURCES deepdetect.h deepdetect.cc embedded_runtime.cc
+    ${PROJECT_SOURCE_DIR}/include/deepdetect/runtime.h mllibstrategy.h mlmodel.h
     mlservice.h inputconnectorstrategy.h imginputfileconn.h csvinputfileconn.h
     csvinputfileconn.cc csvtsinputfileconn.h csvtsinputfileconn.cc
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
@@ -112,7 +113,17 @@ if (USE_TENSORRT)
 endif()
 
 
-add_library(ddetect ${ddetect_SOURCES})
+add_library(ddetect SHARED ${ddetect_SOURCES})
+add_library(DeepDetect::ddetect ALIAS ddetect)
+set_target_properties(ddetect PROPERTIES
+  OUTPUT_NAME deepdetect
+  VERSION 0.1.0
+  SOVERSION 0
+  INSTALL_RPATH "$ORIGIN")
+target_include_directories(ddetect
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 add_dependencies(ddetect protobuf caffe_pb_h)
 if (APPLE)
   add_dependencies(ddetect variant)
