@@ -22,7 +22,9 @@ The software defines a very simple flow, from data to the statistical model and 
 * `input connector`: entry point for data into DeepDetect. Specialized versions handle different data types (e.g. images, text, CSV, ...)
 * `model`: repository that holds all the files necessary for building and usage of a statistical model such as a neural net
 * `service`: the central holder of models and connectors, living in memory and servicing the machine learning capabilities through the API. While the `model` can be held permanently on disk, a `service` is spawn around it and destroyed at will
-* `mllib`: the machine learning library used for operations, two are supported at the moment, Caffe, Caffe2, XGBoost, Dlib, NCNN and Tensorflow, more are on the way
+* `mllib`: the machine learning library used for operations: Torch, TensorRT, NCNN, Dlib, XGBoost, or T-SNE
+
+Caffe, Caffe2, TensorFlow, and the `tf` alias are retired. Convert existing services to Torch or ONNX/TensorRT before upgrading; retired names return HTTP 400 with DeepDetect error code 1006.
 * `training`: the computational phase that uses a dataset to build a statistical model with predictive abilities on statistically relevant data
 * `prediction`: the computational phase that uses a trained statistical model in order to make a guess about one or more samples of data
 * `output connector`: the DeepDetect output, that supports templates so that the output can be easily customized by the user in order to fit in the final application
@@ -122,8 +124,8 @@ dd.set_return_format(dd.RETURN_PYTHON)
 description = 'example classification service'
 
 layers = [512,512,512]
-mllib = 'caffe'
-model = {'templates':'../templates/caffe/','repository':'home/me/models/example'}
+mllib = 'torch'
+model = {'repository':'home/me/models/example'}
 parameters_input = {'connector':'csv'}
 parameters_mllib = {'template':'mlp','nclasses':9,'layers':layers,'activation':'prelu'}
 parameters_output = {}
@@ -148,7 +150,7 @@ Creates a new machine learning service on the server.
 
 Parameter   | Type   | Optional | Default      | Description
 ---------   | ----   | -------- | -------      | -----------
-mllib       | string | No       | N/A          | Name of the Machine Learning library, from `caffe`, `caffe2`, `xgboost`, `tsne` and `tensorflow`
+mllib       | string | No       | N/A          | Name of the machine learning library: `torch`, `tensorrt`, `ncnn`, `dlib`, `xgboost`, or `tsne`
 type        | string | No       | `supervised` | Machine Learning service type: `supervised` yields a series of metrics related to a supervised objective, or `unsupervised`, typically for state-space compression or accessing neural network's inner layers.
 description | string | yes      | empty        | Service description
 model       | object | No       | N/A          | Information for the statistical model to be built and/or used by the service
@@ -189,9 +191,9 @@ std            | float        | yes      | 128     | standard pixel value deviat
 scale	       | float	      | yes	 | 1.0	   | Multiply value of each pixel by a factor. By default pixel values are between 0 and 255.
 scale_min      | float        | yes	 | 600     | min scaling dim size
 scale_max      | float        | yes      | 1000    | max scaling dim size
-segmentation   | bool         | yes      | false   | whether to setup an image connector for a segmentation task (`caffe` only)
-multi_label    | bool         | yes      | false   | whether to setup a multi label image task (`caffe` only)
-root_folder    | string       | yes      | false   | root folder for image data layer (i.e multi label image service for training with `caffe`)
+segmentation   | bool         | yes      | false   | whether to setup an image connector for a segmentation task
+multi_label    | bool         | yes      | false   | whether to setup a multi label image task
+root_folder    | string       | yes      | false   | root folder for image data layer
 ctc            | bool         | yes      | false   | whether using a sequence target, required for OCR tasks
 unchanged_data | bool         | yes      | false   | do not allow data modification (e.g. interpolation upon resizing, ...). Useful for audio spectrogram as input images.
 bbox           | bool         | yes      | false   | whether to setup an object detection model
@@ -234,7 +236,7 @@ characters         | bool   | yes      | false                                  
 sequence           | int    | yes      | N/A                                                | for character-level text processing, the fixed length of each sample of text
 read_forward       | bool   | yes      | false                                              | for character-level text processing, whether to read content from left to right
 alphabet           | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|_@#$%^&*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
-sparse             | bool   | yes      | false                                              | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
+sparse             | bool   | yes      | false                                              | whether to use sparse features(for xgboost use the `svm` connector instead)
 ordered_words      | bool   | yes      | false                                              | enable word-based processing with positionnal information, mandatory for bert/gpt2 like models
 wordpiece_tokens   | bool   | yes      | false                                              | set to true if vocabulary contains partial words, ie like in bert/gpt2 models
 punctuation_tokens | bool   | yes      | false                                              | if true, treat each punctuation sign as a token; if false, punctuation is stripped from input
@@ -249,93 +251,6 @@ See the section on [Connectors](#connectors) for more details.
 
 #### Machine learning libraries
 
-- Caffe
-
-Parameter            | Type            | Optional                 | Default   | Description
----------            | ----            | --------                 | -------   | -----------
-nclasses             | int             | no (classification only) | N/A       | Number of output classes (`supervised` service type)
-ntargets             | int             | no (regression only)     | N/A       | Number of regression targets
-gpu                  | bool            | yes                      | false     | Whether to use GPU
-gpuid                | int or array    | yes                      | 0         | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-template             | string          | yes                      | empty     | Neural network template, from `lregression`, `mlp`, `convnet`, `alexnet`, `googlenet`, `nin`, `resnet_18`, `resnet_32`, `resnet_50`, `resnet_101`, `resnet_152`
-engine               | string          | yes                      | `DEFAULT` | CUDNN engine type : orginal CUDNN implementation may leak a lot of memory when loading unloading multiple models, especially when using group convolutions. `CUDNN` is caffe orginal implementation, it tries to parralize with many handles/stream, buts these handles are never fully released internally in cudnn, even after an explicit "release" call, hence the memory leak. `CUDNN_SINGLE_HANDLE` use only one handle/stream, which is much less leak prone. `CUDNN_MIN_MEMORY` explictly forces cudnn algorithm that do not require any external buffer allocation. `CAFFE` forces CPU implementation, and `DEFAULT` fallbacsk to CAFFE if CUDNN support was not enabled at compile time, or CUDNN_SINGLE_HANDLE if CUDNN support was compiled in.
-layers               | array of int    | yes                      | [50]      | Number of neurons per layer (`mlp` only)
-layers               | array of string | yes                      | [1000]    | Type of layer and number of neurons peer layer: XCRY for X successive convolutional layers of Y filters and activation layers followed by a max pooling layer, an int as a string for specifying the final fully connected layers size, e.g. \["2CR32","2CR64","1000"\] (`convnet` only)
-activation           | string          | yes                      | relu      | Unit activation (`mlp` and `convnet` only), from `sigmoid`,`tanh`,`relu`,`prelu`,`elu`
-dropout              | real or array   | yes                      | 0.5       | Dropout rate between layers (templates, `mlp` and `convnet` only)
-regression           | bool            | yes                      | false     | Whether the network is a regressor (templates, `mlp` and `convnet` only)
-autoencoder          | bool            | yes                      | false     | Whether the network is an autoencoder (template `mlp` only)
-crop_size            | int             | yes                      | N/A       | Size of random image crops as input to the net (templates and `convnet` only)
-rotate               | bool            | yes                      | false     | Whether to apply random rotations to input images (templates and `convnet` only)
-mirror               | bool            | yes                      | false     | Whether to apply random mirroring of input images (templates and `convnet` only)
-finetuning           | bool            | yes                      | false     | Whether to prepare neural net template for finetuning (requires `weights`)
-db                   | bool            | yes                      | false     | whether to set a database as input of neural net, useful for handling large datasets and training in constant-memory (requires `mlp` or `convnet`)
-scaling_temperature  | real            | yes                      | 1.0       | sets the softmax temperature of an existing network (e.g. useful for model calibration)
-loss                 | string          | yes                      | N/A       | Special network losses, from `dice` (direct IOU maximization), `dice_multiclass` (same as dice for torch backend, different implemtation for caffe backend), `dice_weighted`  (dice augmented with inter-class weighting based on image stats), `dice_weighted_batch` (dice augmented with inter-class weighting based on batch stats) or `dice_weighted_all` (dice augmented with inter-class weighting based on running stats over all seen data), useful for image segmentation, and `L1` or `L2`, useful for time-series via `csvts` connector
-ssd_expand_prob      | float           | yes                      | between 0 and 1, probability of expanding the image (to improve detection of small/very small objects)
-ssd_max_expand_ratio | float           | yes                      | bbox zoom out ratio, e.g. 4.0
-ssd_mining_type      | str             | yes                      | N/A       | "HARD_EXAMPLE" or "MAX_NEGATIVE"
-ssd_neg_pos_ratio    | float           | yes                      | N/A       | ratio of negative sampled examples wrt positive examples (bbox), e.g. 3.0
-ssd_neg_overlap      | float           | yes                      | N/A       | max overlap of negative samples with positive samples (bbox), between 0 and 1, e.g. 0.5
-ssd_keep_top_k       | float           | yes                      | N/A       | keep k examples after nms has finished
-ssd_overlap_threshold | float | yes | 0.5 | MAP-x threshold, default to 50% (0.5), takes values within ]0,1].
-
-See the [Model Templates](#model-templates) section for more details.
-
-Noise (images only):
-
-Parameter      | Type   | Optional | Default | Description
----------      | ----   | -------- | ------- | -----------
-prob           | double | yes      | 0.0     | Probability of each effect occurence
-all_effects    | bool   | yes      | false   | Apply all effects below, randomly
-decolorize     | bool   | yes      | N/A     | Whether to decolorize image
-hist_eq        | bool   | yes      | N/A     | Whether to equalize histogram
-inverse        | bool   | yes      | N/A     | Whether to inverse image
-gauss_blur     | bool   | yes      | N/A     | Whether to apply Gaussian blur
-posterize      | bool   | yes      | N/A     | Whether to posterize image
-erode          | bool   | yes      | N/A     | Whether to erode image
-saltpepper     | bool   | yes      | N/A     | Whether to apply salt & pepper effect to image
-clahe          | bool   | yes      | N/A     | Whether to apply CLAHE
-convert_to_hsv | bool   | yes      | N/A     | Whether to convert to HSV
-convert_to_lab | bool   | yes      | N/A     | Whether to convert to LAB
-
-Distort (images only):
-
-Parameter       | Type   | Optional | Default | Description
----------       | ----   | -------- | ------- | -----------
-prob            | double | yes      | 0.0     | Probability of each effect occurence
-all_effects     | bool   | yes      | false   | Apply all effects below, randomly
-brightness      | bool   | yes      | N/A     | Whether to distort image brightness
-contrast        | bool   | yes      | N/A     | Whether to distort image contrast
-saturation      | bool   | yes      | N/A     | Whether to distort image saturation
-HUE             | bool   | yes      | N/A     | Whether to distort image HUE
-random ordering | bool   | yes      | N/A     | Whether to randomly reorder the image channels
-
-Geometry (images only):
-
-Parameter        | Type   | Optional | Default  | Description
----------        | ----   | -------- | -------  | -----------
-prob             | double | yes      | 0.0      | Probability of each effect occurence
-all_effects      | bool   | yes      | false    | Apply all effects below, randomly
-persp_horizontal | bool   | yes      | true     | Whether to distort the perspective horizontally
-persp_vertical   | bool   | yes      | true     | Whether to distort the perspective vertically
-zoom_out         | bool   | yes      | true     | distance change, look further away
-zoom_in          | bool   | yes      | true     | distance changee, look from closer by
-zoom_factor      | float  | yes      | 0.25     | 0.25 means that image can be *1.25 or /1.25
-persp_factor     | float  | yes      | 0.25     | 0.25 means that new image corners  be in *1.25 or 0.75
-pad_mode         | string | yes      | mirrored | filling around image, from `mirrored` / `constant` (black) / `repeat_nearest`
-
-- Caffe2
-
-Parameter  | Type         | Optional                 | Default | Description
----------  | ----         | --------                 | ------- | -----------
-nclasses   | int          | no (classification only) | N/A     | Number of output classes (`supervised` service type)
-gpu        | bool         | yes                      | false   | Whether to use GPU
-gpuid      | int or array | yes                      | 0       | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-template   | string       | yes                      | empty   | Neural network template (from `lenet`, `alexnet`, `resnet_50`)
-mirror     | bool         | yes                      | false   | Whether to apply random mirroring of input images (templates and `convnet` only)
-finetuning | bool         | yes                      | false   | Whether to prepare neural net template for finetuning (requires `weights`)
-
 - XGBoost
 
 Parameter  | Type | Optional                 | Default | Description
@@ -343,14 +258,6 @@ Parameter  | Type | Optional                 | Default | Description
 nclasses   | int  | no (classification only) | N/A     | Number of output classes (`supervised` service type)
 ntargets   | int  | no (regression only)     | N/A     | Number of regression targets (only 1 supported by XGBoost)
 regression | bool | yes                      | false   | Whether to train a regressor
-
-- Tensorflow
-
-Parameter   | Type   | Optional                 | Default | Description
----------   | ----   | --------                 | ------- | -----------
-nclasses    | int    | no (classification only) | N/A     | Number of output classes (`supervised` service type)
-inputlayer  | string | yes                      | auto    | network input layer name
-outputlayer | string | yes                      | auto    | network output layer name
 
 - NCNN
 
@@ -397,7 +304,7 @@ curl -X GET "http://localhost:8080/services/myserv"
 	     "msg":"OK"
 	  },
   "body":{
-	     "mllib":"caffe",
+	     "mllib":"torch",
 	     "description":"example classification service",
 	     "name":"myserv",
 	     "jobs":
@@ -419,7 +326,7 @@ dd.get_service('myserv')
 
 > returns:
 
-{u'status': {u'msg': u'OK', u'code': 200}, u'body': {u'jobs': {}, u'mllib': u'caffe', u'name': u'myserv', u'description': u'example classification service'}}
+{u'status': {u'msg': u'OK', u'code': 200}, u'body': {u'jobs': {}, u'mllib': u'torch', u'name': u'myserv', u'description': u'example classification service'}}
 ```
 
 Returns information on an existing service
@@ -479,7 +386,6 @@ Asynchronous calls run the training in the background as a separate thread (`PUT
 </div>
 
 <div class="alert alert-danger mx-2" style="width: 58%">
-⚠️ The current integration of the Caffe back-end for deep learning does not allow making predictions while training. However, two different services can train and predict at the same time.
 </div>
 
 ## Launch a training job
@@ -577,7 +483,7 @@ Parameter    | Type | Optional | Default | Description
 ---------    | ---- | -------- | ------- | -----------
 width        | int  | yes      | 227     | Resize images to width (`image` only)
 height       | int  | yes      | 227     | Resize images to height (`image` only)
-bw           | bool | yes      | false   | Treat images as black & white (Caffe only)
+bw           | bool | yes      | false   | Treat images as black & white
 rgb	     | bool	       | yes 	 | false   | Use RGB images
 histogram_equalization | bool | yes      | false   | Whether to equalize the image histogram
 mean           | float        | yes      | 128     | mean pixel value to be subtracted to input image
@@ -651,7 +557,7 @@ test_split         | real   | yes      | 0                                      
 shuffle            | bool   | yes      | false                                              | Whether to shuffle the training set (prior to splitting)
 seed               | int    | yes      | -1                                                 | Shuffling seed for reproducible results (-1 for random seeding)
 db                 | bool   | yes      | false                                              | whether to gather data into a database, useful for very large datasets, allows training in constant-size memory
-sparse             | bool   | yes      | false                                              | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
+sparse             | bool   | yes      | false                                              | whether to use sparse features(for xgboost use the `svm` connector instead)
 embedding          | bool   | yes      | false                                              | whether to use an embedding as input to the network (replaces one-hot vectors with straight indices)
 ordered_words      | bool   | yes      | false                                              | enable word-based processing with positionnal information, mandatory for bert/gpt2 like models
 wordpiece_tokens   | bool   | yes      | false                                              | set to true if vocabulary contains partial words, ie like in bert/gpt2 models
@@ -673,155 +579,6 @@ measure           | array  | yes      | empty   | Output measures requested, fro
 target_repository | string | yes      | empty   | target directory to which to copy the best model files once training has completed
 
 #### Machine learning libraries
-
-- Caffe
-
-General:
-
-Parameter     | Type           | Optional | Default        | Description
----------     | ----           | -------- | -------        | -----------
-gpu           | bool           | yes      | false          | Whether to use GPU
-gpuid         | int or array   | yes      | 0              | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-resume        | bool           | yes      | false          | Whether to resume training from .solverstate and .caffemodel files
-class_weights | array of float | yes      | 1.0 everywhere | Whether to weight some classes more / less than others, e.g. [1.0,0.1,1.0]
-ignore_label  | int            | yes      | N/A            | A single label to be ignored by the loss (i.e. no gradients)
-timesteps     | int            | yes      | N/A            | Number of timesteps for recurrence ('csvts', `ctc` OCR) models (in case of csvts, used only at train time)
-offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series. For [0, n] steps a timestep of t and an offset of k, series [0..t-1], [k..t+k-1], [2k, 2k+t-1] ... will be cosntructed. If some elements at the end could not be taken using this, it will add a final [n-t+1..n] sequence (used only at train time).
-
-Solver:
-
-Parameter            | Type         | Optional | Default | Description
----------            | ----         | -------- | ------- | -----------
-iterations           | int          | yes      | N/A     | Max number of solver's iterations
-snapshot             | int          | yes      | N/A     | Iterations between model snapshots
-snapshot_prefix      | string       | yes      | empty   | Prefix to snapshot file, supports repository
-solver_type          | string       | yes      | SGD     | from "SGD", "ADAGRAD", "NESTEROV", "RMSPROP", "ADADELTA", "ADAM",  "AMSGRAD",  "RANGER", "RANGER_PLUS", "ADAMW", "SGDW", "AMSGRADW" (*W version for decoupled weight decay, RANGER_PLUS is ranger + adabelief + centralized_gradient)
-clip                 | bool         | yes      | false (true if RANGER* selected) | gradients with absolute value greater than clip_value will be clipped to below values
-clip_value           | real         | yes      | 5.0     | gradients with absolute value greater than clip_value will be clipped to this value
-clip_norm            | real         | yes      | 100.0   | gradients with euclidean norm greater than clip_norm will be clipped to this value
-rectified            | bool         | yes      | false   | rectified momentum variance ie https://arxiv.org/abs/1908.03265 valid for ADAM[W] and AMSGRAD[W]
-adabelief            | bool         | yes      | false   | adabelief mod for ADAM https://arxiv.org/abs/2010.07468
-gradient_centralization | bool         | yes      | false   | centralized gradient mod for ADAM ie https://arxiv.org/abs/2004.01461v2
-adamp                | bool         | yes      | false   | enable ADAMP version https://arxiv.org/abs/2006.08217
-test_interval        | int          | yes      | N/A     | Number of iterations between testing phases
-test_initialization  | bool         | true     | N/A     | Whether to start training by testing the network
-lr_policy            | string       | yes      | N/A     | learning rate policy ("step", "inv", "fixed", "sgdr", ...)
-base_lr              | real         | yes      | N/A     | Initial learning rate
-warmup_lr            | real         | yes      | N/A     | warmup starting learning rate (linearly goes to base_lr)
-warmup_iter          | int          | yes      | 0       | number of warmup iterations
-gamma                | real         | yes      | N/A     | Learning rate drop factor
-stepsize             | int          | yes      | N/A     | Number of iterations between the dropping of the learning rate
-stepvalue            | array of int | yes      | N/A     | Iterations at which a learning rate change takes place, with `multistep` `lr_policy`
-momentum             | real         | yes      | N/A     | Learning momentum
-period               | int          | yes      | -1      | N/A | Period in number of iterations with SGDR, best to use ncycles instead
-ncycles              | int          | yes      | 1       | Number of restart cycles with SGDR
-weight_decay         | real         | yes      | N/A     | Weight decay
-power                | real         | yes      | N/A     | Power applicable to some learning rate policies
-iter_size            | int          | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
-rand_skip            | int          | yes      | 0       | Max number of images to skip when resuming training (only with segmentation or multilabel and Caffe backend)
-lookahead            | bool         | yes      | false   | weither to use lookahead strategy from  https://arxiv.org/abs/1907.08610v1
-lookahead_steps      | int          | yes      | 6       | number of lookahead steps for lookahead strategy
-lookahead_alpha      | real         | yes      | 0.5     | size of step towards full lookahead
-decoupled_wd_periods | int          | yes      | 4       | number of search periods for SGDW ADAMW AMSGRADW (periods end with a restart)
-decoupled_wd_mult    | real         | yes      | 2.0     | muliplier of period for SGDW ADAMW AMSGRADW
-lr_dropout           | real         | yes      | 1.0     | learning rate dropout, as in https://arxiv.org/abs/1912.00144 1.0 means no dropout, 0.0 means no learning at all (this value is the probability of keeping computed value and not putting zero)
-
-Note: most of the default values for the parameters above are to be found in the Caffe files describing a given neural network architecture, or within Caffe library, therefore regarded as N/A at DeepDetect level.
-
-Net:
-
-Parameter       | Type | Optional | Default | Description
----------       | ---- | -------- | ------- | -----------
-batch_size      | int  | yes      | N/A     | Training batch size
-test_batch_size | int  | yes      | N/A     | Testing batch size
-
-- Torch
-
-General:
-
-Parameter       | Type   | Optional | Default | Description
----------       | ----   | -------- | ------- | -----------
-gpu             | bool   | yes      | false   | whether to use gpu
-gpuid           | int or array | yes | 0      | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-nclasses        | int    | yes      | none    | if set to some int, add a classifier (linear/fullyConnected) with corresponding number of classes after torch traced model
-ntargets   | int             | no (regression only)     | N/A     | Number of regression targets
-self_supervised | string | yes      | ""      | self-supervised mode: "mask" for masked language model
-embedding_size  | int    | yes      | 768     | embedding size for NLP models
-freeze_traced   | bool   | yes      | false   | Freeze the traced part of the net during finetuning (e.g. for classification)
-retain_graph	| bool	 | yes	    | false   | Whether to use `retain_graph` with torch autograd
-template        | string | yes      | ""      | e.g. "bert", "gpt2", "recurrent", "nbeats", "vit", "visformer", "ttransformer", "resnet50", ... All templates are listed in the [Model Templates](#model-templates) section.
-template_params | dict   | yes      | template dependent | Model parameter for templates. All parameters are listed in the [Model Templates](#model-templates) section.
-regression | bool            | yes                      | false   | Whether the model is a regressor
-timesteps     | int            | yes      | N/A            | Number of timesteps for time models (LSTM/NBEATS...) : this sets the length of sequences that will be given for learning, every timestep contains inputs and outputs as defined by the csv/csvts connector
-offset        | int            | yes      | N/A            | Offset beween start point of sequences with connector `cvsts`, defining the overlap of input series
-forecast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the forecast
-backcast_timesteps      | int            | yes      | N/A       | for nbeats model, this gives the length of the backcast
-datatype      | string | yes       | fp32 | Datatype used at prediction time, possible values are "fp16" (only if inference is done on GPU) , "fp32" and "fp64" (double)
-dataloader_threads | int | yes | 1 | How many threads should be used to load data. 0 means no prefetch.
-
-Solver:
-
-Parameter     | Type   | Optional | Default | Description
----------     | ----   | -------- | ------- | -----------
-iterations    | int    | yes      | N/A     | Max number of solver's iterations
-snapshot      | int    | yes      | N/A     | Iterations between model snapshots
-solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD",  "RMSPROP", "ADAM", "RANGER", "RANGER_PLUS", "MADGRAD"
-beta1         | real   | yes      | 0.9     | for RANGER\* : beta1 param
-beta2         | real   | yes      | 0.999   | for RANGER\* : beta2 param
-weight_decay  | real   | yes      | 0.0     | for RANGER\* : weight decay
-rectified     | bool   | yes      | true    | for RANGER\* : enable/disable rectified ADAM
-lookahead     | bool   | yes      | true    | for RANGER\* and MADGRAD : enable/disable lookahead
-lookahead_steps | int  | yes      | 6       | for RANGER\* and MADGRAD : if lookahead enabled, number of steps
-lookahead_alpha | real | yes      | 0.5     | for RANGER\* and MADGRAD : if lookahead enables, alpha param
-adabelief     | bool   | yes      | false for RANGER, true for RANGER_PLUS   | for RANGER\* : enable/disable adabelief
-gradient_centralization | bool | yes | false for RANGER, true for RANGER_PLUS| for RANGER\* : enable/disable gradient centralization
-sam           | bool   | yes      | false   | Sharpness Aware Minimization (https://arxiv.org/abs/2010.01412)
-sam_rho       | real   | yes      | 0.05    | neighborhood size for SAM (see above)
-swa           | bool   | yes      | false   | SWA https://arxiv.org/abs/1803.05407 , implemented  only for  RANGER / RANGER_PLUS / MADGRAD  solver types.
-test_interval | int    | yes      | N/A     | Number of iterations between testing phases
-base_lr       | real   | yes      | N/A     | Initial learning rate
-iter_size     | int    | yes      | 1       | Number of passes (iter_size * batch_size) at every iteration
-resume        | bool   | yes      | false   | Whether to resume training from solver state
-
-Net:
-
-Parameter       | Type | Optional | Default | Description
----------       | ---- | -------- | ------- | -----------
-batch_size      | int  | yes      | N/A     | Training batch size
-test_batch_size | int  | yes      | N/A     | Testing batch size
-
-
-- Caffe2
-
-General:
-
-Parameter | Type         | Optional | Default | Description
---------- | ----         | -------- | ------- | -----------
-gpu       | bool         | yes      | false   | Whether to use GPU
-gpuid     | int or array | yes      | 0       | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-resume    | bool         | yes      | false   | Whether to resume training from .solverstate and .caffemodel files
-
-Solver:
-
-Parameter     | Type   | Optional | Default | Description
----------     | ----   | -------- | ------- | -----------
-iterations    | int    | yes      | N/A     | Max number of solver's iterations
-snapshot      | int    | yes      | N/A     | Iterations between model snapshots
-solver_type   | string | yes      | SGD     | from "SGD", "ADAGRAD", "NESTEROV", "RMSPROP", "ADADELTA", "ADAM" and "AMSGRAD"
-test_interval | int    | yes      | N/A     | Number of iterations between testing phases
-lr_policy     | string | yes      | N/A     | learning rate policy ("step", "inv", "fixed", "sgdr", ...)
-base_lr       | real   | yes      | N/A     | Initial learning rate
-gamma         | real   | yes      | N/A     | Learning rate drop factor
-stepsize      | int    | yes      | N/A     | Number of iterations between the dropping of the learning rate
-momentum      | real   | yes      | N/A     | Learning momentum
-power         | real   | yes      | N/A     | Power applicable to some learning rate policies
-
-Net:
-
-Parameter       | Type | Optional | Default | Description
----------       | ---- | -------- | ------- | -----------
-batch_size      | int  | yes      | N/A     | Training batch size
-test_batch_size | int  | yes      | N/A     | Testing batch size
 
 - XGBoost
 
@@ -857,10 +614,6 @@ tree_method      | string | yes      | auto    | tree construction algorithm, fr
 scale_pos_weight | double | yes      | 1.0     | control the balance of positive and negative weights
 
 For more details on all XGBoost parameters see the dedicated page at https://github.com/dmlc/xgboost/blob/master/doc/parameter.md
-
-- Tensorflow
-
-Not implemented, see Predict
 
 - TSNE
 
@@ -1022,10 +775,10 @@ width        | int          | yes      | 227     | Resize images to width (`imag
 height       | int          | yes      | 227     | Resize images to height (`image` only)
 crop_width   | int          | yes      | 0       | Center crop images to width (`image` only)
 crop_height  | int          | yes      | 0       | Center crop images to height (`image` only)
-bw           | bool         | yes      | false   | Treat images as black & white (Caffe only)
-mean         | float        | yes      | 128     | mean pixel value to be subtracted to input image (`tensorflow` only)
-mean         | array of int | yes      | N/A     | mean pixel value per channel to be subtracted to input image (`caffe` only)
-std          | float        | yes      | 128     | standard pixel value deviation to be applied to input image (`tensorflow` only)
+bw           | bool         | yes      | false   | Treat images as black & white
+mean         | float        | yes      | 128     | mean pixel value to be subtracted to input image
+mean         | array of int | yes      | N/A     | mean pixel value per channel to be subtracted to input image
+std          | float        | yes      | 128     | standard pixel value deviation to be applied to input image
 segmentation | yes          | yes      | false   | whether a segmentation service
 interp       | string       | yes      | cubic   | Image interpolation method (cubic, linear, nearest, lanczos4, area)
 cuda         | bool         | yes      | false   | Whether to use CUDA to resize images (use USE_CUDA_CV=ON build flag)
@@ -1055,7 +808,7 @@ characters      | bool   | yes      | false                                     
 sequence        | int    | yes      | N/A                                                | for character-level text processing, the fixed length of each sample of text
 read_forward    | bool   | yes      | false                                              | for character-level text processing, whether to read content from left to right
 alphabet        | string | yes      | abcdefghijklmnopqrstuvwxyz 0123456789 ,;.!?:'"/\\\ \|\_@#$%^&\*~\`+-=<>()[]{} | for character-level text processing, the alphabet of recognized symbols
-sparse          | bool   | yes      | false                                              | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
+sparse          | bool   | yes      | false                                              | whether to use sparse features(for xgboost use the `svm` connector instead)
 
 - SVM (`svm`)
 
@@ -1102,20 +855,6 @@ The variables that are usable in the output template format are those from the s
 
 #### Machine learning libraries
 
-- Caffe / Caffe2
-
-Parameter     | Type         | Optional | Default | Description
----------     | ----         | -------- | ------- | -----------
-gpu           | bool         | yes      | false   | Whether to use GPU
-gpuid         | int or array | yes      | 0       | GPU id, use single int for single GPU, `-1` for using all GPUs, and array e.g. `[1,3]` for selecting among multiple GPUs
-extract_layer | string       | yes      | false   | name of the neural net's inner layer to return as output. Requires the service to be declared as 'unsupervised'
-
-Net:
-
-Parameter       | Type | Optional | Default | Description
----------       | ---- | -------- | ------- | -----------
-test_batch_size | int  | yes      | N/A     | Prediction batch size (the server iterates as many batches as necessary to predict over all posted data)
-
 - Torch
 
 Parameter     | Type   | Optional | Default | Description
@@ -1131,15 +870,6 @@ concurrent_predict | bool | yes | true    | Enable/disable concurrent predict fo
 - XGBoost
 
 No parameter required.
-
-- Tensorflow
-
-Parameter       | Type   | Optional | Default | Description
----------       | ----   | -------- | ------- | -----------
-test_batch_size | int    | yes      | N/A     | Prediction batch size (the server iterates as many batches as necessary to predict over all posted data)
-inputlayer      | string | yes      | auto    | network input layer name
-outputlayer     | string | yes      | auto    | network output layer name
-extract_layer   | string | yes      | false   | name of the neural net's inner layer to return as output. Requires the service to be declared as 'unsupervised' (subsumes `outputlayer` in an `unsupervised` service)
 
 - NCNN
 
@@ -1238,7 +968,7 @@ test_split      | real   | yes      | 0                                         
 shuffle         | bool   | yes      | false                                              | Whether to shuffle the training set (prior to splitting)
 seed            | int    | yes      | -1                                                 | Shuffling seed for reproducible results (-1 for random seeding)
 db              | bool   | yes      | false                                              | whether to gather data into a database, useful for very large datasets, allows training in constant-size memory
-sparse          | bool   | yes      | false                                              | whether to use sparse features (and sparce computations with Caffe for huge memory savings, for xgboost use `svm` connector instead)
+sparse          | bool   | yes      | false                                              | whether to use sparse features(for xgboost use the `svm` connector instead)
 
 - SVM (`svm`)
 
@@ -1342,64 +1072,11 @@ Using Mustache, you can turn the JSON into anything, from XML to specialized for
 
 The DeepDetect server and API come with a set of Machine Learning model templates.
 
-At the moment templates are available for [Caffe](https://caffe.berkeleyvision.org/) and [Pytorch](https://pytorch.org/) backends. They include some of the most powerful deep neural net architectures for image classification, and other customizable classic and useful architectures.
+Templates are available for the [Pytorch](https://pytorch.org/) backend. They include some of the most powerful deep neural net architectures for image classification, and other customizable classic and useful architectures.
 
 ## Neural network templates
 
 All models below are used by passing their id to the `mllib/template` parameter in `PUT /services` calls:
-
-### Caffe
-Model ID    | Type                     | Input          | Description
---------    | ----                     | -----          | -----------
-lregression | linear                   | CSV / Txt            | logistic regression
-mlp         | neural net               | CSV / Txt            | multilayer perceptron, fully configurable from API, see parameters below
-recurrent   | recurrent neural net     | CSV / CSVTS    | LSTM-based networks, fully configurable from API
-convnet     | convolutional neural net | Images         | convolutional neural net, with layers configurable from API, see parameters below
-alexnet     | deep neural net          | Images 227x227 | 'AlexNet', convolutional deep neural net, good accuracy, fast
-cifar       | deep neural net          | Images 32x32   | Convolutional deep neural net, very good for small images
-nin         | deep neural net          | Images 224x224 | 'Network in Network' convolutional deep neural net, good accuracy, very fast
-googlenet   | deep neural net          | Images 224x224 | 'GoogleNet', convolutional deep neural net, good accuracy
-resnet_10   | deep neural net          | Image 224x224  | 'ResNet', 10-layers deep residual convolutional neural net, top accuracy
-resnet_18   | deep neural net          | Image 224x224  | 'ResNet', 18-layers deep residual convolutional neural net, top accuracy
-resnet_32   | deep neural net          | Image 224x224  | 'ResNet', 32-layers deep residual convolutional neural net, top accuracy
-resnet_50   | deep neural net          | Image 224x224  | 'ResNet', 50-layers deep residual convolutional neural net, top accuracy
-resnet_101  | deep neural net          | Image 224x224  | 'ResNet', 101-layers deep residual convolutional neural net, top accuracy
-resnet_152  | deep neural net          | Image 224x224  | 'ResNet', 152-layers deep residual convolutional neural net, top accuracy
-crnn	    | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR
-crnn_resnet_18 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNet-18 base
-crnn_resnet_50 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNet-50 base
-crnn_resnext_50 | deep neural net	       | Images   		| Convolutional network plus CTC head for OCR with ResNext-50 base
-enet | deep neural net	       | Images   		| Convolutional network for segmentation
-mobilenet_v2 | deep neural net	       | Images   		| Lightweight network for image classification
-mobilenet_v2_ssd | deep neural net	       | Images   		| Lightweight network for object detection
-pspnet_50 | deep neural net	       | Images   		| Convolutional network for segmentation with ResNet-50 base
-pspnet_101 | deep neural net	       | Images   		| Convolutional network for segmentation with ResNet-101 base
-pspnet_vgg16 | deep neural net	       | Images   		| Convolutional network for segmentation with VGG-16 base
-refinedet_512 | deep neural net	       | Images   		| Convolutional network for object detection with VGG-16 base
-refinedet_vovnet27slim_512 | deep neural net	       | Images   		| Convolutional network for object detection with VovNet-27-slim base
-refinedet_vovnet39_512 | deep neural net	       | Images   		| Convolutional network for object detection with VovNet-39 base
-resnet_10_ssd | deep neural net	       | Images   		| Convolutional network for object detection with ResNet-10 base
-resnet_18_ssd | deep neural net	       | Images   		| Convolutional network for object detection with ResNet-18 base
-resnet_34_ssd | deep neural net	       | Images   		| Convolutional network for object detection with ResNet-34 base
-segnet | deep neural net	       | Images   		| Convolutional network for segmentation
-se_net | deep neural net	       | Images   		| Convolutional network for segmentation
-se_resnet_50 | deep neural net	       | Images   		| Convolutional network for image classification
-se_resnet_101 | deep neural net	       | Images   		| Convolutional network for image classification
-se_resnet_152 | deep neural net	       | Images   		| Convolutional network for image classification
-se_resnext_50 | deep neural net	       | Images   		| Convolutional network for image classification
-se_resnext_101 | deep neural net	       | Images   		| Convolutional network for image classification
-se_resnet_50_ssd | deep neural net	       | Images   		| Convolutional network for image classification
-shufflenet | deep neural net	       | Images   		| Lightweight network for image classification
-squeezenet | deep neural net	       | Images   		| Lightweight network for image classification
-squeezenet_ssd | deep neural net	       | Images   		| Lightweight network for object detection
-ssd_300 | deep neural net	       | Images   		| Convolutional network for object detection
-ssd_300_res_128 | deep neural net	       | Images   		| Convolutional network for object detection wit ResNet tip
-ssd_512 | deep neural net	       | Images   		| Convolutional network for object detection
-ssd_512_res_128 | deep neural net	       | Images   		| Convolutional network for object detection with ResNet tip
-unet | deep neural net	       | Images   		|  Convolutional network for segmentation
-vdcnn_17 | deep neural net	       | Images   		| Convolutional network for text classification
-vdcnn_9 | deep neural net	       | Images   		| Convolutional network for text classification
-vgg_16 | deep neural net	       | Images   		| Convolutional network for image classification
 
 ### Pytorch
 
@@ -1462,22 +1139,6 @@ Model instantiation parameters for recurrent template (applies to all backends s
 Parameter       | Template  | Type            | Default                      | Description
 ---------       | --------- | ------          | ---------------------------- | -----------
 layers          | recurrent | array of string | []                           | ["L50","L50"] means 2 layers of LSTMs with hidden size of 50. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300
-
-### Caffe
-
-Parameter  | Type            | Optional                 | Default | Description
----------  | ----            | --------                 | ------- | -----------
-nclasses   | int             | no (classification only) | N/A     | Number of output classes ("supervised" service type)
-ntargets   | int             | no (regression only)     | N/A     | Number of regression targets
-template   | string          | yes                      | empty   | Neural network template, from "lregression", "mlp", "convnet", "alexnet", "googlenet", "nin"
-layers     | array of int    | yes                      | [50]    | Number of neurons per layer ("mlp" only)
-layers     | array of string | yes                      | [1000]  | Type of layer and number of neurons peer layer: XCRY for X successive convolutional layers of Y filters with activation layers followed by a max pooling layer, an int as a string for specifying the final fully connected layers size, e.g. \["2CR32","2CR64","1000"\] ("convnet" only), ["AR5", "A5" "L50","A50", "L50"] means an affine / linear / innerproduct layer of size 5, followed by a ReLU, followed by a linear layer of size 5, then 1 layer of LSTMs with hidden size of 50, then one linear layer of size 50 then another lstm layer. ["L100","L100", "T", "L300"] means an lstm autoencoder with encoder composed of 2 LSTM layers of hidden size 100 and decoder is one LSTM layer of hidden size 300 ("recurrent" only)
-activation | string          | yes                      | relu    | Unit activation ("mlp" and "convnet" only), from "sigmoid","tanh","relu","prelu"
-dropout    | real            | yes                      | 0.5     | Dropout rate between layers ("mlp" and "convnet" only)
-regression | bool            | yes                      | false   | Whether the model is a regressor
-crop_size  | int             | yes                      | N/A     | Size of random image crops as input images
-rotate     | bool            | yes                      | false   | Whether to apply random rotations to input images
-mirror     | bool            | yes                      | false   | Whether to apply random mirroring of input images
 
 ### Pytorch
 

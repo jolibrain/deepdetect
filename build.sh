@@ -4,8 +4,8 @@ set -e
 
 # Deepdetect architecture and build profiles
 deepdetect_arch=(cpu gpu jetson)
-deepdetect_cpu_build_profiles=(default tf armv7)
-deepdetect_gpu_build_profiles=(default tf caffe2 tensorrt)
+deepdetect_cpu_build_profiles=(default armv7)
+deepdetect_gpu_build_profiles=(default tensorrt)
 deepdetect_gpu_variants=(default legacy61)
 
 DEEPDETECT_GPU_VARIANT=${DEEPDETECT_GPU_VARIANT:-default}
@@ -264,18 +264,13 @@ cpu_build() {
 
     case ${DEEPDETECT_BUILD} in
 
-    "tf")
-        cmake .. -DUSE_TF=ON -DUSE_TF_CPU_ONLY=ON -DUSE_SIMSEARCH=ON -DUSE_TSNE=ON -DUSE_NCNN=OFF -DUSE_CPU_ONLY=ON -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
-        make -j6
-        ;; 
-
     "armv7")
         cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_TORCH=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
         ;; 
 
     *)
-        cmake .. -DUSE_XGBOOST=OFF -DUSE_CAFFE=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
+        cmake .. -DUSE_XGBOOST=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
         ;; 
     esac
@@ -287,8 +282,6 @@ gpu_build() {
     local default_flags="-DUSE_FAISS=OFF -DUSE_CUDNN=ON -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_TORCH=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
 
     case ${DEEPDETECT_BUILD} in
-        "tf") extra_flags="$default_flags -DUSE_TF=ON" ;; 
-        "caffe2") extra_flags="$default_flags -DUSE_CAFFE2=ON" ;; 
         "tensorrt")
             extra_flags="-DUSE_TENSORRT=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
             if [ "${DEEPDETECT_TENSORRT_VERSION}" ] && [ "${DEEPDETECT_TENSORRT_VERSION}" != "null" ]; then

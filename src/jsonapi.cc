@@ -504,156 +504,13 @@ namespace dd
           {
             return dd_unknown_library_1000();
           }
-#ifdef USE_CAFFE
-        else if (mllib == "caffe")
+        else if (mllib == "caffe" || mllib == "caffe2" || mllib == "tf"
+                 || mllib == "tensorflow")
           {
-            CaffeModel cmodel(ad_model, ad, _logger);
-            read_metrics_json(cmodel._repo, ad);
-            if (type == "supervised")
-              {
-                if (input == "image")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, ImgCaffeInputFileConn,
-                                          SupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "csv")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, CSVCaffeInputFileConn,
-                                          SupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "csv_ts" || input == "csvts")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, CSVTSCaffeInputFileConn,
-                                          SupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "txt")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, TxtCaffeInputFileConn,
-                                          SupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "svm")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, SVMCaffeInputFileConn,
-                                          SupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else
-                  return dd_input_connector_not_found_1004();
-                if (store_config
-                    && JsonAPI::store_json_config_blob(cmodel._repo, jstr))
-                  _logger->error(
-                      "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_config_blob_fname, cmodel._repo);
-              }
-            else if (type == "unsupervised")
-              {
-                if (input == "image")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, ImgCaffeInputFileConn,
-                                          UnsupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "csv")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, CSVCaffeInputFileConn,
-                                          UnsupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "csv_ts")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, CSVTSCaffeInputFileConn,
-                                          UnsupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "txt")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, TxtCaffeInputFileConn,
-                                          UnsupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else if (input == "svm")
-                  add_service(
-                      sname,
-                      std::move(MLService<CaffeLib, SVMCaffeInputFileConn,
-                                          UnsupervisedOutput, CaffeModel>(
-                          sname, cmodel, description)),
-                      ad);
-                else
-                  return dd_input_connector_not_found_1004();
-                if (store_config
-                    && JsonAPI::store_json_config_blob(cmodel._repo, jstr))
-                  _logger->error(
-                      "couldn't write {} file in model repository {}",
-                      JsonAPI::_json_config_blob_fname, cmodel._repo);
-              }
-            else
-              {
-                // unknown service type
-                return dd_service_bad_request_1006();
-              }
+            return dd_service_bad_request_1006(
+                "the requested backend was removed; migrate the service to "
+                "Torch or ONNX/TensorRT");
           }
-#endif
-#ifdef USE_CAFFE2
-
-        else if (mllib == "caffe2")
-          {
-            Caffe2Model c2model(ad_model, ad, _logger);
-            read_metrics_json(c2model._repo, ad);
-            if (type == "supervised")
-              {
-
-                if (input == "image")
-                  add_service(
-                      sname,
-                      std::move(MLService<Caffe2Lib, ImgCaffe2InputFileConn,
-                                          SupervisedOutput, Caffe2Model>(
-                          sname, c2model, description)),
-                      ad);
-                else
-                  {
-                    return dd_input_connector_not_found_1004();
-                  }
-              }
-            else if (type == "unsupervised")
-              {
-
-                if (input == "image")
-                  add_service(
-                      sname,
-                      std::move(MLService<Caffe2Lib, ImgCaffe2InputFileConn,
-                                          UnsupervisedOutput, Caffe2Model>(
-                          sname, c2model, description)),
-                      ad);
-                else
-                  {
-                    return dd_input_connector_not_found_1004();
-                  }
-              }
-            else
-              return dd_service_bad_request_1006(); // unknown service type
-            if (store_config
-                && JsonAPI::store_json_config_blob(c2model._repo, jstr))
-              {
-                _logger->error("couldn't write {} file in model repository {}",
-                               JsonAPI::_json_config_blob_fname,
-                               c2model._repo);
-              }
-          }
-
-#endif // USE_CAFFE2
 
 #ifdef USE_NCNN
         else if (mllib == "ncnn")
@@ -747,44 +604,6 @@ namespace dd
           }
 #endif // USE_TORCH
 
-#ifdef USE_TF
-        else if (mllib == "tensorflow" || mllib == "tf")
-          {
-            TFModel tfmodel(ad_model, ad, _logger);
-            read_metrics_json(tfmodel._repo, ad);
-            if (type == "supervised")
-              {
-                if (input == "image")
-                  add_service(sname,
-                              std::move(MLService<TFLib, ImgTFInputFileConn,
-                                                  SupervisedOutput, TFModel>(
-                                  sname, tfmodel, description)),
-                              ad);
-                else
-                  return dd_input_connector_not_found_1004();
-              }
-            else if (type == "unsupervised")
-              {
-                if (input == "image")
-                  add_service(sname,
-                              std::move(MLService<TFLib, ImgTFInputFileConn,
-                                                  UnsupervisedOutput, TFModel>(
-                                  sname, tfmodel, description)),
-                              ad);
-                else
-                  return dd_input_connector_not_found_1004();
-              }
-            else
-              {
-                // unknown type
-                return dd_service_bad_request_1006();
-              }
-            if (store_config
-                && JsonAPI::store_json_config_blob(tfmodel._repo, jstr))
-              _logger->error("couldn't write {} file in model repository {}",
-                             JsonAPI::_json_config_blob_fname, tfmodel._repo);
-          }
-#endif
 #ifdef USE_DLIB
         else if (mllib == "dlib")
           {
