@@ -115,9 +115,10 @@ namespace dd
 
       AttentionImpl(const AttentionImpl &a)
           : DD_CLONEABLE_COPY_BASE(AttentionImpl, a), _dim(a._dim),
-            _num_heads(a._num_heads), _head_dim_ratio(a._head_dim_ratio),
-            _qkv_bias(a._qkv_bias), _qk_scale(a._qk_scale),
-            _attn_drop_val(a._attn_drop_val), _proj_drop_val(a._proj_drop_val)
+            _num_heads(a._num_heads),
+            _head_dim_ratio(a._head_dim_ratio), _qkv_bias(a._qkv_bias),
+            _qk_scale(a._qk_scale), _attn_drop_val(a._attn_drop_val),
+            _proj_drop_val(a._proj_drop_val)
       {
       }
 
@@ -190,11 +191,12 @@ namespace dd
 
       BlockImpl(const BlockImpl &b)
           : DD_CLONEABLE_COPY_BASE(BlockImpl, b), _dim(b._dim),
-            _num_heads(b._num_heads), _head_dim_ratio(b._head_dim_ratio),
-            _mlp_ratio(b._mlp_ratio), _qkv_bias(b._qkv_bias),
-            _qk_scale(b._qk_scale), _drop_val(b._drop_val),
-            _attn_drop_val(b._attn_drop_val), _group(b._group),
-            _attn_disabled(b._attn_disabled), _spatial_conv(b._spatial_conv)
+            _num_heads(b._num_heads),
+            _head_dim_ratio(b._head_dim_ratio), _mlp_ratio(b._mlp_ratio),
+            _qkv_bias(b._qkv_bias), _qk_scale(b._qk_scale),
+            _drop_val(b._drop_val), _attn_drop_val(b._attn_drop_val),
+            _group(b._group), _attn_disabled(b._attn_disabled),
+            _spatial_conv(b._spatial_conv)
       {
       }
 

@@ -192,8 +192,8 @@ namespace dd
       }
 
       TrendBlockImpl(const TrendBlockImpl &b)
-          : DD_CLONEABLE_COPY_BASE(TrendBlockImpl, b), BlockImpl(b),
-            _bT(b._bT), _fT(b._fT)
+          : DD_CLONEABLE_COPY_BASE(TrendBlockImpl, b), BlockImpl(b), _bT(b._bT),
+            _fT(b._fT)
       {
       }
 
@@ -246,7 +246,8 @@ namespace dd
 
       GenericBlockImpl(const GenericBlockImpl &b)
           : DD_CLONEABLE_COPY_BASE(GenericBlockImpl, b), BlockImpl(b),
-            _backcast_fc(b._backcast_fc), _forecast_fc(b._forecast_fc)
+            _backcast_fc(b._backcast_fc),
+            _forecast_fc(b._forecast_fc)
       {
       }
 

@@ -88,8 +88,8 @@ void test_services(std::shared_ptr<DedeApiTestClient> client)
   d.Parse<rapidjson::kParseNanAndInfFlag>(message->c_str());
   ASSERT_TRUE(d.HasMember("status"));
   ASSERT_TRUE(d.HasMember("body"));
-  ASSERT_STREQ("torch", d["body"]["mllib"].GetString());
-  ASSERT_STREQ(serv_lower.c_str(), d["body"]["name"].GetString());
+  ASSERT_EQ("torch", d["body"]["mllib"].GetString());
+  ASSERT_EQ(serv_lower.c_str(), d["body"]["name"].GetString());
   ASSERT_TRUE(d["body"].HasMember("jobs"));
   ASSERT_TRUE(d["body"].HasMember("model_stats"));
   ASSERT_TRUE(d["body"]["model_stats"]["params"].GetInt() == 11177538);

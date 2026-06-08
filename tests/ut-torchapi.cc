@@ -902,8 +902,7 @@ TEST(torchapi, service_train_images_split)
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   int it_count = std::stoi(iterations_resnet50_split);
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == it_count)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == it_count) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
@@ -2321,8 +2320,7 @@ TEST(torchapi, service_train_images_split_list)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
@@ -2385,8 +2383,7 @@ TEST(torchapi, service_train_images_split_regression_db_true)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2447,8 +2444,7 @@ TEST(torchapi, service_train_images_split_regression_db_false)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2510,8 +2506,7 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_false)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2573,8 +2568,7 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_true)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2636,8 +2630,7 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_false_l1_percent)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["l1"].GetDouble() <= 15.0) << "l1";
   ASSERT_TRUE(jd["body"]["measure"]["percent"].GetDouble() <= 200.0)
       << "percent";
@@ -3445,8 +3438,7 @@ TEST(torchapi, service_train_images_native)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble()
-              == iterations_native)
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == iterations_native)
       << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   // TODO test accuracy when it's no more random
@@ -3498,8 +3490,7 @@ TEST(torchapi, service_train_txt_lm)
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 3)
-      << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 3) << "iterations";
   // This assertion is non-deterministic
   // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) <<
   // "train_loss";
@@ -4512,8 +4503,7 @@ TEST(torchapi, service_train_resnet18_multigpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble()
-              == iterations_native)
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == iterations_native)
       << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   // TODO test accuracy when it's no more random
