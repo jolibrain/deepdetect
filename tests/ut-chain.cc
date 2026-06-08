@@ -100,7 +100,7 @@ TEST(chain, chain_torch_detection_classification)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
 
@@ -143,7 +143,7 @@ TEST(chain, chain_torch_detection_classification)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
   ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 0);
@@ -182,7 +182,7 @@ TEST(chain, chain_torch_detection_classification)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
@@ -265,7 +265,7 @@ TEST(chain, chain_trt_detection_gan)
             << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
@@ -313,7 +313,7 @@ TEST(chain, chain_trt_detection_gan)
   jd = JDoc();
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());
   ASSERT_EQ(2, jd["body"]["predictions"][0]["classes"].Size());
@@ -388,7 +388,7 @@ TEST(chain, chain_trt_consistency)
   JDoc jd;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
   ASSERT_TRUE(jd["body"]["predictions"][0]["classes"].IsArray());

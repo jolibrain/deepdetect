@@ -59,7 +59,7 @@ namespace dd
       generic
     };
 
-    class BlockImpl : public virtual torch::nn::Module
+    class BlockImpl
     {
     public:
       BlockImpl(int units, int thetas_dim, int backcast_length,
@@ -69,11 +69,10 @@ namespace dd
             _backcast_length(backcast_length),
             _forecast_length(forecast_length), _share_thetas(share_thetas)
       {
-        init_block();
       }
 
       BlockImpl(const BlockImpl &b)
-          : torch::nn::Module(b), _units(b._units), _thetas_dim(b._thetas_dim),
+          : _units(b._units), _thetas_dim(b._thetas_dim),
             _data_size(b._data_size), _backcast_length(b._backcast_length),
             _forecast_length(b._forecast_length),
             _share_thetas(b._share_thetas)
@@ -82,7 +81,6 @@ namespace dd
 
       BlockImpl &operator=(const BlockImpl &b)
       {
-        torch::nn::Module::operator=(b);
         _units = b._units;
         _thetas_dim = b._thetas_dim;
         _data_size = b._data_size;
@@ -99,16 +97,16 @@ namespace dd
         return *this;
       }
 
-      void reset()
+      void reset(torch::nn::Module &module)
       {
-        init_block();
+        init_block(module);
       }
 
       torch::Tensor first_forward(torch::Tensor x);
       torch::Tensor first_extract(torch::Tensor x, std::string extract_layer);
 
     protected:
-      void init_block();
+      void init_block(torch::nn::Module &module);
 
       unsigned int _units;
       unsigned int _thetas_dim;
@@ -124,10 +122,9 @@ namespace dd
       torch::nn::Linear _theta_f_fc{ nullptr };
     };
 
-    typedef torch::nn::ModuleHolder<BlockImpl> Block;
-
-    class SeasonalityBlockImpl : public BlockImpl,
-                                 public Cloneable<SeasonalityBlockImpl>
+    class SeasonalityBlockImpl
+        : public torch::nn::Cloneable<SeasonalityBlockImpl>,
+          public BlockImpl
     {
     public:
       SeasonalityBlockImpl(int units, int thetas_dim, int backcast_length,
@@ -137,15 +134,18 @@ namespace dd
                       true, data_size),
             _bS(bS), _fS(fS)
       {
+        init_block(*this);
       }
 
       SeasonalityBlockImpl(const SeasonalityBlockImpl &b)
-          : torch::nn::Module(b), BlockImpl(b), _bS(b._bS), _fS(b._fS)
+          : DD_CLONEABLE_COPY_BASE(SeasonalityBlockImpl, b), BlockImpl(b),
+            _bS(b._bS), _fS(b._fS)
       {
       }
 
       SeasonalityBlockImpl &operator=(const SeasonalityBlockImpl &b)
       {
+        torch::nn::Cloneable<SeasonalityBlockImpl>::operator=(b);
         BlockImpl::operator=(b);
         _bS = b._bS;
         _fS = b._fS;
@@ -158,13 +158,14 @@ namespace dd
         // bT and fT are not copied because they are set by NBeats::reset()
         // With the default operator, unwanted copy of bT and fT resulting
         // in them having the wrong device id.
+        torch::nn::Cloneable<SeasonalityBlockImpl>::operator=(std::move(b));
         BlockImpl::operator=(b);
         return *this;
       }
 
       void reset() override
       {
-        BlockImpl::reset();
+        BlockImpl::reset(*this);
       }
 
       std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
@@ -176,7 +177,8 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<SeasonalityBlockImpl> SeasonalityBlock;
 
-    class TrendBlockImpl : public BlockImpl, public Cloneable<TrendBlockImpl>
+    class TrendBlockImpl : public torch::nn::Cloneable<TrendBlockImpl>,
+                           public BlockImpl
     {
     public:
       TrendBlockImpl(int units, int thetas_dim, int backcast_length,
@@ -186,15 +188,18 @@ namespace dd
                       true, data_size),
             _bT(bT), _fT(fT)
       {
+        init_block(*this);
       }
 
       TrendBlockImpl(const TrendBlockImpl &b)
-          : torch::nn::Module(b), BlockImpl(b), _bT(b._bT), _fT(b._fT)
+          : DD_CLONEABLE_COPY_BASE(TrendBlockImpl, b), BlockImpl(b),
+            _bT(b._bT), _fT(b._fT)
       {
       }
 
       TrendBlockImpl &operator=(const TrendBlockImpl &b)
       {
+        torch::nn::Cloneable<TrendBlockImpl>::operator=(b);
         BlockImpl::operator=(b);
         _bT = b._bT;
         _fT = b._fT;
@@ -207,13 +212,14 @@ namespace dd
         // bT and fT are not copied because they are set by NBeats::reset()
         // With the default operator, unwanted copy of bT and fT resulting
         // in them having the wrong device id.
+        torch::nn::Cloneable<TrendBlockImpl>::operator=(std::move(b));
         BlockImpl::operator=(b);
         return *this;
       }
 
       void reset() override
       {
-        BlockImpl::reset();
+        BlockImpl::reset(*this);
       }
 
       std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor x);
@@ -225,8 +231,8 @@ namespace dd
 
     typedef torch::nn::ModuleHolder<TrendBlockImpl> TrendBlock;
 
-    class GenericBlockImpl : public BlockImpl,
-                             public Cloneable<GenericBlockImpl>
+    class GenericBlockImpl : public torch::nn::Cloneable<GenericBlockImpl>,
+                             public BlockImpl
     {
     public:
       GenericBlockImpl(int units, int thetas_dim, int backcast_length,
@@ -234,17 +240,19 @@ namespace dd
           : BlockImpl(units, thetas_dim, backcast_length, forecast_length,
                       false, data_size)
       {
+        init_block(*this);
         init_generic_block();
       }
 
       GenericBlockImpl(const GenericBlockImpl &b)
-          : torch::nn::Module(b), BlockImpl(b), _backcast_fc(b._backcast_fc),
-            _forecast_fc(b._forecast_fc)
+          : DD_CLONEABLE_COPY_BASE(GenericBlockImpl, b), BlockImpl(b),
+            _backcast_fc(b._backcast_fc), _forecast_fc(b._forecast_fc)
       {
       }
 
       GenericBlockImpl &operator=(const GenericBlockImpl &b)
       {
+        torch::nn::Cloneable<GenericBlockImpl>::operator=(b);
         BlockImpl::operator=(b);
         _forecast_fc = b._forecast_fc;
         _backcast_fc = b._backcast_fc;
@@ -253,7 +261,7 @@ namespace dd
 
       void reset() override
       {
-        BlockImpl::reset();
+        BlockImpl::reset(*this);
         init_generic_block();
       }
 

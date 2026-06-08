@@ -138,6 +138,13 @@ static std::string iterations_deeplabv3 = "200";
 static int torch_seed = 1235;
 static std::string torch_lr = "1e-5";
 
+static void recreate_symlink(const std::string &target,
+                             const std::string &link_path)
+{
+  remove(link_path.c_str());
+  ASSERT_EQ(symlink(target.c_str(), link_path.c_str()), 0);
+}
+
 TEST(torchapi, service_predict)
 {
   // create service
@@ -163,7 +170,7 @@ TEST(torchapi, service_predict)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 1);
   std::string cl1
@@ -184,7 +191,7 @@ TEST(torchapi, service_predict)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 8);
 
@@ -199,7 +206,7 @@ TEST(torchapi, service_predict)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
   cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -245,7 +252,7 @@ TEST(torchapi, service_predict_native_bw)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   // clear directory
   jstr = "{\"clear\":\"full\"}";
@@ -281,7 +288,7 @@ TEST(torchapi, service_predict_multi_label)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["classes"].Size(), 10);
 
@@ -320,15 +327,17 @@ TEST(torchapi, service_predict_fp16)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(cl1 == "n02123045 tabby, tabby cat");
   double v32 = jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble();
+  std::cerr << "v32=" << v32 << std::endl;
   ASSERT_TRUE(v32 > 0.3);
 
   // predict fp16
+  std::cout << "predict2\n";
   jpredictstr
       = "{\"service\":\"imgserv\",\"parameters\":{\"input\":{\"height\":224,"
         "\"width\":224},\"output\":{\"best\":1},\"mllib\":{\"datatype\":"
@@ -338,7 +347,7 @@ TEST(torchapi, service_predict_fp16)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl2
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -374,7 +383,7 @@ TEST(torchapi, service_predict_object_detection)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds = jd["body"]["predictions"][0]["classes"];
@@ -401,7 +410,7 @@ TEST(torchapi, service_predict_object_detection)
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
 
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds_best = jd["body"]["predictions"][0]["classes"];
@@ -421,7 +430,7 @@ TEST(torchapi, service_predict_object_detection)
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
 
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds_best_b64 = jd["body"]["predictions"][0]["classes"];
@@ -454,7 +463,7 @@ TEST(torchapi, service_predict_object_detection_any_size)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds = jd["body"]["predictions"][0]["classes"];
@@ -494,7 +503,7 @@ TEST(torchapi, service_predict_segmentation)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds = jd["body"]["predictions"][0]["vals"];
@@ -531,7 +540,7 @@ TEST(torchapi, service_predict_segmentation_cf)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds = jd["body"]["predictions"][0]["vals"];
@@ -566,7 +575,7 @@ TEST(torchapi, service_predict_txt_classification)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -654,7 +663,7 @@ TEST(torchapi, load_weights_native_model)
 
   // <!> this line segfaults if test_param_name is not in named_parameters
   torch::Tensor tested_value
-      = *module._native->named_parameters().find(test_param_name);
+      = *module._native->module().named_parameters().find(test_param_name);
 
   ASSERT_TRUE(torch::allclose(target_value, tested_value));
   auto output_size = module.forward({ torch::zeros({ 1, 3, 224, 224 }) })
@@ -671,10 +680,12 @@ TEST(torchapi, load_weights_native_model)
   test_param_name = "wrapped.fc.bias";
   std::string test_buffer_name = "wrapped.layer4.2.bn2.running_mean";
   // <!> segfault if test_param_name is not in named_parameters
-  tested_value = *module._native->named_parameters().find(test_param_name);
+  tested_value
+      = *module._native->module().named_parameters().find(test_param_name);
   torch::Tensor before_val = tested_value.clone();
   torch::Tensor before_buffer
-      = (*module._native->named_buffers().find(test_buffer_name)).clone();
+      = (*module._native->module().named_buffers().find(test_buffer_name))
+            .clone();
   ASSERT_TRUE(before_buffer.mean().item<double>() != 0);
 
   module.save_checkpoint(mlmodel, "0");
@@ -682,10 +693,12 @@ TEST(torchapi, load_weights_native_model)
   module.load(mlmodel);
 
   // <!> segfault if test_param_name is not in named_parameters
-  tested_value = *module._native->named_parameters().find(test_param_name);
+  tested_value
+      = *module._native->module().named_parameters().find(test_param_name);
   torch::Tensor after_val = tested_value.clone();
   torch::Tensor after_buffer
-      = (*module._native->named_buffers().find(test_buffer_name)).clone();
+      = (*module._native->module().named_buffers().find(test_buffer_name))
+            .clone();
   ASSERT_TRUE(torch::allclose(before_val, after_val));
   // check that buffers are copied as well
   ASSERT_TRUE(torch::allclose(before_buffer, after_buffer));
@@ -886,10 +899,11 @@ TEST(torchapi, service_train_images_split)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   int it_count = std::stoi(iterations_resnet50_split);
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == it_count) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == it_count)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
@@ -963,7 +977,7 @@ TEST(torchapi, service_train_images)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.49)
@@ -981,7 +995,7 @@ TEST(torchapi, service_train_images)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -1056,7 +1070,7 @@ TEST(torchapi, service_train_resume)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // First predict
   std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{"
@@ -1102,7 +1116,7 @@ TEST(torchapi, service_train_resume)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // Predict
   std::string out2 = japi.jrender(japi.service_predict(jpredictstr));
@@ -1189,7 +1203,7 @@ TEST(torchapi, service_train_image_segmentation_deeplabv3)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.007)
@@ -1208,7 +1222,7 @@ TEST(torchapi, service_train_image_segmentation_deeplabv3)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   std::unordered_set<std::string> lfiles;
@@ -1275,7 +1289,7 @@ TEST(torchapi, service_train_image_segmentation_deeplabv3_dice)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.007)
@@ -1294,7 +1308,7 @@ TEST(torchapi, service_train_image_segmentation_deeplabv3_dice)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   std::unordered_set<std::string> lfiles;
@@ -1359,7 +1373,7 @@ TEST(torchapi, service_train_image_segmentation_segformer)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.003)
@@ -1378,7 +1392,7 @@ TEST(torchapi, service_train_image_segmentation_segformer)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   std::unordered_set<std::string> lfiles;
@@ -1443,7 +1457,7 @@ TEST(torchapi, service_train_image_segmentation_segformer_no_db)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.003)
@@ -1462,7 +1476,7 @@ TEST(torchapi, service_train_image_segmentation_segformer_no_db)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   std::unordered_set<std::string> lfiles;
@@ -1522,7 +1536,7 @@ TEST(torchapi, service_train_image_segmentation_segformer_no_db_focal)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.003)
@@ -1541,7 +1555,7 @@ TEST(torchapi, service_train_image_segmentation_segformer_no_db_focal)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   std::unordered_set<std::string> lfiles;
@@ -1603,7 +1617,7 @@ TEST(torchapi, service_train_image_segmentation_segformer_no_db_pad)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["meanacc"].GetDouble() >= 0.003)
@@ -1622,7 +1636,7 @@ TEST(torchapi, service_train_image_segmentation_segformer_no_db_pad)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   std::unordered_set<std::string> lfiles;
@@ -1678,7 +1692,7 @@ TEST(torchapi, service_train_images_ctc)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0) << "accuracy";
@@ -1695,7 +1709,7 @@ TEST(torchapi, service_train_images_ctc)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
   std::string cl1
@@ -1765,7 +1779,7 @@ TEST(torchapi, service_train_images_ctc_native)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0) << "accuracy";
@@ -1783,7 +1797,7 @@ TEST(torchapi, service_train_images_ctc_native)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
   std::string cl1
@@ -1850,7 +1864,7 @@ TEST(torchapi, service_train_and_publish_ctc_native_bw)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // predict
   std::string jpredictstr = "{\"service\":\"imgserv\",\"parameters\":{"
@@ -1863,7 +1877,7 @@ TEST(torchapi, service_train_and_publish_ctc_native_bw)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   // Publish the service
   std::string published_repo = "published_ctc";
@@ -1943,7 +1957,7 @@ TEST(torchapi, service_publish_trained_model)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // Delete service
   japi.service_delete(sname, "");
@@ -2024,7 +2038,7 @@ TEST(torchapi, service_create_multiple_models_fails)
   JDoc jd;
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
-  ASSERT_EQ(jd["status"]["code"], 500);
+  ASSERT_EQ(jd["status"]["code"].GetInt(), 500);
   ASSERT_TRUE(std::string(jd["status"]["dd_msg"].GetString())
                   .find("Only one of these must be provided: traced net, "
                         "protofile or native template")
@@ -2068,7 +2082,7 @@ TEST(torchapi, service_train_images_sam)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.45)
@@ -2086,7 +2100,7 @@ TEST(torchapi, service_train_images_sam)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -2122,9 +2136,7 @@ TEST(torchapi, service_train_images_multiple_testsets)
   mkdir(resnet50_test_cats_data.c_str(), 0775);
   mkdir((resnet50_test_cats_data + "dogs").c_str(), 0775);
 
-  int sym
-      = symlink("../test/cats/", (resnet50_test_cats_data + "cats").c_str());
-  (void)sym;
+  recreate_symlink("../test/cats/", resnet50_test_cats_data + "cats");
 
   // Create service
   JsonAPI japi;
@@ -2156,7 +2168,7 @@ TEST(torchapi, service_train_images_multiple_testsets)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"].HasMember("measure"));
 
@@ -2200,8 +2212,7 @@ TEST(torchapi, service_train_images_multiple_testsets_db)
   mkdir(resnet50_test_cats_data.c_str(), 0775);
   mkdir((resnet50_test_cats_data + "dogs").c_str(), 0775);
 
-  ASSERT_EQ(
-      symlink("../test/cats/", (resnet50_test_cats_data + "cats").c_str()), 0);
+  recreate_symlink("../test/cats/", resnet50_test_cats_data + "cats");
 
   // Create service
   JsonAPI japi;
@@ -2233,7 +2244,7 @@ TEST(torchapi, service_train_images_multiple_testsets_db)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"].HasMember("measure"));
 
@@ -2308,9 +2319,10 @@ TEST(torchapi, service_train_images_split_list)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 3.0)
       << "loss";
 
@@ -2371,9 +2383,10 @@ TEST(torchapi, service_train_images_split_regression_db_true)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2432,9 +2445,10 @@ TEST(torchapi, service_train_images_split_regression_db_false)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2494,9 +2508,10 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_false)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2556,9 +2571,10 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_true)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["eucll"].GetDouble() <= 15.0) << "eucll";
 
   std::unordered_set<std::string> lfiles;
@@ -2618,9 +2634,10 @@ TEST(torchapi, service_train_images_split_regression_2dims_db_false_l1_percent)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 200) << "iterations";
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["l1"].GetDouble() <= 15.0) << "l1";
   ASSERT_TRUE(jd["body"]["measure"]["percent"].GetDouble() <= 200.0)
       << "percent";
@@ -2687,9 +2704,10 @@ TEST(torchapi, service_train_object_detection_fasterrcnn)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
+  ASSERT_EQ(jd["body"]["measure"]["iteration"].GetDouble(), 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
 
@@ -2759,7 +2777,7 @@ TEST(torchapi, service_train_object_detection_yolox)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
@@ -2794,7 +2812,7 @@ TEST(torchapi, service_train_object_detection_yolox)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(detect_train_repo_yolox, true, false, false, lfiles);
@@ -2859,7 +2877,7 @@ TEST(torchapi, service_train_object_detection_yolox_no_db)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
@@ -2893,7 +2911,7 @@ TEST(torchapi, service_train_object_detection_yolox_no_db)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(detect_train_repo_yolox, true, false, false, lfiles);
@@ -2957,9 +2975,10 @@ TEST(torchapi, service_train_object_detection_yolox_multigpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
+  ASSERT_EQ(jd["body"]["measure"]["iteration"].GetDouble(), 200)
+      << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
   ASSERT_TRUE(jd["body"]["measure"]["map-50"].GetDouble() <= 1.0) << "map-50";
   ASSERT_TRUE(jd["body"]["measure"]["map-90"].GetDouble() <= 1.0) << "map-90";
@@ -2997,7 +3016,7 @@ TEST(torchapi, service_train_object_detection_yolox_multigpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(detect_train_repo_yolox, true, false, false, lfiles);
@@ -3062,7 +3081,7 @@ TEST(torchapi, service_train_object_detection_translation)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
@@ -3094,7 +3113,7 @@ TEST(torchapi, service_train_object_detection_translation)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(detect_train_repo_yolox, true, false, false, lfiles);
@@ -3160,7 +3179,7 @@ TEST(torchapi, service_train_object_detection_yolox_any_size)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   // ASSERT_EQ(jd["body"]["measure"]["iteration"], 200) << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
@@ -3195,7 +3214,7 @@ TEST(torchapi, service_train_object_detection_yolox_any_size)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(detect_train_repo_yolox, true, false, false, lfiles);
@@ -3252,7 +3271,7 @@ TEST(torchapi, service_train_object_detection_detr)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
 
   // check metrics
@@ -3289,7 +3308,7 @@ TEST(torchapi, service_train_object_detection_detr)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   // clear directory
   jstr = "{\"clear\":\"full\"}";
@@ -3334,7 +3353,7 @@ TEST(torchapi, service_train_object_detection_rtdetrv2)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
 
   // check metrics
@@ -3374,7 +3393,7 @@ TEST(torchapi, service_train_object_detection_rtdetrv2)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   // clear directory
   jstr = "{\"clear\":\"full\"}";
@@ -3424,9 +3443,10 @@ TEST(torchapi, service_train_images_native)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == iterations_native)
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble()
+              == iterations_native)
       << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   // TODO test accuracy when it's no more random
@@ -3477,8 +3497,9 @@ TEST(torchapi, service_train_txt_lm)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == 3) << "iterations";
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble() == 3)
+      << "iterations";
   // This assertion is non-deterministic
   // ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() > 1.0) <<
   // "train_loss";
@@ -3533,7 +3554,7 @@ TEST(torchapi, service_train_txt_classification)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
   ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 3)
               < 0.00001)
       << "iterations";
@@ -3591,7 +3612,7 @@ TEST(torchapi, service_train_txt_classification_nosplit)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
   ASSERT_TRUE(abs(jd["body"]["measure"]["iteration"].GetDouble() - 3)
               < 0.00001)
       << "iterations";
@@ -3668,9 +3689,9 @@ TEST(torchapi, service_train_csvts_nbeats)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -3704,7 +3725,7 @@ TEST(torchapi, service_train_csvts_nbeats)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -3734,7 +3755,7 @@ TEST(torchapi, service_train_csvts_nbeats)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("0", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -3801,9 +3822,9 @@ TEST(torchapi, service_train_csvts_nbeats_db)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -3832,7 +3853,7 @@ TEST(torchapi, service_train_csvts_nbeats_db)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -3865,7 +3886,7 @@ TEST(torchapi, service_train_csvts_nbeats_db)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("0", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -3907,7 +3928,7 @@ TEST(torchapi, service_train_csvts_nbeats_multiple_testsets)
   ASSERT_EQ(created_str, joutstr);
 
   std::string csvts_test2 = sinus + "test_2";
-  ASSERT_EQ(symlink("./test", (sinus + "test_2").c_str()), 0);
+  recreate_symlink("./test", csvts_test2);
   // train
   std::string jtrainstr
       = "{\"service\":\"" + sname
@@ -3930,9 +3951,9 @@ TEST(torchapi, service_train_csvts_nbeats_multiple_testsets)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -4070,9 +4091,9 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -4102,7 +4123,7 @@ TEST(torchapi, service_train_csvts_nbeats_forecast)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -4177,9 +4198,9 @@ TEST(torchapi, service_train_ttransformer_forecast)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -4209,7 +4230,7 @@ TEST(torchapi, service_train_ttransformer_forecast)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_49", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -4279,9 +4300,9 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -4308,7 +4329,7 @@ TEST(torchapi, service_train_csvts_nbeats_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -4390,9 +4411,9 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -4419,7 +4440,7 @@ TEST(torchapi, service_train_csvts_nbeats_multigpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -4489,9 +4510,10 @@ TEST(torchapi, service_train_resnet18_multigpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
-  ASSERT_TRUE(jd["body"]["measure"]["iteration"] == iterations_native)
+  ASSERT_TRUE(jd["body"]["measure"]["iteration"].GetDouble()
+              == iterations_native)
       << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   // TODO test accuracy when it's no more random
@@ -4589,9 +4611,9 @@ TEST(torchapi, nbeats_extract_layer_complete)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -4620,7 +4642,7 @@ TEST(torchapi, nbeats_extract_layer_complete)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
@@ -4688,9 +4710,9 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", std::string(jd["status"]["msg"].GetString()));
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", std::string(jd["head"]["method"].GetString()));
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -4719,7 +4741,7 @@ TEST(torchapi, nbeats_extract_layer_complete_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_99", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
@@ -4760,7 +4782,7 @@ TEST(torchapi, image_extract)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 1000);
@@ -4805,7 +4827,7 @@ TEST(torchapi, service_train_ranger)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 5.0)
@@ -4823,7 +4845,7 @@ TEST(torchapi, service_train_ranger)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -4886,7 +4908,7 @@ TEST(torchapi, service_train_madgrad)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 5.0)
@@ -4904,7 +4926,7 @@ TEST(torchapi, service_train_madgrad)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -4966,7 +4988,7 @@ TEST(torchapi, service_train_radam)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["train_loss"].GetDouble() <= 5.0)
@@ -4984,7 +5006,7 @@ TEST(torchapi, service_train_radam)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -5051,7 +5073,7 @@ TEST(torchapi, service_train_vit_images_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.45)
@@ -5069,7 +5091,7 @@ TEST(torchapi, service_train_vit_images_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -5137,7 +5159,7 @@ TEST(torchapi, service_train_vit_images_multigpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.45)
@@ -5155,7 +5177,7 @@ TEST(torchapi, service_train_vit_images_multigpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -5226,7 +5248,7 @@ TEST(torchapi, service_train_visformer_images_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(201, jd["status"]["code"]);
+  ASSERT_EQ(201, jd["status"]["code"].GetInt());
 
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() <= 1) << "accuracy";
   ASSERT_TRUE(jd["body"]["measure"]["acc"].GetDouble() >= 0.45)
@@ -5244,7 +5266,7 @@ TEST(torchapi, service_train_visformer_images_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();

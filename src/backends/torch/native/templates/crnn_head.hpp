@@ -65,8 +65,9 @@ namespace dd
     }
 
     CRNNHeadImpl(const CRNNHeadImpl &other)
-        : torch::nn::Module(other), _timesteps(other._timesteps),
-          _num_layers(other._num_layers), _hidden_size(other._hidden_size),
+        : DD_CLONEABLE_COPY_BASE(CRNNHeadImpl, other),
+          _timesteps(other._timesteps), _num_layers(other._num_layers),
+          _hidden_size(other._hidden_size),
           _bidirectional(other._bidirectional), _input_size(other._input_size),
           _output_size(other._output_size)
     {

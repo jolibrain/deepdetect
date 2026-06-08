@@ -44,18 +44,18 @@ namespace dd
     }
 
     TDecoderImpl(const TDecoderImpl &d)
-        : torch::nn::Module(d), _simple(d._simple), _embed_dim(d._embed_dim),
-          _input_len(d._input_len), _output_dim(d._output_dim),
-          _output_len(d._output_len), _nheads(d._nheads), _nlayers(d._nlayers),
-          _hidden_dim(d._hidden_dim), _dropout_ratio(d._dropout_ratio),
-          _activation(d._activation)
+        : DD_CLONEABLE_COPY_BASE(TDecoderImpl, d), _simple(d._simple),
+          _embed_dim(d._embed_dim), _input_len(d._input_len),
+          _output_dim(d._output_dim), _output_len(d._output_len),
+          _nheads(d._nheads), _nlayers(d._nlayers), _hidden_dim(d._hidden_dim),
+          _dropout_ratio(d._dropout_ratio), _activation(d._activation)
     {
       init();
     }
 
     TDecoderImpl &operator=(const TDecoderImpl &d)
     {
-      torch::nn::Module::operator=(d);
+      torch::nn::Cloneable<TDecoderImpl>::operator=(d);
       _simple = d._simple;
       _embed_dim = d._embed_dim;
       _input_len = d._input_len;

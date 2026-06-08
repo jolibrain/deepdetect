@@ -10,9 +10,42 @@ deepdetect_gpu_variants=(default legacy61)
 
 DEEPDETECT_GPU_VARIANT=${DEEPDETECT_GPU_VARIANT:-default}
 DEEPDETECT_JETSON_ARCH="8.7" # Orin only
+USE_PREBUILT_TORCH=${USE_PREBUILT_TORCH:-ON}
 
 DEEPDETECT_RELEASE=${DEEPDETECT_RELEASE:-OFF}
 BUILD_TESTS=${BUILD_TESTS:-OFF}
+
+configure_prebuilt_torch() {
+    if [ "${USE_PREBUILT_TORCH}" != "ON" ]; then
+        return
+    fi
+
+    if [ -z "${CMAKE_PREFIX_PATH}" ]; then
+        if ! command -v python3 >/dev/null 2>&1; then
+            return
+        fi
+        local torch_cmake_prefix
+        torch_cmake_prefix=$(python3 - <<'PY'
+try:
+    import torch
+    print(torch.utils.cmake_prefix_path)
+except Exception:
+    pass
+PY
+)
+        if [ "${torch_cmake_prefix}" ]; then
+            export CMAKE_PREFIX_PATH="${torch_cmake_prefix}"
+        fi
+    fi
+}
+
+prebuilt_torch_flags() {
+    if [ "${USE_PREBUILT_TORCH}" = "ON" ]; then
+        echo "-DUSE_PREBUILT_TORCH=ON"
+    else
+        echo "-DUSE_PREBUILT_TORCH=OFF"
+    fi
+}
 
 build_cuda_arch_flags() {
     local flags=
@@ -76,6 +109,7 @@ help_menu() {
     echo ""
     echo "Env variables usage: DEEPDETECT_ARCH=${deepdetect_arch[*]} DEEPDETECT_BUILD=${deepdetect_cpu_build_profiles[*]},[...] $0 "
     echo "GPU only: DEEPDETECT_GPU_VARIANT=${deepdetect_gpu_variants[*]}"
+    echo "Torch only: USE_PREBUILT_TORCH=ON/OFF (default: ON)"
     echo ""
     echo "or"
     echo ""
@@ -261,6 +295,8 @@ fi
 
 # Build functions
 cpu_build() {
+    local torch_flags
+    torch_flags=$(prebuilt_torch_flags)
 
     case ${DEEPDETECT_BUILD} in
 
@@ -270,7 +306,8 @@ cpu_build() {
         ;; 
 
     *)
-        cmake .. -DUSE_XGBOOST=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
+        configure_prebuilt_torch
+        cmake .. ${torch_flags} -DUSE_XGBOOST=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
         ;; 
     esac
@@ -279,7 +316,9 @@ cpu_build() {
 
 gpu_build() {
     local extra_flags=
-    local default_flags="-DUSE_FAISS=OFF -DUSE_CUDNN=ON -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_TORCH=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
+    local torch_flags
+    torch_flags=$(prebuilt_torch_flags)
+    local default_flags="${torch_flags} -DUSE_FAISS=OFF -DUSE_CUDNN=ON -DUSE_XGBOOST=OFF -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_TORCH=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
 
     case ${DEEPDETECT_BUILD} in
         "tensorrt")
@@ -288,7 +327,10 @@ gpu_build() {
                 extra_flags="${extra_flags} -DTENSORRT_VERSION=${DEEPDETECT_TENSORRT_VERSION}"
             fi
             ;;
-        *) extra_flags="$default_flags";;
+        *)
+            configure_prebuilt_torch
+            extra_flags="$default_flags"
+            ;;
     esac
     echo $extra_flags
 
@@ -315,6 +357,7 @@ if [[ ${DEEPDETECT_ARCH} == "cpu" ]]; then
     echo "Deepdetect build params :"
     echo "  DEEPDETECT_ARCH      : ${DEEPDETECT_ARCH}"
     echo "  DEEPDETECT_BUILD     : ${DEEPDETECT_BUILD}"
+    echo "  USE_PREBUILT_TORCH   : ${USE_PREBUILT_TORCH}"
     echo ""
     cpu_build
 elif [[ ${DEEPDETECT_ARCH} == "gpu" ]]; then
@@ -326,6 +369,7 @@ elif [[ ${DEEPDETECT_ARCH} == "gpu" ]]; then
     echo "  DEEPDETECT_CUDA_ARCH : ${DEEPDETECT_CUDA_ARCH}"
     echo "  DEEPDETECT_CUDA_ARCH_FLAGS : ${DEEPDETECT_CUDA_ARCH_FLAGS}"
     echo "  DEEPDETECT_OPENCV4_BUILD_PATH : ${DEEPDETECT_OPENCV4_BUILD_PATH}"
+    echo "  USE_PREBUILT_TORCH   : ${USE_PREBUILT_TORCH}"
     echo ""
     gpu_build
 elif [[ ${DEEPDETECT_ARCH} == "jetson" ]]; then

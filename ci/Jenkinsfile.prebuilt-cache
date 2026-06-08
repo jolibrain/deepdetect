@@ -20,6 +20,7 @@ pipeline {
       steps {
         sh '''
 export PATH="/usr/lib/ccache/:$PATH"
+export CMAKE_PREFIX_PATH="$(python3 -c 'import torch; print(torch.utils.cmake_prefix_path)')"
 mkdir -p build
 cd build
 cmake ..  \
@@ -31,6 +32,7 @@ cmake ..  \
     -DUSE_TSNE=OFF  \
     -DUSE_XGBOOST=OFF  \
     -DUSE_TORCH=ON  \
+    -DUSE_PREBUILT_TORCH=ON  \
     -DUSE_NCNN=OFF  \
     -DUSE_TENSORRT=OFF  \
     -DUSE_TENSORRT_OSS=OFF  \

@@ -327,9 +327,9 @@ TEST(graphapi, complete_lstm_train)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_STREQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_STREQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -364,7 +364,7 @@ TEST(graphapi, complete_lstm_train)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -386,7 +386,7 @@ TEST(graphapi, complete_lstm_train)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
 
   //  remove service (hard clear)
   jstr = "{\"clear\":\"full\"}";
@@ -439,9 +439,9 @@ TEST(graphapi, complete_lstm_train_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_STREQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_STREQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -476,7 +476,7 @@ TEST(graphapi, complete_lstm_train_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["series"].IsArray());
@@ -529,9 +529,9 @@ TEST(graphapi, lstm_autoencoder)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_STREQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_STREQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -594,9 +594,9 @@ TEST(graphapi, lstm_autoencoder_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_STREQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_STREQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -681,9 +681,9 @@ TEST(graphapi, complete_extract_layer)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_STREQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_STREQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -711,7 +711,7 @@ TEST(graphapi, complete_extract_layer)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
@@ -770,9 +770,9 @@ TEST(graphapi, complete_extract_layer_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_STREQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_STREQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("train_loss"));
@@ -800,7 +800,7 @@ TEST(graphapi, complete_extract_layer_gpu)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("../examples/all/sinus/predict/seq_2.csv #0_998", uri);
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());

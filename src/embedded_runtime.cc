@@ -111,6 +111,10 @@ namespace deepdetect
              + "\",\"build_type\":\"" + json_escape(BUILD_TYPE)
              + "\",\"compile_flags\":\"" + json_escape(COMPILE_FLAGS)
              + "\",\"dependency_versions\":\"" + json_escape(DEPS_VERSION)
+             + "\",\"torch_enabled\":\"" + json_escape(DD_TORCH_ENABLED)
+             + "\",\"torch_prebuilt\":\"" + json_escape(DD_TORCH_PREBUILT)
+             + "\",\"torch_version\":\"" + json_escape(DD_TORCH_VERSION)
+             + "\",\"torch_mode\":\"" + json_escape(DD_TORCH_MODE)
              + "\",\"cuda\":" + (cuda_enabled ? "true" : "false")
              + ",\"cudnn\":" + (cudnn_enabled ? "true" : "false") + "}";
     });

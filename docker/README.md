@@ -63,8 +63,15 @@ Params usage: ./build.sh [options...]
 
 * DEEPDETECT_BUILD : Change cmake arguments, checkout build script documentation.
 * DEEPDETECT_DEFAULT_MODELS : [**true**/false] Enable or disable default models in deepdetect docker image. Default models size is about 160MB.
+* USE_PREBUILT_TORCH : [**ON**/OFF] Use official prebuilt PyTorch/LibTorch packages for Torch builds. Set to `OFF` only to restore the slower source-built PyTorch path.
+* PYTORCH_CUDA_INDEX : GPU-only PyTorch wheel index. Defaults to `cu130`; use `cu126` with `DEEPDETECT_GPU_VARIANT=legacy61`.
 * DEEPDETECT_GPU_VARIANT : [`default`/**legacy61**] GPU-only arch preset. `default` targets CUDA 13 and compute capabilities `7.5;8.0;8.6;8.9;9.0;10.0;12.0`. `legacy61` targets CUDA 12.x and preserves older compute capabilities `6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;9.0`.
 * DD_CUDA_VERSION / DD_CUDA_MAJOR_MINOR : Optional CUDA image overrides. The defaults are CUDA `13.0.2` / `13.0`; use CUDA `12.6.3` / `12.6` with `DEEPDETECT_GPU_VARIANT=legacy61`.
+
+Docker Torch builds install `torch==2.12.0` and `torchvision==0.27.0` in the
+build stage and configure DeepDetect with `USE_PREBUILT_TORCH=ON`. Runtime
+images copy the native Torch, torchvision, and NVIDIA wheel libraries needed by
+DeepDetect; the Python Torch package is not installed in the runtime stage.
 
 #### Build examples
 
@@ -106,6 +113,7 @@ docker build \
   --build-arg DEEPDETECT_GPU_VARIANT=legacy61 \
   --build-arg DD_CUDA_VERSION=12.6.3 \
   --build-arg DD_CUDA_MAJOR_MINOR=12.6 \
+  --build-arg PYTORCH_CUDA_INDEX=cu126 \
   -t jolibrain/deepdetect_gpu:legacy61 \
   --no-cache \
   -f docker/gpu.Dockerfile .

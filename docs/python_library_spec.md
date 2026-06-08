@@ -169,13 +169,61 @@ The commands below start from the DeepDetect repository root and use
 
 ### 1. Build DeepDetect
 
+#### Recommended: official prebuilt LibTorch
+
+DeepDetect supports the official LibTorch 2.12.0 distribution. Set
+`LIBTORCH_ROOT` to the absolute extraction directory:
+
 ```shell
-cmake -S . -B build3 [DeepDetect build options]
+export LIBTORCH_ROOT=/absolute/path/to/libtorch
+
+cmake -S . -B build3 \
+  -DUSE_TORCH=ON \
+  -DUSE_PREBUILT_TORCH=ON \
+  -DCMAKE_PREFIX_PATH="$LIBTORCH_ROOT"
 cmake --build build3 -j
 ```
 
-Use the same Torch CPU or Torch CUDA options intended for the Python runtime.
-The Python package does not rebuild DeepDetect or change its enabled
+For a CUDA build, use an official CUDA 12.6 or CUDA 13 LibTorch package.
+CUDA, cuDNN 9, cuSPARSELt 0, NVSHMEM 3, and the NCCL runtime matching that
+LibTorch package must be installed on the host. CMake checks required NCCL
+symbols and rejects an older incompatible runtime. It also searches common
+NVIDIA Python package locations such as the active virtualenv, conda
+environment, and `$HOME/venv` for cuDNN 9, cuSPARSELt, and NVSHMEM. When
+those libraries are elsewhere, pass their directories through
+`CMAKE_LIBRARY_PATH`:
+
+```shell
+cmake -S . -B build3 \
+  -DUSE_TORCH=ON \
+  -DUSE_PREBUILT_TORCH=ON \
+  -DCMAKE_PREFIX_PATH="$LIBTORCH_ROOT" \
+  -DCMAKE_LIBRARY_PATH="/path/to/cudnn/lib;/path/to/nccl/lib;/path/to/cusparselt/lib;/path/to/nvshmem/lib"
+```
+
+The build downloads torchvision 0.27.0 and compiles it against the selected
+LibTorch. To reuse an existing source checkout or build without network
+access, add:
+
+```shell
+-DTORCHVISION_SOURCE_DIR=/absolute/path/to/vision
+```
+
+For the official CPU-only LibTorch package, add `-DUSE_CPU_ONLY=ON` and
+`-DUSE_TORCH_CPU_ONLY=ON`. `Torch_DIR` may be passed directly as
+`"$LIBTORCH_ROOT/share/cmake/Torch"` instead of using `CMAKE_PREFIX_PATH`.
+
+#### Alternative: build PyTorch from source
+
+```shell
+cmake -S . -B build3 -DUSE_TORCH=ON [other DeepDetect build options]
+cmake --build build3 -j
+```
+
+With manual CMake, omitting `USE_PREBUILT_TORCH` retains the existing patched
+PyTorch source build. When using `build.sh`, set `USE_PREBUILT_TORCH=OFF` for
+that older path. Use the same Torch CPU or CUDA mode intended for the Python
+runtime. The Python package does not rebuild DeepDetect or change enabled
 backends.
 
 ### 2. Install the DeepDetect SDK into a staging prefix
@@ -254,8 +302,9 @@ python -m pip install --force-reinstall --no-deps \
 
 The wheel contains `deepdetect._native` and Python sources only. It does not
 bundle `libdeepdetect.so`, libtorch, torchvision, OpenCV, protobuf, CUDA, or
-cuDNN. The dynamic loader must be able to find the exact libraries used by
-the DeepDetect build.
+cuDNN. The SDK install places `libtorchvision.so` beside
+`libdeepdetect.so`, but the dynamic loader must still find the exact LibTorch,
+CUDA, OpenCV, and protobuf libraries used by the native build.
 
 At minimum, add the staged SDK library directory:
 
@@ -263,9 +312,23 @@ At minimum, add the staged SDK library directory:
 export LD_LIBRARY_PATH="$PWD/build3/install/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 ```
 
-When DeepDetect dependencies were built inside `build3` rather than installed
-system-wide, add their library directories as well. For a typical source
-build:
+For a prebuilt LibTorch build, add its library directory and any non-system
+CUDA runtime directories:
+
+```shell
+export LD_LIBRARY_PATH="$PWD/build3/install/lib:\
+$LIBTORCH_ROOT/lib:\
+/path/to/cudnn/lib:\
+/path/to/nccl/lib:\
+/path/to/cusparselt/lib:\
+/path/to/nvshmem/lib\
+${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+```
+
+Remove placeholder runtime directories that are installed system-wide. When
+OpenCV or protobuf were built inside `build3`, add their directories too.
+
+For the legacy PyTorch source build, a typical loader path is:
 
 ```shell
 export LD_LIBRARY_PATH="$PWD/build3/install/lib:\

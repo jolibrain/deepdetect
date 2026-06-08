@@ -186,7 +186,7 @@ namespace dd
     }
 
     CRNN(const CRNN &other)
-        : torch::nn::Module(other),
+        : DD_NATIVE_COPY_BASE(CRNN, other),
           _backbone_template(other._backbone_template),
           _num_layers(other._num_layers), _hidden_size(other._hidden_size),
           _bidirectional(other._bidirectional), _timesteps(other._timesteps),

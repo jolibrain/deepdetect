@@ -45,7 +45,7 @@ namespace dd
     }
 
     EmbedderImpl(const EmbedderImpl &e)
-        : torch::nn::Module(e), _input_dim(e._input_dim),
+        : DD_CLONEABLE_COPY_BASE(EmbedderImpl, e), _input_dim(e._input_dim),
           _input_len(e._input_len), _etype(e._etype),
           _eactivation(e._eactivation), _embed_dim(e._embed_dim),
           _nlayers(e._nlayers), _dropout_ratio(e._dropout_ratio)
@@ -55,7 +55,7 @@ namespace dd
 
     EmbedderImpl &operator=(const EmbedderImpl &e)
     {
-      torch::nn::Module::operator=(e);
+      torch::nn::Cloneable<EmbedderImpl>::operator=(e);
       _input_dim = e._input_dim;
       _input_len = e._input_len;
       _etype = e._etype;

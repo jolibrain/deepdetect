@@ -1521,6 +1521,7 @@ namespace dd
     _module.to(_dtype);
     torch::Device cpu("cpu");
     _module.eval();
+    torch::NoGradGuard no_grad;
 
     if (!extract_last && !extract_layer.empty()
         && !_module.extractable(extract_layer))
@@ -2102,6 +2103,7 @@ namespace dd
     torch::Device cpu("cpu");
 
     _module.eval();
+    torch::NoGradGuard no_grad;
     int entry_id = 0;
     for (TorchBatch batch : *dataloader)
       {

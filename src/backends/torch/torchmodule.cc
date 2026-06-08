@@ -51,7 +51,7 @@ namespace dd
     if (_graph)
       _graph->to(device, dtype);
     if (_native)
-      _native->to(device, dtype);
+      _native->module().to(device, dtype);
     if (_traced)
       _traced->to(device, dtype);
     if (_linear_head)
@@ -112,8 +112,8 @@ namespace dd
         try
           {
             // finetuning relaxes strictness when loading weights
-            torch_utils::load_weights(*_native, tmodel._native, _device,
-                                      _logger, !_finetuning);
+            torch_utils::load_weights(_native->module(), tmodel._native,
+                                      _device, _logger, !_finetuning);
           }
         catch (std::exception &e)
           {
@@ -485,7 +485,7 @@ namespace dd
     if (_graph)
       return _graph->parameters();
     else if (_native)
-      return _native->parameters();
+      return _native->module().parameters();
 
     if (_traced)
       torch_utils::add_parameters(_traced, params);
@@ -514,7 +514,11 @@ namespace dd
     if (_graph)
       torch::save(_graph, model._repo + "/checkpoint-" + name + ".pt");
     if (_native)
-      torch::save(_native, model._repo + "/checkpoint-" + name + ".npt");
+      {
+        torch::serialize::OutputArchive archive;
+        _native->module().save(archive);
+        archive.save_to(model._repo + "/checkpoint-" + name + ".npt");
+      }
   }
 
   void TorchModule::load(TorchModel &model)
@@ -561,7 +565,7 @@ namespace dd
     if (_crnn_head)
       _crnn_head->eval();
     if (_native)
-      _native->eval();
+      _native->module().eval();
 
     _training = false;
   }
@@ -577,7 +581,7 @@ namespace dd
     if (_crnn_head)
       _crnn_head->train();
     if (_native)
-      _native->train();
+      _native->module().train();
 
     _training = true;
   }
@@ -597,8 +601,7 @@ namespace dd
 
     if (_native)
       {
-        cloned->_native
-            = std::dynamic_pointer_cast<NativeModule>(_native->clone(device));
+        cloned->_native = _native->clone_native(device);
       }
     if (_traced)
       {
@@ -695,8 +698,8 @@ namespace dd
     if (_native)
       {
         int64_t native_param_count, native_frozen_count;
-        print_native_params(_logger, "Native", *_native, native_param_count,
-                            native_frozen_count);
+        print_native_params(_logger, "Native", _native->module(),
+                            native_param_count, native_frozen_count);
         total_param_count += native_param_count;
         total_frozen_count += native_frozen_count;
       }

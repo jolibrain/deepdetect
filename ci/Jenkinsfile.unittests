@@ -4,6 +4,7 @@ pipeline {
     DOCKER_PARAMS = "-u root:root -v ${WORKSPACE}:/app -v ${WORKSPACE}/build:/app/build -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
     DD_CUDA_VERSION = "13.0.2"
     DEEPDETECT_GPU_VARIANT = "default"
+    PYTORCH_CUDA_INDEX = "cu130"
   }
   agent { node { label 'gpu' } }
   stages {
@@ -23,6 +24,7 @@ pipeline {
             env.DOCKER_IMAGE,
             "--build-arg DD_CUDA_VERSION=${env.DD_CUDA_VERSION} " +
             "--build-arg DEEPDETECT_GPU_VARIANT=${env.DEEPDETECT_GPU_VARIANT} " +
+            "--build-arg PYTORCH_CUDA_INDEX=${env.PYTORCH_CUDA_INDEX} " +
             "-f ci/devel.Dockerfile --no-cache ."
           )
         }

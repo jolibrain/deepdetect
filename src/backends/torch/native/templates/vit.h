@@ -49,7 +49,7 @@ namespace dd
       }
 
       MLPImpl(const MLPImpl &m)
-          : torch::nn::Module(m), _input_dim(m._input_dim),
+          : DD_CLONEABLE_COPY_BASE(MLPImpl, m), _input_dim(m._input_dim),
             _hidden_dim(m._hidden_dim), _output_dim(m._output_dim),
             _act(m._act), _drop(m._drop)
       {
@@ -57,7 +57,7 @@ namespace dd
 
       MLPImpl &operator=(const MLPImpl &m)
       {
-        torch::nn::Module::operator=(m);
+        torch::nn::Cloneable<MLPImpl>::operator=(m);
         _input_dim = m._input_dim;
         _hidden_dim = m._hidden_dim;
         _output_dim = m._output_dim;
@@ -110,16 +110,16 @@ namespace dd
       }
 
       AttentionImpl(const AttentionImpl &a)
-          : torch::nn::Module(a), _dim(a._dim), _num_heads(a._num_heads),
-            _qkv_bias(a._qkv_bias), _qk_scale(a._qk_scale),
-            _attn_drop_val(a._attn_drop_val), _proj_drop_val(a._proj_drop_val),
-            _realformer(a._realformer)
+          : DD_CLONEABLE_COPY_BASE(AttentionImpl, a), _dim(a._dim),
+            _num_heads(a._num_heads), _qkv_bias(a._qkv_bias),
+            _qk_scale(a._qk_scale), _attn_drop_val(a._attn_drop_val),
+            _proj_drop_val(a._proj_drop_val), _realformer(a._realformer)
       {
       }
 
       AttentionImpl &operator=(const AttentionImpl &a)
       {
-        torch::nn::Module::operator=(a);
+        torch::nn::Cloneable<AttentionImpl>::operator=(a);
         _dim = a._dim;
         _num_heads = a._num_heads;
         _qkv_bias = a._qkv_bias;
@@ -186,16 +186,17 @@ namespace dd
       }
 
       BlockImpl(const BlockImpl &b)
-          : torch::nn::Module(b), _dim(b._dim), _num_heads(b._num_heads),
-            _mlp_ratio(b._mlp_ratio), _qkv_bias(b._qkv_bias),
-            _qk_scale(b._qk_scale), _drop_val(b._drop_val),
-            _attn_drop_val(b._attn_drop_val), _realformer(b._realformer)
+          : DD_CLONEABLE_COPY_BASE(BlockImpl, b), _dim(b._dim),
+            _num_heads(b._num_heads), _mlp_ratio(b._mlp_ratio),
+            _qkv_bias(b._qkv_bias), _qk_scale(b._qk_scale),
+            _drop_val(b._drop_val), _attn_drop_val(b._attn_drop_val),
+            _realformer(b._realformer)
       {
       }
 
       BlockImpl &operator=(const BlockImpl &b)
       {
-        torch::nn::Module::operator=(b);
+        torch::nn::Cloneable<BlockImpl>::operator=(b);
         _dim = b._dim;
         _num_heads = b._num_heads;
         _mlp_ratio = b._mlp_ratio;
@@ -258,7 +259,7 @@ namespace dd
       }
 
       PatchEmbedImpl(const PatchEmbedImpl &p)
-          : torch::nn::Module(p), _img_size(p._img_size),
+          : DD_CLONEABLE_COPY_BASE(PatchEmbedImpl, p), _img_size(p._img_size),
             _patch_size(p._patch_size), _in_chans(p._in_chans),
             _embed_dim(p._embed_dim)
       {
@@ -266,7 +267,7 @@ namespace dd
 
       PatchEmbedImpl &operator=(const PatchEmbedImpl &p)
       {
-        torch::nn::Module::operator=(p);
+        torch::nn::Cloneable<PatchEmbedImpl>::operator=(p);
         _img_size = p._img_size;
         _patch_size = p._patch_size;
         _in_chans = p._in_chans;
@@ -325,7 +326,7 @@ namespace dd
     }
 
     ViT(const ViT &v)
-        : torch::nn::Module(v), _img_size(v._img_size),
+        : DD_NATIVE_COPY_BASE(ViT, v), _img_size(v._img_size),
           _patch_size(v._patch_size), _in_chans(v._in_chans),
           _num_classes(v._num_classes), _embed_dim(v._embed_dim),
           _depth(v._depth), _num_heads(v._num_heads), _mlp_ratio(v._mlp_ratio),
@@ -336,7 +337,7 @@ namespace dd
 
     ViT &operator=(const ViT &v)
     {
-      torch::nn::Module::operator=(v);
+      NativeModuleImpl<ViT>::operator=(v);
       _img_size = v._img_size;
       _patch_size = v._patch_size;
       _in_chans = v._in_chans;

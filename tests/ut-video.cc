@@ -139,7 +139,7 @@ TEST(video, resource)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds = jd["body"]["predictions"][0]["classes"];
@@ -169,7 +169,7 @@ TEST(video, resource)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
   auto &preds2 = jd["body"]["predictions"][0]["classes"];

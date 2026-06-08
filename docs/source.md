@@ -96,11 +96,67 @@ This compiles against https://github.com/NVIDIA/TensorRT , ie opensource parts (
 
 ## Build with Libtorch support
 
-Specify the following option via cmake:
+DeepDetect can either build PyTorch from source or link against the official
+prebuilt LibTorch distribution. The prebuilt path avoids the long PyTorch
+build and is recommended when a matching package is available.
+
+### Official prebuilt LibTorch
+
+DeepDetect currently supports the official LibTorch 2.12.0 packages. The GPU
+package must target CUDA 12.6 or CUDA 13 and requires cuDNN 9, cuSPARSELt 0,
+NVSHMEM 3, and the NCCL runtime version matching that LibTorch package.
+CMake checks required NCCL symbols and rejects an older incompatible runtime.
+
+Extract LibTorch, then configure a fresh DeepDetect build:
+
+```shell
+export LIBTORCH_ROOT=/absolute/path/to/libtorch
+
+cmake -S . -B build \
+  -DUSE_TORCH=ON \
+  -DUSE_PREBUILT_TORCH=ON \
+  -DCMAKE_PREFIX_PATH="$LIBTORCH_ROOT"
+cmake --build build -j
 ```
-cmake .. -DUSE_TORCH=ON
+
+`Torch_DIR="$LIBTORCH_ROOT/share/cmake/Torch"` may be used instead of
+`CMAKE_PREFIX_PATH`. For CUDA builds, CMake searches common NVIDIA Python
+package locations such as the active virtualenv, conda environment, and
+`$HOME/venv` for cuDNN 9, cuSPARSELt, and NVSHMEM. NCCL is searched from the
+system library paths first because the runtime must match the selected CUDA
+LibTorch package. If these libraries are installed elsewhere, add their directories to
+`CMAKE_LIBRARY_PATH` during configuration and to `LD_LIBRARY_PATH` at runtime.
+
+The matching torchvision 0.27.0 source is downloaded and built against
+LibTorch. For an offline or previously downloaded source tree, add:
+
+```shell
+-DTORCHVISION_SOURCE_DIR=/absolute/path/to/vision
 ```
-If you call cmake with the `-DUSE_CPU_ONLY` option, a cpu-only version of libtorch will be used.
+
+Use the CPU-only LibTorch package with both `-DUSE_CPU_ONLY=ON` and
+`-DUSE_TORCH_CPU_ONLY=ON`. CMake rejects a CPU/GPU option mismatch rather
+than silently changing execution mode.
+
+The deprecated `TORCH_LOCATION=/path/to/libtorch` option still selects the
+prebuilt path, but new builds should use `USE_PREBUILT_TORCH` and
+`CMAKE_PREFIX_PATH` or `Torch_DIR`.
+
+### Build PyTorch from source
+
+`build.sh` uses prebuilt LibTorch by default for x86 CPU and GPU Torch builds.
+Set `USE_PREBUILT_TORCH=OFF` only when you explicitly need the older PyTorch
+source-build path.
+
+With manual CMake, omitting `USE_PREBUILT_TORCH` retains the existing source
+build:
+
+```shell
+cmake -S . -B build -DUSE_TORCH=ON
+cmake --build build -j
+```
+
+Use `-DUSE_CPU_ONLY=ON` for a CPU-only source build.
 
 ## Build with similarity search support
 

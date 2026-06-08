@@ -7,6 +7,10 @@
 #define GIT_VERSION "@GIT_VERSION@"
 #define GIT_BRANCH "@GIT_BRANCH@"
 #define GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
+#define DD_TORCH_ENABLED "@USE_TORCH@"
+#define DD_TORCH_PREBUILT "@USE_PREBUILT_TORCH@"
+#define DD_TORCH_VERSION "@DEEPDETECT_TORCH_VERSION@"
+#define DD_TORCH_MODE "@DEEPDETECT_TORCH_MODE@"
 
 #define COMPILE_FLAGS                                                         \
   "USE_NCNN=@USE_NCNN@ USE_TORCH=@USE_TORCH@ USE_HDF5=@USE_HDF5@ "          \
@@ -18,7 +22,8 @@
 
 #define DEPS_VERSION                                                          \
   "OPENCV_VERSION=@OpenCV_VERSION@ "                                          \
-  "CUDA_VERSION=@CUDA_VERSION_STRING@ CUDNN_VERSION=@CUDNN_VERSION@ "         \
+  "CUDA_VERSION=@CUDA_VERSION_STRING@ "                                       \
+  "CUDNN_VERSION=@DEEPDETECT_CUDNN_VERSION@ "                                 \
   "CUDA_ARCH=@CUDA_ARCH@ TENSORRT_VERSION=@TENSORRT_VERSION@"
 
 // Swagger documentation
