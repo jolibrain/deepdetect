@@ -741,7 +741,7 @@ if (USE_TORCH)
         ${TORCH_NVSHMEM_LIBRARY})
     endif()
 
-    set(TORCH_LIB_DEPS ${TORCH_LIBRARIES} ${TORCH_RUNTIME_LIBS})
+    set(TORCH_LIB_DEPS ${TORCH_LIBRARIES} ${TORCH_RUNTIME_LIBS} -llmdb)
     set(TORCH_INC_DIR ${TORCH_INCLUDE_DIRS})
     set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib)
     set(DEEPDETECT_TORCH_VERSION ${Torch_VERSION})
@@ -799,9 +799,9 @@ CONFIGURE_COMMAND ""
     set(TORCH_LOCATION ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch)
 
     if (APPLE)
-      set(TORCH_LIB_DEPS ${TORCH_BINARY_LOCATION}/lib/libtorch.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_cpu.dylib ${TORCH_BINARY_LOCATION}/lib/libc10.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_global_deps.dylib)
+      set(TORCH_LIB_DEPS ${TORCH_BINARY_LOCATION}/lib/libtorch.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_cpu.dylib ${TORCH_BINARY_LOCATION}/lib/libc10.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_global_deps.dylib -llmdb)
     else()
-      set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so)
+      set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -llmdb)
 
       if (USE_TORCH_CPU_ONLY)
         list(APPEND TORCH_LIB_DEPS)

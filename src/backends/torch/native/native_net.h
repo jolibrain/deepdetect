@@ -33,7 +33,8 @@ namespace dd
 {
 
 #ifdef DEEPDETECT_PREBUILT_TORCH
-#define DD_CLONEABLE_COPY_BASE(type, value) torch::nn::Cloneable<type>(value)
+#define DD_CLONEABLE_COPY_BASE(type, value)                                   \
+  torch::nn::Cloneable<type>(value)
 #define DD_NATIVE_COPY_BASE(type, value) NativeModuleImpl<type>(value)
 #else
 #define DD_CLONEABLE_COPY_BASE(type, value) torch::nn::Module(value)
@@ -49,7 +50,8 @@ namespace dd
     virtual const torch::nn::Module &module() const = 0;
 
     virtual std::shared_ptr<NativeModule>
-    clone_native(const torch::Device &device) const = 0;
+    clone_native(const torch::Device &device) const
+        = 0;
 
     /**
      * \brief forward pass over the
