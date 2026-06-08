@@ -42,15 +42,16 @@ namespace dd
     }
 
     PositionalEncodingImpl(const PositionalEncodingImpl &pe)
-        : torch::nn::Module(pe), _seq_len(pe._seq_len), _datadim(pe._datadim),
-          _et(pe._et), _dropout_ratio(pe._dropout_ratio), _learn(pe._learn)
+        : DD_CLONEABLE_COPY_BASE(PositionalEncodingImpl, pe),
+          _seq_len(pe._seq_len), _datadim(pe._datadim), _et(pe._et),
+          _dropout_ratio(pe._dropout_ratio), _learn(pe._learn)
     {
       init();
     }
 
     PositionalEncodingImpl &operator=(const PositionalEncodingImpl &p)
     {
-      torch::nn::Module::operator=(p);
+      torch::nn::Cloneable<PositionalEncodingImpl>::operator=(p);
       _pet = p._pet;
       _dropout = p._dropout;
       _seq_len = p._seq_len;

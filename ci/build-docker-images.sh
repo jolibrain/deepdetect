@@ -21,10 +21,13 @@ TARGETS[gpu_tensorrt]="gpu_tensorrt/tensorrt"
 declare -A GPU_VARIANTS
 declare -A CUDA_VERSIONS
 declare -A CUDA_MAJOR_MINORS
+declare -A PYTORCH_CUDA_INDEXES
 GPU_VARIANTS[gpu]="default"
 GPU_VARIANTS[gpu_legacy61]="legacy61"
 CUDA_VERSIONS[gpu_legacy61]="12.6.3"
 CUDA_MAJOR_MINORS[gpu_legacy61]="12.6"
+PYTORCH_CUDA_INDEXES[gpu]="cu130"
+PYTORCH_CUDA_INDEXES[gpu_legacy61]="cu126"
 
 PR_NUMBER=$(echo $GIT_BRANCH | sed -n '/^PR-/s/PR-//gp')
 if [ "$TAG_NAME" ]; then
@@ -53,6 +56,7 @@ for name in $NAMES; do
     gpu_variant=${GPU_VARIANTS[$name]:-default}
     cuda_version=${CUDA_VERSIONS[$name]}
     cuda_major_minor=${CUDA_MAJOR_MINORS[$name]}
+    pytorch_cuda_index=${PYTORCH_CUDA_INDEXES[$name]}
     release="OFF"
     if [ "$TAG_NAME" ]; then
         already_exists=$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME 2>/dev/null || true)
@@ -71,6 +75,7 @@ for name in $NAMES; do
         build_args+=(--build-arg DEEPDETECT_GPU_VARIANT=$gpu_variant)
         [ "$cuda_version" ] && build_args+=(--build-arg DD_CUDA_VERSION=$cuda_version)
         [ "$cuda_major_minor" ] && build_args+=(--build-arg DD_CUDA_MAJOR_MINOR=$cuda_major_minor)
+        [ "$pytorch_cuda_index" ] && build_args+=(--build-arg PYTORCH_CUDA_INDEX=$pytorch_cuda_index)
     fi
 
     # BUILD

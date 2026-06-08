@@ -32,10 +32,24 @@
 namespace dd
 {
 
-  class NativeModule : public virtual torch::nn::Module
+#ifdef DEEPDETECT_PREBUILT_TORCH
+#define DD_CLONEABLE_COPY_BASE(type, value) torch::nn::Cloneable<type>(value)
+#define DD_NATIVE_COPY_BASE(type, value) NativeModuleImpl<type>(value)
+#else
+#define DD_CLONEABLE_COPY_BASE(type, value) torch::nn::Module(value)
+#define DD_NATIVE_COPY_BASE(type, value) torch::nn::Module(value)
+#endif
+
+  class NativeModule
   {
   public:
     virtual ~NativeModule() = default;
+
+    virtual torch::nn::Module &module() = 0;
+    virtual const torch::nn::Module &module() const = 0;
+
+    virtual std::shared_ptr<NativeModule>
+    clone_native(const torch::Device &device) const = 0;
 
     /**
      * \brief forward pass over the
@@ -77,8 +91,24 @@ namespace dd
   };
 
   template <typename T>
-  class NativeModuleImpl : public NativeModule, public torch::nn::Cloneable<T>
+  class NativeModuleImpl : public torch::nn::Cloneable<T>, public NativeModule
   {
+  public:
+    torch::nn::Module &module() override
+    {
+      return *this;
+    }
+
+    const torch::nn::Module &module() const override
+    {
+      return *this;
+    }
+
+    std::shared_ptr<NativeModule>
+    clone_native(const torch::Device &device) const override
+    {
+      return std::dynamic_pointer_cast<NativeModule>(this->clone(device));
+    }
   };
 }
 

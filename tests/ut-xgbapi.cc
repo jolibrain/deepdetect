@@ -84,9 +84,9 @@ TEST(xgbapi, service_train_csv)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"].HasMember("measure"));
@@ -199,9 +199,9 @@ TEST(xgbapi, service_train_txt)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("f1"));
@@ -266,9 +266,9 @@ TEST(xgbapi, service_train_csv_mt_regression)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_TRUE(jd.HasMember("status"));
   ASSERT_EQ(201, jd["status"]["code"].GetInt());
-  ASSERT_EQ("Created", jd["status"]["msg"]);
+  ASSERT_EQ("Created", jd["status"]["msg"].GetString());
   ASSERT_TRUE(jd.HasMember("head"));
-  ASSERT_EQ("/train", jd["head"]["method"]);
+  ASSERT_EQ("/train", jd["head"]["method"].GetString());
   ASSERT_TRUE(jd["head"]["time"].GetDouble() >= 0);
   ASSERT_TRUE(jd.HasMember("body"));
   ASSERT_TRUE(jd["body"]["measure"].HasMember("eucll"));
@@ -300,7 +300,7 @@ TEST(xgbapi, service_train_csv_mt_regression)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   std::string uri = jd["body"]["predictions"][0]["uri"].GetString();
   ASSERT_EQ("1", uri);
   ASSERT_TRUE(

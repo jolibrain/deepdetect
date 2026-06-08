@@ -23,20 +23,31 @@
 #include <cmath>
 #include <string>
 
+namespace
+{
+  torch::Tensor tensor_like(torch::Tensor &tensor, const torch::Tensor &like)
+  {
+    if (tensor.device() != like.device()
+        || tensor.scalar_type() != like.scalar_type())
+      tensor = tensor.to(like.options());
+    return tensor;
+  }
+}
+
 namespace dd
 {
-  void NBeats::BlockImpl::init_block()
+  void NBeats::BlockImpl::init_block(torch::nn::Module &module)
   {
-    _fc1 = register_module(
+    _fc1 = module.register_module(
         "fc1",
         torch::nn::Linear(_backcast_length * _data_size, _units * _data_size));
-    _fc2 = register_module(
+    _fc2 = module.register_module(
         "fc2", torch::nn::Linear(_units * _data_size, _units * _data_size));
-    _fc3 = register_module(
+    _fc3 = module.register_module(
         "fc3", torch::nn::Linear(_units * _data_size, _units * _data_size));
-    _fc4 = register_module(
+    _fc4 = module.register_module(
         "fc4", torch::nn::Linear(_units * _data_size, _units * _data_size));
-    _theta_f_fc = register_module(
+    _theta_f_fc = module.register_module(
         "theta_f_fc",
         torch::nn::Linear(torch::nn::LinearOptions(_units * _data_size,
                                                    _thetas_dim * _data_size)
@@ -44,7 +55,7 @@ namespace dd
     if (_share_thetas)
       _theta_b_fc = _theta_f_fc;
     else
-      _theta_b_fc = register_module(
+      _theta_b_fc = module.register_module(
           "theta_b_fc",
           torch::nn::Linear(torch::nn::LinearOptions(_units * _data_size,
                                                      _thetas_dim * _data_size)
@@ -91,10 +102,10 @@ namespace dd
     x = BlockImpl::first_forward(x);
     torch::Tensor tbfc
         = _theta_b_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
-    torch::Tensor backcast = tbfc.matmul(_bS).transpose(1, 2);
+    torch::Tensor backcast = tbfc.matmul(tensor_like(_bS, x)).transpose(1, 2);
     torch::Tensor tffc
         = _theta_f_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
-    torch::Tensor forecast = tffc.matmul(_fS).transpose(1, 2);
+    torch::Tensor forecast = tffc.matmul(tensor_like(_fS, x)).transpose(1, 2);
     return std::make_tuple(backcast, forecast);
   }
 
@@ -107,13 +118,13 @@ namespace dd
       return x;
     torch::Tensor tbfc
         = _theta_b_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
-    torch::Tensor backcast = tbfc.matmul(_bS).transpose(1, 2);
+    torch::Tensor backcast = tbfc.matmul(tensor_like(_bS, x)).transpose(1, 2);
     if (extract_layer == "theta_b_fc")
       return backcast;
 
     torch::Tensor tffc
         = _theta_f_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
-    torch::Tensor forecast = tffc.matmul(_fS).transpose(1, 2);
+    torch::Tensor forecast = tffc.matmul(tensor_like(_fS, x)).transpose(1, 2);
     return forecast;
   }
 
@@ -220,12 +231,12 @@ namespace dd
       return x;
 
     torch::Tensor tbfc = _theta_b_fc->forward(x);
-    torch::Tensor backcast = tbfc.mm(_bT);
+    torch::Tensor backcast = tbfc.mm(tensor_like(_bT, x));
     if (extract_layer == "theta_b_fc")
       return backcast;
 
     torch::Tensor tffc = _theta_b_fc->forward(x);
-    torch::Tensor forecast = tffc.mm(_fT);
+    torch::Tensor forecast = tffc.mm(tensor_like(_fT, x));
     return forecast;
   }
 
@@ -238,8 +249,8 @@ namespace dd
     torch::Tensor tffc
         = _theta_b_fc->forward(x).reshape({ -1, _data_size, _thetas_dim });
 
-    torch::Tensor backcast = tbfc.matmul(_bT).transpose(1, 2);
-    torch::Tensor forecast = tffc.matmul(_fT).transpose(1, 2);
+    torch::Tensor backcast = tbfc.matmul(tensor_like(_bT, x)).transpose(1, 2);
+    torch::Tensor forecast = tffc.matmul(tensor_like(_fT, x)).transpose(1, 2);
 
     return std::make_tuple(backcast, forecast);
   }
@@ -379,7 +390,7 @@ namespace dd
   torch::Tensor NBeats::forward(torch::Tensor x)
   {
     torch::Tensor b = x;
-    torch::Tensor f = _finit.repeat({ x.size(0), 1, 1 });
+    torch::Tensor f = tensor_like(_finit, x).repeat({ x.size(0), 1, 1 });
 
     int stack_counter = 0;
     for (Stack s : _stacks)
@@ -435,7 +446,7 @@ namespace dd
     bool endofblock = subst[2] == "end";
 
     torch::Tensor b = x;
-    torch::Tensor f = _finit.repeat({ x.size(0), 1, 1 });
+    torch::Tensor f = tensor_like(_finit, x).repeat({ x.size(0), 1, 1 });
 
     int stack_counter = 0;
     for (Stack s : _stacks)

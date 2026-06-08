@@ -77,7 +77,7 @@ inline std::string get_trt_archi()
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(2, jd["body"]["predictions"][0]["classes"].Size());
   std::string cls
@@ -122,7 +122,7 @@ TEST(tensorrtapi, service_predict_onnx)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   std::string cl1
       = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
@@ -168,7 +168,7 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
 
@@ -212,7 +212,7 @@ TEST(tensorrtapi, service_predict_bbox_onnx)
   std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
 
@@ -267,7 +267,7 @@ TEST(tensorrtapi, service_predict_gan_onnx)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 360 * 360 * 3);
@@ -285,7 +285,7 @@ TEST(tensorrtapi, service_predict_gan_onnx)
   // std::cout << "joutstr=" << joutstr << std::endl;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["images"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["images"].Size(), 1);
@@ -355,7 +355,7 @@ TEST(tensorrtapi, service_predict_gan_onnx)
   jd = JDoc();
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
-  ASSERT_EQ(200, jd["status"]["code"]);
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"][0]["vals"].IsArray());
   ASSERT_EQ(jd["body"]["predictions"][0]["vals"].Size(), 360 * 360 * 3);

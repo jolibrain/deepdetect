@@ -46,7 +46,7 @@ namespace dd
     }
 
     TEncoderImpl(const TEncoderImpl &e)
-        : torch::nn::Module(e), _input_len(e._input_len),
+        : DD_CLONEABLE_COPY_BASE(TEncoderImpl, e), _input_len(e._input_len),
           _embed_dim(e._embed_dim), _nheads(e._nheads), _nlayers(e._nlayers),
           _hidden_dim(e._hidden_dim), _dropout(e._dropout),
           _activation(e._activation)
@@ -56,7 +56,7 @@ namespace dd
 
     TEncoderImpl &operator=(const TEncoderImpl &e)
     {
-      torch::nn::Module::operator=(e);
+      torch::nn::Cloneable<TEncoderImpl>::operator=(e);
       _input_len = e._input_len;
       _embed_dim = e._embed_dim;
       _nheads = e._nheads;

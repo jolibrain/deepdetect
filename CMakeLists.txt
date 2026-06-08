@@ -8,6 +8,7 @@ option(RELEASE "release mode" OFF)
 option(WARNING "enable warning" ON)
 option(USE_NCNN "use NCNN backend" OFF)
 option(USE_TORCH "use libtorch backend" ON)
+option(USE_PREBUILT_TORCH "use an installed LibTorch package" OFF)
 option(USE_HDF5 "use HDF5" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
 option(USE_TENSORRT_OSS "alias of USE_TENSORRT" OFF)
@@ -23,6 +24,15 @@ option(BUILD_SPDLOG "build SPDLOG instead of using system library" ON)
 option(BUILD_PROTOBUF "build PROTOBUF instead of using system library" ON)
 option(USE_BOOST_BACKTRACE "use boost backtrace" ON)
 option(USE_OPENMP "use OpenMP" ON)
+
+set(TORCH_LOCATION "" CACHE PATH
+  "Deprecated LibTorch prefix; use Torch_DIR or CMAKE_PREFIX_PATH")
+set(TORCHVISION_SOURCE_DIR "" CACHE PATH
+  "Optional existing torchvision source tree")
+if (TORCH_LOCATION)
+  set(USE_PREBUILT_TORCH ON CACHE BOOL
+    "use an installed LibTorch package" FORCE)
+endif()
 
 foreach(RETIRED_BACKEND_FLAG
     USE_CAFFE USE_CAFFE_DEBUG USE_CAFFE_CPU_ONLY
@@ -46,6 +56,7 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(ProcessorCount)
 ProcessorCount(N)
 include(ExternalProject)
+include(CheckLibraryExists)
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
@@ -108,17 +119,23 @@ else()
   set(FOPENMP "")
 endif()
 
+if (USE_PREBUILT_TORCH)
+    set(DEEPDETECT_CXX_STANDARD 20)
+else()
+    set(DEEPDETECT_CXX_STANDARD 17)
+endif()
+
 if (APPLE)
-    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17")
+    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++${DEEPDETECT_CXX_STANDARD}")
 
     message(STATUS "Apple build: CUDA is disabled")
     set(USE_CUDNN OFF)
     set(USE_CUDA_CV OFF)
 else()
-    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++17 -Wl,--no-as-needed -Wno-dangling-reference -Wno-redundant-move -Wno-error=array-bounds -Wno-class-memaccess -ltcmalloc_minimal")
+    set(CMAKE_CXX_FLAGS "-g -O2 -Wall -Wextra ${FOPENMP} -fPIC -std=c++${DEEPDETECT_CXX_STANDARD} -Wl,--no-as-needed -Wno-dangling-reference -Wno-redundant-move -Wno-error=array-bounds -Wno-class-memaccess -ltcmalloc_minimal")
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD ${DEEPDETECT_CXX_STANDARD})
 add_definitions("-DUSE_OPENCV" "-DUSE_LMDB")
 
 if(WARNING)
@@ -270,11 +287,18 @@ if (BUILD_SPDLOG)
     set(SPDLOG_LIB_DEPS ${CMAKE_BINARY_DIR}/spdlog/build/lib/libspdlog.a)
     set(SPDLOG_LIB_DIR ${CMAKE_BINARY_DIR}/spdlog/build/lib)
     set(SPDLOG_INCLUDE_DIR ${CMAKE_BINARY_DIR}/spdlog/build/include)
-    include_directories(SYSTEM ${SPDLOG_INCLUDE_DIR})
 else()
     find_package(spdlog 1.8.2 CONFIG REQUIRED)
-    set(SPDLOG_LIB_DEPS spdlog::spdlog)
+    if (USE_PREBUILT_TORCH AND TARGET spdlog::spdlog_header_only)
+      set(SPDLOG_TARGET spdlog::spdlog_header_only)
+    else()
+      set(SPDLOG_TARGET spdlog::spdlog)
+    endif()
+    set(SPDLOG_LIB_DEPS ${SPDLOG_TARGET})
+    get_target_property(SPDLOG_INCLUDE_DIR ${SPDLOG_TARGET}
+      INTERFACE_INCLUDE_DIRECTORIES)
 endif()
+include_directories(BEFORE SYSTEM ${SPDLOG_INCLUDE_DIR})
 
 # hdf5
 if (USE_HDF5)
@@ -403,6 +427,7 @@ endif()
 
 if (USE_CUDNN)
   find_package(CUDNN REQUIRED)
+  set(DEEPDETECT_CUDNN_VERSION ${CUDNN_VERSION})
 endif()
 
 # CUDA dependencies
@@ -431,6 +456,8 @@ else()
     add_definitions(-DCPU_ONLY)
   endif()
 endif()
+
+find_library(LMDB_LIBRARY NAMES lmdb REQUIRED)
 
 if (USE_DLIB)
     # Dlib
@@ -565,7 +592,160 @@ if (USE_TORCH)
   add_definitions(-DUSE_TORCH)
   add_definitions(-DFMT_HEADER_ONLY)
 
-  if (NOT TORCH_LOCATION)
+  if (USE_PREBUILT_TORCH)
+    add_definitions(-DDEEPDETECT_PREBUILT_TORCH)
+
+    if (TORCH_LOCATION)
+      list(PREPEND CMAKE_PREFIX_PATH "${TORCH_LOCATION}")
+    endif()
+
+    find_package(Torch 2.12.0 EXACT CONFIG REQUIRED)
+    get_filename_component(TORCH_LOCATION
+      "${Torch_DIR}/../../.." ABSOLUTE)
+
+    if (TARGET torch_cuda)
+      set(PYTORCH_USE_CUDA 1)
+      set(DEEPDETECT_TORCH_MODE "cuda")
+    else()
+      set(PYTORCH_USE_CUDA 0)
+      set(DEEPDETECT_TORCH_MODE "cpu")
+    endif()
+
+    if (USE_TORCH_CPU_ONLY AND PYTORCH_USE_CUDA)
+      message(FATAL_ERROR
+        "USE_TORCH_CPU_ONLY=ON requires a CPU-only LibTorch package, but "
+        "${TORCH_LOCATION} contains torch_cuda.")
+    elseif (NOT USE_TORCH_CPU_ONLY AND NOT PYTORCH_USE_CUDA)
+      message(FATAL_ERROR
+        "GPU Torch support requires a CUDA LibTorch package. Select a CUDA "
+        "package or configure with USE_TORCH_CPU_ONLY=ON.")
+    endif()
+
+    if (PYTORCH_USE_CUDA)
+      if (NOT CUDA_VERSION MATCHES "^(12\\.6|13\\.)")
+        message(FATAL_ERROR
+          "The supported prebuilt CUDA LibTorch packages require CUDA 12.6 "
+          "or CUDA 13; found CUDA ${CUDA_VERSION}.")
+      endif()
+
+      set(TORCH_NVIDIA_RUNTIME_HINTS)
+      foreach(TORCH_NVIDIA_RUNTIME_ROOT
+          "$ENV{VIRTUAL_ENV}"
+          "$ENV{CONDA_PREFIX}"
+          "$ENV{HOME}/venv")
+        if (TORCH_NVIDIA_RUNTIME_ROOT)
+          file(GLOB TORCH_NVIDIA_RUNTIME_ROOT_HINTS
+            "${TORCH_NVIDIA_RUNTIME_ROOT}/lib/python*/site-packages/nvidia/*/lib")
+          list(APPEND TORCH_NVIDIA_RUNTIME_HINTS
+            ${TORCH_NVIDIA_RUNTIME_ROOT_HINTS})
+        endif()
+      endforeach()
+      file(GLOB TORCH_NVIDIA_SYSTEM_HINTS
+        "/usr/local/lib/python*/site-packages/nvidia/*/lib"
+        "/usr/local/lib/python*/dist-packages/nvidia/*/lib"
+        "/usr/lib/python*/site-packages/nvidia/*/lib"
+        "/usr/lib/python*/dist-packages/nvidia/*/lib")
+      list(APPEND TORCH_NVIDIA_RUNTIME_HINTS ${TORCH_NVIDIA_SYSTEM_HINTS})
+      if (TORCH_NVIDIA_RUNTIME_HINTS)
+        list(REMOVE_DUPLICATES TORCH_NVIDIA_RUNTIME_HINTS)
+      endif()
+
+      if (TORCH_CUDNN_LIBRARY)
+        get_filename_component(TORCH_CUDNN_LIBRARY_CACHED_REAL
+          "${TORCH_CUDNN_LIBRARY}" REALPATH)
+        if (NOT TORCH_CUDNN_LIBRARY_CACHED_REAL MATCHES "libcudnn\\.so\\.9")
+          unset(TORCH_CUDNN_LIBRARY CACHE)
+          unset(TORCH_CUDNN_LIBRARY)
+        endif()
+      endif()
+      find_library(TORCH_CUDNN_LIBRARY
+        NAMES libcudnn.so.9
+        HINTS ${TORCH_NVIDIA_RUNTIME_HINTS}
+        NO_DEFAULT_PATH)
+      if (NOT TORCH_CUDNN_LIBRARY)
+        find_library(TORCH_CUDNN_LIBRARY
+          NAMES libcudnn.so.9
+          REQUIRED)
+      endif()
+      find_library(TORCH_NCCL_LIBRARY
+        NAMES libnccl.so.2 nccl
+        HINTS ${TORCH_NVIDIA_RUNTIME_HINTS}
+        NO_DEFAULT_PATH)
+      if (NOT TORCH_NCCL_LIBRARY)
+        find_library(TORCH_NCCL_LIBRARY
+          NAMES libnccl.so.2 nccl
+          REQUIRED)
+      endif()
+      find_library(TORCH_CUSPARSELT_LIBRARY
+        NAMES libcusparseLt.so.0 cusparseLt
+        HINTS ${TORCH_NVIDIA_RUNTIME_HINTS}
+        NO_DEFAULT_PATH)
+      if (NOT TORCH_CUSPARSELT_LIBRARY)
+        find_library(TORCH_CUSPARSELT_LIBRARY
+          NAMES libcusparseLt.so.0 cusparseLt
+          REQUIRED)
+      endif()
+      find_library(TORCH_NVSHMEM_LIBRARY
+        NAMES libnvshmem_host.so.3 nvshmem_host
+        HINTS ${TORCH_NVIDIA_RUNTIME_HINTS}
+        NO_DEFAULT_PATH)
+      if (NOT TORCH_NVSHMEM_LIBRARY)
+        find_library(TORCH_NVSHMEM_LIBRARY
+          NAMES libnvshmem_host.so.3 nvshmem_host
+          REQUIRED)
+      endif()
+      foreach(TORCH_RUNTIME_LIBRARY
+          TORCH_CUDNN_LIBRARY
+          TORCH_NCCL_LIBRARY
+          TORCH_CUSPARSELT_LIBRARY
+          TORCH_NVSHMEM_LIBRARY)
+        get_filename_component(TORCH_RUNTIME_LIBRARY_REAL
+          "${${TORCH_RUNTIME_LIBRARY}}" REALPATH)
+        if (TORCH_RUNTIME_LIBRARY STREQUAL "TORCH_CUDNN_LIBRARY"
+            AND NOT TORCH_RUNTIME_LIBRARY_REAL MATCHES "libcudnn\\.so\\.9")
+          message(FATAL_ERROR
+            "Prebuilt LibTorch requires cuDNN 9, but "
+            "${TORCH_RUNTIME_LIBRARY_REAL} was selected.")
+        endif()
+      endforeach()
+      get_filename_component(TORCH_CUDNN_LIBRARY_REAL
+        "${TORCH_CUDNN_LIBRARY}" REALPATH)
+      get_filename_component(TORCH_CUDNN_LIBRARY_NAME
+        "${TORCH_CUDNN_LIBRARY_REAL}" NAME)
+      string(REGEX MATCH "libcudnn\\.so\\.([0-9]+(\\.[0-9]+)*)"
+        TORCH_CUDNN_VERSION_MATCH "${TORCH_CUDNN_LIBRARY_NAME}")
+      set(DEEPDETECT_CUDNN_VERSION "${CMAKE_MATCH_1}")
+      unset(TORCH_NCCL_HAS_COMM_RESUME CACHE)
+      unset(TORCH_NCCL_HAS_ALLTOALL CACHE)
+      check_library_exists("${TORCH_NCCL_LIBRARY}" ncclCommResume ""
+        TORCH_NCCL_HAS_COMM_RESUME)
+      check_library_exists("${TORCH_NCCL_LIBRARY}" ncclAlltoAll ""
+        TORCH_NCCL_HAS_ALLTOALL)
+      if (NOT TORCH_NCCL_HAS_COMM_RESUME OR NOT TORCH_NCCL_HAS_ALLTOALL)
+        message(FATAL_ERROR
+          "The selected NCCL library is incompatible with LibTorch "
+          "${Torch_VERSION}: ${TORCH_NCCL_LIBRARY}. Install the NCCL runtime "
+          "matching the official LibTorch package and include its directory "
+          "in CMAKE_LIBRARY_PATH.")
+      endif()
+
+      # The legacy CUDA probe may have selected a different cuDNN major.
+      # LibTorch and DeepDetect must load only the validated cuDNN 9 runtime.
+      if (CUDNN_LIBRARY)
+        list(REMOVE_ITEM CUDA_LIB_DEPS "${CUDNN_LIBRARY}")
+      endif()
+      set(TORCH_RUNTIME_LIBS
+        ${TORCH_CUDNN_LIBRARY}
+        ${TORCH_NCCL_LIBRARY}
+        ${TORCH_CUSPARSELT_LIBRARY}
+        ${TORCH_NVSHMEM_LIBRARY})
+    endif()
+
+    set(TORCH_LIB_DEPS ${TORCH_LIBRARIES} ${TORCH_RUNTIME_LIBS})
+    set(TORCH_INC_DIR ${TORCH_INCLUDE_DIRS})
+    set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib)
+    set(DEEPDETECT_TORCH_VERSION ${Torch_VERSION})
+  else()
     set(PYTORCH_COMMIT v2.12.0)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
@@ -617,22 +797,25 @@ CONFIGURE_COMMAND ""
       )
     endif()
     set(TORCH_LOCATION ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch)
-  endif()
 
-  if (APPLE)
-    set(TORCH_LIB_DEPS ${TORCH_BINARY_LOCATION}/lib/libtorch.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_cpu.dylib ${TORCH_BINARY_LOCATION}/lib/libc10.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_global_deps.dylib -llmdb)
-  else()
-    set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so -llmdb)
-
-    if (USE_TORCH_CPU_ONLY)
-      list(APPEND TORCH_LIB_DEPS)
+    if (APPLE)
+      set(TORCH_LIB_DEPS ${TORCH_BINARY_LOCATION}/lib/libtorch.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_cpu.dylib ${TORCH_BINARY_LOCATION}/lib/libc10.dylib ${TORCH_BINARY_LOCATION}/lib/libtorch_global_deps.dylib)
     else()
-      list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
-    endif()
-  endif()
+      set(TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libtorch.so ${TORCH_LOCATION}/lib/libtorch_cpu.so ${TORCH_LOCATION}/lib/libc10.so)
 
-  set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)
-  set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
+      if (USE_TORCH_CPU_ONLY)
+        list(APPEND TORCH_LIB_DEPS)
+        set(DEEPDETECT_TORCH_MODE "cpu")
+      else()
+        list(APPEND TORCH_LIB_DEPS ${TORCH_LOCATION}/lib/libc10_cuda.so ${TORCH_LOCATION}/lib/libtorch_cuda.so)
+        set(DEEPDETECT_TORCH_MODE "cuda")
+      endif()
+    endif()
+
+    set(TORCH_INC_DIR ${TORCH_LOCATION}/include/ ${TORCH_LOCATION}/include/torch/csrc/api/include/ ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/torch/include/torch/csrc/api/include ${TORCH_LOCATION}/.. ${CMAKE_BINARY_DIR}/src)
+    set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib/)
+    set(DEEPDETECT_TORCH_VERSION ${PYTORCH_COMMIT})
+  endif()
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
@@ -645,20 +828,60 @@ CONFIGURE_COMMAND ""
   set(PYTORCH_VISION_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch_vision-complete)
   set(TORCHVISION_LOCATION "${CMAKE_BINARY_DIR}/pytorch_vision/src/pytorch_vision-install")
 
-  file(WRITE ${CMAKE_BINARY_DIR}/build_pytorch_vision.sh "sh ${CMAKE_SOURCE_DIR}/cmake/build_external.sh PYTORCH_VISION ${CMAKE_BINARY_DIR}/pytorch_vision ${PYTORCH_VISION_COMPLETE} src/pytorch_vision src/pytorch_vision-build ${N} \"install\" ${CMAKE_COMMAND} ${PYTORCH_VISION_FLAGS} -DWITH_CUDA=${PYTORCH_USE_CUDA} -DCMAKE_PREFIX_PATH=${TORCH_LOCATION} -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION} -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR} -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR} \"-DCMAKE_CXX_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_FLAGS=-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/ -isystem ${SPDLOG_INCLUDE_DIR} -isystem ${PROTOBUF_INCLUDE_DIR}\" \"-DCMAKE_CUDA_STANDARD=17\" \"-DTORCH_CUDA_ARCH_LIST=${CUDA_ARCH}\" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc")
+  if (TORCHVISION_SOURCE_DIR)
+    set(PYTORCH_VISION_SOURCE_ARGS
+      SOURCE_DIR "${TORCHVISION_SOURCE_DIR}"
+      DOWNLOAD_COMMAND ""
+      UPDATE_COMMAND "")
+  else()
+    set(PYTORCH_VISION_SOURCE_ARGS
+      GIT_REPOSITORY https://github.com/pytorch/vision.git
+      GIT_TAG ${PYTORCH_VISION_COMMIT}
+      GIT_CONFIG advice.detachedHead=false
+      UPDATE_DISCONNECTED 1)
+  endif()
+
+  if (USE_PREBUILT_TORCH)
+    set(PYTORCH_VISION_DEPENDS protobuf)
+    set(PYTORCH_VISION_EXTRA_FLAGS "")
+  else()
+    set(PYTORCH_VISION_DEPENDS protobuf pytorch)
+    set(PYTORCH_VISION_EXTRA_FLAGS
+      "-isystem ${CMAKE_BINARY_DIR}/pytorch/src/pytorch/")
+    if (SPDLOG_INCLUDE_DIR)
+      string(APPEND PYTORCH_VISION_EXTRA_FLAGS
+        " -isystem ${SPDLOG_INCLUDE_DIR}")
+    endif()
+    if (PROTOBUF_INCLUDE_DIR)
+      string(APPEND PYTORCH_VISION_EXTRA_FLAGS
+        " -isystem ${PROTOBUF_INCLUDE_DIR}")
+    endif()
+  endif()
+  string(REPLACE ";" "|" PYTORCH_VISION_CUDA_ARCH "${CUDA_ARCH}")
 
   ExternalProject_Add(
     pytorch_vision
     PREFIX pytorch_vision
-    GIT_REPOSITORY https://github.com/pytorch/vision.git
-    GIT_TAG ${PYTORCH_VISION_COMMIT}
-    GIT_CONFIG advice.detachedHead=false
-    UPDATE_DISCONNECTED 1
+    LIST_SEPARATOR |
+    ${PYTORCH_VISION_SOURCE_ARGS}
     PATCH_COMMAND "" #test -f ${PYTORCH_VISION_COMPLETE} && echo Skipping || git apply ${PYTORCH_VISION_PATCHES} && echo Applying ${PYTORCH_VISION_PATCHES}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND sh ${CMAKE_BINARY_DIR}/build_pytorch_vision.sh
+    CMAKE_ARGS
+      ${PYTORCH_VISION_FLAGS}
+      -DWITH_CUDA=${PYTORCH_USE_CUDA}
+      -DCMAKE_PREFIX_PATH=${TORCH_LOCATION}
+      -DCMAKE_INSTALL_PREFIX=${TORCHVISION_LOCATION}
+      -DCMAKE_INCLUDE_PATH=${PROTOBUF_INCLUDE_DIR}
+      -DCMAKE_LIBRARY_PATH=${PROTOBUF_LIB_DIR}
+      "-DCMAKE_CXX_FLAGS=${PYTORCH_VISION_EXTRA_FLAGS}"
+      "-DCMAKE_CUDA_FLAGS=${PYTORCH_VISION_EXTRA_FLAGS}"
+      -DCMAKE_CXX_STANDARD=${DEEPDETECT_CXX_STANDARD}
+      -DCMAKE_CUDA_STANDARD=${DEEPDETECT_CXX_STANDARD}
+      "-DTORCH_CUDA_ARCH_LIST=${PYTORCH_VISION_CUDA_ARCH}"
+      -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+    BUILD_COMMAND
+      ${CMAKE_COMMAND} --build <BINARY_DIR> --target install --parallel ${N}
     INSTALL_COMMAND ""
-    DEPENDS protobuf pytorch
+    DEPENDS ${PYTORCH_VISION_DEPENDS}
   )
 
   list(APPEND TORCH_INC_DIR "${TORCHVISION_LOCATION}/include/")
@@ -1013,6 +1236,7 @@ include_directories(
     ${NCNN_INC_DIR}
     ${FMT_INC_DIR}
 )
+include_directories(BEFORE SYSTEM ${PROTOBUF_INCLUDE_DIR})
 include_directories(
     SYSTEM ${TENSORRT_INC_DIR}
 )
@@ -1059,7 +1283,7 @@ set(COMMON_LINK_DIRS
 )
 
 set(COMMON_LINK_LIBS
-    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive ${OPENMP_LIBRARIES}
+    ddetect ${DLIB_LIB_DEPS} ${TENSORRT_LIBS} ${CUDA_LIB_DEPS} gflags ${OpenCV_LIBS} curlpp curl ${Boost_LIBRARIES} archive ${LMDB_LIBRARY} ${OPENMP_LIBRARIES}
     ${PROTOBUF_LIB_DEPS}
     ${HTTP_LIB_DEPS}
     ${SPDLOG_LIB_DEPS}
@@ -1100,6 +1324,11 @@ install(TARGETS ddetect
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+if (USE_TORCH AND USE_PREBUILT_TORCH)
+  install(FILES
+      ${TORCHVISION_LOCATION}/${CMAKE_INSTALL_LIBDIR}/libtorchvision.so
+      DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 install(FILES include/deepdetect/runtime.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/deepdetect)
 install(EXPORT DeepDetectTargets
@@ -1137,8 +1366,8 @@ endif()
 file(GLOB_RECURSE ALL_SOURCE_FILES src/*.cpp src/*.hpp src/*.h src/*.c tests/*.cc src/*.cc)
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "^${CMAKE_SOURCE_DIR}/src/ext/.*$")
 
-# ubuntu 20: clang-format-10, ubuntu 22: clang-format 14
-find_program(CLANG_FORMAT_BIN NAMES clang-format clang-format-14 clang-format-10)
+# ubuntu 20: clang-format-10, ubuntu 22/24: clang-format-14
+find_program(CLANG_FORMAT_BIN NAMES clang-format-14 clang-format clang-format-10)
 add_custom_target(
         clang-format
         COMMAND ${CLANG_FORMAT_BIN}
@@ -1187,7 +1416,13 @@ message(STATUS "BUILD_PROTOBUF:        ${BUILD_PROTOBUF}")
 message(STATUS "BUILD_TESTS:           ${BUILD_TESTS}")
 message(STATUS "BUILD_TOOLS:           ${BUILD_TOOLS}")
 message(STATUS "USE_TORCH:             ${USE_TORCH}")
+message(STATUS "USE_PREBUILT_TORCH:    ${USE_PREBUILT_TORCH}")
 message(STATUS "USE_TORCH_CPU_ONLY:    ${USE_TORCH_CPU_ONLY}")
+if (USE_TORCH)
+  message(STATUS "TORCH_VERSION:          ${DEEPDETECT_TORCH_VERSION}")
+  message(STATUS "TORCH_MODE:             ${DEEPDETECT_TORCH_MODE}")
+  message(STATUS "TORCH_LOCATION:         ${TORCH_LOCATION}")
+endif()
 message(STATUS "USE_SIMSEARCH:         ${USE_SIMSEARCH}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
@@ -1199,6 +1434,9 @@ message(STATUS "USE_ANNOY:             ${USE_ANNOY}")
 message(STATUS "USE_FAISS:             ${USE_FAISS}")
 message(STATUS "USE_FAISS_CPU_ONLY:    ${USE_FAISS_CPU_ONLY}")
 message(STATUS "USE_CUDNN:             ${USE_CUDNN}")
+if (USE_CUDNN)
+  message(STATUS "CUDNN_VERSION:          ${DEEPDETECT_CUDNN_VERSION}")
+endif()
 message(STATUS "USE_XGBOOST:           ${USE_XGBOOST}")
 message(STATUS "USE_XGBOOST_CPU_ONLY:  ${USE_XGBOOST_CPU_ONLY}")
 message(STATUS "USE_TSNE:              ${USE_TSNE}")

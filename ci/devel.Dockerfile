@@ -15,6 +15,7 @@ ARG DEEPDETECT_GPU_VARIANT
 RUN echo UBUNTU_VERSION=${DD_UBUNTU_VERSION} >> /image-info
 RUN echo CUDA_VERSION=${DD_CUDA_VERSION} >> /image-info
 RUN echo GPU_VARIANT=${DEEPDETECT_GPU_VARIANT} >> /image-info
+RUN echo PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX} >> /image-info
 
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -34,7 +35,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     ccache \
     automake \
     rsync \
-    clang-format\
+    clang-format-14 \
     build-essential \
     default-jdk \
     pkg-config \

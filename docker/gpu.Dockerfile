@@ -3,16 +3,19 @@
 ARG DD_UBUNTU_VERSION=24.04
 ARG DD_CUDA_VERSION=13.0.2
 ARG DD_CUDA_MAJOR_MINOR=13.0
+ARG PYTORCH_CUDA_INDEX=cu130
 ARG DEEPDETECT_GPU_VARIANT=default
 FROM nvidia/cuda:${DD_CUDA_VERSION}-cudnn-devel-ubuntu${DD_UBUNTU_VERSION} AS build
 
 ARG DD_UBUNTU_VERSION
 ARG DD_CUDA_VERSION
+ARG PYTORCH_CUDA_INDEX
 ARG DEEPDETECT_GPU_VARIANT
 
 RUN echo UBUNTU_VERSION=${DD_UBUNTU_VERSION} >> /image-info
 RUN echo CUDA_VERSION=${DD_CUDA_VERSION} >> /image-info
 RUN echo GPU_VARIANT=${DEEPDETECT_GPU_VARIANT} >> /image-info
+RUN echo PYTORCH_CUDA_INDEX=${PYTORCH_CUDA_INDEX} >> /image-info
 
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
@@ -104,6 +107,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN python -m pip install --break-system-packages --upgrade pip
 RUN python -m pip install --break-system-packages typing_extensions
+RUN python -m pip install --break-system-packages torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}
 
 ADD . /opt/deepdetect
 WORKDIR /opt/deepdetect/
@@ -139,7 +143,7 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     apt-get update -y && apt-get install -y \
     wget \
     curl \
-    libopenblas-base \
+    libopenblas0-pthread \
     liblmdb0 \
     libleveldb-dev \
     libboost-atomic-dev \

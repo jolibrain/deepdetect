@@ -302,7 +302,7 @@ namespace dd
 
     TTransformer &operator=(const TTransformer &t)
     {
-      torch::nn::Module::operator=(t);
+      NativeModuleImpl<TTransformer>::operator=(t);
       _embedder = t._embedder;
       _encoder_mask = t._encoder_mask;
       _decoder_mask = t._decoder_mask;
