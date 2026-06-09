@@ -119,7 +119,7 @@ set_target_properties(ddetect PROPERTIES
   OUTPUT_NAME deepdetect
   VERSION 0.1.0
   SOVERSION 0
-  INSTALL_RPATH "$ORIGIN")
+  INSTALL_RPATH "$ORIGIN;$ORIGIN/../torch/lib")
 target_include_directories(ddetect
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>

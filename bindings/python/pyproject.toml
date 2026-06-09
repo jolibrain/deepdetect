@@ -9,9 +9,22 @@ description = "In-process Python bindings for DeepDetect"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "LGPL-3.0-or-later"}
-dependencies = ["numpy>=1.23", "Pillow>=9"]
+dependencies = ["numpy>=1.23", "Pillow>=9", "torch==2.12.*"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 [project.optional-dependencies]
+build = ["auditwheel>=6"]
 test = ["pytest>=7"]
 
 [tool.scikit-build]
@@ -22,6 +35,7 @@ sdist.include = [
   "README.md",
   "deepdetect/*.py",
   "examples/*.py",
+  "scripts/*.py",
   "src/native.cpp",
   "tests/*.py",
 ]

@@ -84,6 +84,9 @@ def _data(values: Any, image_service: bool | None) -> Any:
 class DeepDetect:
     def __init__(self, *, _runtime: Any = None) -> None:
         if _runtime is None:
+            from ._torch_runtime import ensure_torch_runtime
+
+            ensure_torch_runtime()
             from . import _native
 
             _runtime = _native.runtime()
