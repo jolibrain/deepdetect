@@ -204,5 +204,6 @@ TEST(ncnnapi, ocr)
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
   ASSERT_TRUE(jd["body"]["predictions"].Size() == 1);
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["cat"].GetString() == "beleved");
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["cat"].GetString()
+              == "beleved");
 }

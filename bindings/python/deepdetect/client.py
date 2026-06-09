@@ -1,17 +1,71 @@
 from __future__ import annotations
 
 import base64
+import ctypes
 import io
 import json
 import os
 import time
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
 from .errors import CapabilityError, DeepDetectError
+
+
+_NATIVE_DEPENDENCIES_LOADED = False
+
+
+def _prepend_env_path(name: str, path: Path) -> None:
+    value = str(path)
+    current = os.environ.get(name)
+    if not current:
+        os.environ[name] = value
+        return
+    parts = current.split(os.pathsep)
+    if value not in parts:
+        os.environ[name] = os.pathsep.join([value, *parts])
+
+
+def _find_library(
+    package_dir: Path,
+    versioned_pattern: str,
+    fallback_name: str,
+) -> Path | None:
+    candidates = sorted(
+        package_dir.glob(versioned_pattern),
+        key=lambda candidate: len(candidate.name),
+        reverse=True,
+    )
+    if candidates:
+        return candidates[0]
+    fallback = package_dir / fallback_name
+    if fallback.exists():
+        return fallback
+    return None
+
+
+def _preload_native_dependencies() -> None:
+    global _NATIVE_DEPENDENCIES_LOADED
+    if _NATIVE_DEPENDENCIES_LOADED:
+        return
+
+    package_dir = Path(__file__).resolve().parent
+    _prepend_env_path("LD_LIBRARY_PATH", package_dir)
+
+    for path in (
+        _find_library(package_dir, "libprotobuf.so.*", "libprotobuf.so"),
+        _find_library(package_dir, "libprotobuf-lite.so.*", "libprotobuf-lite.so"),
+        _find_library(package_dir, "libprotoc.so.*", "libprotoc.so"),
+        _find_library(package_dir, "libtorchvision.so.*", "libtorchvision.so"),
+    ):
+        if path is not None:
+            ctypes.CDLL(str(path), mode=ctypes.RTLD_GLOBAL)
+
+    _NATIVE_DEPENDENCIES_LOADED = True
 
 
 def _loads(response: str | Mapping[str, Any]) -> dict[str, Any]:
@@ -87,6 +141,8 @@ class DeepDetect:
             from ._torch_runtime import ensure_torch_runtime
 
             ensure_torch_runtime()
+
+            _preload_native_dependencies()
             from . import _native
 
             _runtime = _native.runtime()

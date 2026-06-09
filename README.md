@@ -45,6 +45,7 @@ curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
 * [Machine Learning functionalities per library](#machine-learning-functionalities-per-library)
 * [Installation](https://www.deepdetect.com/quickstart-server/)
   * [From docker](https://github.com/jolibrain/deepdetect/tree/master/docs/docker.md)
+  * [Python wheels](#python-wheels)
   * [From source](https://github.com/jolibrain/deepdetect/tree/master/docs/source.md)
   * From Amazon AMI: [GPU](https://aws.amazon.com/marketplace/pp/B01N4D483M) and [CPU](https://aws.amazon.com/marketplace/pp/B01N1RGWQZ)
   * [Mimic Continuous Integration testing](https://github.com/jolibrain/deepdetect/tree/master/docs/ci.md)
@@ -99,6 +100,62 @@ curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
 Torch is the primary training and serving backend. TensorRT and NCNN provide optimized inference, while Dlib, XGBoost, and T-SNE remain available for their specialized workloads.
 
 Caffe-format protobufs and prototxt templates remain available only as a model interchange format used by Torch, TensorRT, and NCNN. They do not provide a Caffe runtime backend.
+
+## Python Wheels
+
+DeepDetect also provides experimental in-process Python wheels for Linux
+x86-64. These wheels embed the DeepDetect runtime and use LibTorch from the
+PyTorch Python wheels. They are separate from the REST client and expose
+`import deepdetect`.
+
+Install either the CPU or GPU package, not both in the same Python
+environment:
+
+```bash
+python -m pip install \
+  --extra-index-url https://www.deepdetect.com/download/wheels/simple \
+  deepdetect-cpu
+```
+
+```bash
+python -m pip install \
+  --extra-index-url https://www.deepdetect.com/download/wheels/simple \
+  deepdetect-gpu
+```
+
+If reinstalling a development wheel with the same version, disable the pip
+cache:
+
+```bash
+python -m pip install --force-reinstall --no-cache-dir \
+  --extra-index-url https://www.deepdetect.com/download/wheels/simple \
+  deepdetect-gpu
+```
+
+Verify the native runtime:
+
+```bash
+python -c "import deepdetect; print(deepdetect.__version__); print(deepdetect.DeepDetect().build_info)"
+```
+
+Minimal usage:
+
+```python
+import deepdetect
+
+dd = deepdetect.DeepDetect()
+print(dd.info())
+
+service = dd.create_service(
+    "classifier",
+    model={"repository": "/path/to/model"},
+    mllib="torch",
+    input_parameters={"connector": "image", "width": 224, "height": 224},
+    mllib_parameters={"template": "resnet18", "nclasses": 2, "gpu": True},
+)
+print(service.predict(["image.jpg"], output_parameters={"best": 1}))
+service.delete()
+```
 
 ## Tools and Clients
 

@@ -32,6 +32,36 @@ The docker container mounts the prebuilt directory as copy-on-write volume
 
 trigger on pull request only
 
+## deepdetect-python-wheels
+
+Build CPU and GPU Python wheels, install each wheel in a clean virtualenv, and
+run the Python binding unit tests plus a native import smoke test. The GPU
+wheel stage also runs translated Torch integration coverage from
+`tests/ut-torchapi.cc` for ResNet image training, YOLOX object detection
+training, and SegFormer segmentation training.
+
+Everything is done inside a docker image: ci/devel.Dockerfile
+
+> Jenkinsfile.python-wheels
+
+trigger on pull request only
+
+On Jenkins:
+
+* Create a new Multibranch Pipeline job named `deepdetect-python-wheels`
+* Use the same repository, GitHub credentials, and PR discovery settings as the
+  `deepdetect` job
+* Set `Script Path` to `ci/Jenkinsfile.python-wheels`
+* Ensure the job runs on nodes with the `gpu` label
+* Ensure GPU lockable resources are configured with labels matching
+  `<node-name>-gpu`, as described below
+* Run `Scan Multibranch Pipeline Now`
+* After the first successful PR run, add the resulting Jenkins check to GitHub
+  branch protection if wheel validation should be required before merge
+
+The job does not archive wheels. Its artifacts are validation-only and are
+removed by workspace cleanup.
+
 ## deepdetect-jetson-nano
 
 Build tensorrt backend and run tensorrt tests on a Jetson Nano
@@ -83,6 +113,50 @@ $ ci/release.sh --dry-run
 ## Docker images
 
 On Jenkins in `deepdetect-docker-build` job, `Tags` tab, ran the released version
+
+## Python wheels
+
+Large Python wheels are published outside PyPI under:
+
+```
+https://www.deepdetect.com/download/wheels/
+```
+
+Build, index, and upload CPU/GPU wheels with:
+
+```bash
+$ ci/release_wheels.sh --user <ssh-user>
+```
+
+The script builds `deepdetect-cpu` and `deepdetect-gpu`, stages wheels under
+`dist/python/wheelhouse`, generates pip simple indexes with `sha256` URL
+fragments, and uploads them to the web server. The default public install
+commands are:
+
+```bash
+$ python -m pip install --extra-index-url https://www.deepdetect.com/download/wheels/simple deepdetect-cpu
+$ python -m pip install --extra-index-url https://www.deepdetect.com/download/wheels/simple deepdetect-gpu
+```
+
+On an exact git tag such as `v0.28.1`, the wheel version is `0.28.1`.
+Otherwise the script uses a development version based on the DeepDetect
+project version, git commit count, and commit hash, for example
+`0.28.0.dev3361+g625ccc22`. Use `--version <version>` to override this during
+testing.
+
+Existing uploaded wheels are kept online. With the default `rsync` transport,
+the script downloads the current remote wheelhouse before regenerating the
+indexes, so old versions remain installable. Use `--dry-run --skip-build` to
+test index generation locally without uploading.
+The default upload target is `/var/www/deepdetect/public/download/wheels` on
+`www.deepdetect.com`; override it with `--remote-dir` if needed.
+The generated remote layout is:
+
+```
+public/download/wheels/simple/
+public/download/wheels/files/cpu/
+public/download/wheels/files/gpu/
+```
 
 ## The platform
 

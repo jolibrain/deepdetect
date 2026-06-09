@@ -111,10 +111,9 @@ namespace dd
 
       AttentionImpl(const AttentionImpl &a)
           : DD_CLONEABLE_COPY_BASE(AttentionImpl, a), _dim(a._dim),
-            _num_heads(a._num_heads),
-            _qkv_bias(a._qkv_bias), _qk_scale(a._qk_scale),
-            _attn_drop_val(a._attn_drop_val), _proj_drop_val(a._proj_drop_val),
-            _realformer(a._realformer)
+            _num_heads(a._num_heads), _qkv_bias(a._qkv_bias),
+            _qk_scale(a._qk_scale), _attn_drop_val(a._attn_drop_val),
+            _proj_drop_val(a._proj_drop_val), _realformer(a._realformer)
       {
       }
 
@@ -188,10 +187,10 @@ namespace dd
 
       BlockImpl(const BlockImpl &b)
           : DD_CLONEABLE_COPY_BASE(BlockImpl, b), _dim(b._dim),
-            _num_heads(b._num_heads),
-            _mlp_ratio(b._mlp_ratio), _qkv_bias(b._qkv_bias),
-            _qk_scale(b._qk_scale), _drop_val(b._drop_val),
-            _attn_drop_val(b._attn_drop_val), _realformer(b._realformer)
+            _num_heads(b._num_heads), _mlp_ratio(b._mlp_ratio),
+            _qkv_bias(b._qkv_bias), _qk_scale(b._qk_scale),
+            _drop_val(b._drop_val), _attn_drop_val(b._attn_drop_val),
+            _realformer(b._realformer)
       {
       }
 
