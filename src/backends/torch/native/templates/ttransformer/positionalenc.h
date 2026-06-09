@@ -43,8 +43,8 @@ namespace dd
 
     PositionalEncodingImpl(const PositionalEncodingImpl &pe)
         : DD_CLONEABLE_COPY_BASE(PositionalEncodingImpl, pe),
-          _seq_len(pe._seq_len), _datadim(pe._datadim),
-          _et(pe._et), _dropout_ratio(pe._dropout_ratio), _learn(pe._learn)
+          _seq_len(pe._seq_len), _datadim(pe._datadim), _et(pe._et),
+          _dropout_ratio(pe._dropout_ratio), _learn(pe._learn)
     {
       init();
     }

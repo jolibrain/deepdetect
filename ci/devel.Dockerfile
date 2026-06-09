@@ -78,6 +78,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     python3-setuptools \
     python3-dev \
     python3-pip \
+    python3-venv \
+    patchelf \
     tox \
     python3-six \
     unzip \

@@ -77,6 +77,55 @@ def site_packages_dirs() -> list[Path]:
     return [Path(path) for path in paths if path]
 
 
+def wheel_distribution_prefix(distribution_name: str) -> str:
+    return distribution_name.replace("-", "_").replace(".", "_")
+
+
+def remove_matching_wheels(directory: Path, distribution_name: str) -> None:
+    prefix = wheel_distribution_prefix(distribution_name)
+    for wheel in directory.glob(f"{prefix}-*.whl"):
+        wheel.unlink()
+
+
+def stage_protobuf_libraries(build_dir: Path, sdk_prefix: Path) -> None:
+    protobuf_build_dir = build_dir / "protobuf" / "src" / "protobuf-build"
+    if not protobuf_build_dir.exists():
+        return
+
+    library_dir = sdk_prefix / "lib"
+    library_dir.mkdir(parents=True, exist_ok=True)
+    for pattern in (
+        "libprotobuf.so*",
+        "libprotobuf-lite.so*",
+        "libprotoc.so*",
+        "libprotobuf*.dylib*",
+        "libprotoc*.dylib*",
+    ):
+        for library in protobuf_build_dir.glob(pattern):
+            if library.is_file() or library.is_symlink():
+                shutil.copy2(library, library_dir / library.name)
+
+
+def assert_bundled_runtime_libraries(wheel: Path) -> None:
+    import zipfile
+
+    with zipfile.ZipFile(wheel) as archive:
+        names = set(archive.namelist())
+
+    required = {
+        "deepdetect/libdeepdetect.so.0",
+        "deepdetect/libprotobuf.so.3.11.4.0",
+        "deepdetect/libprotobuf-lite.so.3.11.4.0",
+        "deepdetect/libprotoc.so.3.11.4.0",
+    }
+    missing = sorted(required - names)
+    if missing:
+        raise SystemExit(
+            f"Wheel {wheel} is missing required bundled runtime libraries: "
+            + ", ".join(missing)
+        )
+
+
 def nvidia_runtime_paths() -> tuple[Path | None, Path | None, Path | None, list[Path]]:
     cudnn_root: Path | None = None
     cudnn_include: Path | None = None
@@ -120,6 +169,11 @@ def parse_args() -> argparse.Namespace:
         help="wheel distribution name; import package remains deepdetect",
     )
     parser.add_argument(
+        "--distribution-version",
+        default="",
+        help="wheel distribution version; defaults to pyproject.toml",
+    )
+    parser.add_argument(
         "--torch-dependency",
         default="torch==2.12.*",
         help="dependency string written to generated wheel metadata",
@@ -154,9 +208,14 @@ def project_for_wheel(
     *,
     build_dir: Path,
     distribution_name: str,
+    distribution_version: str,
     torch_dependency: str,
 ) -> Path:
-    if distribution_name == "deepdetect" and torch_dependency == "torch==2.12.*":
+    if (
+        distribution_name == "deepdetect"
+        and not distribution_version
+        and torch_dependency == "torch==2.12.*"
+    ):
         return PYTHON_PROJECT
 
     project_dir = build_dir / "python-project"
@@ -175,12 +234,28 @@ def project_for_wheel(
     pyproject = project_dir / "pyproject.toml"
     contents = pyproject.read_text(encoding="utf-8")
     contents = contents.replace('name = "deepdetect"', f'name = "{distribution_name}"', 1)
+    if distribution_version:
+        contents = contents.replace(
+            'version = "0.1.0"',
+            f'version = "{distribution_version}"',
+            1,
+        )
     contents = contents.replace(
         '"torch==2.12.*"',
         f'"{torch_dependency}"',
         1,
     )
     pyproject.write_text(contents, encoding="utf-8")
+
+    if distribution_version:
+        init_file = project_dir / "deepdetect" / "__init__.py"
+        init_contents = init_file.read_text(encoding="utf-8")
+        init_contents = init_contents.replace(
+            '__version__ = "0.1.0"',
+            f'__version__ = "{distribution_version}"',
+            1,
+        )
+        init_file.write_text(init_contents, encoding="utf-8")
     return project_dir
 
 
@@ -220,6 +295,7 @@ def main() -> None:
             "-DUSE_HTTP_SERVER_OATPP=OFF",
             "-DBUILD_TESTS=OFF",
             "-DBUILD_TOOLS=OFF",
+            "-DBUILD_PROTOBUF=ON",
             f"-DCMAKE_PREFIX_PATH={cmake_prefix}",
         ]
         if args.torch_mode == "cpu":
@@ -265,12 +341,17 @@ def main() -> None:
         run(configure_command, env=env)
         run([args.cmake, "--build", str(build_dir), "--parallel", args.jobs], env=env)
         run([args.cmake, "--install", str(build_dir), "--prefix", str(sdk_prefix)], env=env)
+        stage_protobuf_libraries(build_dir, sdk_prefix)
 
     raw_wheel_dir.mkdir(parents=True, exist_ok=True)
+    wheel_dir.mkdir(parents=True, exist_ok=True)
     if not args.reuse_raw_wheel:
+        remove_matching_wheels(raw_wheel_dir, args.distribution_name)
+        remove_matching_wheels(wheel_dir, args.distribution_name)
         project_dir = project_for_wheel(
             build_dir=build_dir,
             distribution_name=args.distribution_name,
+            distribution_version=args.distribution_version,
             torch_dependency=args.torch_dependency,
         )
         wheel_command = [
@@ -288,15 +369,19 @@ def main() -> None:
             wheel_command.append("--no-build-isolation")
         run(wheel_command, env=env)
 
-    wheels = sorted(raw_wheel_dir.glob("*.whl"), key=lambda path: path.stat().st_mtime)
+    wheel_prefix = wheel_distribution_prefix(args.distribution_name)
+    wheels = sorted(
+        raw_wheel_dir.glob(f"{wheel_prefix}-*.whl"),
+        key=lambda path: path.stat().st_mtime,
+    )
     if not wheels:
         raise SystemExit(f"No deepdetect wheel was produced under {raw_wheel_dir}")
     raw_wheel = wheels[-1]
 
     if args.no_repair or not args.repair:
-        wheel_dir.mkdir(parents=True, exist_ok=True)
         destination = wheel_dir / raw_wheel.name
         shutil.copy2(raw_wheel, destination)
+        assert_bundled_runtime_libraries(destination)
         print(destination)
         return
 
@@ -325,6 +410,12 @@ def main() -> None:
         str(path) for path in auditwheel_library_paths
     )
     run(auditwheel_command, env=auditwheel_env)
+    repaired_wheels = sorted(
+        wheel_dir.glob(f"{wheel_prefix}-*.whl"),
+        key=lambda path: path.stat().st_mtime,
+    )
+    if repaired_wheels:
+        assert_bundled_runtime_libraries(repaired_wheels[-1])
 
 
 if __name__ == "__main__":

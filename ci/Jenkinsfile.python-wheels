@@ -1,0 +1,126 @@
+pipeline {
+  environment {
+    DOCKER_IMAGE = "ci-python-wheels:${BRANCH_NAME}.${BUILD_ID}"
+    DOCKER_PARAMS = "-u root:root -v ${WORKSPACE}:/app -v /var/lib/jenkins/.ccache:/ccache --runtime nvidia"
+    DD_CUDA_VERSION = "13.0.2"
+    DEEPDETECT_GPU_VARIANT = "default"
+    PYTORCH_CUDA_INDEX = "cu130"
+    PYTHON_WHEEL_CUDA_ARCHITECTURES = "75;80;86;89;90;100;120"
+    WHEEL_BUILD_JOBS = "4"
+  }
+  agent { node { label 'gpu' } }
+  stages {
+    stage('Init') {
+      steps {
+        script {
+          def common = load("ci/Jenkinsfile.common")
+          common.cancelPreviousBuilds()
+        }
+        sh 'printenv | sort'
+      }
+    }
+    stage('Prepare docker image') {
+      steps {
+        script {
+          docker.build(
+            env.DOCKER_IMAGE,
+            "--build-arg DD_CUDA_VERSION=${env.DD_CUDA_VERSION} " +
+            "--build-arg DEEPDETECT_GPU_VARIANT=${env.DEEPDETECT_GPU_VARIANT} " +
+            "--build-arg PYTORCH_CUDA_INDEX=${env.PYTORCH_CUDA_INDEX} " +
+            "-f ci/devel.Dockerfile ."
+          )
+        }
+        sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
+      }
+    }
+    stage('Build wheels') {
+      steps {
+        script {
+          docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+            sh '''
+export CCACHE_DIR=/ccache
+export PATH="/usr/lib/ccache/:$PATH"
+export TMPDIR=$(pwd)/build/tmp
+mkdir -p "${TMPDIR}"
+
+python3 bindings/python/scripts/build_release_wheels.py \
+  --cmake /usr/bin/cmake \
+  --jobs "${WHEEL_BUILD_JOBS}" \
+  --no-build-isolation \
+  --gpu-torch-index-url "https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}" \
+  --cuda-architectures "${PYTHON_WHEEL_CUDA_ARCHITECTURES}"
+'''
+          }
+        }
+      }
+    }
+    stage('Test CPU wheel') {
+      steps {
+        script {
+          docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+            sh '''
+python3 bindings/python/scripts/test_wheel_install.py \
+  --wheel-dir dist/python/release/cpu \
+  --distribution-name deepdetect-cpu \
+  --venv-dir build/python-wheel-test-envs/cpu \
+  --torch-index-url https://download.pytorch.org/whl/cpu \
+  --expected-cuda false
+'''
+          }
+        }
+      }
+    }
+    stage('Test GPU wheel') {
+      steps {
+        lock(resource: null, label: "${NODE_NAME}-gpu", variable: 'LOCKED_GPU', quantity: 1) {
+          script {
+            docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+              sh '''
+export CUDA_VISIBLE_DEVICES=$(echo ${LOCKED_GPU} | sed -n -e "s/[^,]* GPU \\([^[0-9,]]\\)*/\\1/gp")
+echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+export DEEPDETECT_TORCH_TEST_ITERATIONS=3
+
+python3 bindings/python/scripts/test_wheel_install.py \
+  --wheel-dir dist/python/release/gpu \
+  --distribution-name deepdetect-gpu \
+  --venv-dir build/python-wheel-test-envs/gpu \
+  --torch-index-url "https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}" \
+  --torch-fixtures-dir build/python-wheel-fixtures/torch \
+  --download-torch-fixtures \
+  --expected-cuda true
+'''
+            }
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      catchError {
+        sh '''[ -f docker-image-name ] && docker image rm $(cat docker-image-name) -f'''
+      }
+      cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
+    }
+    success {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build succeed' ,color: 'green' )
+      }
+    }
+    aborted {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build superseded or aborted')
+      }
+    }
+    unstable {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+      }
+    }
+    failure {
+      catchError {
+        rocketSend(channel: 'build', message: 'Build failed', color: 'red')
+      }
+    }
+  }
+}

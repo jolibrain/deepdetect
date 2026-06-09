@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -10,12 +11,53 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BUILD_WHEEL = REPO_ROOT / "bindings" / "python" / "scripts" / "build_wheel.py"
-BUILD_REQUIREMENTS = ["auditwheel>=6", "scikit-build-core", "pybind11"]
+BUILD_REQUIREMENTS = ["auditwheel>=6", "scikit-build-core", "pybind11", "numpy>=1.23"]
 
 
 def run(command: list[str]) -> None:
     print("+", " ".join(command), flush=True)
     subprocess.run(command, cwd=REPO_ROOT, check=True)
+
+
+def command_output(command: list[str]) -> str:
+    return subprocess.check_output(command, cwd=REPO_ROOT, text=True).strip()
+
+
+def git_command(*args: str) -> list[str]:
+    return ["git", "-c", f"safe.directory={REPO_ROOT}", *args]
+
+
+def project_version() -> str:
+    pyproject = REPO_ROOT / "bindings" / "python" / "pyproject.toml"
+    match = re.search(
+        r'(?m)^version\s*=\s*"([^"]+)"',
+        pyproject.read_text(encoding="utf-8"),
+    )
+    if not match:
+        raise SystemExit(f"Could not read project version from {pyproject}")
+    return match.group(1)
+
+
+def default_distribution_version() -> str:
+    exact_tag = subprocess.run(
+        git_command("describe", "--tags", "--exact-match"),
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if exact_tag.returncode == 0:
+        return exact_tag.stdout.strip().removeprefix("v")
+
+    try:
+        base = command_output(
+            ["node", "-pe", "require('./package.json').version"]
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        base = project_version()
+    count = command_output(git_command("rev-list", "--count", "HEAD"))
+    commit = command_output(git_command("rev-parse", "--short=8", "HEAD"))
+    return f"{base}.dev{count}+g{commit}"
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,6 +91,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--cpu-name", default="deepdetect-cpu")
     parser.add_argument("--gpu-name", default="deepdetect-gpu")
+    parser.add_argument(
+        "--distribution-version",
+        default="",
+        help="wheel distribution version; defaults to pyproject.toml",
+    )
     parser.add_argument("--cpu-torch-dependency", default="torch==2.12.*")
     parser.add_argument("--gpu-torch-dependency", default="torch==2.12.*")
     parser.add_argument(
@@ -145,6 +192,8 @@ def wheel_command(
         mode,
         "--distribution-name",
         name,
+        "--distribution-version",
+        args.distribution_version,
         "--torch-dependency",
         torch_dependency,
         "--build-dir",
@@ -212,6 +261,9 @@ def build_variant(
 
 def main() -> None:
     args = parse_args()
+    if not args.distribution_version:
+        args.distribution_version = default_distribution_version()
+    print(f"Wheel version: {args.distribution_version}", flush=True)
     if not args.skip_cpu:
         build_variant(
             args=args,
