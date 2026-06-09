@@ -6,16 +6,16 @@ This document specifies version 0.1 of the in-process `deepdetect` Python
 package. The existing `dd_client` package remains the supported HTTP client
 and is not renamed, wrapped, or otherwise changed.
 
-Version 0.1 supports Linux x86-64, CPython 3.10 through 3.13, and DeepDetect
-SDK installations built with Torch CPU or Torch CUDA. Other compiled backends
-may work but are outside the compatibility guarantee. CUDA, cuDNN, libtorch,
-models, and `libdeepdetect.so` are supplied by the SDK and are not bundled in
-the Python distribution.
+Version 0.1 supports Linux x86-64, CPython 3.10 through 3.13, and bundled
+DeepDetect wheels built against `torch==2.12.*`. The wheel contains
+`libdeepdetect.so`, the private `_native` extension, `libtorchvision.so`, and
+protobuf runtime libraries built with DeepDetect. LibTorch and NVIDIA CUDA
+runtime libraries are supplied by the PyTorch and NVIDIA Python wheels.
 
 The goals are in-process service creation, training, status inspection,
 cancellation, and prediction; stable Python errors; and a narrow native ABI.
 Chains, resources, streams, pandas and Torch adapters, zero-copy tensors,
-remote transport unification, isolated registries, and binary wheels are
+remote transport unification, isolated registries, and non-Linux wheels are
 non-goals for v0.1.
 
 ## Public API
@@ -244,45 +244,98 @@ build3/install/lib/cmake/DeepDetect/DeepDetectTargets.cmake
 `build3/DeepDetectConfig.cmake` alone is not sufficient. Consumers must use
 the installed package under `build3/install/lib/cmake/DeepDetect`.
 
-### 3. Build the Python wheel
+### 3. Build the bundled Python wheel
 
 Use the Python interpreter matching the environment where the wheel will be
-installed. Build dependencies are installed automatically by pip in an
-isolated build environment.
+installed. Install `torch==2.12.*`, `auditwheel`, and the Python build tools,
+then run the repository helper:
 
 ```shell
-mkdir -p dist/python
-
-CCACHE_DISABLE=1 python -m pip wheel ./bindings/python \
-  --no-deps \
-  --wheel-dir dist/python \
-  --config-settings=cmake.define.DeepDetect_DIR="$PWD/build3/install/lib/cmake/DeepDetect"
+python -m pip install "torch==2.12.*" "auditwheel>=6" scikit-build-core pybind11
+python bindings/python/scripts/build_wheel.py
 ```
 
-The result is a platform- and interpreter-specific wheel similar to:
+The helper configures DeepDetect with `USE_PREBUILT_TORCH=ON` and
+`CMAKE_PREFIX_PATH` from `torch.utils.cmake_prefix_path`, discovers NVIDIA
+runtime paths from installed Python packages, installs a temporary SDK under
+`build/python-wheel/install`, and builds the scikit-build wheel. The result is
+a platform- and interpreter-specific wheel similar to:
 
 ```text
 dist/python/deepdetect-0.1.0-cp312-cp312-linux_x86_64.whl
 ```
 
 The exact `cpXY` tag depends on the Python interpreter used to build it.
+Use `--cmake /path/to/cmake` or `CMAKE_COMMAND=/path/to/cmake` if the desired
+CMake executable is not first on `PATH`.
+Use `--cuda-architectures`, for example `--cuda-architectures 86`, when CMake
+cannot infer a CUDA architecture for the installed PyTorch wheel.
+Use `--repair` to run `auditwheel repair`; this is useful for inspection but
+may over-vendor host OpenCV/GUI/system libraries on non-manylinux hosts. Use
+`--reuse-raw-wheel --repair` to rerun only the repair step after a successful
+raw wheel build.
 
-`CMAKE_PREFIX_PATH` is also supported:
+To reuse an existing torchvision 0.27.0 checkout, add:
 
 ```shell
-CMAKE_PREFIX_PATH="$PWD/build3/install" \
-CCACHE_DISABLE=1 \
-python -m pip wheel ./bindings/python \
-  --no-deps \
-  --wheel-dir dist/python
+python bindings/python/scripts/build_wheel.py \
+  --torchvision-source-dir /absolute/path/to/vision
 ```
 
-All SDK paths must be absolute because scikit-build-core configures CMake in
-a temporary build directory. `DeepDetect_DIR` is the preferred, unambiguous
-form. `CCACHE_DISABLE=1` is needed only when ccache cannot write to its
-configured cache directory.
+### 4. Build CPU and GPU release variants
 
-### 4. Install the wheel
+CPU and GPU wheels for the same Python version and platform cannot share the
+same PyPI project name. The release helper builds two distribution names that
+both install the `deepdetect` import package. The defaults are
+`deepdetect-cpu` and `deepdetect-gpu`, and they must not be installed together
+in one environment.
+
+By default the release helper creates temporary build environments under
+`build/python-wheel-envs`, installs the CPU and GPU PyTorch dependencies,
+builds both wheels, and removes those environments when the build completes.
+
+```shell
+python bindings/python/scripts/build_release_wheels.py \
+  --cmake /usr/bin/cmake \
+  --jobs 4
+```
+
+Pass `--keep-envs` to keep those environments for inspection or reuse. The
+CPU environment installs PyTorch from `https://download.pytorch.org/whl/cpu`.
+The GPU environment installs PyTorch from the default pip indexes unless
+`--gpu-torch-index-url` is provided.
+
+The output directories are:
+
+```text
+dist/python/release/cpu/
+dist/python/release/gpu/
+```
+
+Use `--cpu-python` and `--gpu-python` to build with existing environments
+instead. `--cpu-python` must point to a CPU-only PyTorch environment, and
+`--gpu-python` must point to a CUDA-enabled PyTorch environment.
+
+Use `--cpu-name` and `--gpu-name` to select the actual PyPI project names.
+Use `--skip-cpu` or `--skip-gpu` to build one variant. CUDA-specific options
+such as `--cuda-architectures`, `--cuda-compiler`,
+`--torchvision-source-dir`, and `--repair` are forwarded to the underlying
+wheel builder.
+
+For an existing staged SDK, the lower-level scikit-build command remains
+available:
+
+```shell
+python -m pip wheel ./bindings/python \
+  --no-deps \
+  --wheel-dir dist/python \
+  --config-settings=cmake.define.DeepDetect_DIR="$PWD/build3/install/lib/cmake/DeepDetect"
+```
+
+Set `cmake.define.DEEPDETECT_PYTHON_BUNDLE_NATIVE=OFF` only for the old thin
+wheel that requires an external SDK and loader path configuration.
+
+### 5. Install the wheel
 
 Install the generated filename using the target environment's Python:
 
@@ -298,37 +351,26 @@ python -m pip install --force-reinstall --no-deps \
   dist/python/deepdetect-0.1.0-cp312-cp312-linux_x86_64.whl
 ```
 
-### 5. Configure runtime library discovery
-
-The wheel contains `deepdetect._native` and Python sources only. It does not
-bundle `libdeepdetect.so`, libtorch, torchvision, OpenCV, protobuf, CUDA, or
-cuDNN. The SDK install places `libtorchvision.so` beside
-`libdeepdetect.so`, but the dynamic loader must still find the exact LibTorch,
-CUDA, OpenCV, and protobuf libraries used by the native build.
-
-At minimum, add the staged SDK library directory:
+For release variants, install exactly one of the CPU or GPU distribution
+wheels:
 
 ```shell
-export LD_LIBRARY_PATH="$PWD/build3/install/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+python -m pip install --force-reinstall \
+  dist/python/release/gpu/deepdetect_gpu-0.1.0-cp312-cp312-linux_x86_64.whl
 ```
 
-For a prebuilt LibTorch build, add its library directory and any non-system
-CUDA runtime directories:
+### 6. Runtime library discovery
 
-```shell
-export LD_LIBRARY_PATH="$PWD/build3/install/lib:\
-$LIBTORCH_ROOT/lib:\
-/path/to/cudnn/lib:\
-/path/to/nccl/lib:\
-/path/to/cusparselt/lib:\
-/path/to/nvshmem/lib\
-${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-```
+No `LD_LIBRARY_PATH` is required for the bundled DeepDetect libraries. The
+extension imports `torch` before loading `_native`, validates that the
+installed torch version is `2.12.*`, and relies on wheel RPATHs to find
+DeepDetect libraries beside `_native` and libtorch under `site-packages/torch`.
+Use `ldd` on the installed `deepdetect/_native*.so` to diagnose unusual host
+CUDA runtime configurations.
 
-Remove placeholder runtime directories that are installed system-wide. When
-OpenCV or protobuf were built inside `build3`, add their directories too.
-
-For the legacy PyTorch source build, a typical loader path is:
+Only the thin-wheel developer mode with
+`DEEPDETECT_PYTHON_BUNDLE_NATIVE=OFF` requires manual loader configuration.
+For the legacy PyTorch source build, a typical external-SDK loader path is:
 
 ```shell
 export LD_LIBRARY_PATH="$PWD/build3/install/lib:\
@@ -339,10 +381,11 @@ $PWD/build3/pytorch_vision/src/pytorch_vision-install/lib\
 ${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 ```
 
-Use `ldd build3/install/lib/libdeepdetect.so` to identify any additional
-unresolved libraries required by the local CUDA or system configuration.
+In that mode, use `ldd build3/install/lib/libdeepdetect.so` to identify any
+additional unresolved libraries required by the local CUDA or system
+configuration.
 
-### 6. Verify the installation
+### 7. Verify the installation
 
 ```shell
 python -c "import deepdetect; print(deepdetect.DeepDetect().build_info)"
@@ -364,8 +407,8 @@ RapidJSON and internal C++ types. A C ABI through ctypes or cffi would improve
 language and compiler portability but requires explicit allocation, lifetime,
 and error-memory protocols. An embedded HTTP server or subprocess would reuse
 `dd_client` but adds serialization, ports, process management, and a second
-failure domain. Bundled wheels simplify installation but are deferred because
-libtorch and CUDA are large and strongly platform-specific.
+failure domain. Bundling libtorch and CUDA directly is avoided because those
+libraries are large and are already supplied by the PyTorch wheel stack.
 
 The JSON façade leaves room for a future stable C ABI, isolated runtime
 instances, transport-neutral clients, and optional buffer/tensor entry points
@@ -379,7 +422,7 @@ Version 0.1 is accepted when:
   deleted handles, polling, timeout, and cancellation using a fake runtime.
 - Native façade tests cover valid and malformed JSON, error responses, and
   exception containment.
-- The package builds and imports against installed CPU Torch SDKs on CPython
+- The package builds bundled Linux wheels against `torch==2.12.*` on CPython
   3.10 through 3.13.
 - CPU integration creates a Torch service, trains briefly, predicts, checks
   status, and deletes it.
