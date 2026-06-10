@@ -874,7 +874,18 @@ namespace dd
     int64_t log_batch_period = 20;
 
     if (ad_mllib.has("template_params"))
-      _template_params = ad_mllib;
+      {
+        APIData train_template_params = ad_mllib.getobj("template_params");
+        if (_template_params.has("nclasses")
+            && !train_template_params.has("nclasses"))
+          train_template_params.add(
+              "nclasses", _template_params.get("nclasses").get<int>());
+        if (_template_params.has("timesteps")
+            && !train_template_params.has("timesteps"))
+          train_template_params.add(
+              "timesteps", _template_params.get("timesteps").get<int>());
+        _template_params = train_template_params;
+      }
 
     if (ad_mllib.has("solver"))
       {
