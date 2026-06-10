@@ -24,6 +24,10 @@
 #include "torchdataset.h"
 #include "torchinputconns.h"
 
+#include <algorithm>
+#include <cstring>
+#include <numeric>
+
 namespace dd
 {
   void TorchDataset::db_finalize()
@@ -301,6 +305,7 @@ namespace dd
   {
     std::lock_guard<std::mutex> guard(_mutex);
     size_t data_size = 0;
+    _indices.clear();
 
     if (!_db)
       {
@@ -329,14 +334,50 @@ namespace dd
             _dbData->Open(_dbFullName, dbmode);
           }
 
-        if (!_dbCursor)
-          _dbCursor = _dbData->NewCursor();
+        if (_dbCursor)
+          {
+            delete _dbCursor;
+            _dbCursor = nullptr;
+          }
 
-        data_size = _dbData->Count() / 2;
+        db::Cursor *cursor = _dbData->NewCursor();
+        while (cursor->valid())
+          {
+            std::string key = cursor->key();
+            constexpr const char *data_suffix = "_data";
+            size_t suffix_len = std::strlen(data_suffix);
+            if (key.size() > suffix_len
+                && key.compare(key.size() - suffix_len, suffix_len,
+                               data_suffix)
+                       == 0)
+              {
+                std::string sid = key.substr(0, key.size() - suffix_len);
+                try
+                  {
+                    _indices.push_back(std::stoll(sid));
+                  }
+                catch (const std::exception &)
+                  {
+                    if (_logger)
+                      _logger->warn("Skipping unexpected db key {}", key);
+                  }
+              }
+            cursor->Next();
+          }
+        delete cursor;
+        cursor = nullptr;
+        data_size = _indices.size();
       }
 
-    _indices.resize(data_size);
-    std::iota(std::rbegin(_indices), std::rend(_indices), 0);
+    if (!_db)
+      {
+        _indices.resize(data_size);
+        std::iota(std::rbegin(_indices), std::rend(_indices), 0);
+      }
+    else
+      {
+        std::sort(std::rbegin(_indices), std::rend(_indices));
+      }
     if (_shuffle)
       {
         std::shuffle(_indices.begin(), _indices.end(), _rng);
@@ -612,30 +653,14 @@ namespace dd
                 // end of the dataset
                 break;
 
-              if (!_dbCursor->valid())
-                {
-                  delete _dbCursor;
-                  _dbCursor = _dbData->NewCursor();
-                }
-              std::string key = _dbCursor->key();
-              size_t pos = key.find("_data");
-              if (pos != std::string::npos)
-                {
-                  data_key << key;
-                  std::string sid = key.substr(0, pos);
-                  target_key << sid << "_target";
-                }
-              else // skip targets
-                {
-                  _dbCursor->Next();
-                  continue;
-                }
+              auto id = _indices.back();
+              _indices.pop_back();
+              data_key << id << "_data";
+              target_key << id << "_target";
               _dbData->Get(data_key.str(), datas);
               _dbData->Get(target_key.str(), targets);
-              _dbCursor->Next();
 
               --count;
-              _indices.pop_back();
               has_data = true;
             }
 
