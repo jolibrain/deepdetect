@@ -82,11 +82,13 @@ namespace dd
       {
         std::uniform_int_distribution<int64_t> index_distrib(
             0, _dataset._indices.size() - 1);
-        int64_t index = _dataset._indices[index_distrib(rng)];
+        int64_t index_pos = index_distrib(rng);
+        int64_t index = _dataset._indices[index_pos];
         std::string data;
         std::string target;
         _dataset.pop_db_elt(index, data, target);
         _test_datasets[0].add_db_elt(index, data, target);
+        _dataset._indices.erase(_dataset._indices.begin() + index_pos);
       }
     _test_datasets.db_finalize();
     _dataset.db_finalize();
