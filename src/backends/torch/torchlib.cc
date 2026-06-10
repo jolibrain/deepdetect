@@ -1626,21 +1626,27 @@ namespace dd
 
         if (!extract_layer.empty())
           {
-            for (int j = 0; j < batch_size; j++)
+            int64_t actual_batch_size = batch.data[0].size(0);
+            for (int64_t j = 0; j < actual_batch_size; j++)
               {
                 APIData rad;
+                size_t result_id = results_ads.size();
                 if (!inputc._ids.empty())
-                  rad.add("uri", inputc._ids.at(results_ads.size()));
+                  rad.add("uri", inputc._ids.at(result_id));
+                else if (!inputc._uris.empty())
+                  rad.add("uri", inputc._uris.at(result_id));
                 else
-                  rad.add("uri", std::to_string(results_ads.size()));
+                  rad.add("uri", std::to_string(result_id));
                 if (!inputc._meta_uris.empty())
-                  rad.add("meta_uri",
-                          inputc._meta_uris.at(results_ads.size()));
+                  rad.add("meta_uri", inputc._meta_uris.at(result_id));
                 if (!inputc._index_uris.empty())
-                  rad.add("index_uri",
-                          inputc._index_uris.at(results_ads.size()));
+                  rad.add("index_uri", inputc._index_uris.at(result_id));
                 rad.add("loss", static_cast<double>(0.0));
-                torch::Tensor fo = torch::flatten(output)
+                torch::Tensor sample_output
+                    = output.dim() > 0 && output.size(0) == actual_batch_size
+                          ? output[j]
+                          : output;
+                torch::Tensor fo = torch::flatten(sample_output)
                                        .contiguous()
                                        .to(torch::kFloat64)
                                        .to(torch::Device("cpu"));
