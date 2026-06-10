@@ -23,8 +23,12 @@ else
 fi
 DRY_RUN=0
 SKIP_BUILD=0
+BUILD_CPU=1
+BUILD_GPU=1
 FORCE_VERSION=""
 UPLOAD_USER=""
+CPU_PYTHON=""
+GPU_PYTHON=""
 
 usage() {
     cat >&2 <<EOF
@@ -40,10 +44,17 @@ Options:
   --base-url URL               Public wheel root URL (default: ${BASE_URL})
   --upload-method rsync|scp    Upload transport (default: ${UPLOAD_METHOD})
   --version VERSION            Override wheel version
+  --variant cpu|gpu|all        Build/stage selected wheel variant(s) (default: all)
+  --cpu-only                   Build/stage only CPU wheels
+  --gpu-only                   Build/stage only GPU wheels
   --skip-build                 Reuse existing wheels from ${WHEEL_DIR}
-  --dry-run                    Build and stage locally, but do not upload
+  --dry-run                    Build and stage locally, but do not upload or fetch remote indexes
+  --no-upload                  Alias for --dry-run
+  --local                      Alias for --dry-run
   --jobs N                     Parallel native build jobs (default: ${JOBS})
   --cmake PATH                 CMake executable (default: ${CMAKE_COMMAND})
+  --cpu-python PATH            Existing CPU build Python interpreter
+  --gpu-python PATH            Existing GPU build Python interpreter
   --cuda-architectures LIST    CMake CUDA architectures (default: ${CUDA_ARCHITECTURES})
   --gpu-torch-index-url URL    PyTorch GPU wheel index (default: ${GPU_TORCH_INDEX_URL})
   -h, --help                   Show this help
@@ -146,6 +157,26 @@ write_project_index() {
     } > "$root_index"
 }
 
+write_root_index() {
+    local root_index="$INDEX_DIR/simple/index.html"
+    local cpu_index_dir="$INDEX_DIR/simple/$(normalize_name "$CPU_NAME")"
+    local gpu_index_dir="$INDEX_DIR/simple/$(normalize_name "$GPU_NAME")"
+
+    mkdir -p "$INDEX_DIR/simple"
+    {
+        printf '<!doctype html>\n<html><body>\n'
+        if [ "$BUILD_CPU" -eq 1 ] || [ -d "$cpu_index_dir" ]; then
+            printf '<a href="%s/">%s</a><br>\n' \
+                "$(normalize_name "$CPU_NAME")" "$(normalize_name "$CPU_NAME")"
+        fi
+        if [ "$BUILD_GPU" -eq 1 ] || [ -d "$gpu_index_dir" ]; then
+            printf '<a href="%s/">%s</a><br>\n' \
+                "$(normalize_name "$GPU_NAME")" "$(normalize_name "$GPU_NAME")"
+        fi
+        printf '</body></html>\n'
+    } > "$root_index"
+}
+
 fetch_existing_wheelhouse() {
     [ "$DRY_RUN" -eq 0 ] || return 0
     [ "$UPLOAD_METHOD" = "rsync" ] || return 0
@@ -209,11 +240,41 @@ while [ "$#" -gt 0 ]; do
             FORCE_VERSION="${2:-}"
             shift 2
             ;;
+        --variant)
+            case "${2:-}" in
+                all)
+                    BUILD_CPU=1
+                    BUILD_GPU=1
+                    ;;
+                cpu)
+                    BUILD_CPU=1
+                    BUILD_GPU=0
+                    ;;
+                gpu)
+                    BUILD_CPU=0
+                    BUILD_GPU=1
+                    ;;
+                *)
+                    die "--variant must be one of: cpu, gpu, all"
+                    ;;
+            esac
+            shift 2
+            ;;
+        --cpu-only)
+            BUILD_CPU=1
+            BUILD_GPU=0
+            shift
+            ;;
+        --gpu-only)
+            BUILD_CPU=0
+            BUILD_GPU=1
+            shift
+            ;;
         --skip-build)
             SKIP_BUILD=1
             shift
             ;;
-        --dry-run)
+        --dry-run|--no-upload|--local)
             DRY_RUN=1
             shift
             ;;
@@ -223,6 +284,14 @@ while [ "$#" -gt 0 ]; do
             ;;
         --cmake)
             CMAKE_COMMAND="${2:-}"
+            shift 2
+            ;;
+        --cpu-python)
+            CPU_PYTHON="${2:-}"
+            shift 2
+            ;;
+        --gpu-python)
+            GPU_PYTHON="${2:-}"
             shift 2
             ;;
         --cuda-architectures)
@@ -243,6 +312,7 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+[ "$BUILD_CPU" -eq 1 ] || [ "$BUILD_GPU" -eq 1 ] || die "at least one wheel variant must be selected"
 [ -n "$UPLOAD_USER" ] || [ "$DRY_RUN" -eq 1 ] || die "--user is required"
 
 require_cmd git
@@ -253,38 +323,80 @@ version="$(computed_version)"
 echo "Wheel version: $version"
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
+    build_args=()
+    if [ "$BUILD_CPU" -eq 0 ]; then
+        build_args+=(--skip-cpu)
+    fi
+    if [ "$BUILD_GPU" -eq 0 ]; then
+        build_args+=(--skip-gpu)
+    fi
+    if [ -n "$CPU_PYTHON" ]; then
+        build_args+=(--cpu-python "$CPU_PYTHON")
+    fi
+    if [ -n "$GPU_PYTHON" ]; then
+        build_args+=(--gpu-python "$GPU_PYTHON")
+    fi
+
     python3 bindings/python/scripts/build_release_wheels.py \
         --distribution-version "$version" \
         --wheel-dir "$WHEEL_DIR" \
         --cmake "$CMAKE_COMMAND" \
         --jobs "$JOBS" \
         --gpu-torch-index-url "$GPU_TORCH_INDEX_URL" \
-        --cuda-architectures "$CUDA_ARCHITECTURES"
+        --cuda-architectures "$CUDA_ARCHITECTURES" \
+        "${build_args[@]}"
 fi
 
-cpu_glob="$(wheel_glob cpu)"
-gpu_glob="$(wheel_glob gpu)"
-compgen -G "$cpu_glob" >/dev/null || die "no CPU wheels found matching $cpu_glob"
-compgen -G "$gpu_glob" >/dev/null || die "no GPU wheels found matching $gpu_glob"
+if [ "$BUILD_CPU" -eq 1 ]; then
+    cpu_glob="$(wheel_glob cpu)"
+    compgen -G "$cpu_glob" >/dev/null || die "no CPU wheels found matching $cpu_glob"
+fi
+if [ "$BUILD_GPU" -eq 1 ]; then
+    gpu_glob="$(wheel_glob gpu)"
+    compgen -G "$gpu_glob" >/dev/null || die "no GPU wheels found matching $gpu_glob"
+fi
 
 rm -rf "$INDEX_DIR"
 fetch_existing_wheelhouse
-write_project_index "$CPU_NAME" cpu
-write_project_index "$GPU_NAME" gpu
+if [ "$BUILD_CPU" -eq 1 ]; then
+    write_project_index "$CPU_NAME" cpu
+fi
+if [ "$BUILD_GPU" -eq 1 ]; then
+    write_project_index "$GPU_NAME" gpu
+fi
+write_root_index
 
 cat <<EOF
 
 Generated simple indexes:
-  ${INDEX_DIR}/simple/$(normalize_name "$CPU_NAME")/index.html
-  ${INDEX_DIR}/simple/$(normalize_name "$GPU_NAME")/index.html
+EOF
+if [ "$BUILD_CPU" -eq 1 ]; then
+    echo "  ${INDEX_DIR}/simple/$(normalize_name "$CPU_NAME")/index.html"
+fi
+if [ "$BUILD_GPU" -eq 1 ]; then
+    echo "  ${INDEX_DIR}/simple/$(normalize_name "$GPU_NAME")/index.html"
+fi
+
+cat <<EOF
 
 Install commands after upload:
-  python -m pip install --extra-index-url ${BASE_URL}/simple ${CPU_NAME}
-  python -m pip install --extra-index-url ${BASE_URL}/simple ${GPU_NAME}
+EOF
+if [ "$BUILD_CPU" -eq 1 ]; then
+    echo "  python -m pip install --extra-index-url ${BASE_URL}/simple ${CPU_NAME}"
+fi
+if [ "$BUILD_GPU" -eq 1 ]; then
+    echo "  python -m pip install --extra-index-url ${BASE_URL}/simple ${GPU_NAME}"
+fi
+
+cat <<EOF
 
 Direct index URLs:
-  ${BASE_URL}/simple/$(normalize_name "$CPU_NAME")/
-  ${BASE_URL}/simple/$(normalize_name "$GPU_NAME")/
 EOF
+if [ "$BUILD_CPU" -eq 1 ]; then
+    echo "  ${BASE_URL}/simple/$(normalize_name "$CPU_NAME")/"
+fi
+if [ "$BUILD_GPU" -eq 1 ]; then
+    echo "  ${BASE_URL}/simple/$(normalize_name "$GPU_NAME")/"
+fi
 
 upload_wheelhouse
