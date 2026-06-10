@@ -1,6 +1,7 @@
 #include "deepdetect/runtime.h"
 
 #include "dd_config.h"
+#include "dd_spdlog.h"
 #include "jsonapi.h"
 
 #include <exception>
@@ -72,6 +73,28 @@ namespace
         return exception_response("unexpected native exception");
       }
   }
+
+  bool log_level_from_string(const std::string &value,
+                             spdlog::level::level_enum &level)
+  {
+    if (value == "trace")
+      level = spdlog::level::trace;
+    else if (value == "debug")
+      level = spdlog::level::debug;
+    else if (value == "info")
+      level = spdlog::level::info;
+    else if (value == "warn" || value == "warning")
+      level = spdlog::level::warn;
+    else if (value == "error" || value == "err")
+      level = spdlog::level::err;
+    else if (value == "critical")
+      level = spdlog::level::critical;
+    else if (value == "off")
+      level = spdlog::level::off;
+    else
+      return false;
+    return true;
+  }
 }
 
 namespace deepdetect
@@ -142,6 +165,43 @@ namespace deepdetect
     return contain_exceptions([&]() {
       std::shared_lock<std::shared_mutex> lock(_impl->mutex);
       return _impl->api.jrender(_impl->api.service_status(name));
+    });
+  }
+
+  std::string Runtime::set_log_level(const std::string &level) noexcept
+  {
+    return contain_exceptions([&]() {
+      std::unique_lock<std::shared_mutex> lock(_impl->mutex);
+      spdlog::level::level_enum parsed_level;
+      if (!log_level_from_string(level, parsed_level))
+        return std::string("{\"status\":{\"code\":400,\"msg\":\"BadRequest\",")
+               + "\"dd_code\":400,\"dd_msg\":\"invalid log level: "
+               + json_escape(level) + "\"}}";
+
+      spdlog::set_level(parsed_level);
+      return std::string("{\"status\":{\"code\":200,\"msg\":\"OK\"}}");
+    });
+  }
+
+  std::string Runtime::set_service_log_level(const std::string &name,
+                                             const std::string &level) noexcept
+  {
+    return contain_exceptions([&]() {
+      std::unique_lock<std::shared_mutex> lock(_impl->mutex);
+      auto logger = spdlog::get(name);
+      if (logger == nullptr)
+        return std::string("{\"status\":{\"code\":404,\"msg\":\"NotFound\",")
+               + "\"dd_code\":404,\"dd_msg\":\"service logger not found: "
+               + json_escape(name) + "\"}}";
+
+      spdlog::level::level_enum parsed_level;
+      if (!log_level_from_string(level, parsed_level))
+        return std::string("{\"status\":{\"code\":400,\"msg\":\"BadRequest\",")
+               + "\"dd_code\":400,\"dd_msg\":\"invalid log level: "
+               + json_escape(level) + "\"}}";
+
+      logger->set_level(parsed_level);
+      return std::string("{\"status\":{\"code\":200,\"msg\":\"OK\"}}");
     });
   }
 

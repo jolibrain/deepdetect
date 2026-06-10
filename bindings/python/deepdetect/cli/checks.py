@@ -1,0 +1,210 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+from PIL import Image
+
+
+def check_dataset_list(path: Path, *, expected_fields: int | None = None) -> dict[str, Any]:
+    path = path.expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"dataset list not found: {path}")
+    samples = 0
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        fields = line.split()
+        if expected_fields is not None and len(fields) != expected_fields:
+            raise ValueError(f"{path}:{line_number}: expected {expected_fields} fields")
+        samples += 1
+    if samples == 0:
+        raise ValueError(f"dataset list contains no samples: {path}")
+    return {"path": str(path), "samples": samples}
+
+
+def validate_segmentation_lists(list_paths: list[Path], nclasses: int) -> dict[str, Any]:
+    if nclasses <= 0:
+        raise ValueError("number of classes must be positive")
+    invalid_values: set[int] = set()
+    checked_masks = 0
+    for list_path in list_paths:
+        check_dataset_list(list_path, expected_fields=2)
+        for line_number, line in enumerate(
+            list_path.expanduser().resolve().read_text(encoding="utf-8").splitlines(),
+            1,
+        ):
+            if not line.strip():
+                continue
+            fields = line.split()
+            mask_path = Path(fields[1])
+            if not mask_path.is_file():
+                raise FileNotFoundError(
+                    f"{list_path}:{line_number}: mask not found: {mask_path}"
+                )
+            values = np.unique(np.asarray(Image.open(mask_path)))
+            invalid_values.update(
+                int(value) for value in values if int(value) >= nclasses
+            )
+            checked_masks += 1
+    if checked_masks == 0:
+        raise ValueError("segmentation dataset lists contain no samples")
+    if invalid_values:
+        values = ", ".join(str(value) for value in sorted(invalid_values))
+        raise ValueError(
+            f"the {nclasses}-class SegFormer configuration requires mask values "
+            f"from 0 through {nclasses - 1}; found: {values}"
+        )
+    return {"checked_masks": checked_masks, "nclasses": nclasses}
+
+
+def validate_detection_lists(list_paths: list[Path], nclasses: int) -> dict[str, Any]:
+    if nclasses <= 0:
+        raise ValueError("number of classes must be positive")
+    checked_images = 0
+    checked_bbox_files = 0
+    empty_bbox_files = 0
+    positive_boxes = 0
+    class_counts: dict[int, int] = {}
+    list_summaries = [
+        (list_path, check_dataset_list(list_path, expected_fields=2))
+        for list_path in list_paths
+    ]
+    total_samples = sum(summary["samples"] for _, summary in list_summaries)
+
+    progress = _progress(
+        total=total_samples,
+        desc="checking YOLOX dataset",
+        unit="sample",
+    )
+    try:
+        for list_path, _ in list_summaries:
+            list_path = list_path.expanduser().resolve()
+            for line_number, line in enumerate(
+                list_path.read_text(encoding="utf-8").splitlines(),
+                1,
+            ):
+                if not line.strip():
+                    continue
+                image_raw, bbox_raw = line.split()
+                image_path = Path(image_raw)
+                bbox_path = Path(bbox_raw)
+                if not image_path.is_file():
+                    raise FileNotFoundError(
+                        f"{list_path}:{line_number}: image not found: {image_path}"
+                    )
+                if not bbox_path.is_file():
+                    raise FileNotFoundError(
+                        f"{list_path}:{line_number}: bbox file not found: {bbox_path}"
+                    )
+
+                checked_images += 1
+                checked_bbox_files += 1
+                boxes_in_file = 0
+                for bbox_line_number, bbox_line in enumerate(
+                    bbox_path.read_text(encoding="utf-8").splitlines(),
+                    1,
+                ):
+                    if not bbox_line.strip():
+                        raise ValueError(
+                            f"{bbox_path}:{bbox_line_number}: empty bbox line"
+                        )
+                    fields = bbox_line.split()
+                    if len(fields) != 5:
+                        raise ValueError(
+                            f"{bbox_path}:{bbox_line_number}: expected 5 fields"
+                        )
+                    cls = int(fields[0])
+                    if cls <= 0 or cls >= nclasses:
+                        raise ValueError(
+                            f"{bbox_path}:{bbox_line_number}: invalid class {cls} "
+                            f"for nclasses={nclasses}"
+                        )
+                    for value in fields[1:]:
+                        float(value)
+                    class_counts[cls] = class_counts.get(cls, 0) + 1
+                    positive_boxes += 1
+                    boxes_in_file += 1
+                if boxes_in_file == 0:
+                    empty_bbox_files += 1
+                progress.update(1)
+    finally:
+        progress.close()
+
+    if checked_images == 0:
+        raise ValueError("detection dataset lists contain no samples")
+    return {
+        "checked_images": checked_images,
+        "checked_bbox_files": checked_bbox_files,
+        "empty_bbox_files": empty_bbox_files,
+        "positive_boxes": positive_boxes,
+        "class_counts": class_counts,
+        "nclasses": nclasses,
+    }
+
+
+def _progress(*, total: int, desc: str, unit: str):
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        return _NullProgress()
+    return tqdm(
+        total=total,
+        desc=desc,
+        unit=unit,
+        file=sys.stderr,
+        disable=not sys.stderr.isatty(),
+        leave=False,
+    )
+
+
+class _NullProgress:
+    def update(self, count: int) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+
+def run_training_checks(model: str, options: dict[str, Any]) -> list[dict[str, Any]]:
+    train_data = Path(options["train_data"])
+    test_data = Path(options["test_data"])
+    dataset_check = str(options.get("dataset_check", "full"))
+    if dataset_check == "none":
+        return [
+            {
+                "name": "dataset_validation",
+                "mode": "none",
+                "skipped": True,
+                "train_path": str(train_data.expanduser()),
+                "test_path": str(test_data.expanduser()),
+            }
+        ]
+    if dataset_check != "full":
+        raise ValueError("dataset_check must be one of: full, none")
+
+    checks = [
+        {"name": "train_list", **check_dataset_list(train_data)},
+        {"name": "test_list", **check_dataset_list(test_data)},
+    ]
+    if model == "segformer" and not options.get("skip_mask_validation", False):
+        checks.append(
+            {
+                "name": "segmentation_masks",
+                **validate_segmentation_lists(
+                    [train_data, test_data], int(options["nclasses"])
+                ),
+            }
+        )
+    if model == "yolox":
+        checks.append(
+            {
+                "name": "detection_bboxes",
+                **validate_detection_lists(
+                    [train_data, test_data], int(options["nclasses"])
+                ),
+            }
+        )
+    return checks

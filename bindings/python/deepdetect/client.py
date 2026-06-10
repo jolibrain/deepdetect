@@ -143,7 +143,18 @@ class DeepDetect:
             ensure_torch_runtime()
 
             _preload_native_dependencies()
-            from . import _native
+            try:
+                from . import _native
+            except ImportError as error:
+                raise ImportError(
+                    "deepdetect native extension 'deepdetect._native' could not "
+                    "be imported. Install and run a built DeepDetect Python "
+                    "wheel, or ensure the compiled _native extension is present "
+                    "next to deepdetect/__init__.py. Running "
+                    "`python -m deepdetect.cli.main` from the source tree "
+                    "imports the pure Python package and cannot load the native "
+                    "runtime unless that extension has been built in place."
+                ) from error
 
             _runtime = _native.runtime()
         self._runtime = _runtime
@@ -201,6 +212,12 @@ class DeepDetect:
     def service(self, name: str) -> "Service":
         normalized = _name(name)
         return Service(self, normalized, connector=self._connectors.get(normalized))
+
+    def set_log_level(self, level: str) -> None:
+        _checked(self._runtime.set_log_level(str(level)))
+
+    def set_service_log_level(self, name: str, level: str) -> None:
+        _checked(self._runtime.set_service_log_level(_name(name), str(level)))
 
 
 class Service:
@@ -296,10 +313,15 @@ class TrainingJob:
         self.service = service
         self.job = job
 
-    def status(self) -> dict[str, Any]:
+    def status(
+        self, *, output_parameters: Mapping[str, Any] | None = None
+    ) -> dict[str, Any]:
         self.service._active()
-        request = _json({"service": self.service.name, "job": self.job})
-        response = _checked(self.service._client._runtime.training_status(request))
+        request: dict[str, Any] = {"service": self.service.name, "job": self.job}
+        if output_parameters is not None:
+            request["parameters"] = {"output": dict(output_parameters)}
+        request_json = _json(request)
+        response = _checked(self.service._client._runtime.training_status(request_json))
         result = dict(response.get("body", {}))
         head = response.get("head", {})
         for key in ("job", "status", "time"):

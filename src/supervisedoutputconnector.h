@@ -907,7 +907,8 @@ namespace dd
                       meas_out.add(key, static_cast<double>(e.second));
                       fp_mean += static_cast<double>(e.second);
                     }
-                  fp_mean /= fp_by_cls.size();
+                  if (!fp_by_cls.empty())
+                    fp_mean /= fp_by_cls.size();
                   meas_out.add("fp", fp_mean);
                 }
 
@@ -2619,7 +2620,10 @@ namespace dd
 
       for (auto &e : count_by_cls)
         {
-          fp_by_cls[e.first] /= e.second;
+          if (e.second > 0)
+            fp_by_cls[e.first] /= e.second;
+          else
+            fp_by_cls[e.first] = 0.0;
         }
     }
 
