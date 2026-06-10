@@ -100,6 +100,12 @@ namespace dd
      * \brief Convert IValue to Tensor and throw an exception if the IValue is
      * not a Tensor.
      */
+    torch::Tensor to_tensor(const c10::IValue &value);
+
+    /**
+     * \brief Convert IValue to Tensor, throw an exception if the IValue is not
+     * a Tensor, and normalize floating point outputs to float32.
+     */
     torch::Tensor to_tensor_safe(const c10::IValue &value);
 
     /**

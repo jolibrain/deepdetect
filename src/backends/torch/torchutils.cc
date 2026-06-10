@@ -52,12 +52,17 @@ namespace dd
       return success;
     }
 
-    torch::Tensor to_tensor_safe(const c10::IValue &value)
+    torch::Tensor to_tensor(const c10::IValue &value)
     {
       if (!value.isTensor())
         throw MLLibInternalException("Expected Tensor, found "
                                      + value.tagKind());
-      torch::Tensor t = value.toTensor();
+      return value.toTensor();
+    }
+
+    torch::Tensor to_tensor_safe(const c10::IValue &value)
+    {
+      torch::Tensor t = to_tensor(value);
       if (t.scalar_type() == torch::kFloat16
           || t.scalar_type() == torch::kFloat64)
         return t.to(torch::kFloat32);

@@ -44,6 +44,17 @@ using namespace torch;
 
 namespace dd
 {
+  namespace
+  {
+    Tensor to_module_dtype_if_floating(Tensor tensor, Dtype dtype)
+    {
+      auto scalar_type = tensor.scalar_type();
+      if (scalar_type == torch::kFloat16 || scalar_type == torch::kFloat32
+          || scalar_type == torch::kFloat64)
+        return tensor.to(dtype);
+      return tensor;
+    }
+  }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
@@ -1577,8 +1588,7 @@ namespace dd
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
           {
-            if (tensor.scalar_type() == torch::kFloat32)
-              tensor = tensor.to(_dtype);
+            tensor = to_module_dtype_if_floating(tensor, _module._dtype);
             in_vals.push_back(tensor.to(_main_device));
           }
         this->_stats.inc_inference_count(batch.data[0].size(0));
@@ -2148,7 +2158,10 @@ namespace dd
           }
         std::vector<c10::IValue> in_vals;
         for (Tensor tensor : batch.data)
-          in_vals.push_back(tensor.to(_main_device));
+          {
+            tensor = to_module_dtype_if_floating(tensor, _module._dtype);
+            in_vals.push_back(tensor.to(_main_device));
+          }
 
         Tensor output;
         c10::IValue out_ivalue;

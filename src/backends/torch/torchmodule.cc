@@ -324,9 +324,9 @@ namespace dd
   {
     // graph and native modules take only one tensor as input for now
     if (_graph)
-      return _graph->forward(torch_utils::to_tensor_safe(source[0]));
+      return _graph->forward(torch_utils::to_tensor(source[0]));
     if (_native)
-      return _native->forward(torch_utils::to_tensor_safe(source[0]));
+      return _native->forward(torch_utils::to_tensor(source[0]));
     if (_traced)
       {
         if (!forward_method.empty())
@@ -372,11 +372,11 @@ namespace dd
     // graph and native modules take only one tensor as input for now
     if (_linear_head)
       {
-        out_val = _linear_head->forward(torch_utils::to_tensor_safe(out_val));
+        out_val = _linear_head->forward(torch_utils::to_tensor(out_val));
       }
     else if (_crnn_head)
       {
-        out_val = _crnn_head->forward(torch_utils::to_tensor_safe(out_val));
+        out_val = _crnn_head->forward(torch_utils::to_tensor(out_val));
       }
     return out_val;
   }
@@ -385,10 +385,10 @@ namespace dd
                                    std::string extract_layer)
   {
     if (_graph) // native modules take only one tensor as input for now
-      return _graph->extract(torch_utils::to_tensor_safe(source[0]),
+      return _graph->extract(torch_utils::to_tensor(source[0]),
                              extract_layer);
     if (_native)
-      return _native->extract(torch_utils::to_tensor_safe(source[0]),
+      return _native->extract(torch_utils::to_tensor(source[0]),
                               extract_layer);
     auto output = _traced->forward(source);
     source = torch_utils::unwrap_c10_vector(output);
