@@ -1854,93 +1854,108 @@ namespace dd
                   output = torch_utils::to_tensor_safe(out_ivalue);
                 output = torch::softmax(output, 1);
 
-                int imgsize = inputc.width() * inputc.height();
-                torch::Tensor segmap;
-                torch::Tensor confmap;
-                std::tuple<torch::Tensor, torch::Tensor> maxmap;
-                if (!confidences.empty()) // applies "best" confidence lookup
+                for (int64_t i = 0; i < output.size(0); ++i)
                   {
-                    maxmap = torch::max(output.clone().squeeze(), 0, false);
-                    confmap = torch::flatten(std::get<0>(maxmap))
-                                  .contiguous()
-                                  .to(torch::kFloat64)
-                                  .to(cpu);
-                    segmap = torch::flatten(std::get<1>(maxmap))
-                                 .contiguous()
-                                 .to(torch::kFloat64)
-                                 .to(cpu);
-                  }
-                else
-                  {
-                    if (confidence_threshold == 0)
-                      segmap
-                          = torch::flatten(torch::argmax(output.squeeze(), 0))
-                                .contiguous()
-                                .to(torch::kFloat64)
-                                .to(cpu); // squeeze removes the batch size
+                    torch::Tensor sample = output[i]; // [classes, H, W]
+                    int map_height = static_cast<int>(sample.size(1));
+                    int map_width = static_cast<int>(sample.size(2));
+                    int imgsize = map_height * map_width;
 
-                    else // filter out classes with confidence_threshold
+                    torch::Tensor segmap;
+                    torch::Tensor confmap;
+                    if (!confidences.empty())
                       {
-                        auto non_bg = output.squeeze().narrow(
-                            0, 1, output.size(0) - 1);
-                        const float neg_inf
-                            = -std::numeric_limits<float>::infinity();
-                        non_bg.masked_fill_(non_bg < confidence_threshold,
-                                            neg_inf);
-                        segmap = torch::flatten(std::get<1>(output.max(1)))
+                        // Applies "best" confidence lookup.
+                        std::tuple<torch::Tensor, torch::Tensor> maxmap
+                            = torch::max(sample, 0, false);
+                        confmap = torch::flatten(std::get<0>(maxmap))
+                                      .contiguous()
+                                      .to(torch::kFloat64)
+                                      .to(cpu);
+                        segmap = torch::flatten(std::get<1>(maxmap))
                                      .contiguous()
                                      .to(torch::kFloat64)
                                      .to(cpu);
                       }
-                  }
+                    else if (confidence_threshold == 0 || sample.size(0) <= 1)
+                      {
+                        segmap = torch::flatten(torch::argmax(sample, 0))
+                                     .contiguous()
+                                     .to(torch::kFloat64)
+                                     .to(cpu);
+                      }
+                    else // filter out classes with confidence_threshold
+                      {
+                        torch::Tensor thresholded = sample.clone();
+                        auto non_bg
+                            = thresholded.narrow(0, 1, sample.size(0) - 1);
+                        const float neg_inf
+                            = -std::numeric_limits<float>::infinity();
+                        non_bg.masked_fill_(non_bg < confidence_threshold,
+                                            neg_inf);
+                        segmap
+                            = torch::flatten(std::get<1>(
+                                  torch::max(thresholded, 0, false)))
+                                  .contiguous()
+                                  .to(torch::kFloat64)
+                                  .to(cpu);
+                      }
 
-                APIData rad;
-                std::string uri;
-                if (!inputc._ids.empty())
-                  uri = inputc._ids.at(results_ads.size());
-                else
-                  uri = std::to_string(results_ads.size());
-                rad.add("uri", uri);
-                rad.add("loss", static_cast<double>(0.0));
-                double *startout = segmap.data_ptr<double>();
-                std::vector<double> vals(startout,
-                                         startout + torch::numel(segmap));
-                std::vector<double> confs;
-                if (!confidences.empty())
-                  {
-                    startout = confmap.data_ptr<double>();
-                    confs = std::vector<double>(
-                        startout, startout + torch::numel(confmap));
-                  }
-
-                auto bit = inputc._imgs_size.find(uri);
-                APIData ad_imgsize;
-                ad_imgsize.add("height", (*bit).second.first);
-                ad_imgsize.add("width", (*bit).second.second);
-                rad.add("imgsize", ad_imgsize);
-
-                if (imgsize
-                    != (*bit).second.first
-                           * (*bit).second.second) // resizing output
-                                                   // segmentation array
-                  {
-                    vals = ImgInputFileConn::img_resize_vector(
-                        vals, inputc.height(), inputc.width(),
-                        (*bit).second.first, (*bit).second.second, true);
+                    APIData rad;
+                    std::string uri;
+                    if (!inputc._ids.empty())
+                      uri = inputc._ids.at(results_ads.size());
+                    else if (!inputc._uris.empty())
+                      uri = inputc._uris.at(results_ads.size());
+                    else
+                      uri = std::to_string(results_ads.size());
+                    rad.add("uri", uri);
+                    rad.add("loss", static_cast<double>(0.0));
+                    double *startout = segmap.data_ptr<double>();
+                    std::vector<double> vals(startout,
+                                             startout + torch::numel(segmap));
+                    std::vector<double> confs;
                     if (!confidences.empty())
-                      confs = ImgInputFileConn::img_resize_vector(
-                          confs, inputc.height(), inputc.width(),
-                          (*bit).second.first, (*bit).second.second, false);
-                  }
+                      {
+                        startout = confmap.data_ptr<double>();
+                        confs = std::vector<double>(
+                            startout, startout + torch::numel(confmap));
+                      }
 
-                rad.add("vals", vals);
-                if (!confidences.empty())
-                  {
-                    APIData vconfs;
-                    vconfs.add("best", confs);
-                    rad.add("confidences", vconfs);
+                    auto bit = inputc._imgs_size.find(uri);
+                    if (bit == inputc._imgs_size.end())
+                      throw MLLibInternalException(
+                          "Couldn't find original image size for " + uri);
+
+                    APIData ad_imgsize;
+                    ad_imgsize.add("height", (*bit).second.first);
+                    ad_imgsize.add("width", (*bit).second.second);
+                    rad.add("imgsize", ad_imgsize);
+
+                    if (imgsize
+                        != (*bit).second.first
+                               * (*bit).second.second) // resizing output
+                                                       // segmentation array
+                      {
+                        vals = ImgInputFileConn::img_resize_vector(
+                            vals, map_height, map_width, (*bit).second.first,
+                            (*bit).second.second, true);
+                        if (!confidences.empty())
+                          confs = ImgInputFileConn::img_resize_vector(
+                              confs, map_height, map_width,
+                              (*bit).second.first, (*bit).second.second,
+                              false);
+                      }
+
+                    rad.add("vals", vals);
+                    if (!confidences.empty())
+                      {
+                        APIData vconfs;
+                        vconfs.add("best", confs);
+                        rad.add("confidences", vconfs);
+                      }
+                    results_ads.push_back(rad);
                   }
-                results_ads.push_back(rad);
               }
             else if (_regression)
               {
