@@ -886,6 +886,11 @@ namespace dd
     std::vector<at::Tensor> classes;
 
     std::ifstream infile(bboxfname);
+    if (!infile.is_open())
+      {
+        throw InputConnectorBadParamException("Could not open bbox file: "
+                                             + bboxfname);
+      }
     std::string line;
     double wfactor = inputc->_width > 0 ? static_cast<double>(inputc->_width)
                                               / static_cast<double>(orig_width)

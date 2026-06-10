@@ -23,15 +23,72 @@
 #include "utils/utils.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/trim.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
 namespace dd
 {
-  int TorchModel::read_from_repository(
-      const std::shared_ptr<spdlog::logger> &logger)
+  namespace
   {
+    std::string read_best_iteration(const std::string &path)
+    {
+      std::ifstream bestfile(path);
+      if (!bestfile.is_open())
+        throw MLLibBadParamException("could not open best model file " + path);
+      std::string line;
+      while (std::getline(bestfile, line))
+        {
+          size_t separator = line.find(':');
+          if (separator == std::string::npos)
+            continue;
+          std::string key = boost::algorithm::trim_copy(
+              line.substr(0, separator));
+          if (key != "iteration")
+            continue;
+          std::string iteration = boost::algorithm::trim_copy(
+              line.substr(separator + 1));
+          if (iteration.empty())
+            break;
+          return iteration;
+        }
+      throw MLLibBadParamException(
+          "best model file does not contain a valid iteration entry: " + path);
+    }
+
+    std::string existing_checkpoint(const std::string &repo,
+                                    const std::string &iteration,
+                                    const std::string &extension)
+    {
+      std::string path = repo + "/checkpoint-" + iteration + extension;
+      return fileops::file_exists(path) ? path : "";
+    }
+  }
+
+  std::string TorchModel::resume_from_parameter(const APIData &adg)
+  {
+    if (!adg.has("parameters"))
+      return "";
+    APIData parameters = adg.getobj("parameters");
+    if (!parameters.has("mllib"))
+      return "";
+    APIData mllib = parameters.getobj("mllib");
+    if (!mllib.has("resume_from"))
+      return "";
+    return mllib.get("resume_from").get<std::string>();
+  }
+
+  int TorchModel::read_from_repository(
+      const std::shared_ptr<spdlog::logger> &logger,
+      const std::string &resume_from)
+  {
+    if (!resume_from.empty() && resume_from != "latest"
+        && resume_from != "best")
+      {
+        throw MLLibBadParamException(
+            "resume_from must be one of: latest, best");
+      }
 
     const std::string head_weights_ext = ".ptw";
     const std::string native_ext = ".npt";
@@ -114,6 +171,38 @@ namespace dd
     _sstate = sstatef;
     _proto = protof;
     _native = nativef;
+
+    if (resume_from == "best")
+      {
+        std::string iteration = read_best_iteration(
+            _repo + this->_best_model_filename);
+        std::string best_sstate = _repo + "/solver-" + iteration + ".pt";
+        if (!fileops::file_exists(best_sstate))
+          {
+            std::string msg = "could not find best solver state "
+                              + best_sstate;
+            logger->error(msg);
+            throw MLLibBadParamException(msg);
+          }
+        std::string best_traced = existing_checkpoint(_repo, iteration,
+                                                      traced_ext);
+        std::string best_native = existing_checkpoint(_repo, iteration,
+                                                      native_ext);
+        std::string best_head_weights = existing_checkpoint(
+            _repo, iteration, head_weights_ext);
+        if (best_traced.empty() && best_native.empty()
+            && best_head_weights.empty())
+          {
+            std::string msg = "could not find best checkpoint for iteration "
+                              + iteration + " in repository " + _repo;
+            logger->error(msg);
+            throw MLLibBadParamException(msg);
+          }
+        _traced = best_traced;
+        _native = best_native;
+        _head_weights = best_head_weights;
+        _sstate = best_sstate;
+      }
 
     return 0;
   }

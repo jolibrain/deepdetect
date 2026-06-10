@@ -84,7 +84,8 @@ namespace dd
 
     int test(const APIData &ad, TInputConnectorStrategy &inputc,
              TorchDataset &dataset, int batch_size, APIData &out,
-             size_t test_id = 0, const std::string &test_name = "");
+             size_t test_id = 0, const std::string &test_name = "",
+             bool update_progress = false, size_t test_sets_total = 1);
 
     std::vector<APIData> get_bbox_stats(const at::Tensor &targ_bboxes,
                                         const at::Tensor &targ_labels,

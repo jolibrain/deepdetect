@@ -45,7 +45,7 @@ namespace dd
                const std::shared_ptr<spdlog::logger> &logger)
         : MLModel(ad, adg, logger)
     {
-      read_from_repository(spdlog::get("api"));
+      read_from_repository(spdlog::get("api"), resume_from_parameter(adg));
       read_corresp_file();
     }
 
@@ -60,7 +60,8 @@ namespace dd
     /**
      * find files in repo
      */
-    int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
+    int read_from_repository(const std::shared_ptr<spdlog::logger> &logger,
+                             const std::string &resume_from = "");
 
     /** Copy source repository to target repository. */
     int copy_to_target(const std::string &source_repo,
@@ -70,6 +71,8 @@ namespace dd
     void update_config_json_parameters(
         const std::string &target_repo,
         const std::shared_ptr<spdlog::logger> &logger);
+
+    static std::string resume_from_parameter(const APIData &adg);
 
   public:
     std::string _traced;       /**< path of the traced part of the net. */

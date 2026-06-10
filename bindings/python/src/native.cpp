@@ -19,6 +19,11 @@ PYBIND11_MODULE(_native, module)
            py::call_guard<py::gil_scoped_release>())
       .def("service_info", &deepdetect::Runtime::service_info,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_log_level", &deepdetect::Runtime::set_log_level,
+           py::arg("level"), py::call_guard<py::gil_scoped_release>())
+      .def("set_service_log_level", &deepdetect::Runtime::set_service_log_level,
+           py::arg("name"), py::arg("level"),
+           py::call_guard<py::gil_scoped_release>())
       .def("delete_service", &deepdetect::Runtime::delete_service,
            py::arg("name"), py::arg("request") = "{}",
            py::call_guard<py::gil_scoped_release>())

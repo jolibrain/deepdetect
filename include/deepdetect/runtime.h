@@ -22,6 +22,9 @@ namespace deepdetect
     std::string create_service(const std::string &name,
                                const std::string &request) noexcept;
     std::string service_info(const std::string &name) const noexcept;
+    std::string set_log_level(const std::string &level) noexcept;
+    std::string set_service_log_level(const std::string &name,
+                                      const std::string &level) noexcept;
     std::string delete_service(const std::string &name,
                                const std::string &request = "{}") noexcept;
     std::string predict(const std::string &request) noexcept;

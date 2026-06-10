@@ -2093,10 +2093,26 @@ namespace dd
                                TorchMultipleDataset &testsets, int batch_size,
                                APIData &out)
   {
-    for (size_t i = 0; i < testsets.size(); ++i)
-      test(ad, inputc, testsets[i], batch_size, out, i, testsets.name(i));
+    this->add_meas("test_active", 1.0);
+    this->add_meas("test_sets_total", static_cast<double>(testsets.size()));
+    this->add_meas("test_set_index", 0.0);
+    this->add_meas("test_processed", 0.0);
+    this->add_meas("test_total", 0.0);
+
+    try
+      {
+        for (size_t i = 0; i < testsets.size(); ++i)
+          test(ad, inputc, testsets[i], batch_size, out, i, testsets.name(i),
+               true, testsets.size());
+      }
+    catch (...)
+      {
+        this->add_meas("test_active", 0.0);
+        throw;
+      }
 
     SupervisedOutput::aggregate_multiple_testsets(out);
+    this->add_meas("test_active", 0.0);
     return 0;
   }
 
@@ -2107,12 +2123,35 @@ namespace dd
                                TInputConnectorStrategy &inputc,
                                TorchDataset &dataset, int batch_size,
                                APIData &out, size_t test_id,
-                               const std::string &test_name)
+                               const std::string &test_name,
+                               bool update_progress, size_t test_sets_total)
   {
     APIData ad_res;
     APIData ad_bbox;
     APIData ad_out = ad.getobj("parameters").getobj("output");
     int nclasses = _masked_lm ? inputc.vocab_size() : _nclasses;
+    size_t processed = 0;
+    c10::optional<size_t> dataset_size = dataset.size();
+    size_t test_total = dataset_size.has_value() ? *dataset_size : 0;
+    size_t test_crop_samples = 1;
+    if (dataset._test && dataset._img_rand_aug_cv._crop_params._crop_size > 0)
+      {
+        int crop_samples = dataset._img_rand_aug_cv._crop_params
+                               ._test_crop_samples;
+        test_crop_samples = crop_samples > 0
+                                ? static_cast<size_t>(crop_samples)
+                                : 1;
+      }
+
+    if (update_progress)
+      {
+        this->add_meas("test_active", 1.0);
+        this->add_meas("test_set_index", static_cast<double>(test_id));
+        this->add_meas("test_sets_total",
+                       static_cast<double>(test_sets_total));
+        this->add_meas("test_processed", 0.0);
+        this->add_meas("test_total", static_cast<double>(test_total));
+      }
 
     // reset data aug test random generator
     dataset._img_rand_aug_cv.reset_rnd_test_gen();
@@ -2149,6 +2188,16 @@ namespace dd
     int entry_id = 0;
     for (TorchBatch batch : *dataloader)
       {
+        size_t source_batch_size = 0;
+        if (!batch.data.empty() && batch.data[0].sizes().size() > 0)
+          {
+            size_t tensor_batch_size
+                = static_cast<size_t>(batch.data[0].size(0));
+            source_batch_size
+                = (tensor_batch_size + test_crop_samples - 1)
+                  / test_crop_samples;
+          }
+
         if (_masked_lm)
           {
             batch = inputc.generate_masked_lm_batch(batch);
@@ -2411,6 +2460,13 @@ namespace dd
           }
         // this->_logger->info("Testing: {}/{} entries processed", entry_id,
         // test_size);
+        if (update_progress)
+          {
+            processed += source_batch_size;
+            if (test_total > 0 && processed > test_total)
+              processed = test_total;
+            this->add_meas("test_processed", static_cast<double>(processed));
+          }
       }
 
     ad_res.add("iteration",
@@ -2482,7 +2538,7 @@ namespace dd
       std::vector<double> fp_d;
       // 1 if false pos, 0 otherwise
       std::vector<int> fp_i;
-      int num_pos;
+      int num_pos = 0;
       // XXX: fp variables are useless since tp_d == fp_d & tp_i == !fp_i
       // This could be refactored along with supervised output
       // connector

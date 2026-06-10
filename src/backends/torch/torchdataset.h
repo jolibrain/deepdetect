@@ -189,10 +189,22 @@ namespace dd
     }
 
     /**
-     * \brief Size of data loaded in memory
+     * \brief Size of the dataset when known
      */
     c10::optional<size_t> size() const override
     {
+      if (!_lfiles.empty())
+        return _lfiles.size();
+      if (!_lfilesseg.empty())
+        return _lfilesseg.size();
+      if (!_lfilesbbox.empty())
+        return _lfilesbbox.size();
+      if (!_batches.empty())
+        return cache_size();
+      if (_db && _dbData)
+        return _dbData->Count() / 2;
+      if (!_indices.empty())
+        return _indices.size();
       return cache_size();
     }
 

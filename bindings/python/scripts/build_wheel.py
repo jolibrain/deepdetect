@@ -273,7 +273,7 @@ def main() -> None:
     )
 
     env = os.environ.copy()
-    env.setdefault("CCACHE_DISABLE", "1")
+    #env.setdefault("CCACHE_DISABLE", "1")
     env["CMAKE_EXECUTABLE"] = str(Path(args.cmake).resolve())
 
     if not args.skip_native_build:

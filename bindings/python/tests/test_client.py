@@ -189,6 +189,25 @@ def test_job_wait_and_cancel(monkeypatch):
     assert runtime.calls[-1] == ("cancel", {"service": "classifier", "job": 7})
 
 
+def test_job_status_accepts_output_parameters():
+    runtime, _, service = make_service()
+    runtime.statuses = ["running"]
+    job = TrainingJob(service, 7)
+
+    job.status(output_parameters={"measure_hist": True, "max_hist_points": 10})
+
+    assert runtime.calls[-1] == (
+        "status",
+        {
+            "service": "classifier",
+            "job": 7,
+            "parameters": {
+                "output": {"measure_hist": True, "max_hist_points": 10}
+            },
+        },
+    )
+
+
 def test_job_timeout(monkeypatch):
     _, _, service = make_service()
     job = TrainingJob(service, 7)

@@ -9,7 +9,7 @@ description = "In-process Python bindings for DeepDetect"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "LGPL-3.0-or-later"}
-dependencies = ["numpy>=1.23", "Pillow>=9", "torch==2.12.*"]
+dependencies = ["numpy>=1.23", "nvidia-ml-py>=12", "Pillow>=9", "PyYAML>=6", "rich>=13.7", "torch==2.12.*", "tqdm>=4.66"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -27,6 +27,9 @@ classifiers = [
 build = ["auditwheel>=6"]
 test = ["pytest>=7"]
 
+[project.scripts]
+deepdetect = "deepdetect.cli.main:main"
+
 [tool.scikit-build]
 cmake.version = ">=3.15"
 wheel.packages = ["deepdetect"]
@@ -34,6 +37,9 @@ sdist.include = [
   "CMakeLists.txt",
   "README.md",
   "deepdetect/*.py",
+  "deepdetect/**/*.py",
+  "deepdetect/cli/*.md",
+  "deepdetect/cli/*.yaml",
   "examples/*.py",
   "scripts/*.py",
   "src/native.cpp",
