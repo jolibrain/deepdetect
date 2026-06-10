@@ -1237,7 +1237,8 @@ namespace dd
               }
             last_it_time = 0;
 
-            if ((elapsed_it % test_interval == 0 && eval_dataset.size() != 0)
+            if ((test_interval > 0 && elapsed_it % test_interval == 0
+                 && eval_dataset.size() != 0)
                 || elapsed_it == iterations)
               {
                 APIData meas_out;
