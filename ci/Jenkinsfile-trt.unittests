@@ -23,7 +23,7 @@ pipeline {
           docker.build(
             env.DOCKER_IMAGE,
             "--build-arg DEEPDETECT_OPENCV4_BUILD_PATH=${env.DEEPDETECT_OPENCV4_BUILD_PATH} " +
-            "-f ci/devel-trt.Dockerfile --no-cache ."
+            "-f ci/devel-trt.Dockerfile ."
           )
         }
         // post can't access to ${env.XX} so we have to use stupid hack, thx Jenkins...
