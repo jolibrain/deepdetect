@@ -47,7 +47,7 @@ namespace dd
       _momentum = ad_solver.get("momentum").get<double>();
     if (ad_solver.has("beta1"))
       _beta1 = ad_solver.get("beta1").get<double>();
-    if (ad_solver.has("beta"))
+    if (ad_solver.has("beta2"))
       _beta2 = ad_solver.get("beta2").get<double>();
     if (ad_solver.has("clip"))
       _clip = ad_solver.get("clip").get<bool>();
