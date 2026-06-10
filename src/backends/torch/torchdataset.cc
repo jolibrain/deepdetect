@@ -233,12 +233,14 @@ namespace dd
 
     if (width > 0 && height > 0 && (bgr.cols != width || bgr.rows != height))
       {
+        int orig_cols = bgr.cols;
+        int orig_rows = bgr.rows;
         cv::resize(bgr, bgr, cv::Size(width, height), 0, 0, cv::INTER_CUBIC);
 
         if (_bbox)
           {
-            float w_ratio = static_cast<float>(width) / bgr.cols;
-            float h_ratio = static_cast<float>(height) / bgr.rows;
+            float w_ratio = static_cast<float>(width) / orig_cols;
+            float h_ratio = static_cast<float>(height) / orig_rows;
             for (int bb = 0; bb < (int)targett[0].size(0); ++bb)
               {
                 targett[0][bb][0] *= w_ratio;
