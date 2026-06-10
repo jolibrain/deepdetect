@@ -25,7 +25,7 @@ pipeline {
             "--build-arg DD_CUDA_VERSION=${env.DD_CUDA_VERSION} " +
             "--build-arg DEEPDETECT_GPU_VARIANT=${env.DEEPDETECT_GPU_VARIANT} " +
             "--build-arg PYTORCH_CUDA_INDEX=${env.PYTORCH_CUDA_INDEX} " +
-            "-f ci/devel.Dockerfile --no-cache ."
+            "-f ci/devel.Dockerfile ."
           )
         }
         // post can't access to ${env.XX} so we have to use stupid hack, thx Jenkins...
