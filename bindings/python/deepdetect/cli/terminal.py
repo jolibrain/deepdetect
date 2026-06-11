@@ -134,6 +134,7 @@ class LiveTrainingTerminalReporter:
     def _render(self):
         from rich.panel import Panel
         from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+        from rich.rule import Rule
         from rich.table import Table
 
         table = Table.grid(padding=(0, 1))
@@ -153,6 +154,7 @@ class LiveTrainingTerminalReporter:
             )
         )
         table.add_row(f"[bold]loss[/] {_format_values(self._loss_values(), empty='pending')}")
+        table.add_row(Rule(style="dim"))
         if _finite_float(self._measure.get("test_active")) == 1.0:
             table.add_row(self._test_progress(Progress, SpinnerColumn, TextColumn, BarColumn))
         table.add_row(
