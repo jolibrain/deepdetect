@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <set>
 #include <torch/csrc/jit/runtime/graph_executor.h>
 
 #include "native/native.h"
@@ -53,6 +54,63 @@ namespace dd
           || scalar_type == torch::kFloat64)
         return tensor.to(dtype);
       return tensor;
+    }
+
+    std::set<int>
+    requested_test_prediction_indices(const APIData &ad_out, size_t test_id)
+    {
+      std::set<int> indices;
+      if (!ad_out.has("test_predictions"))
+        return indices;
+
+      APIData cfg = ad_out.getobj("test_predictions");
+      if (cfg.has("enabled") && !cfg.get("enabled").get<bool>())
+        return indices;
+      if (!cfg.has("indices"))
+        return indices;
+
+      APIData indices_cfg = cfg.getobj("indices");
+      std::string key = "test" + std::to_string(test_id);
+      if (!indices_cfg.has(key))
+        return indices;
+
+      std::vector<int> requested = indices_cfg.get(key).get<std::vector<int>>();
+      for (int index : requested)
+        if (index >= 0)
+          indices.insert(index);
+      return indices;
+    }
+
+    double test_prediction_confidence_threshold(const APIData &ad_out)
+    {
+      if (!ad_out.has("test_predictions"))
+        return 0.0;
+      APIData cfg = ad_out.getobj("test_predictions");
+      if (!cfg.has("confidence_threshold"))
+        return 0.0;
+      return cfg.get("confidence_threshold").get<double>();
+    }
+
+    int test_prediction_best_bbox(const APIData &ad_out)
+    {
+      if (!ad_out.has("test_predictions"))
+        return -1;
+      APIData cfg = ad_out.getobj("test_predictions");
+      if (!cfg.has("best_bbox"))
+        return -1;
+      return cfg.get("best_bbox").get<int>();
+    }
+
+    std::string test_prediction_uri(const TorchDataset &dataset,
+                                    size_t source_index)
+    {
+      if (dataset._lfilesbbox.size() > source_index)
+        return dataset._lfilesbbox.at(source_index).first;
+      if (dataset._lfilesseg.size() > source_index)
+        return dataset._lfilesseg.at(source_index).first;
+      if (dataset._lfiles.size() > source_index)
+        return dataset._lfiles.at(source_index).first;
+      return std::to_string(source_index);
     }
   }
 
@@ -2179,6 +2237,7 @@ namespace dd
           ad_bbox_per_iou[i] = APIData();
       }
 
+    dataset.reset(false);
     auto dataloader = torch::data::make_data_loader(
         dataset, data::DataLoaderOptions(batch_size));
     torch::Device cpu("cpu");
@@ -2186,9 +2245,21 @@ namespace dd
     _module.eval();
     torch::NoGradGuard no_grad;
     int entry_id = 0;
+    std::set<int> requested_prediction_indices
+        = requested_test_prediction_indices(ad_out, test_id);
+    std::set<int> collected_prediction_indices;
+    std::set<int> visited_detection_prediction_indices;
+    std::map<int, std::vector<APIData>> detection_prediction_classes;
+    std::map<int, std::pair<int, int>> detection_prediction_imgsizes;
+    std::vector<APIData> test_prediction_samples;
+    double result_confidence_threshold
+        = test_prediction_confidence_threshold(ad_out);
+    int result_best_bbox = test_prediction_best_bbox(ad_out);
     for (TorchBatch batch : *dataloader)
       {
         size_t source_batch_size = 0;
+        int bbox_coordinate_width = inputc.width();
+        int bbox_coordinate_height = inputc.height();
         if (!batch.data.empty() && batch.data[0].sizes().size() > 0)
           {
             size_t tensor_batch_size
@@ -2196,6 +2267,11 @@ namespace dd
             source_batch_size
                 = (tensor_batch_size + test_crop_samples - 1)
                   / test_crop_samples;
+            if (batch.data[0].sizes().size() >= 4)
+              {
+                bbox_coordinate_width = static_cast<int>(batch.data[0].size(3));
+                bbox_coordinate_height = static_cast<int>(batch.data[0].size(2));
+              }
           }
 
         if (_masked_lm)
@@ -2309,6 +2385,46 @@ namespace dd
                     ad_bbox_per_iou[iou_thres].add(std::to_string(entry_id),
                                                    vbad);
                   }
+                int source_index
+                    = static_cast<int>(
+                        static_cast<size_t>(entry_id) / test_crop_samples);
+                if (requested_prediction_indices.count(source_index) > 0)
+                  {
+                    visited_detection_prediction_indices.insert(source_index);
+                    detection_prediction_imgsizes[source_index]
+                        = std::make_pair(bbox_coordinate_width,
+                                         bbox_coordinate_height);
+                    std::vector<APIData> &classes
+                        = detection_prediction_classes[source_index];
+                    auto bboxes_acc = bboxes_tensor.accessor<float, 2>();
+                    auto labels_acc = labels_tensor.accessor<int64_t, 1>();
+                    auto score_acc = score_tensor.accessor<float, 1>();
+
+                    for (int j = 0; j < labels_tensor.size(0); ++j)
+                      {
+                        if (result_best_bbox > 0
+                            && classes.size()
+                                   >= static_cast<size_t>(result_best_bbox))
+                          break;
+
+                        double score = score_acc[j];
+                        if (score < result_confidence_threshold)
+                          continue;
+
+                        APIData bbox;
+                        bbox.add("xmin", static_cast<double>(bboxes_acc[j][0]));
+                        bbox.add("ymin", static_cast<double>(bboxes_acc[j][1]));
+                        bbox.add("xmax", static_cast<double>(bboxes_acc[j][2]));
+                        bbox.add("ymax", static_cast<double>(bboxes_acc[j][3]));
+
+                        APIData cls;
+                        cls.add("cat",
+                                this->_mlmodel.get_hcorresp(labels_acc[j]));
+                        cls.add("prob", score);
+                        cls.add("bbox", bbox);
+                        classes.push_back(cls);
+                      }
+                  }
                 ++entry_id;
               }
           }
@@ -2390,6 +2506,26 @@ namespace dd
                 bad.add("target", targs);
                 bad.add("pred", vals);
                 ad_res.add(std::to_string(entry_id), bad);
+
+                int source_index
+                    = static_cast<int>(
+                        static_cast<size_t>(entry_id) / test_crop_samples);
+                if (entry_id % static_cast<int>(test_crop_samples) == 0
+                    && requested_prediction_indices.count(source_index) > 0
+                    && collected_prediction_indices.count(source_index) == 0)
+                  {
+                    APIData imgsize;
+                    imgsize.add("width", static_cast<int>(output.size(3)));
+                    imgsize.add("height", static_cast<int>(output.size(2)));
+
+                    APIData sample;
+                    sample.add("index", source_index);
+                    sample.add("uri", test_prediction_uri(dataset, source_index));
+                    sample.add("imgsize", imgsize);
+                    sample.add("vals", vals);
+                    test_prediction_samples.push_back(sample);
+                    collected_prediction_indices.insert(source_index);
+                  }
                 ++entry_id;
               }
           }
@@ -2501,6 +2637,44 @@ namespace dd
       ad_res.add("segmentation", true);
     ad_res.add("batch_size",
                entry_id); // here batch_size = tested entries count
+    if (_bbox)
+      {
+        for (int source_index : visited_detection_prediction_indices)
+          {
+            APIData sample;
+            sample.add("index", source_index);
+            sample.add("uri", test_prediction_uri(dataset, source_index));
+            auto imgsize_it
+                = detection_prediction_imgsizes.find(source_index);
+            if (imgsize_it != detection_prediction_imgsizes.end())
+              {
+                APIData imgsize;
+                imgsize.add("width", imgsize_it->second.first);
+                imgsize.add("height", imgsize_it->second.second);
+                sample.add("imgsize", imgsize);
+              }
+            sample.add("classes", detection_prediction_classes[source_index]);
+            test_prediction_samples.push_back(sample);
+          }
+      }
+    if (!test_prediction_samples.empty())
+      {
+        APIData test_predictions;
+        if (out.has("test_predictions"))
+          test_predictions = out.getobj("test_predictions");
+
+        APIData test_prediction_set;
+        test_prediction_set.add("test_id", static_cast<int>(test_id));
+        test_prediction_set.add("test_name", test_name);
+        test_prediction_set.add("iteration",
+                                static_cast<double>(
+                                    this->get_meas("iteration") + 1));
+        test_prediction_set.add("samples", test_prediction_samples);
+        test_predictions.add("test" + std::to_string(test_id),
+                             test_prediction_set);
+        out.add("test_predictions", test_predictions);
+        this->add_status_payload("test_predictions", test_predictions);
+      }
     SupervisedOutput::measure(ad_res, ad_out, out, test_id, test_name);
     _module.train();
     return 0;

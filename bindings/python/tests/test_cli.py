@@ -4,13 +4,16 @@ import sys
 from types import SimpleNamespace
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from deepdetect import DeepDetect
 from deepdetect.cli import config
 from deepdetect.cli import main as cli
 from deepdetect.cli import runs
+from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
+from deepdetect.cli.visualize import detection_overlay_image
 
 
 def response(code=200, *, head=None, body=None, **status):
@@ -219,6 +222,121 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
     assert "metric" in {event["event"] for event in events}
 
 
+def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "finished",
+            "body": {
+                "measure": {"iteration": 20, "train_loss": 1.0},
+                "measure_hist": {
+                    "iteration_test0_hist": [10.0, 20.0],
+                    "iteration_test1_hist": [10.0, 20.0],
+                    "map-50_test0_hist": [0.2, 0.4],
+                    "map-50_test1_hist": [0.3, 0.5],
+                },
+            },
+        },
+    ]
+    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    weights, train, test0 = write_training_files(tmp_path)
+    test1 = tmp_path / "test1.txt"
+    test1.write_text(test0.read_text(encoding="utf-8"), encoding="utf-8")
+    run_root = tmp_path / "runs"
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test0),
+            str(test1),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(run_root),
+            "--run-name",
+            "multi-test",
+        ]
+    )
+
+    assert code == 0
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert train_call[1]["data"] == [
+        str(train.resolve()),
+        str(test0.resolve()),
+        str(test1.resolve()),
+    ]
+    manifest = json.loads(
+        (run_root / "multi-test" / "run.json").read_text(encoding="utf-8")
+    )
+    assert manifest["options"]["test_data"] == [str(test0), str(test1)]
+    events = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    assert {"test_list_test0", "test_list_test1"} <= {
+        event["name"] for event in events if event["event"] == "dataset_check"
+    }
+    metrics = [event for event in events if event["event"] == "metric"]
+    assert [
+        (event["name"], event["iteration"], event["value"]) for event in metrics
+    ] == [
+        ("map-50_test0", 10.0, 0.2),
+        ("map-50_test0", 20.0, 0.4),
+        ("map-50_test1", 10.0, 0.3),
+        ("map-50_test1", 20.0, 0.5),
+    ]
+
+
+def test_train_config_accepts_test_data_list(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+    ]
+    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    weights, train, test0 = write_training_files(tmp_path)
+    test1 = tmp_path / "test1.txt"
+    test1.write_text(test0.read_text(encoding="utf-8"), encoding="utf-8")
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        "\n".join(
+            [
+                f"train_data: {train}",
+                "test_data:",
+                f"  - {test0}",
+                f"  - {test1}",
+                f"weights: {weights}",
+                f"repository: {tmp_path / 'repo'}",
+                f"job_dir: {tmp_path / 'runs'}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    code = cli.main(["train", "yolox", "--config", str(cfg)])
+
+    assert code == 0
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert train_call[1]["data"] == [
+        str(train.resolve()),
+        str(test0.resolve()),
+        str(test1.resolve()),
+    ]
+    assert "dataset_check" in {
+        json.loads(line)["event"]
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    }
+
+
 def test_train_defaults_job_dir_to_repository(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [
@@ -321,6 +439,9 @@ def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
 
         def line(self, **kwargs):
             self.lines.append(kwargs)
+
+        def images(self, tensor, **kwargs):
+            return None
 
     class FakeProgress:
         instances = []
@@ -897,6 +1018,31 @@ def test_live_training_terminal_reporter_waits_for_first_loss_before_rendering()
     assert "map-50=0.5" in output
 
 
+def test_live_training_terminal_reporter_renders_sink_warning():
+    stream = io.StringIO()
+    reporter = LiveTrainingTerminalReporter(
+        total_iterations=10,
+        gpu_monitor=None,
+        stream=stream,
+        force_terminal=True,
+    )
+    reporter.emit(
+        "training_status",
+        status="running",
+        measure={"iteration": 2, "train_loss": 1.5},
+    )
+    reporter.emit(
+        "sink_warning",
+        sink="VisdomResultSink",
+        message="transient prediction failure",
+    )
+    reporter.close()
+
+    output = stream.getvalue()
+    assert "warning" in output
+    assert "VisdomResultSink: transient prediction failure" in output
+
+
 def test_explicit_run_name_collision_fails_before_training(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
@@ -944,6 +1090,9 @@ def test_train_visdom_sink_plots_losses_and_metrics(monkeypatch, tmp_path, capsy
         def line(self, **kwargs):
             self.lines.append(kwargs)
 
+        def images(self, tensor, **kwargs):
+            return None
+
         def save(self, envs):
             self.saved.append(envs)
 
@@ -990,6 +1139,7 @@ def test_train_visdom_sink_plots_losses_and_metrics(monkeypatch, tmp_path, capsy
             "--run-name",
             "visdom-run",
             "--visdom",
+            "--no-visdom-results",
             "--visdom-save",
         ]
     )
@@ -1032,6 +1182,518 @@ def test_train_visdom_sink_plots_losses_and_metrics(monkeypatch, tmp_path, capsy
         if line.strip()
     ]
     assert "sink_warning" not in {event["event"] for event in events}
+
+
+def test_train_visdom_uploads_detection_results_on_eval_metric(
+    monkeypatch, tmp_path, capsys
+):
+    class FakeVisdom:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.lines = []
+            self.image_grids = []
+            FakeVisdom.instances.append(self)
+
+        def check_connection(self):
+            return True
+
+        def line(self, **kwargs):
+            self.lines.append(kwargs)
+
+        def images(self, tensor, **kwargs):
+            self.image_grids.append((tensor, kwargs))
+
+    rendered_class_counts = []
+
+    def fake_result_image_array(model, image_path, prediction, *, image_size):
+        rendered_class_counts.append(len(prediction["classes"]))
+        return np.zeros((3, 8, 8), dtype=np.uint8)
+
+    monkeypatch.setattr(cli, "_result_image_array", fake_result_image_array)
+
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {"status": "running", "body": {"measure": {"iteration": 1, "train_loss": 2.0}}},
+        {
+            "status": "running",
+            "body": {
+                "measure": {"iteration": 100, "train_loss": 1.0},
+                "measure_hist": {
+                    "iteration_test0_hist": [100.0],
+                    "map-50_test0_hist": [0.2],
+                },
+                "test_predictions": {
+                    "test0": {
+                        "iteration": 100.0,
+                        "samples": [
+                            {
+                                "index": 0,
+                                "classes": [
+                                    {
+                                        "cat": "object",
+                                        "prob": 0.9,
+                                        "bbox": {
+                                            "xmin": 0,
+                                            "ymin": 0,
+                                            "xmax": 1,
+                                            "ymax": 1,
+                                        },
+                                    },
+                                    {
+                                        "cat": "object",
+                                        "prob": 0.8,
+                                        "bbox": {
+                                            "xmin": 2,
+                                            "ymin": 2,
+                                            "xmax": 3,
+                                            "ymax": 3,
+                                        },
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                },
+            },
+        },
+        {
+            "status": "finished",
+            "body": {
+                "measure": {"iteration": 100, "train_loss": 1.0},
+                "measure_hist": {
+                    "iteration_test0_hist": [100.0],
+                    "map-50_test0_hist": [0.2],
+                },
+            },
+        },
+    ]
+    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
+    weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(tmp_path / "runs"),
+            "--visdom",
+            "--visdom-results-count",
+            "1",
+        ]
+    )
+
+    assert code == 0
+    assert not any(call[0] == "predict" for call in runtime.calls)
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert train_call[1]["parameters"]["output"]["test_predictions"] == {
+        "enabled": True,
+        "confidence_threshold": 0.1,
+        "indices": {"test0": [0]},
+    }
+    status_calls = [call for call in runtime.calls if call[0] == "status"]
+    assert status_calls[0][1]["parameters"]["output"]["test_predictions"] is True
+    image_grids = FakeVisdom.instances[0].image_grids
+    assert len(image_grids) == 1
+    assert rendered_class_counts == [2]
+    artifact_dir = tmp_path / "repo" / "visdom-results" / "iteration-000100" / "test0"
+    assert (artifact_dir / "sample-000000.png").is_file()
+    artifact = json.loads((artifact_dir / "sample-000000.json").read_text())
+    assert artifact["sample_index"] == 0
+    assert len(artifact["prediction"]["classes"]) == 2
+    tensor, kwargs = image_grids[0]
+    assert tensor.shape == (1, 3, 8, 8)
+    assert kwargs["win"] == "results-detection-test0"
+    assert kwargs["opts"]["title"] == "detection test0 results iteration 100"
+    assert kwargs["opts"]["jpgquality"] == 90
+    assert "sink_warning" not in {
+        json.loads(line)["event"]
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    }
+
+
+def test_train_visdom_results_can_be_disabled(monkeypatch, tmp_path, capsys):
+    class FakeVisdom:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.image_grids = []
+            FakeVisdom.instances.append(self)
+
+        def check_connection(self):
+            return True
+
+        def line(self, **kwargs):
+            return None
+
+        def images(self, tensor, **kwargs):
+            self.image_grids.append((tensor, kwargs))
+
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "finished",
+            "body": {
+                "measure": {"iteration": 100, "train_loss": 1.0},
+                "measure_hist": {
+                    "iteration_test0_hist": [100.0],
+                    "map-50_test0_hist": [0.2],
+                },
+            },
+        },
+    ]
+    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
+    weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(tmp_path / "runs"),
+            "--visdom",
+            "--no-visdom-results",
+        ]
+    )
+
+    assert code == 0
+    assert not any(call[0] == "predict" for call in runtime.calls)
+    assert FakeVisdom.instances[0].image_grids == []
+    capsys.readouterr()
+
+
+def test_train_visdom_results_waits_for_backend_prediction_payload(
+    monkeypatch, tmp_path, capsys
+):
+    class FakeVisdom:
+        instances = []
+
+        def __init__(self, **kwargs):
+            self.image_grids = []
+            FakeVisdom.instances.append(self)
+
+        def check_connection(self):
+            return True
+
+        def line(self, **kwargs):
+            return None
+
+        def images(self, tensor, **kwargs):
+            self.image_grids.append((tensor, kwargs))
+
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "running",
+            "body": {
+                "measure": {"iteration": 100, "train_loss": 1.0},
+                "measure_hist": {
+                    "iteration_test0_hist": [100.0],
+                    "map-50_test0_hist": [0.2],
+                },
+            },
+        },
+        {
+            "status": "running",
+            "body": {
+                "measure": {"iteration": 200, "train_loss": 0.8},
+                "measure_hist": {
+                    "iteration_test0_hist": [100.0, 200.0],
+                    "map-50_test0_hist": [0.2, 0.3],
+                },
+                "test_predictions": {
+                    "test0": {
+                        "iteration": 200.0,
+                        "samples": [
+                            {
+                                "index": 0,
+                                "classes": [
+                                    {
+                                        "cat": "object",
+                                        "prob": 0.9,
+                                        "bbox": {
+                                            "xmin": 0,
+                                            "ymin": 0,
+                                            "xmax": 1,
+                                            "ymax": 1,
+                                        },
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                },
+            },
+        },
+        {
+            "status": "finished",
+            "body": {
+                "measure": {"iteration": 300, "train_loss": 0.7},
+                "test_predictions": {
+                    "test0": {
+                        "iteration": 300.0,
+                        "samples": [
+                            {
+                                "index": 0,
+                                "classes": [
+                                    {
+                                        "cat": "object",
+                                        "prob": 0.95,
+                                        "bbox": {
+                                            "xmin": 2,
+                                            "ymin": 2,
+                                            "xmax": 3,
+                                            "ymax": 3,
+                                        },
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                },
+            },
+        },
+    ]
+    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
+    weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(tmp_path / "runs"),
+            "--visdom",
+            "--visdom-results-count",
+            "1",
+        ]
+    )
+
+    assert code == 0
+    assert not any(call[0] == "predict" for call in runtime.calls)
+    assert len(FakeVisdom.instances[0].image_grids) == 2
+    titles = [
+        kwargs["opts"]["title"]
+        for _tensor, kwargs in FakeVisdom.instances[0].image_grids
+    ]
+    assert titles == [
+        "detection test0 results iteration 200",
+        "detection test0 results iteration 300",
+    ]
+    warnings = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip() and json.loads(line)["event"] == "sink_warning"
+    ]
+    assert warnings[0]["sink"] == "VisdomResultSink"
+    assert "no test_predictions payload" in warnings[0]["message"]
+
+
+def test_segmentation_result_image_is_rgb_chw_overlay(tmp_path):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (2, 2), color="white").save(image)
+
+    array = cli._result_image_array(
+        "segformer",
+        image,
+        {
+            "imgsize": {"width": 2, "height": 2},
+            "vals": [0, 1, 1, 0],
+        },
+        image_size=(2, 2),
+    )
+
+    assert array.shape == (3, 2, 2)
+    assert array.dtype.name == "uint8"
+
+
+def test_detection_result_image_draws_normalized_bbox_on_original_size(tmp_path):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (10, 8), color="white").save(image)
+
+    array = cli._result_image_array(
+        "yolox",
+        image,
+        {
+            "classes": [
+                {
+                    "cat": "object",
+                    "prob": 0.9,
+                    "bbox": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.8, "ymax": 0.8},
+                }
+            ]
+        },
+        image_size=(640, 640),
+    )
+
+    assert array.shape == (3, 8, 10)
+    assert (array != 255).any()
+
+
+def test_detection_result_image_uses_prediction_coordinate_size(tmp_path):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (20, 10), color="white").save(image)
+
+    array = cli._result_image_array(
+        "yolox",
+        image,
+        {
+            "imgsize": {"width": 10, "height": 5},
+            "classes": [
+                {
+                    "cat": "object",
+                    "prob": 0.9,
+                    "bbox": {"xmin": 2, "ymin": 1, "xmax": 4, "ymax": 3},
+                }
+            ],
+        },
+        image_size=(20, 10),
+    )
+
+    assert tuple(array[:, 1, 2]) == (255, 255, 255)
+    assert tuple(array[:, 2, 4]) != (255, 255, 255)
+
+
+def test_visdom_result_images_are_resized_to_max_side():
+    image = np.zeros((3, 600, 1200), dtype=np.uint8)
+
+    resized = cli._visdom_result_image_arrays([image])
+
+    assert len(resized) == 1
+    assert resized[0].shape == (3, 256, 512)
+
+
+def test_visdom_result_images_are_padded_without_distorting_aspect_ratio():
+    wide = np.full((3, 600, 1200), 32, dtype=np.uint8)
+    tall = np.full((3, 1200, 600), 64, dtype=np.uint8)
+
+    resized = cli._visdom_result_image_arrays([wide, tall])
+
+    assert [image.shape for image in resized] == [(3, 512, 512), (3, 512, 512)]
+    assert np.all(resized[0][:, :256, :] == 32)
+    assert np.all(resized[0][:, 256:, :] == 255)
+    assert np.all(resized[1][:, :, :256] == 64)
+    assert np.all(resized[1][:, :, 256:] == 255)
+
+
+def test_detection_overlay_uses_stable_class_colors(tmp_path):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (20, 20), color="white").save(image)
+
+    rendered = detection_overlay_image(
+        image,
+        {
+            "classes": [
+                {
+                    "cat": "ring",
+                    "bbox": {"xmin": 1, "ymin": 1, "xmax": 5, "ymax": 5},
+                },
+                {
+                    "cat": "marker",
+                    "bbox": {"xmin": 8, "ymin": 1, "xmax": 12, "ymax": 5},
+                },
+                {
+                    "cat": "ring",
+                    "bbox": {"xmin": 1, "ymin": 8, "xmax": 5, "ymax": 12},
+                },
+            ]
+        },
+    )
+
+    assert rendered.getpixel((1, 1)) == rendered.getpixel((1, 8))
+    assert rendered.getpixel((1, 1)) != rendered.getpixel((8, 1))
+
+
+def test_visdom_sink_groups_test_set_metrics_on_base_metric_window():
+    class FakeClient:
+        def __init__(self):
+            self.lines = []
+
+        def line(self, **kwargs):
+            self.lines.append(kwargs)
+
+    client = FakeClient()
+    sink = VisdomMetricSink(
+        env="multi-test",
+        server="http://localhost",
+        port=8097,
+        base_url="/",
+        client=client,
+    )
+
+    sink.write({"name": "map-50_test0", "value": 0.2, "iteration": 10})
+    sink.write({"name": "map-50_test1", "value": 0.3, "iteration": 10})
+    sink.write({"name": "map-50_test0", "value": 0.4, "iteration": 20})
+    sink.write({"name": "map-50_test1", "value": 0.5, "iteration": 20})
+    written = sink.write_many(
+        [
+            {"name": "map-90_test0", "value": 0.1, "iteration": 10},
+            {"name": "map-90_test0", "value": 0.2, "iteration": 20},
+            {"name": "map-90_test1", "value": 0.15, "iteration": 10},
+            {"name": "map-90_test1", "value": 0.25, "iteration": 20},
+        ]
+    )
+
+    assert written == 4
+    assert [
+        (line["win"], line["name"], line["X"].tolist(), line["Y"].tolist())
+        for line in client.lines
+    ] == [
+        ("metric-map-50", "test0", [10.0], [0.2]),
+        ("metric-map-50", "test1", [10.0], [0.3]),
+        ("metric-map-50", "test0", [20.0], [0.4]),
+        ("metric-map-50", "test1", [20.0], [0.5]),
+        ("metric-map-90", "test0", [10.0, 20.0], [0.1, 0.2]),
+        ("metric-map-90", "test1", [10.0, 20.0], [0.15, 0.25]),
+    ]
+    assert [line["update"] for line in client.lines] == [
+        None,
+        "append",
+        "append",
+        "append",
+        None,
+        "append",
+    ]
+    assert [line["opts"]["legend"] for line in client.lines] == [
+        ["test0"],
+        ["test0", "test1"],
+        ["test0", "test1"],
+        ["test0", "test1"],
+        ["test0", "test1"],
+        ["test0", "test1"],
+    ]
 
 
 def test_train_visdom_unreachable_can_fail_fast(monkeypatch, tmp_path, capsys):

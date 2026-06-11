@@ -89,7 +89,7 @@ class VisdomMetricSink:
         self.env = env
         self.save = save
         self._warning_callback = warning_callback
-        self._windows_seen: set[str] = set()
+        self._window_traces: dict[str, list[str]] = {}
         self._skipped_metrics: set[str] = set()
         self._fallback_step = 0
         if client is None:
@@ -129,22 +129,23 @@ class VisdomMetricSink:
         if x_value is None:
             self._fallback_step += 1
             x_value = float(self._fallback_step)
-        window = self._window_for(name)
-        update = "append" if window in self._windows_seen else None
+        base_name, trace_name = self._trace_for(name)
+        window = self._window_for(base_name)
+        update = "append" if window in self._window_traces else None
+        legend = self._register_trace(window, trace_name)
         self.client.line(
             X=np.array([x_value]),
             Y=np.array([value]),
             win=window,
-            name=name,
+            name=trace_name,
             update=update,
             opts={
                 "title": f"{self.env} {self._window_title(window)}",
                 "xlabel": "iteration",
-                "ylabel": self._window_ylabel(window, name),
-                "legend": [name],
+                "ylabel": self._window_ylabel(window, base_name),
+                "legend": legend,
             },
         )
-        self._windows_seen.add(window)
 
     def write_many(
         self,
@@ -152,7 +153,7 @@ class VisdomMetricSink:
         *,
         progress_callback: Callable[[int], None] | None = None,
     ) -> int:
-        traces: dict[str, list[tuple[float, float]]] = {}
+        traces: dict[tuple[str, str, str], list[tuple[float, float]]] = {}
         skipped = 0
         for event in events:
             name = str(event.get("name", "metric"))
@@ -173,32 +174,58 @@ class VisdomMetricSink:
             if x_value is None:
                 self._fallback_step += 1
                 x_value = float(self._fallback_step)
-            traces.setdefault(name, []).append((x_value, value))
+            base_name, trace_name = self._trace_for(name)
+            window = self._window_for(base_name)
+            traces.setdefault((window, trace_name, base_name), []).append(
+                (x_value, value)
+            )
 
         written = 0
         if progress_callback is not None and skipped:
             progress_callback(skipped)
-        for name, points in traces.items():
-            window = self._window_for(name)
-            update = "append" if window in self._windows_seen else None
+        windows_seen_before = set(self._window_traces)
+        for window, trace_name, _base_name in traces:
+            self._register_trace(window, trace_name)
+        windows_written: set[str] = set()
+        for (window, trace_name, base_name), points in traces.items():
+            update = (
+                "append"
+                if window in windows_seen_before or window in windows_written
+                else None
+            )
             self.client.line(
                 X=np.array([point[0] for point in points]),
                 Y=np.array([point[1] for point in points]),
                 win=window,
-                name=name,
+                name=trace_name,
                 update=update,
                 opts={
                     "title": f"{self.env} {self._window_title(window)}",
                     "xlabel": "iteration",
-                    "ylabel": self._window_ylabel(window, name),
-                    "legend": [name],
+                    "ylabel": self._window_ylabel(window, base_name),
+                    "legend": self._window_traces[window],
                 },
             )
-            self._windows_seen.add(window)
+            windows_written.add(window)
             written += len(points)
             if progress_callback is not None:
                 progress_callback(len(points))
         return written
+
+    def write_images(
+        self,
+        *,
+        window: str,
+        title: str,
+        images: list[np.ndarray],
+    ) -> None:
+        if not images:
+            return
+        self.client.images(
+            np.stack(images, axis=0),
+            win=window,
+            opts={"title": title, "jpgquality": 90},
+        )
 
     def close(self) -> None:
         if self.save:
@@ -212,6 +239,12 @@ class VisdomMetricSink:
         self._skipped_metrics.add(name)
         if self._warning_callback is not None:
             self._warning_callback("VisdomMetricSink", error)
+
+    def _register_trace(self, window: str, trace_name: str) -> list[str]:
+        traces = self._window_traces.setdefault(window, [])
+        if trace_name not in traces:
+            traces.append(trace_name)
+        return list(traces)
 
     @staticmethod
     def _skip_metric(name: str) -> bool:
@@ -240,6 +273,13 @@ class VisdomMetricSink:
         cleaned = "".join(char if char.isalnum() else "-" for char in value.strip())
         cleaned = "-".join(part for part in cleaned.split("-") if part)
         return cleaned or "loss"
+
+    @staticmethod
+    def _trace_for(name: str) -> tuple[str, str]:
+        base, separator, suffix = name.rpartition("_test")
+        if separator and suffix.isdigit() and base:
+            return base, f"test{suffix}"
+        return name, name
 
     @classmethod
     def _window_for(cls, name: str) -> str:

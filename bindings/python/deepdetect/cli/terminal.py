@@ -61,6 +61,7 @@ class LiveTrainingTerminalReporter:
         self._status = "starting"
         self._measure: dict[str, Any] = {}
         self._latest_metrics: dict[str, float] = {}
+        self._latest_warning: str | None = None
         self._gpu_monitor = (
             gpu_monitor
             if gpu_monitor is not None
@@ -94,6 +95,11 @@ class LiveTrainingTerminalReporter:
                 self._refresh()
         elif event == "run_finished":
             self._status = str(record.get("status", self._status) or self._status)
+            self._refresh()
+        elif event == "sink_warning":
+            sink = record.get("sink", "sink")
+            message = record.get("message", "")
+            self._latest_warning = f"{sink}: {message}"
             self._refresh()
         return record
 
@@ -152,6 +158,8 @@ class LiveTrainingTerminalReporter:
         table.add_row(
             f"[bold]metrics[/] {_format_values(self._metric_values(), empty='pending')}"
         )
+        if self._latest_warning:
+            table.add_row(f"[bold red]warning[/] {self._latest_warning}")
         return Panel(table, title=f"training {self._status}", border_style="cyan")
 
     def _gpu_text(self) -> str | None:

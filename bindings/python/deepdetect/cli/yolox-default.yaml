@@ -1,7 +1,8 @@
 # Default-style YOLOX CLI configuration.
 # Fill in paths for your dataset and model before running.
 train_data: train.txt
-test_data: test.txt
+test_data:
+  - test.txt
 weights: /data1/beniz/models/dd/yolox/yolox-nano_cls2.pt
 repository: deepdetect-models/yolox
 service_name: python-yolox-train
@@ -30,6 +31,9 @@ visdom_port: 8097
 visdom_base_url: /
 visdom_offline_ok: true
 visdom_save: false
+visdom_results: true
+visdom_results_count: 10
+visdom_results_seed: 12345
 
 # Inference-only options are ignored by training commands.
 output: null

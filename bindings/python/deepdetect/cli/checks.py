@@ -170,31 +170,33 @@ class _NullProgress:
 
 def run_training_checks(model: str, options: dict[str, Any]) -> list[dict[str, Any]]:
     train_data = Path(options["train_data"])
-    test_data = Path(options["test_data"])
+    test_data = _test_data_paths(options["test_data"])
     dataset_check = str(options.get("dataset_check", "full"))
     if dataset_check == "none":
-        return [
-            {
-                "name": "dataset_validation",
-                "mode": "none",
-                "skipped": True,
-                "train_path": str(train_data.expanduser()),
-                "test_path": str(test_data.expanduser()),
-            }
-        ]
+        event = {
+            "name": "dataset_validation",
+            "mode": "none",
+            "skipped": True,
+            "train_path": str(train_data.expanduser()),
+        }
+        if len(test_data) == 1:
+            event["test_path"] = str(test_data[0].expanduser())
+        else:
+            event["test_paths"] = [str(path.expanduser()) for path in test_data]
+        return [event]
     if dataset_check != "full":
         raise ValueError("dataset_check must be one of: full, none")
 
-    checks = [
-        {"name": "train_list", **check_dataset_list(train_data)},
-        {"name": "test_list", **check_dataset_list(test_data)},
-    ]
+    checks = [{"name": "train_list", **check_dataset_list(train_data)}]
+    for index, path in enumerate(test_data):
+        name = "test_list" if len(test_data) == 1 else f"test_list_test{index}"
+        checks.append({"name": name, **check_dataset_list(path)})
     if model == "segformer" and not options.get("skip_mask_validation", False):
         checks.append(
             {
                 "name": "segmentation_masks",
                 **validate_segmentation_lists(
-                    [train_data, test_data], int(options["nclasses"])
+                    [train_data, *test_data], int(options["nclasses"])
                 ),
             }
         )
@@ -203,8 +205,14 @@ def run_training_checks(model: str, options: dict[str, Any]) -> list[dict[str, A
             {
                 "name": "detection_bboxes",
                 **validate_detection_lists(
-                    [train_data, test_data], int(options["nclasses"])
+                    [train_data, *test_data], int(options["nclasses"])
                 ),
             }
         )
     return checks
+
+
+def _test_data_paths(value: Any) -> list[Path]:
+    if isinstance(value, (str, Path)):
+        return [Path(value)]
+    return [Path(path) for path in value]
