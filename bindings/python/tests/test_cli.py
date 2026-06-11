@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import sys
 from types import SimpleNamespace
 from pathlib import Path
@@ -14,6 +15,13 @@ from deepdetect.cli import runs
 from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
 from deepdetect.cli.visualize import detection_overlay_image
+
+
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
+def strip_ansi(value: str) -> str:
+    return ANSI_ESCAPE_RE.sub("", value)
 
 
 def response(code=200, *, head=None, body=None, **status):
@@ -972,11 +980,14 @@ def test_live_training_terminal_reporter_renders_progress_losses_and_metrics():
     reporter.emit("metric", name="acc", value=0.9, iteration=4)
     reporter.close()
 
-    output = stream.getvalue()
+    output = strip_ansi(stream.getvalue())
     lines = output.splitlines()
     gpu_line = next(index for index, line in enumerate(lines) if "gpu 1 util" in line)
     train_line = next(index for index, line in enumerate(lines) if "train" in line and "4/10" in line)
+    loss_line = next(index for index, line in enumerate(lines) if "train_loss=1.25" in line)
+    metrics_line = next(index for index, line in enumerate(lines) if "map-50=0.75" in line)
     assert gpu_line < train_line
+    assert any("─" in line for line in lines[loss_line + 1 : metrics_line])
     assert "1 util=88% mem=13.2/24.0GB (55%)" in output
     assert "train" in output
     assert "4/10" in output
