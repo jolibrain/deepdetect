@@ -1,0 +1,224 @@
+# DeepDetect Python CLI Specification
+
+## Summary
+
+The Python CLI provides ready-to-use image training and inference workflows on
+top of the in-process `deepdetect` bindings. Version 1 is intentionally scoped
+to two model profiles:
+
+- `yolox`: object detection with bounding boxes.
+- `segformer`: semantic segmentation.
+
+The canonical command shape is task first:
+
+```shell
+deepdetect train yolox ...
+deepdetect train segformer ...
+deepdetect infer yolox ...
+deepdetect infer segformer ...
+deepdetect job status RUN_DIR
+deepdetect inspect models
+```
+
+All commands are discoverable through `--help`. Long-running training emits
+structured events that are easy for humans to watch and easy for agents to
+parse. YAML config files are supported, and explicit CLI flags override config
+values.
+
+## Configuration
+
+Each train and inference command accepts:
+
+```shell
+--config CONFIG.yaml
+--set dotted.key=value
+--output-format jsonl|json|text
+```
+
+Configuration precedence is:
+
+1. Model profile defaults.
+2. YAML config file.
+3. CLI flags.
+4. `--set` overrides.
+
+YAML is intended for repeatable runs. CLI flags are intended for discoverable
+interactive use and agent function-call arguments.
+
+Example default-style configs are provided next to this document:
+
+- `yolox-default.yaml`
+- `segformer-default.yaml`
+
+They include training keys plus inference-only keys that are ignored by
+training commands. Replace the dataset and model paths before use:
+
+```shell
+deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yaml
+deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-default.yaml
+```
+
+## Training Commands
+
+Required inputs may come from CLI flags or config:
+
+```shell
+deepdetect train yolox \
+  --train-data train.txt \
+  --test-data test.txt \
+  --weights yolox-nano_cls2.pt \
+  --repository runs/yolox-model \
+  --nclasses 2
+
+deepdetect train segformer \
+  --train-data train.txt \
+  --test-data test.txt \
+  --weights segformer-b0-cls2.pt \
+  --repository runs/segformer-model \
+  --nclasses 13
+```
+
+Shared training options:
+
+- `--gpu` / `--no-gpu`: request or disable GPU execution.
+- `--gpuid ID [ID ...]`: select one or more GPU ids. Comma-separated values
+  are also accepted, for example `--gpuid 0,1`. Use `--gpuid -1` for all
+  GPUs. Supplying `--gpuid` implies `--gpu` unless `--no-gpu` is explicitly
+  passed, which is rejected.
+- `--width`, `--height`: image input size. Defaults stay profile-specific:
+  YOLOX uses `640x640`, SegFormer uses `480x480`.
+- `--run-name`: name for the training run. Defaults strictly to the directory
+  name from `--repository`. No date, model prefix, or random suffix is added
+  unless an explicit `--run-name` is provided.
+- `--resume latest|best`: resume training from `--repository` instead of
+  staging `--weights`. `latest` uses the newest checkpoint and solver state
+  found in the repository. `best` reads `best_model.txt` and resumes the
+  matching `checkpoint-N.*` and `solver-N.pt` files.
+- `--iterations`, `--batch-size`, `--base-lr`, `--test-interval`: common solver
+  controls.
+- `--service-name`: DeepDetect service name.
+- `--job-dir`: directory for CLI run manifests. Defaults to `--repository`.
+  When omitted, `run.json` and `metrics.jsonl` are written directly in the
+  model repository. When explicitly set, the run files are written under
+  `<job-dir>/<run-name>/`.
+- `--poll-interval`, `--timeout`: async monitoring controls.
+- `--terminal verbose|live`: choose stdout behavior for async training.
+  `verbose` is the default and preserves `--output-format`. `live` uses a
+  fixed-size Rich display when stdout is a TTY and falls back to JSONL when it
+  is not.
+- `--sync` / `--no-sync`: use blocking DeepDetect training or the default
+  async job.
+- `--dataset-check full|none`: choose dataset validation mode before training.
+  `full` is the default and performs the model-specific validation described
+  below. `none` skips dataset validation for fast startup on datasets that have
+  already been checked.
+
+Training creates a run directory containing:
+
+- `run.json`: run ID, command, model, service name, config snapshot, job ID when
+  available, status, and latest status body.
+- `metrics.jsonl`: metric events extracted from DeepDetect status payloads.
+
+On resume, `--weights` is optional because the model state comes from
+`--repository`. When Visdom is enabled, the CLI replays previous metric history
+from `--repository/metrics.json` into the run environment before streaming new
+points, then ignores already-seen history points from the first live status
+poll.
+
+The CLI emits events such as `run_started`, `dataset_check`,
+`training_status`, `metric`, and `run_finished`. Dataset checks are deliberately
+structured as extension points. With `--dataset-check full`, list files are
+checked for basic structure; YOLOX validates image paths, bbox sidecar paths,
+bbox line format, class ranges, and numeric bbox values; SegFormer validates
+mask values unless `--skip-mask-validation` is passed. With
+`--dataset-check none`, the CLI emits a skipped dataset-check event and leaves
+dataset validation to the DeepDetect backend.
+
+### Visdom Metric Sink
+
+Training can also stream scalar losses and metrics to Visdom:
+
+```shell
+deepdetect train yolox ... --visdom --run-name ring-hand-yolox
+```
+
+Visdom options:
+
+- `--visdom` / `--no-visdom`: enable or disable Visdom streaming.
+- `--visdom-server`: server URL, default `http://localhost`.
+- `--visdom-port`: server port, default `8097`.
+- `--visdom-base-url`: base URL, default `/`.
+- `--visdom-offline-ok` / `--no-visdom-offline-ok`: continue with a warning
+  if Visdom is unavailable, default enabled.
+- `--visdom-save` / `--no-visdom-save`: call `vis.save([run_name])` on close.
+
+The Visdom environment name is the training `run_name`. Loss-like metrics
+whose names contain `loss` are each sent to their own line plot. mAP metrics
+are split by metric name, for example `map`, `map-05`, `map-50`, and `map-90`
+use separate windows. Other numeric metrics are grouped into scale-compatible
+line plots. Non-numeric metrics are ignored with a one-time warning. Non-finite
+numeric values such as `NaN` and `Inf` are silently skipped for Visdom.
+
+## Inference Commands
+
+Inference accepts one or more images and supports batches:
+
+```shell
+deepdetect infer yolox image1.jpg image2.jpg \
+  --weights yolox-nano_cls2.pt \
+  --repository runs/yolox-model \
+  --batch-size 2 \
+  --confidence-threshold 0.25 \
+  --benchmark
+
+deepdetect infer segformer image1.png image2.png \
+  --weights segformer-b0-cls2.pt \
+  --repository runs/segformer-model \
+  --batch-size 2 \
+  --visualize \
+  --output outputs/
+```
+
+Shared inference options:
+
+- `--gpu` / `--no-gpu`: request or disable GPU execution.
+- `--gpuid ID [ID ...]`: select one or more GPU ids. Comma-separated values
+  are also accepted, for example `--gpuid 0,1`. Use `--gpuid -1` for all
+  GPUs. Supplying `--gpuid` implies `--gpu` unless `--no-gpu` is explicitly
+  passed, which is rejected.
+- `--width`, `--height`: image input size. Defaults stay profile-specific:
+  YOLOX uses `640x640`, SegFormer uses `480x480`.
+- `--batch-size`: number of images per DeepDetect predict call.
+- `--benchmark` / `--no-benchmark`: emit or suppress benchmark statistics.
+- `--warmup`: run unmeasured warmup predictions before benchmarking.
+- `--visualize` / `--no-visualize`: produce or suppress visual outputs.
+- `--output`: file or directory for visual outputs.
+
+Prediction events include the image path, per-image wall-clock inference time,
+and the raw DeepDetect prediction payload, including available confidence
+values.
+
+## Monitoring
+
+Version 1 uses DeepDetect async training plus structured stdout as the primary
+agent monitoring path. Agents can monitor the active process by reading JSONL
+events and can inspect the latest persisted status with:
+
+```shell
+deepdetect job status MODEL_REPOSITORY
+```
+
+An embedded REST status endpoint is intentionally deferred. A future HTTP
+adapter should reuse the same run manifest and DeepDetect job polling logic.
+
+## Extension Points
+
+The implementation is split into small modules so future model families and
+agent interfaces can be added without changing the command contract:
+
+- Model profiles define service, train, and predict parameter defaults.
+- Dataset checks return structured results and may be expanded into richer
+  validators.
+- Metric sinks accept metric events and can later forward them to TensorBoard,
+  MLflow, Weights & Biases, or a DeepDetect-specific dashboard.
+- Visualization helpers are optional and only run when requested.

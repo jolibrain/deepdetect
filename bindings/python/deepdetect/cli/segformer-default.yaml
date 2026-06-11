@@ -1,0 +1,38 @@
+# Default-style SegFormer CLI configuration.
+# Fill in paths for your dataset and model before running.
+train_data: train.txt
+test_data: test.txt
+weights: /data1/beniz/models/dd/segformer/segformer-b0-cls2.pt
+repository: deepdetect-models/segformer
+service_name: python-segformer-train
+nclasses: 2
+width: 480
+height: 480
+iterations: 100
+batch_size: 4
+base_lr: 0.0001
+test_interval: 100
+gpu: false
+gpuid: null
+sync: false
+poll_interval: 0.5
+timeout: null
+job_dir: null
+run_name: null
+resume: null
+output_format: jsonl
+terminal: verbose
+dataset_check: full
+skip_mask_validation: false
+visdom: false
+visdom_server: http://localhost
+visdom_port: 8097
+visdom_base_url: /
+visdom_offline_ok: true
+visdom_save: false
+
+# Inference-only options are ignored by training commands.
+output: null
+visualize: false
+benchmark: false
+warmup: 0
