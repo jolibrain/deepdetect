@@ -1582,7 +1582,6 @@ namespace dd
     std::vector<APIData> results_ads;
     int nsample = 0;
 
-    torch::NoGradGuard no_grad;
     for (TorchBatch batch : *dataloader)
       {
         std::vector<c10::IValue> in_vals;
@@ -2149,7 +2148,6 @@ namespace dd
     _module.eval();
     torch::NoGradGuard no_grad;
     int entry_id = 0;
-    torch::NoGradGuard no_grad;
     for (TorchBatch batch : *dataloader)
       {
         if (_masked_lm)
