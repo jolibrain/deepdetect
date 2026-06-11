@@ -868,6 +868,35 @@ def test_live_training_terminal_reporter_renders_progress_losses_and_metrics():
     assert "elapsed_time_ms" not in output
 
 
+def test_live_training_terminal_reporter_waits_for_first_loss_before_rendering():
+    stream = io.StringIO()
+    reporter = LiveTrainingTerminalReporter(
+        total_iterations=10,
+        gpu_monitor=None,
+        stream=stream,
+        force_terminal=True,
+    )
+    reporter.emit(
+        "training_status",
+        status="running",
+        measure={"iteration": 1, "remain_time_str": "00:01:00"},
+    )
+    reporter.emit("metric", name="map-50", value=0.4, iteration=1)
+    assert stream.getvalue() == ""
+
+    reporter.emit(
+        "training_status",
+        status="running",
+        measure={"iteration": 2, "train_loss": 1.5, "map-50": 0.5},
+    )
+    reporter.close()
+
+    output = stream.getvalue()
+    assert "2/10" in output
+    assert "train_loss=1.5" in output
+    assert "map-50=0.5" in output
+
+
 def test_explicit_run_name_collision_fails_before_training(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
