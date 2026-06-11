@@ -63,6 +63,11 @@ class ModelProfile:
             "visdom_base_url": "/",
             "visdom_offline_ok": True,
             "visdom_save": False,
+            "visdom_results": True,
+            "visdom_results_count": 10,
+            "visdom_results_seed": 12345,
+            "confidence_threshold": 0.25,
+            "best_bbox": None,
         }
 
     def infer_defaults(self) -> dict[str, Any]:
@@ -172,7 +177,7 @@ PROFILES = {
             "resume": False,
             "mirror": True,
             "rotate": True,
-            "crop_size": 512,
+            "crop_size": 0,
             "test_crop_samples": 10,
             "cutout": 0.1,
             "geometry": {

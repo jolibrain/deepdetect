@@ -97,7 +97,8 @@ namespace dd
     MLLib(MLLib &&mll) noexcept
         : _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
           _mlmodel(mll._mlmodel), _meas(mll._meas),
-          _meas_per_iter(mll._meas_per_iter), _stats(mll._stats),
+          _meas_per_iter(mll._meas_per_iter),
+          _status_payloads(mll._status_payloads), _stats(mll._stats),
           _tjob_running(mll._tjob_running.load()), _logger(mll._logger),
           _model_flops(mll._model_flops), _model_params(mll._model_params),
           _mem_used_train(mll._mem_used_train),
@@ -380,6 +381,19 @@ namespace dd
       ad.add("measure", meas);
     }
 
+    void add_status_payload(const std::string &key, const APIData &payload)
+    {
+      std::lock_guard<std::mutex> lock(_status_payloads_mutex);
+      _status_payloads.add(key, payload);
+    }
+
+    void collect_status_payload(APIData &ad, const std::string &key) const
+    {
+      std::lock_guard<std::mutex> lock(_status_payloads_mutex);
+      if (_status_payloads.has(key))
+        ad.add(key, _status_payloads.getobj(key));
+    }
+
     TInputConnectorStrategy
         _inputc; /**< input connector strategy for channeling data in. */
     TOutputConnectorStrategy _outputc; /**< output connector strategy for
@@ -397,6 +411,7 @@ namespace dd
         _meas; /**< model measures, used as a per service value. */
     std::unordered_map<std::string, std::vector<double>>
         _meas_per_iter; /**< model measures per iteration. */
+    APIData _status_payloads; /**< structured status payloads. */
     std::vector<std::string> _test_names;
 
     ServiceStats _stats; /**< service statistics/metrics .*/
@@ -418,6 +433,7 @@ namespace dd
     mutable std::mutex
         _meas_per_iter_mutex;         /**< mutex over measures history. */
     mutable std::mutex _meas_mutex;   /**< mutex around current measures. */
+    mutable std::mutex _status_payloads_mutex;
     const int _max_meas_points = 1e7; // 10M points max per measure
   };
 

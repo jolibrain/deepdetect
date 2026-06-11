@@ -65,14 +65,14 @@ Required inputs may come from CLI flags or config:
 ```shell
 deepdetect train yolox \
   --train-data train.txt \
-  --test-data test.txt \
+  --test-data test0.txt test1.txt \
   --weights yolox-nano_cls2.pt \
   --repository runs/yolox-model \
   --nclasses 2
 
 deepdetect train segformer \
   --train-data train.txt \
-  --test-data test.txt \
+  --test-data test0.txt test1.txt \
   --weights segformer-b0-cls2.pt \
   --repository runs/segformer-model \
   --nclasses 13
@@ -80,6 +80,9 @@ deepdetect train segformer \
 
 Shared training options:
 
+- `--test-data PATH [PATH ...]`: one or more test dataset lists. The first
+  test set is reported as `test0`, the second as `test1`, and so on when the
+  backend emits per-test-set metrics.
 - `--gpu` / `--no-gpu`: request or disable GPU execution.
 - `--gpuid ID [ID ...]`: select one or more GPU ids. Comma-separated values
   are also accepted, for example `--gpuid 0,1`. Use `--gpuid -1` for all
@@ -151,13 +154,24 @@ Visdom options:
 - `--visdom-offline-ok` / `--no-visdom-offline-ok`: continue with a warning
   if Visdom is unavailable, default enabled.
 - `--visdom-save` / `--no-visdom-save`: call `vis.save([run_name])` on close.
+- `--visdom-results` / `--no-visdom-results`: upload sampled test-set
+  prediction overlays, default enabled when Visdom is enabled.
+- `--visdom-results-count`: number of sampled result images per test set,
+  default `10`. Use `0` to disable result image uploads.
+- `--visdom-results-seed`: random seed for stable result-image sampling.
 
 The Visdom environment name is the training `run_name`. Loss-like metrics
 whose names contain `loss` are each sent to their own line plot. mAP metrics
 are split by metric name, for example `map`, `map-05`, `map-50`, and `map-90`
-use separate windows. Other numeric metrics are grouped into scale-compatible
-line plots. Non-numeric metrics are ignored with a one-time warning. Non-finite
+use separate windows. Per-test-set metrics such as `map-50_test0` and
+`map-50_test1` are sent to the same `map-50` window with traces named `test0`
+and `test1`. Other numeric metrics are grouped into scale-compatible line
+plots. Non-numeric metrics are ignored with a one-time warning. Non-finite
 numeric values such as `NaN` and `Inf` are silently skipped for Visdom.
+Result images are sampled once from every test set and refreshed when a new
+evaluation metric iteration is observed. Detection results draw predicted boxes
+and labels on input-sized images; segmentation results show mask overlays on
+input-sized images.
 
 ## Inference Commands
 

@@ -3,12 +3,16 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import random
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import deepdetect
+import numpy as np
+from PIL import Image
 
 from .checks import run_training_checks
 from .config import cli_options, deep_merge, load_config, parse_overrides
@@ -30,10 +34,14 @@ from .utils import (
     validate_resume_repository,
 )
 from .visualize import (
+    detection_overlay_image,
     output_path_for,
     render_detections,
     render_segmentation,
+    segmentation_overlay_images,
 )
+
+VISDOM_RESULT_MAX_SIDE = 512
 
 
 def _path(value: str | Path | None) -> Path | None:
@@ -107,10 +115,23 @@ def _resolve_options(
     config = load_config(args.config)
     overrides = parse_overrides(args.overrides)
     options = deep_merge(defaults, config, cli_values, overrides)
-    for key in ("weights", "repository", "job_dir", "output", "train_data", "test_data"):
+    for key in ("weights", "repository", "job_dir", "output", "train_data"):
         if key in options and options[key] is not None:
             options[key] = Path(options[key])
+    if "test_data" in options and options["test_data"] is not None:
+        options["test_data"] = _normalize_test_data_paths(options["test_data"])
     return options
+
+
+def _normalize_test_data_paths(value: Any) -> list[Path]:
+    if isinstance(value, (str, Path)):
+        return [Path(value)]
+    if isinstance(value, (list, tuple)):
+        paths = [Path(item) for item in value]
+        if not paths:
+            raise ValueError("test-data requires at least one path")
+        return paths
+    raise ValueError("test-data must be a path or a list of paths")
 
 
 def run_train(args: argparse.Namespace) -> int:
@@ -146,6 +167,9 @@ def run_train(args: argparse.Namespace) -> int:
         visdom_base_url=args.visdom_base_url,
         visdom_offline_ok=args.visdom_offline_ok,
         visdom_save=args.visdom_save,
+        visdom_results=args.visdom_results,
+        visdom_results_count=args.visdom_results_count,
+        visdom_results_seed=args.visdom_results_seed,
     )
     options = _resolve_options(profile.train_defaults(), args, cli_values)
     _normalize_gpu_options(options, args)
@@ -173,6 +197,8 @@ def run_train(args: argparse.Namespace) -> int:
     if int(options["nclasses"]) <= 0:
         raise ValueError("nclasses must be positive")
     _validate_positive("visdom_port", int(options["visdom_port"]))
+    if int(options["visdom_results_count"]) < 0:
+        raise ValueError("visdom_results_count must be non-negative")
     run_name = str(options.get("run_name") or repository_name(Path(options["repository"])))
     options["run_name"] = run_name
     if resume:
@@ -218,13 +244,27 @@ def run_train(args: argparse.Namespace) -> int:
         configure_gpu_compatibility(dd.build_info, requested=bool(options["gpu"]))
         service_parameters = profile.service_parameters(options)
         train_parameters = profile.train_parameters(options)
+        result_visualizer = _create_training_result_visualizer(
+            profile,
+            options,
+            visdom_sink=visdom_sink,
+            writer=writer,
+            run_id=manifest.data["run_id"],
+        )
+        if result_visualizer is not None:
+            train_parameters["output_parameters"].update(
+                result_visualizer.train_output_parameters()
+            )
         if _training_live_terminal_enabled(options):
             dd.set_log_level("warn")
         with dd.create_service(options["service_name"], **service_parameters) as service:
             if _training_live_terminal_enabled(options):
                 dd.set_service_log_level(options["service_name"], "warn")
             result = service.train(
-                [Path(options["train_data"]).resolve(), Path(options["test_data"]).resolve()],
+                [
+                    Path(options["train_data"]).resolve(),
+                    *[Path(path).resolve() for path in options["test_data"]],
+                ],
                 asynchronous=not bool(options["sync"]),
                 **train_parameters,
             )
@@ -234,6 +274,7 @@ def run_train(args: argparse.Namespace) -> int:
                     writer=writer,
                     manifest=manifest,
                     metric_sink=metric_sink,
+                    result_visualizer=result_visualizer,
                     extractor=extractor,
                     timeout=options["timeout"],
                     poll_interval=float(options["poll_interval"]),
@@ -246,12 +287,14 @@ def run_train(args: argparse.Namespace) -> int:
                     status="finished",
                     measure=result.get("measure", {}),
                 )
-                _write_metric_events(
+                events = _write_metric_events(
                     {"status": "finished", **result},
                     writer=writer,
                     manifest=manifest,
                     metric_sink=metric_sink,
                 )
+                if result_visualizer is not None:
+                    result_visualizer.maybe_write({"status": "finished", **result}, events)
         writer.emit(
             "run_finished",
             run_id=manifest.data["run_id"],
@@ -326,6 +369,401 @@ def _create_training_metric_sink(
         ),
         visdom_sink,
     )
+
+
+class TrainingResultVisualizer:
+    def __init__(
+        self,
+        *,
+        model: str,
+        task: str,
+        samples: list[list["TestResultSample"]],
+        image_size: tuple[int, int],
+        confidence_threshold: float,
+        best_bbox: int | None,
+        artifact_dir: Path,
+        visdom_sink: VisdomMetricSink,
+        warning_callback: Any,
+        disable_failed: bool,
+    ) -> None:
+        self.model = model
+        self.task = task
+        self.samples = samples
+        self.image_size = image_size
+        self.confidence_threshold = confidence_threshold
+        self.best_bbox = best_bbox
+        self.artifact_dir = artifact_dir
+        self.visdom_sink = visdom_sink
+        self.warning_callback = warning_callback
+        self.disable_failed = disable_failed
+        self._last_iteration: float | None = None
+        self._disabled = False
+        self._warned_missing_payload = False
+
+    def train_output_parameters(self) -> dict[str, Any]:
+        parameters: dict[str, Any] = {
+            "test_predictions": {
+                "enabled": True,
+                "confidence_threshold": 0.1,
+                "indices": {
+                    f"test{test_index}": [sample.index for sample in samples]
+                    for test_index, samples in enumerate(self.samples)
+                    if samples
+                },
+            }
+        }
+        if self.best_bbox is not None:
+            parameters["test_predictions"]["best_bbox"] = self.best_bbox
+        return parameters
+
+    def maybe_write(
+        self,
+        status: dict[str, Any],
+        metric_events: list[dict[str, Any]],
+    ) -> None:
+        if self._disabled:
+            return
+        iteration = self._result_iteration(status, metric_events)
+        if iteration is None or iteration == self._last_iteration:
+            return
+        try:
+            if not self._write(status, iteration):
+                if not self._warned_missing_payload:
+                    self.warning_callback(
+                        "VisdomResultSink",
+                        RuntimeError(
+                            "training status has no test_predictions payload; "
+                            "skipping live result images"
+                        ),
+                    )
+                    self._warned_missing_payload = True
+                return
+        except Exception as error:
+            if not self.disable_failed:
+                raise
+            self.warning_callback("VisdomResultSink", error)
+        else:
+            self._last_iteration = iteration
+
+    def _result_iteration(
+        self,
+        status: dict[str, Any],
+        metric_events: list[dict[str, Any]],
+    ) -> float | None:
+        test_predictions = status.get("test_predictions")
+        if isinstance(test_predictions, dict):
+            iterations = []
+            for test_index, samples in enumerate(self.samples):
+                if not samples:
+                    continue
+                test_payload = test_predictions.get(f"test{test_index}")
+                if not isinstance(test_payload, dict):
+                    return None
+                payload_samples = test_payload.get("samples")
+                if not isinstance(payload_samples, list):
+                    return None
+                try:
+                    iterations.append(float(test_payload["iteration"]))
+                except (KeyError, TypeError, ValueError):
+                    return None
+            if iterations and len(set(iterations)) == 1:
+                return iterations[0]
+        return _result_visualization_iteration(metric_events)
+
+    def _write(self, status: dict[str, Any], iteration: float) -> bool:
+        test_predictions = status.get("test_predictions")
+        if not isinstance(test_predictions, dict):
+            return False
+        wrote = False
+        for test_index, samples in enumerate(self.samples):
+            if not samples:
+                continue
+            test_payload = test_predictions.get(f"test{test_index}")
+            if not isinstance(test_payload, dict):
+                continue
+            predictions = test_payload.get("samples", [])
+            if not isinstance(predictions, list):
+                continue
+            sample_by_index = {sample.index: sample.path for sample in samples}
+            images = []
+            rendered: list[tuple[int, Path, dict[str, Any], np.ndarray]] = []
+            for prediction in predictions:
+                if not isinstance(prediction, dict):
+                    continue
+                try:
+                    sample_index = int(prediction["index"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                image_path = sample_by_index.get(sample_index)
+                if image_path is None:
+                    continue
+                image = _result_image_array(
+                    self.model,
+                    image_path,
+                    prediction,
+                    image_size=self.image_size,
+                )
+                images.append(image)
+                rendered.append((sample_index, image_path, prediction, image))
+            if not images:
+                continue
+            self._write_artifacts(
+                test_index=test_index,
+                iteration=iteration,
+                rendered=rendered,
+            )
+            self.visdom_sink.write_images(
+                window=f"results-{self.task}-test{test_index}",
+                title=f"{self.task} test{test_index} results iteration {iteration:g}",
+                images=_visdom_result_image_arrays(images),
+            )
+            wrote = True
+        return wrote
+
+    def _write_artifacts(
+        self,
+        *,
+        test_index: int,
+        iteration: float,
+        rendered: list[tuple[int, Path, dict[str, Any], np.ndarray]],
+    ) -> None:
+        iteration_dir = (
+            self.artifact_dir
+            / f"iteration-{_artifact_iteration_name(iteration)}"
+            / f"test{test_index}"
+        )
+        iteration_dir.mkdir(parents=True, exist_ok=True)
+        for sample_index, image_path, prediction, image in rendered:
+            stem = f"sample-{sample_index:06d}"
+            image_out = iteration_dir / f"{stem}.png"
+            prediction_out = iteration_dir / f"{stem}.json"
+            _save_chw_image(image, image_out)
+            prediction_out.write_text(
+                json.dumps(
+                    {
+                        "image": str(image_path),
+                        "sample_index": sample_index,
+                        "prediction": prediction,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+
+
+def _create_training_result_visualizer(
+    profile: Any,
+    options: dict[str, Any],
+    *,
+    visdom_sink: VisdomMetricSink | None,
+    writer: EventWriter,
+    run_id: str,
+) -> TrainingResultVisualizer | None:
+    def warn(sink: str, error: BaseException) -> None:
+        writer.emit(
+            "sink_warning",
+            run_id=run_id,
+            sink=sink,
+            message=str(error),
+        )
+
+    if visdom_sink is None:
+        return None
+    if not bool(options.get("visdom_results", True)):
+        return None
+    count = int(options.get("visdom_results_count", 10))
+    if count <= 0:
+        return None
+
+    try:
+        samples = _sample_test_images(
+            options["test_data"],
+            count=count,
+            seed=int(options.get("visdom_results_seed", 12345)),
+        )
+    except Exception as error:
+        if not bool(options["visdom_offline_ok"]):
+            raise
+        warn("VisdomResultSink", error)
+        return None
+
+    if not any(samples):
+        return None
+    return TrainingResultVisualizer(
+        model=profile.name,
+        task=profile.task,
+        samples=samples,
+        image_size=(int(options["width"]), int(options["height"])),
+        confidence_threshold=float(options.get("confidence_threshold", 0.0)),
+        best_bbox=(
+            int(options["best_bbox"])
+            if options.get("best_bbox") is not None
+            else None
+        ),
+        artifact_dir=Path(options["repository"]).expanduser().resolve()
+        / "visdom-results",
+        visdom_sink=visdom_sink,
+        warning_callback=warn,
+        disable_failed=bool(options["visdom_offline_ok"]),
+    )
+
+
+@dataclass(frozen=True)
+class TestResultSample:
+    index: int
+    path: Path
+
+
+def _sample_test_images(
+    test_data: list[Path],
+    *,
+    count: int,
+    seed: int,
+) -> list[list[TestResultSample]]:
+    samples = []
+    for index, list_path in enumerate(test_data):
+        images = _dataset_image_paths(Path(list_path))
+        indexed_images = [
+            TestResultSample(sample_index, image)
+            for sample_index, image in enumerate(images)
+        ]
+        if len(indexed_images) > count:
+            indexed_images = random.Random(seed + index).sample(
+                indexed_images, count
+            )
+        samples.append(sorted(indexed_images, key=lambda sample: sample.index))
+    return samples
+
+
+def _dataset_image_paths(list_path: Path) -> list[Path]:
+    resolved = list_path.expanduser().resolve()
+    base = resolved.parent
+    images = []
+    for line in resolved.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        image = Path(line.split()[0]).expanduser()
+        if not image.is_absolute():
+            image = base / image
+        images.append(image.resolve())
+    return images
+
+
+def _artifact_iteration_name(iteration: float) -> str:
+    if float(iteration).is_integer():
+        return f"{int(iteration):06d}"
+    return str(iteration).replace(".", "_")
+
+
+def _save_chw_image(image: np.ndarray, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    array = np.asarray(image, dtype=np.uint8)
+    if array.ndim != 3 or array.shape[0] != 3:
+        raise ValueError(f"expected CHW RGB image, got shape {array.shape}")
+    Image.fromarray(array.transpose(1, 2, 0), mode="RGB").save(path)
+
+
+def _visdom_result_image_arrays(images: list[np.ndarray]) -> list[np.ndarray]:
+    resized = [
+        _resize_chw_image(image, max_side=VISDOM_RESULT_MAX_SIDE)
+        for image in images
+    ]
+    if not resized:
+        return resized
+    height = max(int(image.shape[1]) for image in resized)
+    width = max(int(image.shape[2]) for image in resized)
+    if all(image.shape[1] == height and image.shape[2] == width for image in resized):
+        return resized
+    padded = []
+    for image in resized:
+        canvas = np.full((3, height, width), 255, dtype=np.uint8)
+        canvas[:, : image.shape[1], : image.shape[2]] = image
+        padded.append(canvas)
+    return padded
+
+
+def _resize_chw_image(image: np.ndarray, *, max_side: int) -> np.ndarray:
+    array = np.asarray(image, dtype=np.uint8)
+    if array.ndim != 3 or array.shape[0] != 3:
+        raise ValueError(f"expected CHW RGB image, got shape {array.shape}")
+    height = int(array.shape[1])
+    width = int(array.shape[2])
+    largest = max(width, height)
+    if largest <= max_side:
+        return array
+    scale = max_side / float(largest)
+    new_width = max(1, int(round(width * scale)))
+    new_height = max(1, int(round(height * scale)))
+    pil_image = Image.fromarray(array.transpose(1, 2, 0), mode="RGB")
+    resampling = getattr(Image, "Resampling", Image).LANCZOS
+    resized = pil_image.resize((new_width, new_height), resampling)
+    return np.asarray(resized, dtype=np.uint8).transpose(2, 0, 1)
+
+
+def _result_visualization_iteration(
+    metric_events: list[dict[str, Any]],
+) -> float | None:
+    iterations = []
+    for event in metric_events:
+        if not _is_result_visualization_metric(event.get("name")):
+            continue
+        try:
+            iterations.append(float(event["iteration"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return max(iterations) if iterations else None
+
+
+def _is_result_visualization_metric(name: Any) -> bool:
+    if not isinstance(name, str):
+        return False
+    base, separator, suffix = name.rpartition("_test")
+    if separator and suffix.isdigit() and base:
+        name = base
+    normalized = name.lower()
+    return normalized == "map" or normalized.startswith("map-") or normalized in {
+        "acc",
+        "meaniou",
+        "meanacc",
+    }
+
+
+def _result_image_array(
+    model: str,
+    image_path: Path,
+    prediction: dict[str, Any],
+    *,
+    image_size: tuple[int, int],
+) -> np.ndarray:
+    if model == "yolox":
+        image = detection_overlay_image(
+            image_path,
+            prediction,
+            coordinate_size=_prediction_image_size(prediction) or image_size,
+        )
+    else:
+        _mask, image = segmentation_overlay_images(
+            image_path,
+            prediction,
+            original_size=True,
+        )
+    array = np.asarray(image.convert("RGB"), dtype=np.uint8)
+    return array.transpose(2, 0, 1)
+
+
+def _prediction_image_size(prediction: dict[str, Any]) -> tuple[int, int] | None:
+    imgsize = prediction.get("imgsize")
+    if not isinstance(imgsize, dict):
+        return None
+    try:
+        width = int(imgsize["width"])
+        height = int(imgsize["height"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return width, height
 
 
 def _create_or_resume_run_manifest(
@@ -465,11 +903,14 @@ def _write_metric_events(
     manifest: Any,
     metric_sink: CompositeMetricSink,
     extractor: MetricEventExtractor | None = None,
-) -> None:
+) -> list[dict[str, Any]]:
     metrics = extractor.events(status) if extractor is not None else metric_events(status)
+    events = []
     for metric in metrics:
         event = writer.emit("metric", run_id=manifest.data["run_id"], **metric)
         metric_sink.write(event)
+        events.append(event)
+    return events
 
 
 def _monitor_training(
@@ -478,6 +919,7 @@ def _monitor_training(
     writer: EventWriter,
     manifest: Any,
     metric_sink: CompositeMetricSink,
+    result_visualizer: TrainingResultVisualizer | None = None,
     timeout: float | None = None,
     poll_interval: float = 0.5,
     extractor: MetricEventExtractor | None = None,
@@ -486,9 +928,13 @@ def _monitor_training(
     extractor = extractor or MetricEventExtractor()
     manifest.update(job=job.job, status="running")
     while True:
-        status = job.status(
-            output_parameters={"measure_hist": True, "max_hist_points": 10000}
-        )
+        output_parameters: dict[str, Any] = {
+            "measure_hist": True,
+            "max_hist_points": 10000,
+        }
+        if result_visualizer is not None:
+            output_parameters["test_predictions"] = True
+        status = job.status(output_parameters=output_parameters)
         state = str(status.get("status", "")).lower()
         writer.emit(
             "training_status",
@@ -499,13 +945,15 @@ def _monitor_training(
             measure=status.get("measure", {}),
             measures=status.get("measures"),
         )
-        _write_metric_events(
+        events = _write_metric_events(
             status,
             writer=writer,
             manifest=manifest,
             metric_sink=metric_sink,
             extractor=extractor,
         )
+        if result_visualizer is not None:
+            result_visualizer.maybe_write(status, events)
         manifest.update(status=state or "running", last_status=status)
         if state in deepdetect.TrainingJob._TERMINAL:
             if state != "finished":
@@ -702,7 +1150,7 @@ def _add_common_config(parser: argparse.ArgumentParser) -> None:
 def _add_train_parser(parser: argparse.ArgumentParser) -> None:
     _add_common_config(parser)
     parser.add_argument("--train-data", type=Path)
-    parser.add_argument("--test-data", type=Path)
+    parser.add_argument("--test-data", nargs="+", type=Path)
     parser.add_argument("--weights", type=Path)
     parser.add_argument("--repository", type=Path)
     parser.add_argument("--service-name")
@@ -740,6 +1188,14 @@ def _add_train_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--visdom-server")
     parser.add_argument("--visdom-port", type=int)
     parser.add_argument("--visdom-base-url")
+    parser.add_argument(
+        "--visdom-results",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="upload sampled test-set prediction overlays to Visdom",
+    )
+    parser.add_argument("--visdom-results-count", type=int)
+    parser.add_argument("--visdom-results-seed", type=int)
     parser.add_argument(
         "--dataset-check",
         choices=("full", "none"),

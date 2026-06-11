@@ -377,6 +377,9 @@ namespace dd
               jmrepo.add("repository", this->_mlmodel._repo);
               out.add("model", jmrepo);
               this->collect_measures(out);
+              if (ad_params_out.has("test_predictions")
+                  && ad_params_out.get("test_predictions").get<bool>())
+                this->collect_status_payload(out, "test_predictions");
               std::chrono::time_point<std::chrono::system_clock> trun
                   = std::chrono::system_clock::now();
               out.add("time", std::chrono::duration_cast<std::chrono::seconds>(
@@ -387,6 +390,9 @@ namespace dd
                 max_hist_points
                     = ad_params_out.get("max_hist_points").get<int>();
               this->collect_measures_history(out, max_hist_points);
+              if (ad_params_out.has("test_predictions")
+                  && ad_params_out.get("test_predictions").get<bool>())
+                this->collect_status_payload(out, "test_predictions");
               out.add("mltype", this->_mltype);
               out.add("sname", this->_sname);
               out.add("description", this->_description);
