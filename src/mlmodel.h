@@ -181,6 +181,7 @@ namespace dd
     std::string _corresp; /**< file name of the class correspondences (e.g.
                              house / 23) */
     std::string _best_model_filename = "/best_model.txt";
+    std::string _visuals_dir = "/visuals";
 
 #ifdef USE_SIMSEARCH
 #ifdef USE_ANNOY
