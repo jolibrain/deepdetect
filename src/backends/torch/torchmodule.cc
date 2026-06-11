@@ -385,8 +385,7 @@ namespace dd
                                    std::string extract_layer)
   {
     if (_graph) // native modules take only one tensor as input for now
-      return _graph->extract(torch_utils::to_tensor(source[0]),
-                             extract_layer);
+      return _graph->extract(torch_utils::to_tensor(source[0]), extract_layer);
     if (_native)
       return _native->extract(torch_utils::to_tensor(source[0]),
                               extract_layer);

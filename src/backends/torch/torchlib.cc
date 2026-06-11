@@ -1920,12 +1920,11 @@ namespace dd
                             = -std::numeric_limits<float>::infinity();
                         non_bg.masked_fill_(non_bg < confidence_threshold,
                                             neg_inf);
-                        segmap
-                            = torch::flatten(std::get<1>(
-                                  torch::max(thresholded, 0, false)))
-                                  .contiguous()
-                                  .to(torch::kFloat64)
-                                  .to(cpu);
+                        segmap = torch::flatten(std::get<1>(torch::max(
+                                                    thresholded, 0, false)))
+                                     .contiguous()
+                                     .to(torch::kFloat64)
+                                     .to(cpu);
                       }
 
                     APIData rad;
