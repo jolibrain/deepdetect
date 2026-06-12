@@ -10,8 +10,11 @@ from PIL import Image
 
 from deepdetect import DeepDetect
 from deepdetect.cli import config
+from deepdetect.cli import inference
 from deepdetect.cli import main as cli
+from deepdetect.cli import results
 from deepdetect.cli import runs
+from deepdetect.cli import training
 from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
 from deepdetect.cli.visualize import detection_overlay_image
@@ -164,8 +167,8 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
             "body": {"measure": {"iteration": 2, "train_loss": 1.0, "map-50": 0.5}},
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
     run_root = tmp_path / "runs"
 
@@ -246,8 +249,8 @@ def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
             },
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test0 = write_training_files(tmp_path)
     test1 = tmp_path / "test1.txt"
     test1.write_text(test0.read_text(encoding="utf-8"), encoding="utf-8")
@@ -308,8 +311,8 @@ def test_train_config_accepts_test_data_list(monkeypatch, tmp_path, capsys):
     runtime.statuses = [
         {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test0 = write_training_files(tmp_path)
     test1 = tmp_path / "test1.txt"
     test1.write_text(test0.read_text(encoding="utf-8"), encoding="utf-8")
@@ -345,13 +348,47 @@ def test_train_config_accepts_test_data_list(monkeypatch, tmp_path, capsys):
     }
 
 
+def test_train_set_overrides_flat_cli_option(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+    ]
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(tmp_path / "runs"),
+            "--set",
+            "base_lr=0.002",
+        ]
+    )
+
+    assert code == 0
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert train_call[1]["parameters"]["mllib"]["solver"]["base_lr"] == 0.002
+    capsys.readouterr()
+
+
 def test_train_defaults_job_dir_to_repository(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [
         {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
     repository = tmp_path / "repo-default-job-dir"
 
@@ -389,8 +426,8 @@ def test_train_resume_latest_uses_repository_state_without_weights(monkeypatch, 
     runtime.statuses = [
         {"status": "finished", "body": {"measure": {"iteration": 11, "train_loss": 1.0}}},
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     _weights, train, test = write_training_files(tmp_path)
     repository = write_resume_repository(tmp_path / "repo")
     run_root = tmp_path / "runs"
@@ -480,9 +517,9 @@ def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
             },
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
-    monkeypatch.setattr(cli, "_history_progress", lambda *, total: FakeProgress(total))
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training, "history_progress", lambda *, total: FakeProgress(total))
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     _weights, train, test = write_training_files(tmp_path)
     repository = write_resume_repository(tmp_path / "repo", iteration=10)
@@ -564,7 +601,7 @@ def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
 
 def test_train_yolox_rejects_missing_bbox_file(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
     image = tmp_path / "image.jpg"
@@ -603,8 +640,8 @@ def test_train_yolox_can_skip_dataset_validation(monkeypatch, tmp_path, capsys):
     runtime.statuses = [
         {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
     image = tmp_path / "image.jpg"
@@ -658,7 +695,7 @@ def test_train_yolox_can_skip_dataset_validation(monkeypatch, tmp_path, capsys):
 
 def test_train_rejects_gpuid_with_no_gpu(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
     weights, train, test = write_training_files(tmp_path)
 
     code = cli.main(
@@ -711,8 +748,8 @@ def test_train_emits_only_new_history_points(monkeypatch, tmp_path, capsys):
             },
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
 
     code = cli.main(
@@ -772,8 +809,8 @@ def test_train_uses_iteration_history_for_eval_metrics(monkeypatch, tmp_path, ca
             },
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
 
     code = cli.main(
@@ -829,9 +866,9 @@ def test_train_live_terminal_falls_back_to_jsonl_when_not_tty(
     runtime.statuses = [
         {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
-    monkeypatch.setattr(cli.sys.stdout, "isatty", lambda: False)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.sys.stdout, "isatty", lambda: False)
     weights, train, test = write_training_files(tmp_path)
 
     code = cli.main(
@@ -893,10 +930,10 @@ def test_train_live_terminal_keeps_metric_sinks(monkeypatch, tmp_path, capsys):
             "body": {"measure": {"iteration": 2, "train_loss": 1.0, "map-50": 0.5}},
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
-    monkeypatch.setattr(cli.sys.stdout, "isatty", lambda: True)
-    monkeypatch.setattr(cli, "LiveTrainingTerminalReporter", FakeLiveReporter)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(training, "LiveTrainingTerminalReporter", FakeLiveReporter)
     weights, train, test = write_training_files(tmp_path)
     run_root = tmp_path / "runs"
 
@@ -1056,7 +1093,7 @@ def test_live_training_terminal_reporter_renders_sink_warning():
 
 def test_explicit_run_name_collision_fails_before_training(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
     weights, train, test = write_training_files(tmp_path)
     run_root = tmp_path / "runs"
     (run_root / "existing").mkdir(parents=True)
@@ -1128,8 +1165,8 @@ def test_train_visdom_sink_plots_losses_and_metrics(monkeypatch, tmp_path, capsy
             },
         }
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
 
@@ -1224,7 +1261,7 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
         rendered_paths.append(image_path)
         return np.zeros((3, 8, 8), dtype=np.uint8)
 
-    monkeypatch.setattr(cli, "_result_image_array", fake_result_image_array)
+    monkeypatch.setattr(results, "result_image_array", fake_result_image_array)
 
     runtime = FakeRuntime()
     runtime.statuses = [
@@ -1282,8 +1319,8 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
             },
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
     image2 = tmp_path / "image2.jpg"
@@ -1376,8 +1413,8 @@ def test_train_visdom_results_can_be_disabled(monkeypatch, tmp_path, capsys):
             },
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
 
@@ -1498,8 +1535,8 @@ def test_train_visdom_results_waits_for_backend_prediction_payload(
             },
         },
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
 
@@ -1547,7 +1584,7 @@ def test_segmentation_result_image_is_rgb_chw_overlay(tmp_path):
     image = tmp_path / "image.png"
     Image.new("RGB", (2, 2), color="white").save(image)
 
-    array = cli._result_image_array(
+    array = results.result_image_array(
         "segformer",
         image,
         {
@@ -1565,7 +1602,7 @@ def test_detection_result_image_draws_normalized_bbox_on_original_size(tmp_path)
     image = tmp_path / "image.png"
     Image.new("RGB", (10, 8), color="white").save(image)
 
-    array = cli._result_image_array(
+    array = results.result_image_array(
         "yolox",
         image,
         {
@@ -1588,7 +1625,7 @@ def test_detection_result_image_uses_prediction_coordinate_size(tmp_path):
     image = tmp_path / "image.png"
     Image.new("RGB", (20, 10), color="white").save(image)
 
-    array = cli._result_image_array(
+    array = results.result_image_array(
         "yolox",
         image,
         {
@@ -1611,7 +1648,7 @@ def test_detection_result_image_uses_prediction_coordinate_size(tmp_path):
 def test_visdom_result_images_are_resized_to_max_side():
     image = np.zeros((3, 600, 1200), dtype=np.uint8)
 
-    resized = cli._visdom_result_image_arrays([image])
+    resized = results.visdom_result_image_arrays([image])
 
     assert len(resized) == 1
     assert resized[0].shape == (3, 256, 512)
@@ -1621,7 +1658,7 @@ def test_visdom_result_images_are_padded_without_distorting_aspect_ratio():
     wide = np.full((3, 600, 1200), 32, dtype=np.uint8)
     tall = np.full((3, 1200, 600), 64, dtype=np.uint8)
 
-    resized = cli._visdom_result_image_arrays([wide, tall])
+    resized = results.visdom_result_image_arrays([wide, tall])
 
     assert [image.shape for image in resized] == [(3, 512, 512), (3, 512, 512)]
     assert np.all(resized[0][:, :256, :] == 32)
@@ -1727,7 +1764,7 @@ def test_train_visdom_unreachable_can_fail_fast(monkeypatch, tmp_path, capsys):
             return False
 
     runtime = FakeRuntime()
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
 
@@ -1767,8 +1804,8 @@ def test_train_visdom_unreachable_warns_and_continues(monkeypatch, tmp_path, cap
     runtime.statuses = [
         {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
     ]
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
-    monkeypatch.setattr(cli.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
 
@@ -1804,7 +1841,7 @@ def test_train_reports_native_import_error(monkeypatch, tmp_path, capsys):
     def fail_runtime():
         raise ImportError("deepdetect native extension 'deepdetect._native' missing")
 
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", fail_runtime)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", fail_runtime)
     weights, train, test = write_training_files(tmp_path)
 
     code = cli.main(
@@ -1832,7 +1869,7 @@ def test_train_reports_native_import_error(monkeypatch, tmp_path, capsys):
 
 def test_infer_yolox_batches_and_benchmark(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
     image1 = tmp_path / "one.png"
@@ -1897,7 +1934,7 @@ def test_infer_segformer_keeps_default_size(monkeypatch, tmp_path, capsys):
             }
         )
     )
-    monkeypatch.setattr(cli.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
     image = tmp_path / "one.png"
