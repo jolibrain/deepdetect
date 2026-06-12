@@ -158,7 +158,8 @@ Visdom options:
   prediction overlays, default enabled when Visdom is enabled.
 - `--visdom-results-count`: number of sampled result images per test set,
   default `10`. Use `0` to disable result image uploads.
-- `--visdom-results-seed`: random seed for stable result-image sampling.
+- `--visdom-results-seed`: random seed for deterministic result-image
+  resampling.
 
 The Visdom environment name is the training `run_name`. Loss-like metrics
 whose names contain `loss` are each sent to their own line plot. mAP metrics
@@ -168,10 +169,9 @@ use separate windows. Per-test-set metrics such as `map-50_test0` and
 and `test1`. Other numeric metrics are grouped into scale-compatible line
 plots. Non-numeric metrics are ignored with a one-time warning. Non-finite
 numeric values such as `NaN` and `Inf` are silently skipped for Visdom.
-Result images are sampled once from every test set and refreshed when a new
-evaluation metric iteration is observed. Detection results draw predicted boxes
-and labels on input-sized images; segmentation results show mask overlays on
-input-sized images.
+Result images are resampled from every test set at each evaluation interval.
+Detection results draw predicted boxes and labels on input-sized images;
+segmentation results show mask overlays on input-sized images.
 
 ## Inference Commands
 

@@ -1217,9 +1217,11 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
             self.image_grids.append((tensor, kwargs))
 
     rendered_class_counts = []
+    rendered_paths = []
 
     def fake_result_image_array(model, image_path, prediction, *, image_size):
         rendered_class_counts.append(len(prediction["classes"]))
+        rendered_paths.append(image_path)
         return np.zeros((3, 8, 8), dtype=np.uint8)
 
     monkeypatch.setattr(cli, "_result_image_array", fake_result_image_array)
@@ -1240,7 +1242,7 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
                         "iteration": 100.0,
                         "samples": [
                             {
-                                "index": 0,
+                                "index": 1,
                                 "classes": [
                                     {
                                         "cat": "object",
@@ -1284,6 +1286,12 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
     monkeypatch.setattr(cli.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
+    image2 = tmp_path / "image2.jpg"
+    Image.new("RGB", (8, 8), color="white").save(image2)
+    target2 = tmp_path / "target2.txt"
+    target2.write_text("1 0 0 4 4\n", encoding="utf-8")
+    with test.open("a", encoding="utf-8") as stream:
+        stream.write(f"{image2} {target2}\n")
 
     code = cli.main(
         [
@@ -1311,17 +1319,20 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
     assert train_call[1]["parameters"]["output"]["test_predictions"] == {
         "enabled": True,
         "confidence_threshold": 0.1,
-        "indices": {"test0": [0]},
+        "sample_count": 1,
+        "sample_seed": 12345,
     }
     status_calls = [call for call in runtime.calls if call[0] == "status"]
     assert status_calls[0][1]["parameters"]["output"]["test_predictions"] is True
     image_grids = FakeVisdom.instances[0].image_grids
     assert len(image_grids) == 1
     assert rendered_class_counts == [2]
+    assert rendered_paths == [image2.resolve()]
     artifact_dir = tmp_path / "repo" / "visdom-results" / "iteration-000100" / "test0"
-    assert (artifact_dir / "sample-000000.png").is_file()
-    artifact = json.loads((artifact_dir / "sample-000000.json").read_text())
-    assert artifact["sample_index"] == 0
+    assert (artifact_dir / "sample-000001.png").is_file()
+    artifact = json.loads((artifact_dir / "sample-000001.json").read_text())
+    assert artifact["sample_index"] == 1
+    assert artifact["image"] == str(image2.resolve())
     assert len(artifact["prediction"]["classes"]) == 2
     tensor, kwargs = image_grids[0]
     assert tensor.shape == (1, 3, 8, 8)

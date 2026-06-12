@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import copy
 import json
-import random
 import sys
 import time
 from dataclasses import dataclass
@@ -378,6 +377,8 @@ class TrainingResultVisualizer:
         model: str,
         task: str,
         samples: list[list["TestResultSample"]],
+        sample_count: int,
+        sample_seed: int,
         image_size: tuple[int, int],
         confidence_threshold: float,
         best_bbox: int | None,
@@ -389,6 +390,8 @@ class TrainingResultVisualizer:
         self.model = model
         self.task = task
         self.samples = samples
+        self.sample_count = sample_count
+        self.sample_seed = sample_seed
         self.image_size = image_size
         self.confidence_threshold = confidence_threshold
         self.best_bbox = best_bbox
@@ -405,11 +408,8 @@ class TrainingResultVisualizer:
             "test_predictions": {
                 "enabled": True,
                 "confidence_threshold": 0.1,
-                "indices": {
-                    f"test{test_index}": [sample.index for sample in samples]
-                    for test_index, samples in enumerate(self.samples)
-                    if samples
-                },
+                "sample_count": self.sample_count,
+                "sample_seed": self.sample_seed,
             }
         }
         if self.best_bbox is not None:
@@ -577,11 +577,7 @@ def _create_training_result_visualizer(
         return None
 
     try:
-        samples = _sample_test_images(
-            options["test_data"],
-            count=count,
-            seed=int(options.get("visdom_results_seed", 12345)),
-        )
+        samples = _test_result_samples(options["test_data"])
     except Exception as error:
         if not bool(options["visdom_offline_ok"]):
             raise
@@ -594,6 +590,8 @@ def _create_training_result_visualizer(
         model=profile.name,
         task=profile.task,
         samples=samples,
+        sample_count=count,
+        sample_seed=int(options.get("visdom_results_seed", 12345)),
         image_size=(int(options["width"]), int(options["height"])),
         confidence_threshold=float(options.get("confidence_threshold", 0.0)),
         best_bbox=(
@@ -615,24 +613,15 @@ class TestResultSample:
     path: Path
 
 
-def _sample_test_images(
-    test_data: list[Path],
-    *,
-    count: int,
-    seed: int,
-) -> list[list[TestResultSample]]:
+def _test_result_samples(test_data: list[Path]) -> list[list[TestResultSample]]:
     samples = []
-    for index, list_path in enumerate(test_data):
+    for list_path in test_data:
         images = _dataset_image_paths(Path(list_path))
         indexed_images = [
             TestResultSample(sample_index, image)
             for sample_index, image in enumerate(images)
         ]
-        if len(indexed_images) > count:
-            indexed_images = random.Random(seed + index).sample(
-                indexed_images, count
-            )
-        samples.append(sorted(indexed_images, key=lambda sample: sample.index))
+        samples.append(indexed_images)
     return samples
 
 
