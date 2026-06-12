@@ -3,7 +3,7 @@
 # Deep Learning Server and CLI
 
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jolibrain/deepdetect?color=success&sort=semver)
-![GitHub Release Date](https://img.shields.io/github/release-date/jolibrain/deepdetect)
+![GitHub Release Date](https://img.shields.io/github/release-date/jolibrain/deepdetect?display_date=created_at)
 ![GitHub commits since latest release](https://img.shields.io/github/commits-since/jolibrain/deepdetect/latest/master)
 
 DeepDetect is a deep learning runtime, command-line tool, and REST server for
