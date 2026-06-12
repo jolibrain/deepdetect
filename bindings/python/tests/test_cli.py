@@ -1038,6 +1038,35 @@ def test_live_training_terminal_reporter_renders_progress_losses_and_metrics():
     assert "elapsed_time_ms" not in output
 
 
+def test_live_training_terminal_reporter_keeps_completed_test_progress_visible():
+    stream = io.StringIO()
+    reporter = LiveTrainingTerminalReporter(
+        total_iterations=10,
+        gpu_monitor=None,
+        stream=stream,
+        force_terminal=True,
+    )
+
+    reporter.emit(
+        "training_status",
+        status="running",
+        measure={
+            "iteration": 5,
+            "train_loss": 1.0,
+            "test_active": 0,
+            "test_set_index": 0,
+            "test_sets_total": 1,
+            "test_processed": 12,
+            "test_total": 12,
+        },
+    )
+    reporter.close()
+
+    output = strip_ansi(stream.getvalue())
+    assert "test set 1/1" in output
+    assert "12/12" in output
+
+
 def test_live_training_terminal_reporter_waits_for_first_loss_before_rendering():
     stream = io.StringIO()
     reporter = LiveTrainingTerminalReporter(

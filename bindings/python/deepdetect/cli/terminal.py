@@ -155,7 +155,7 @@ class LiveTrainingTerminalReporter:
         )
         table.add_row(f"[bold]loss[/] {_format_values(self._loss_values(), empty='pending')}")
         table.add_row(Rule(style="dim"))
-        if _finite_float(self._measure.get("test_active")) == 1.0:
+        if self._has_test_progress():
             table.add_row(self._test_progress(Progress, SpinnerColumn, TextColumn, BarColumn))
         table.add_row(
             f"[bold]metrics[/] {_format_values(self._metric_values(), empty='pending')}"
@@ -177,6 +177,13 @@ class LiveTrainingTerminalReporter:
         completed = min(max(iteration, 0.0), float(self.total_iterations))
         progress.add_task("train", total=float(self.total_iterations), completed=completed)
         return progress
+
+    def _has_test_progress(self) -> bool:
+        if _finite_float(self._measure.get("test_active")) == 1.0:
+            return True
+        processed = _finite_float(self._measure.get("test_processed"))
+        total = _finite_float(self._measure.get("test_total"))
+        return processed is not None and total is not None and total > 0
 
     def _test_progress(self, Progress, SpinnerColumn, TextColumn, BarColumn):
         index = int(_finite_float(self._measure.get("test_set_index")) or 0)
