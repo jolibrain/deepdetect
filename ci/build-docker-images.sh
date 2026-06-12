@@ -43,6 +43,15 @@ fi
 
 image_url_prefix="docker.jolibrain.com/deepdetect"
 
+case "${FORCE_DOCKER_REBUILD,,}" in
+    1|true|yes)
+        force_docker_rebuild=1
+        ;;
+    *)
+        force_docker_rebuild=
+        ;;
+esac
+
 for name in $NAMES; do
     target=${TARGETS[$name]}
     if [ ! "$target" ]; then
@@ -59,10 +68,14 @@ for name in $NAMES; do
     pytorch_cuda_index=${PYTORCH_CUDA_INDEXES[$name]}
     release="OFF"
     if [ "$TAG_NAME" ]; then
-        already_exists=$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME 2>/dev/null || true)
-        if [ "$already_exists" ]; then
-            echo "${image_url}:$TAG_NAME already built skipping..."
-            continue
+        if [ "$force_docker_rebuild" ]; then
+            echo "FORCE_DOCKER_REBUILD set, rebuilding ${image_url}:$TAG_NAME..."
+        else
+            already_exists=$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${image_url}:$TAG_NAME 2>/dev/null || true)
+            if [ "$already_exists" ]; then
+                echo "${image_url}:$TAG_NAME already built skipping..."
+                continue
+            fi
         fi
         release="ON"
     fi
