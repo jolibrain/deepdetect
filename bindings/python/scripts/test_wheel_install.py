@@ -219,7 +219,20 @@ def main() -> None:
     python = str(venv_dir / "bin" / "python")
     wheel = select_wheel(wheel_dir, args.distribution_name)
     run([python, "-m", "pip", "install", "--upgrade", "pip"])
-    run(pip_install_command(python, ["pytest>=7", "numpy>=1.23", "Pillow>=9"]))
+    run(
+        pip_install_command(
+            python,
+            [
+                "pytest>=7",
+                "numpy>=1.23",
+                "nvidia-ml-py>=12",
+                "Pillow>=9",
+                "PyYAML>=6",
+                "rich>=13.7",
+                "tqdm>=4.66",
+            ],
+        )
+    )
     run(
         pip_install_command(
             python,
