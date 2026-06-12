@@ -45,9 +45,11 @@ Configuration precedence is:
 YAML is intended for repeatable runs. CLI flags are intended for discoverable
 interactive use and agent function-call arguments.
 Config files and `--set` map to top-level CLI option names such as
-`base_lr=0.001`, `iter_size=2`, `batch_size=4`, or `visdom=true`; version 1 does not expose
-direct nested overrides for profile-internal DeepDetect parameters such as
-`solver`, `crop_size`, or augmentation blocks.
+`base_lr=0.001`, `iter_size=2`, `batch_size=4`, or `visdom=true`. Training
+YAML files may also define an `augmentation` mapping. This mapping is
+deep-merged into the selected model profile's training augmentation defaults
+without adding one command-line flag per augmentation parameter.
+Class weighting is available as a YAML-only top-level `class_weights` list.
 
 Example default-style configs are provided next to this document:
 
@@ -120,6 +122,29 @@ Shared training options:
   `full` is the default and performs the model-specific validation described
   below. `none` skips dataset validation for fast startup on datasets that have
   already been checked.
+
+Training YAML files can override augmentation values for both YOLOX and
+SegFormer:
+
+```yaml
+augmentation:
+  mirror: true
+  rotate: true
+  crop_size: 384
+  cutout: 0.25
+  geometry:
+    prob: 0.3
+    zoom_in: false
+  noise:
+    prob: 0.02
+  distort:
+    prob: 0.02
+class_weights: [1.0, 0.5, 2.0]
+```
+
+Only keys that are provided need to be listed; nested values are merged with
+the profile defaults. `class_weights` is passed to DeepDetect as
+`mllib_parameters.class_weights`.
 
 Training creates a run directory containing:
 

@@ -16,6 +16,7 @@ from deepdetect.cli import main as cli
 from deepdetect.cli import results
 from deepdetect.cli import runs
 from deepdetect.cli import training
+from deepdetect.cli.profiles import get_profile
 from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
 from deepdetect.cli.visualize import detection_overlay_image, segmentation_overlay_images
@@ -143,11 +144,17 @@ def test_default_example_configs_load():
     assert yolox["height"] == 640
     assert yolox["confidence_threshold"] == 0.25
     assert yolox["iter_size"] == 2
+    assert yolox["augmentation"]["crop_size"] == 0
+    assert yolox["augmentation"]["geometry"]["prob"] == 0.1
+    assert yolox["class_weights"] is None
     assert yolox["dataset_check"] == "full"
     assert segformer["width"] == 480
     assert segformer["height"] == 480
     assert segformer["batch_size"] == 4
     assert segformer["iter_size"] == 1
+    assert segformer["augmentation"]["crop_size"] == 224
+    assert segformer["augmentation"]["cutout"] == 0.5
+    assert segformer["class_weights"] is None
     assert segformer["dataset_check"] == "full"
 
 
@@ -339,6 +346,14 @@ def test_train_config_accepts_test_data_list(monkeypatch, tmp_path, capsys):
                 f"weights: {weights}",
                 f"repository: {tmp_path / 'repo'}",
                 f"job_dir: {tmp_path / 'runs'}",
+                "augmentation:",
+                "  crop_size: 32",
+                "  geometry:",
+                "    prob: 0.3",
+                "    zoom_in: false",
+                "  noise:",
+                "    prob: 0.2",
+                "class_weights: [1, 0.5]",
             ]
         ),
         encoding="utf-8",
@@ -353,11 +368,43 @@ def test_train_config_accepts_test_data_list(monkeypatch, tmp_path, capsys):
         str(test0.resolve()),
         str(test1.resolve()),
     ]
+    mllib = train_call[1]["parameters"]["mllib"]
+    assert mllib["crop_size"] == 32
+    assert mllib["geometry"]["prob"] == 0.3
+    assert mllib["geometry"]["zoom_in"] is False
+    assert mllib["geometry"]["zoom_out"] is True
+    assert mllib["noise"]["prob"] == 0.2
+    assert mllib["class_weights"] == [1.0, 0.5]
+    saved_config = config.load_config(tmp_path / "repo" / "config.yaml")
+    assert saved_config["augmentation"]["crop_size"] == 32
+    assert saved_config["augmentation"]["geometry"]["prob"] == 0.3
+    assert saved_config["class_weights"] == [1, 0.5]
     assert "dataset_check" in {
         json.loads(line)["event"]
         for line in capsys.readouterr().out.splitlines()
         if line.strip()
     }
+
+
+def test_segformer_training_parameters_accept_augmentation_overrides():
+    profile = get_profile("segformer")
+    options = profile.train_defaults()
+    options["augmentation"] = config.deep_merge(
+        options["augmentation"],
+        {
+            "crop_size": 384,
+            "cutout": 0.25,
+            "distort": {"prob": 0.4},
+        },
+    )
+
+    parameters = profile.train_parameters(options)
+    mllib = parameters["mllib_parameters"]
+
+    assert mllib["crop_size"] == 384
+    assert mllib["cutout"] == 0.25
+    assert mllib["distort"]["prob"] == 0.4
+    assert mllib["geometry"]["zoom_in"] is True
 
 
 def test_train_set_overrides_flat_cli_option(monkeypatch, tmp_path, capsys):

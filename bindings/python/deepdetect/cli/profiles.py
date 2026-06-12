@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,8 @@ class ModelProfile:
             "iterations": 100,
             "batch_size": 2 if self.name == "yolox" else 4,
             "iter_size": int(self.train_mllib.get("solver", {}).get("iter_size", 1)),
+            "augmentation": _augmentation_defaults(self.train_mllib),
+            "class_weights": None,
             "base_lr": 0.0001,
             "test_interval": 100,
             "gpu": False,
@@ -113,6 +116,10 @@ class ModelProfile:
 
     def train_parameters(self, options: dict[str, Any]) -> dict[str, Any]:
         mllib = copy.deepcopy(self.train_mllib)
+        _validate_mapping_option(options, "augmentation")
+        _validate_mapping_option(options, "mllib")
+        mllib = _deep_merge(mllib, options.get("augmentation"))
+        mllib = _deep_merge(mllib, options.get("mllib"))
         mllib["gpu"] = bool(options["gpu"])
         if options.get("gpuid") is not None:
             mllib["gpuid"] = copy.deepcopy(options["gpuid"])
@@ -121,6 +128,10 @@ class ModelProfile:
         mllib["solver"]["iter_size"] = int(options["iter_size"])
         mllib["solver"]["base_lr"] = float(options["base_lr"])
         mllib["solver"]["test_interval"] = int(options["test_interval"])
+        if options.get("class_weights") is not None:
+            mllib["class_weights"] = _float_list_option(
+                options["class_weights"], "class_weights"
+            )
         if options.get("resume"):
             mllib["resume"] = True
             mllib["resume_from"] = str(options["resume"])
@@ -259,3 +270,41 @@ def get_profile(name: str) -> ModelProfile:
         return PROFILES[name]
     except KeyError as error:
         raise ValueError(f"unknown model profile: {name}") from error
+
+
+def _deep_merge(*values: Mapping[str, Any] | None) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for value in values:
+        if not value:
+            continue
+        for key, item in value.items():
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(item, dict)
+            ):
+                result[key] = _deep_merge(result[key], item)
+            else:
+                result[key] = copy.deepcopy(item)
+    return result
+
+
+def _augmentation_defaults(mllib: Mapping[str, Any]) -> dict[str, Any]:
+    non_augmentation_keys = {"solver", "net", "resume", "resume_from", "gpu", "gpuid"}
+    return {
+        key: copy.deepcopy(value)
+        for key, value in mllib.items()
+        if key not in non_augmentation_keys
+    }
+
+
+def _validate_mapping_option(options: dict[str, Any], name: str) -> None:
+    value = options.get(name)
+    if value is not None and not isinstance(value, Mapping):
+        raise ValueError(f"{name} must be a mapping")
+
+
+def _float_list_option(value: Any, name: str) -> list[float]:
+    if not isinstance(value, list):
+        raise ValueError(f"{name} must be a list of numbers")
+    return [float(item) for item in value]
