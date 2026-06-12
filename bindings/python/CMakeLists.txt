@@ -13,6 +13,10 @@ set_target_properties(_native PROPERTIES
   INSTALL_RPATH "$ORIGIN;$ORIGIN/../torch/lib")
 
 install(TARGETS _native LIBRARY DESTINATION deepdetect)
+install(FILES
+  deepdetect/cli/segformer-default.yaml
+  deepdetect/cli/yolox-default.yaml
+  DESTINATION deepdetect/cli)
 
 option(DEEPDETECT_PYTHON_BUNDLE_NATIVE
   "bundle the staged DeepDetect SDK shared libraries in the wheel" ON)
