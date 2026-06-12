@@ -1,127 +1,297 @@
-# DeepDetect Installation from docker images
+# DeepDetect Docker Usage
 
-This repository contains the Dockerfiles for building the CPU and GPU images for deepdetect.
+DeepDetect Docker images run the `dede` REST server. Use them when you want a
+long-running HTTP service, containerized serving, or a reproducible deployment
+environment. For local in-process work and the `deepdetect` CLI, use the Python
+wheel described in [../bindings/python/README.md](../bindings/python/README.md).
 
-Also see https://hub.docker.com/u/jolibrain for the latest pre-built images
+The current recommended server backends are:
 
-The docker images contain:
-- a running `dede` server ready to be used, no install required
-- `googlenet` and `resnet_50` pre-trained image classification models, in `/opt/models/`
+- `torch` for training and inference.
+- `tensorrt` for optimized inference from exported or compatible models.
 
-This allows to run the container and set an image classification model based on deep (residual) nets in two short command line calls.
+The retired `caffe`, `caffe2`, `tf`, and `tensorflow` backends are rejected by
+the server. Do not use old Docker examples that create services with
+`"mllib":"caffe"`.
 
-## Getting and running official images
+## Images
 
-```
-docker pull docker.jolibrain.com/deepdetect_cpu
-```
-or
-```
-docker pull docker.jolibrain.com/deepdetect_gpu
-```
+Official images are published at `docker.jolibrain.com`:
 
-### Running the CPU image
-
-```
-docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_cpu
-```
-
-`dede` server is now listening on your port `8080`:
-
-```
-curl http://localhost:8080/info
-
-{"status":{"code":200,"msg":"OK"},"head":{"method":"/info","version":"0.1","branch":"master","commit":"c8556f0b3e7d970bcd9861b910f9eae87cfd4b0c","services":[]}}
-```
-
-Here is how to do a simple image classification service and prediction test:
-- service creation
-```
-curl -X PUT "http://localhost:8080/services/imageserv" -d "{\"mllib\":\"caffe\",\"description\":\"image classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":1000}},\"model\":{\"repository\":\"/opt/models/resnet50/\"}}"
-
-{"status":{"code":201,"msg":"Created"}}
-```
-- image classification
-```
-curl -X POST "http://localhost:8080/predict" -d "{\"service\":\"imageserv\",\"parameters\":{\"input\":{\"width\":224,\"height\":224},\"output\":{\"best\":3},\"mllib\":{\"gpu\":false}},\"data\":[\"http://i.ytimg.com/vi/0vxOhd4qlnA/maxresdefault.jpg\"]}"
-
-{"status":{"code":200,"msg":"OK"},"head":{"method":"/predict","time":852.0,"service":"imageserv"},"body":{"predictions":{"uri":"http://i.ytimg.com/vi/0vxOhd4qlnA/maxresdefault.jpg","classes":[{"prob":0.2255125343799591,"cat":"n03868863 oxygen mask"},{"prob":0.20917612314224244,"cat":"n03127747 crash helmet"},{"last":true,"prob":0.07399296760559082,"cat":"n03379051 football helmet"}]}}}
-```
-
-### Running the GPU image
-
-This requires [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) in order for the local GPUs to be made accessible by the container.
-
-The following steps are required:
-
-- install `nvidia-docker`: https://github.com/NVIDIA/nvidia-docker
-- run with
-```
-nvidia-docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_gpu
-```
-
-Notes:
-- `nvidia-docker` requires docker >= 1.9
-
-To test on image classification on GPU:
-```
-curl -X PUT "http://localhost:8080/services/imageserv" -d "{\"mllib\":\"caffe\",\"description\":\"image classification service\",\"type\":\"supervised\",\"parameters\":{\"input\":{\"connector\":\"image\"},\"mllib\":{\"nclasses\":1000}},\"model\":{\"repository\":\"/opt/models/resnet50/\"}}"
-{"status":{"code":201,"msg":"Created"}}
-```
-and
-```
-curl -X POST "http://localhost:8080/predict" -d "{\"service\":\"imageserv\",\"parameters\":{\"input\":{\"width\":224,\"height\":224},\"output\":{\"best\":3},\"mllib\":{\"gpu\":true}},\"data\":[\"http://i.ytimg.com/vi/0vxOhd4qlnA/maxresdefault.jpg\"]}"
-```
-
-Try the `POST` call twice: first time loads the net so it takes slightly below a second, then second call should yield a `time` around 100ms as reported in the output JSON.
-
-### Access to server logs
-
-To look at server logs, use
-```
-docker logs -f <container name>
-```
-where <container name> can be obtained via `docker ps`
-
-Example:
-
-
-- start container and server:
-```
-> docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_cpu
-```
-
-- look for container:
-```
-> docker ps
-CONTAINER ID        IMAGE                  COMMAND                  CREATED              STATUS              PORTS                    NAMES
-d9944734d5d6        docker.jolibrain.com/deepdetect_cpu   "/bin/sh -c './dede -"   17 seconds ago       Up 16 seconds       0.0.0.0:8080->8080/tcp   loving_shaw
-```
-
-- access server logs:
-```
-> docker logs -f loving_shaw
-
-DeepDetect [ commit 4e2c9f4cbd55eeba3a93fae71d9d62377e91ffa5 ]
-Running DeepDetect HTTP server on 0.0.0.0:8080
-```
-
-- share a volume with the image:
-```
-docker run -d -p 8080:8080 -v /path/to/volume:/opt/deepdetect docker.jolibrain.com/deepdetect_cpu
-```
-where `/path/to/volume` is the path to your local volume that you'd like to attach to `/opt/deepdetect`. This is useful for sharing / saving models, etc...
-
-### Access documentation with custom API endpoint
-
-Given a running server on 0.0.0.0:8080, the documentation is served at `http://hostname:8080/swagger/ui`.
-
-If dede is behind a custom API endpoint, e.g. `hostname:port/api/deepdetect`, swagger links won't work correctly. You can get around this by specifying the api path when you run the docker:
 ```bash
-docker run -d -p 8080:8080 docker.jolibrain.com/deepdetect_cpu -swagger_api_prefix api/deepdetect/
+docker pull docker.jolibrain.com/deepdetect_cpu
+docker pull docker.jolibrain.com/deepdetect_gpu
+docker pull docker.jolibrain.com/deepdetect_gpu_tensorrt
 ```
-You can now serve DeepDetect on `hostname:port/api/deepdetect/` and expect the links in swagger documentation to work correctly.
 
-## Building docker images
+Use `deepdetect_cpu` for CPU-only serving, `deepdetect_gpu` for CUDA Torch
+serving, and `deepdetect_gpu_tensorrt` when you need TensorRT support.
 
-See https://github.com/jolibrain/deepdetect/tree/master/docker/README.md
+To inspect the registry:
+
+```bash
+curl -X GET https://docker.jolibrain.com/v2/_catalog
+curl -X GET https://docker.jolibrain.com/v2/deepdetect_cpu/tags/list
+```
+
+## Run The Server
+
+Start the CPU image:
+
+```bash
+docker run -d \
+  --name deepdetect \
+  -p 8080:8080 \
+  docker.jolibrain.com/deepdetect_cpu
+```
+
+Check that the server is responding:
+
+```bash
+curl http://localhost:8080/info
+```
+
+The response should contain a `status.code` of `200` and a `services` list.
+
+Stop and remove the container:
+
+```bash
+docker stop deepdetect
+docker rm deepdetect
+```
+
+## Run With GPUs
+
+GPU images require Docker with NVIDIA Container Toolkit support. With recent
+Docker versions, use `--gpus`:
+
+```bash
+docker run -d \
+  --name deepdetect \
+  --gpus all \
+  -p 8080:8080 \
+  docker.jolibrain.com/deepdetect_gpu
+```
+
+For TensorRT:
+
+```bash
+docker run -d \
+  --name deepdetect-trt \
+  --gpus all \
+  -p 8080:8080 \
+  docker.jolibrain.com/deepdetect_gpu_tensorrt
+```
+
+If your Docker installation still uses the old `nvidia-docker` wrapper, the
+equivalent form is:
+
+```bash
+nvidia-docker run -d \
+  --name deepdetect \
+  -p 8080:8080 \
+  docker.jolibrain.com/deepdetect_gpu
+```
+
+## Mount Models And Data
+
+Mount host directories for model repositories and datasets. The container runs
+as user `dd`, so the mounted paths must be readable by that user and writable
+when training or saving models.
+
+```bash
+mkdir -p models data
+
+docker run -d \
+  --name deepdetect \
+  -p 8080:8080 \
+  -v "$PWD/models:/models" \
+  -v "$PWD/data:/data" \
+  docker.jolibrain.com/deepdetect_cpu
+```
+
+Inside API calls, use the container paths (`/models/...`, `/data/...`), not the
+host paths.
+
+## Create A Torch Service
+
+Create services from model repositories mounted into the container. This
+example assumes `/models/resnet18` contains a compatible Torch model repository:
+
+```bash
+curl -X PUT "http://localhost:8080/services/imageserv" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mllib": "torch",
+    "description": "Torch image classification service",
+    "type": "supervised",
+    "model": {
+      "repository": "/models/resnet18"
+    },
+    "parameters": {
+      "input": {
+        "connector": "image",
+        "width": 224,
+        "height": 224,
+        "rgb": true,
+        "scale": 0.0039
+      },
+      "mllib": {
+        "template": "resnet18",
+        "nclasses": 2,
+        "gpu": false
+      },
+      "output": {}
+    }
+  }'
+```
+
+Run prediction:
+
+```bash
+curl -X POST "http://localhost:8080/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "service": "imageserv",
+    "parameters": {
+      "input": {
+        "width": 224,
+        "height": 224
+      },
+      "output": {
+        "best": 3
+      }
+    },
+    "data": ["/data/image.jpg"]
+  }'
+```
+
+For GPU inference, run a GPU image and set `"gpu": true` in the service
+`parameters.mllib` object.
+
+## Create A TensorRT Service
+
+Use the TensorRT image with an exported or compatible model repository:
+
+```bash
+curl -X PUT "http://localhost:8080/services/yolox-trt" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mllib": "tensorrt",
+    "description": "TensorRT YOLOX inference service",
+    "type": "supervised",
+    "model": {
+      "repository": "/models/yolox-trt"
+    },
+    "parameters": {
+      "input": {
+        "connector": "image",
+        "width": 640,
+        "height": 640,
+        "rgb": true
+      },
+      "mllib": {
+        "template": "yolox",
+        "nclasses": 80,
+        "datatype": "fp16",
+        "maxBatchSize": 8,
+        "gpuid": 0
+      },
+      "output": {}
+    }
+  }'
+```
+
+TensorRT can read an existing engine from the model repository or build and
+write one depending on `readEngine`, `writeEngine`, and `maxBatchSize`. See the
+TensorRT parameters in [api.md](api.md).
+
+## Logs And Debugging
+
+Follow server logs:
+
+```bash
+docker logs -f deepdetect
+```
+
+List running containers:
+
+```bash
+docker ps
+```
+
+Open a shell in the container:
+
+```bash
+docker exec -it deepdetect bash
+```
+
+Check loaded services:
+
+```bash
+curl "http://localhost:8080/info?status=true"
+```
+
+## Swagger UI
+
+With a running server, Swagger UI is served at:
+
+```text
+http://localhost:8080/swagger/ui
+```
+
+If the server is behind a path prefix such as `/api/deepdetect`, pass the
+prefix as an extra server argument after the image name:
+
+```bash
+docker run -d \
+  --name deepdetect \
+  -p 8080:8080 \
+  docker.jolibrain.com/deepdetect_cpu \
+  -swagger_api_prefix api/deepdetect/
+```
+
+## Build Images Locally
+
+Build from the repository root, not from the `docker/` directory:
+
+```bash
+export DOCKER_BUILDKIT=1
+
+docker build \
+  -t jolibrain/deepdetect_cpu \
+  -f docker/cpu.Dockerfile \
+  .
+```
+
+Build the GPU image:
+
+```bash
+export DOCKER_BUILDKIT=1
+
+docker build \
+  -t jolibrain/deepdetect_gpu \
+  -f docker/gpu.Dockerfile \
+  .
+```
+
+Build the TensorRT image:
+
+```bash
+export DOCKER_BUILDKIT=1
+
+docker build \
+  -t jolibrain/deepdetect_gpu_tensorrt \
+  -f docker/gpu_tensorrt.Dockerfile \
+  .
+```
+
+Useful build arguments:
+
+- `DEEPDETECT_DEFAULT_MODELS=false`: skip downloading bundled legacy default models.
+- `USE_PREBUILT_TORCH=ON`: use official prebuilt PyTorch/LibTorch packages.
+- `DEEPDETECT_GPU_VARIANT=legacy61`: build a GPU image for older compute capabilities.
+- `PYTORCH_CUDA_INDEX=cu126`: select the matching PyTorch CUDA wheel index for legacy GPU builds.
+- `DD_CUDA_VERSION` and `DD_CUDA_MAJOR_MINOR`: override CUDA image versions for GPU builds.
+
+More build details are in [../docker/README.md](../docker/README.md).
