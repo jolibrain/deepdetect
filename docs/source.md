@@ -1,281 +1,556 @@
-# DeepDetect installation from source
+# Build DeepDetect From Source On Ubuntu 24.04
 
-Below are instructions for 20.04 LTS. For other Linux and Unix systems, steps may differ, and optional accelerator libraries may require additional setup.
+This guide documents the current source build flow used by `build.sh` and the
+Dockerfiles. It is written as copy-pasteable steps for humans and automation
+agents.
 
-Beware of [dependencies](https://github.com/jolibrain/deepdetect/tree/master/docs/dependencies.md), typically on Debian/Ubuntu Linux, do:
-```
-sudo apt-get install build-essential libgoogle-glog-dev libgflags-dev libeigen3-dev libopencv-dev libboost-all-dev libboost-iostreams-dev libcurlpp-dev libcurl4-openssl-dev libopenblas-dev libhdf5-dev libprotobuf-dev libleveldb-dev libsnappy-dev liblmdb-dev libutfcpp-dev cmake libgoogle-perftools-dev unzip python-setuptools python3-dev python3-six libarchive-dev rapidjson-dev libmapbox-variant-dev wget libboost-test-dev libboost-stacktrace-dev python3-typing-extensions python3-numpy
-```
+Supported build paths in this document:
 
-## Default GPU build with OpenCV CUDA support
-For compiling along with OpenCV:
+- Torch CPU: training and inference on CPU.
+- Torch GPU: training and inference with CUDA.
+- TensorRT GPU: optimized inference from exported or compatible models.
 
-```
-mkdir build & cd build
-DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=gpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON BUILD_TESTS=OFF ../build.sh
-```
+Retired backends are not buildable. Do not pass `USE_CAFFE`, `USE_CAFFE2`,
+`USE_TF`, or `USE_TF_CPU_ONLY`; CMake rejects those options. Use Torch or
+ONNX/TensorRT instead.
 
-If you are building for one or more GPUs, you may need to add CUDA to your ld path:
-```
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
-```
+## Build Layout
 
-## Default CPU build
+Run all commands from the repository root unless a step says otherwise:
 
-```
-DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=cpu DEEPDETECT_BUILD=torch DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=OFF ../build.sh
+```bash
+cd /path/to/deepdetect
 ```
 
-## Build for Jetson Orin
+The main server binary is produced at:
 
-```
-DEEPDETECT_RELEASE=OFF DEEPDETECT_ARCH=jetson DEEPDETECT_BUILD=tensorrt DEEPDETECT_DEFAULT_MODELS=false BUILD_OPENCV=ON BUILD_TESTS=ON ../build.sh
-```
-
-## Choosing interfaces :
-
-DeepDetect can be used:
-- from command line using the JSON API. To build the executable use:
-```
-cmake .. -DUSE_COMMAND_LINE=ON -DUSE_JSON_API=ON
-```
-- as a REST server (using JSON API). To build the server executable use (`USE_JSON_API` is auto-selected):
-```
-cmake .. -DUSE_HTTP_SERVER_OATPP=ON
-```
-- linked into another executable. To build only the library (and use a `dd::DeepDetect<dd::JSonAPI>` object in your own code) use:
-```
-cmake .. -DUSE_JSON_API=ON -DUSE_HTTP_SERVER_OATPP=OFF -DUSE_COMMAND_LINE=OFF
-
+```text
+build/main/dede
 ```
 
-## Build with XGBoost support
+`build.sh` is the recommended entry point. It configures CMake with the same
+flags used by the Docker builds and uses prebuilt Torch by default.
 
-If you would like to build with XGBoost, include the `-DUSE_XGBOOST=ON` parameter to `cmake`:
-```
-cmake .. -DUSE_XGBOOST=ON
-```
+## Common Ubuntu 24.04 Dependencies
 
-If you would like to build the GPU support for XGBoost (experimental from DMLC), use the `-DUSE_XGBOOST_GPU=ON` parameter to `cmake`:
-```
-cmake .. -DUSE_XGBOOST=ON -DUSE_XGBOOST_GPU=ON
-```
+Install CMake from Kitware and the system packages used by the Ubuntu 24.04
+Docker builds:
 
-## Build with T-SNE support
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates gpg wget curl
 
-Simply specify the option via cmake command line:
-```
-cmake .. -DUSE_TSNE=ON
-```
+wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc \
+  | gpg --dearmor \
+  | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
 
-## Build with Dlib support
-Specify the following option via cmake:
-```$xslt
-cmake .. -DUSE_DLIB=ON
-```
-This will automatically build with GPU support if possible. Note: this will also enable cuDNN if available by default.
+echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main' \
+  | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
 
-If you would like to constrain Dlib to CPU, use:
-```
-cmake .. -DUSE_DLIB=ON -DUSE_DLIB_CPU_ONLY=ON
+sudo apt-get update
+sudo rm -f /usr/share/keyrings/kitware-archive-keyring.gpg
+sudo apt-get install -y kitware-archive-keyring
+sudo apt-get install -y cmake
 ```
 
-## Build with TensorRT support
+Install build dependencies:
 
-Some NVidia libraires from TensorRT need to be installed first:
+```bash
+sudo apt-get install -y \
+  git \
+  ccache \
+  automake \
+  build-essential \
+  default-jdk \
+  pkg-config \
+  zip \
+  g++ \
+  gcc \
+  zlib1g-dev \
+  libgoogle-glog-dev \
+  libgflags-dev \
+  libeigen3-dev \
+  libopencv-dev \
+  libboost-dev \
+  libboost-filesystem-dev \
+  libboost-thread-dev \
+  libboost-system-dev \
+  libboost-iostreams-dev \
+  libboost-program-options-dev \
+  libboost-test-dev \
+  libboost-regex-dev \
+  libboost-date-time-dev \
+  libboost-chrono-dev \
+  libboost-stacktrace-dev \
+  libssl-dev \
+  libcurlpp-dev \
+  libcurl4-openssl-dev \
+  libopenblas-dev \
+  libhdf5-dev \
+  libleveldb-dev \
+  libsnappy-dev \
+  liblmdb-dev \
+  libutfcpp-dev \
+  rapidjson-dev \
+  libmapbox-variant-dev \
+  autoconf \
+  libtool-bin \
+  python3-numpy \
+  python3-yaml \
+  swig \
+  unzip \
+  python3-setuptools \
+  python3-dev \
+  python3-pip \
+  python3-venv \
+  python3-six \
+  libgoogle-perftools-dev \
+  libarchive-dev \
+  libtcmalloc-minimal4 \
+  bash-completion \
+  libomp-dev \
+  libomp5
 ```
-apt install libnvinfer-plugin-dev libnvparsers-dev libnvonnxparsers-dev
+
+Create a Python environment for the PyTorch package that CMake will discover:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install typing_extensions pyyaml numpy
 ```
 
-## Build with TensorRT support + TRT oss parts
-Specify the following option via cmake:
-```$xslt
-cmake .. -DUSE_TENSORRT=ON -DUSE_TENSORRT_OSS=ON
+Set the CMake compatibility policy used by the Docker builds:
+
+```bash
+export CMAKE_POLICY_VERSION_MINIMUM=3.5
 ```
-This compiles against https://github.com/NVIDIA/TensorRT , ie opensource parts (mainly parsers)
 
-## Build with Libtorch support
+## Torch CPU Build
 
-DeepDetect can either build PyTorch from source or link against the official
-prebuilt LibTorch distribution. The prebuilt path avoids the long PyTorch
-build and is recommended when a matching package is available.
+Install CPU PyTorch and torchvision. DeepDetect currently builds against
+PyTorch `2.12.0` and torchvision `0.27.0`.
 
-### Official prebuilt LibTorch
+```bash
+. .venv/bin/activate
+python -m pip install \
+  torch==2.12.0 \
+  torchvision==0.27.0 \
+  --index-url https://download.pytorch.org/whl/cpu
+```
 
-DeepDetect currently supports the official LibTorch 2.12.0 packages. The GPU
-package must target CUDA 12.6 or CUDA 13 and requires cuDNN 9, cuSPARSELt 0,
-NVSHMEM 3, and the NCCL runtime version matching that LibTorch package.
-CMake checks required NCCL symbols and rejects an older incompatible runtime.
+Build DeepDetect:
 
-Extract LibTorch, then configure a fresh DeepDetect build:
+```bash
+rm -rf build
+mkdir build
+cd build
 
-```shell
-export LIBTORCH_ROOT=/absolute/path/to/libtorch
+DEEPDETECT_ARCH=cpu \
+DEEPDETECT_BUILD=default \
+DEEPDETECT_RELEASE=OFF \
+DEEPDETECT_DEFAULT_MODELS=false \
+BUILD_TESTS=OFF \
+USE_PREBUILT_TORCH=ON \
+../build.sh
 
+cd ..
+```
+
+Verify the binary:
+
+```bash
+./build/main/dede --help
+```
+
+## Torch GPU Build
+
+Install the NVIDIA driver and CUDA toolkit before building. The default GPU
+variant follows `docker/gpu.Dockerfile`: CUDA `13.0.2`, PyTorch CUDA index
+`cu130`, and GPU architectures `7.5;8.0;8.6;8.9;9.0;10.0;12.0`.
+
+Install CUDA PyTorch and torchvision:
+
+```bash
+. .venv/bin/activate
+python -m pip install \
+  torch==2.12.0 \
+  torchvision==0.27.0 \
+  --index-url https://download.pytorch.org/whl/cu130
+```
+
+Make CUDA tools and libraries visible:
+
+```bash
+export PATH="/usr/local/cuda/bin:${PATH}"
+export LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}"
+```
+
+Build DeepDetect:
+
+```bash
+rm -rf build
+mkdir build
+cd build
+
+DD_CUDA_VERSION=13.0.2 \
+DEEPDETECT_ARCH=gpu \
+DEEPDETECT_BUILD=default \
+DEEPDETECT_GPU_VARIANT=default \
+DEEPDETECT_RELEASE=OFF \
+DEEPDETECT_DEFAULT_MODELS=false \
+BUILD_TESTS=OFF \
+USE_PREBUILT_TORCH=ON \
+../build.sh
+
+cd ..
+```
+
+For older GPUs that need compute capability 6.1 through 9.0, use the legacy
+GPU variant and a CUDA 12.6 PyTorch wheel:
+
+```bash
+. .venv/bin/activate
+python -m pip install \
+  --force-reinstall \
+  torch==2.12.0 \
+  torchvision==0.27.0 \
+  --index-url https://download.pytorch.org/whl/cu126
+
+rm -rf build
+mkdir build
+cd build
+
+DD_CUDA_VERSION=12.6.3 \
+DEEPDETECT_ARCH=gpu \
+DEEPDETECT_BUILD=default \
+DEEPDETECT_GPU_VARIANT=legacy61 \
+DEEPDETECT_RELEASE=OFF \
+DEEPDETECT_DEFAULT_MODELS=false \
+BUILD_TESTS=OFF \
+USE_PREBUILT_TORCH=ON \
+../build.sh
+
+cd ..
+```
+
+## TensorRT Inference Build
+
+TensorRT builds are GPU inference builds. The `build.sh` TensorRT profile uses:
+
+- `DEEPDETECT_ARCH=gpu`
+- `DEEPDETECT_BUILD=tensorrt`
+- `USE_TENSORRT=ON`
+- `USE_TORCH=OFF`
+- `USE_CUDA_CV=ON`
+
+You need CUDA, TensorRT headers, TensorRT libraries, and an OpenCV 4 build with
+CUDA support.
+
+### Recommended: Build In The TensorRT Container
+
+The Docker build uses `docker/gpu_tensorrt.Dockerfile`, based on NVIDIA's
+TensorRT image. This is the most reproducible way to build TensorRT support:
+
+```bash
+export DOCKER_BUILDKIT=1
+
+docker build \
+  -t jolibrain/deepdetect_gpu_tensorrt \
+  -f docker/gpu_tensorrt.Dockerfile \
+  .
+```
+
+### Native Host TensorRT Build
+
+If building directly on Ubuntu 24.04, install TensorRT first using NVIDIA's
+packages. The `build.sh` TensorRT profile expects TensorRT in the default
+system paths:
+
+- `NvInfer.h` and `NvInferVersion.h`
+- `libnvinfer.so`
+- `libnvinfer_plugin.so`
+- `libnvonnxparser.so`
+
+For x86_64 Ubuntu system packages, those paths are normally:
+
+```text
+/usr/include/x86_64-linux-gnu
+/usr/lib/x86_64-linux-gnu
+```
+
+If TensorRT is installed from an SDK tarball or another non-system directory,
+use the [Manual TensorRT](#manual-tensorrt) CMake commands so you can pass
+`TENSORRT_DIR`, `TENSORRT_LIB_DIR`, or `TENSORRT_INC_DIR` explicitly.
+
+Build with OpenCV CUDA support enabled. This makes `build.sh` download and build
+OpenCV `4.13.0` under `build/opencv` before configuring DeepDetect:
+
+```bash
+rm -rf build
+mkdir build
+cd build
+
+DEEPDETECT_ARCH=gpu \
+DEEPDETECT_BUILD=tensorrt \
+DEEPDETECT_RELEASE=OFF \
+DEEPDETECT_DEFAULT_MODELS=false \
+BUILD_TESTS=OFF \
+BUILD_OPENCV=ON \
+../build.sh
+
+cd ..
+```
+
+If TensorRT version detection fails, pass it explicitly:
+
+```bash
+rm -rf build
+mkdir build
+cd build
+
+DEEPDETECT_ARCH=gpu \
+DEEPDETECT_BUILD=tensorrt \
+DEEPDETECT_TENSORRT_VERSION=v10.12 \
+DEEPDETECT_RELEASE=OFF \
+DEEPDETECT_DEFAULT_MODELS=false \
+BUILD_TESTS=OFF \
+BUILD_OPENCV=ON \
+../build.sh
+
+cd ..
+```
+
+If you already have a CUDA-enabled OpenCV 4 build, use it instead of
+`BUILD_OPENCV=ON`:
+
+```bash
+rm -rf build
+mkdir build
+cd build
+
+DEEPDETECT_ARCH=gpu \
+DEEPDETECT_BUILD=tensorrt \
+DEEPDETECT_OPENCV4_BUILD_PATH=/path/to/opencv-4.13.0/build \
+DEEPDETECT_RELEASE=OFF \
+DEEPDETECT_DEFAULT_MODELS=false \
+BUILD_TESTS=OFF \
+../build.sh
+
+cd ..
+```
+
+Do not set both `BUILD_OPENCV` and `DEEPDETECT_OPENCV4_BUILD_PATH`; `build.sh`
+rejects that combination.
+
+## Manual CMake Equivalents
+
+Use these only when an agent needs exact CMake control. `build.sh` is preferred
+for normal builds.
+
+### Manual Torch CPU
+
+```bash
+. .venv/bin/activate
+export CMAKE_PREFIX_PATH="$(python - <<'PY'
+import torch
+print(torch.utils.cmake_prefix_path)
+PY
+)"
+
+rm -rf build
 cmake -S . -B build \
-  -DUSE_TORCH=ON \
   -DUSE_PREBUILT_TORCH=ON \
-  -DCMAKE_PREFIX_PATH="$LIBTORCH_ROOT"
-cmake --build build -j
+  -DUSE_TORCH=ON \
+  -DUSE_CPU_ONLY=ON \
+  -DUSE_TORCH_CPU_ONLY=ON \
+  -DUSE_XGBOOST=OFF \
+  -DUSE_SIMSEARCH=OFF \
+  -DUSE_TSNE=OFF \
+  -DUSE_NCNN=OFF \
+  -DRELEASE=OFF \
+  -DBUILD_TESTS=OFF
+
+cmake --build build -j"$(nproc)"
 ```
 
-`Torch_DIR="$LIBTORCH_ROOT/share/cmake/Torch"` may be used instead of
-`CMAKE_PREFIX_PATH`. For CUDA builds, CMake searches common NVIDIA Python
-package locations such as the active virtualenv, conda environment, and
-`$HOME/venv` for cuDNN 9, cuSPARSELt, and NVSHMEM. NCCL is searched from the
-system library paths first because the runtime must match the selected CUDA
-LibTorch package. If these libraries are installed elsewhere, add their directories to
-`CMAKE_LIBRARY_PATH` during configuration and to `LD_LIBRARY_PATH` at runtime.
+### Manual Torch GPU
 
-The matching torchvision 0.27.0 source is downloaded and built against
-LibTorch. For an offline or previously downloaded source tree, add:
+```bash
+. .venv/bin/activate
+export CMAKE_PREFIX_PATH="$(python - <<'PY'
+import torch
+print(torch.utils.cmake_prefix_path)
+PY
+)"
+export PATH="/usr/local/cuda/bin:${PATH}"
 
-```shell
--DTORCHVISION_SOURCE_DIR=/absolute/path/to/vision
+rm -rf build
+cmake -S . -B build \
+  -DUSE_PREBUILT_TORCH=ON \
+  -DUSE_TORCH=ON \
+  -DUSE_CUDNN=ON \
+  -DUSE_FAISS=OFF \
+  -DUSE_XGBOOST=OFF \
+  -DUSE_SIMSEARCH=OFF \
+  -DUSE_TSNE=OFF \
+  -DUSE_OPENCV_VERSION=4 \
+  -DCUDA_ARCH="7.5;8.0;8.6;8.9;9.0;10.0;12.0" \
+  -DCUDA_ARCH_FLAGS="-gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_100,code=sm_100 -gencode arch=compute_120,code=sm_120" \
+  -DRELEASE=OFF \
+  -DBUILD_TESTS=OFF
+
+cmake --build build -j"$(nproc)"
 ```
 
-Use the CPU-only LibTorch package with both `-DUSE_CPU_ONLY=ON` and
-`-DUSE_TORCH_CPU_ONLY=ON`. CMake rejects a CPU/GPU option mismatch rather
-than silently changing execution mode.
+### Manual TensorRT
 
-The deprecated `TORCH_LOCATION=/path/to/libtorch` option still selects the
-prebuilt path, but new builds should use `USE_PREBUILT_TORCH` and
-`CMAKE_PREFIX_PATH` or `Torch_DIR`.
+Use this form when TensorRT is installed from an SDK directory:
 
-### Build PyTorch from source
+```bash
+export TENSORRT_DIR=/path/to/TensorRT
+export PATH="/usr/local/cuda/bin:${PATH}"
+export LD_LIBRARY_PATH="${TENSORRT_DIR}/lib:/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}"
 
-`build.sh` uses prebuilt LibTorch by default for x86 CPU and GPU Torch builds.
-Set `USE_PREBUILT_TORCH=OFF` only when you explicitly need the older PyTorch
-source-build path.
+rm -rf build
+cmake -S . -B build \
+  -DUSE_TENSORRT=ON \
+  -DUSE_TORCH=OFF \
+  -DUSE_CUDA_CV=ON \
+  -DUSE_OPENCV_VERSION=4 \
+  -DTENSORRT_DIR="${TENSORRT_DIR}" \
+  -DCUDA_ARCH="7.5;8.0;8.6;8.9;9.0;10.0;12.0" \
+  -DCUDA_ARCH_FLAGS="-gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_100,code=sm_100 -gencode arch=compute_120,code=sm_120" \
+  -DRELEASE=OFF \
+  -DBUILD_TESTS=OFF
 
-With manual CMake, omitting `USE_PREBUILT_TORCH` retains the existing source
-build:
-
-```shell
-cmake -S . -B build -DUSE_TORCH=ON
-cmake --build build -j
+cmake --build build -j"$(nproc)"
 ```
 
-Use `-DUSE_CPU_ONLY=ON` for a CPU-only source build.
+If TensorRT is installed in system multi-arch paths, use explicit directories
+instead of `TENSORRT_DIR`:
 
-## Build with similarity search support
+```bash
+rm -rf build
+cmake -S . -B build \
+  -DUSE_TENSORRT=ON \
+  -DUSE_TORCH=OFF \
+  -DUSE_CUDA_CV=ON \
+  -DUSE_OPENCV_VERSION=4 \
+  -DTENSORRT_LIB_DIR=/usr/lib/x86_64-linux-gnu \
+  -DTENSORRT_INC_DIR=/usr/include/x86_64-linux-gnu \
+  -DCUDA_ARCH="7.5;8.0;8.6;8.9;9.0;10.0;12.0" \
+  -DCUDA_ARCH_FLAGS="-gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_100,code=sm_100 -gencode arch=compute_120,code=sm_120" \
+  -DRELEASE=OFF \
+  -DBUILD_TESTS=OFF
 
-Specify the following option via cmake:
-```
-cmake .. -DUSE_SIMSEARCH=ON
-```
-
-## Build with logs output into syslog
-
-Specify the following option via cmake:
-```
-cmake .. -DUSE_DD_SYSLOG=ON
-```
-
-## Run tests
-
-Note: running tests requires the automated download of ~75Mb of datasets, and computations may take around thirty minutes on a CPU-only machines.
-
-To prepare for tests, install numpy:
-```
-sudo apt install python-numpy libgtest-dev
-```
-then compile with:
-```
-cmake -DBUILD_TESTS=ON ..
-make
-```
-Run tests with:
-```
-ctest
+cmake --build build -j"$(nproc)"
 ```
 
-## Code Style Rules
+## Run The Server
 
-`clang-format` is used to enforce code style.
+Start the REST server:
 
-You can automatically format it with:
-
-```
-cmake ..
-make clang-format
+```bash
+./build/main/dede -host 0.0.0.0 -port 8080
 ```
 
-Or use your favorite editor with a clang-format plugin.
+In another terminal:
 
-## Start the server
-
-```
-cd build/main
-./dede
-
-DeepDetect [ commit 73d4e638498d51254862572fe577a21ab8de2ef1 ]
-Running DeepDetect HTTP server on localhost:8080
+```bash
+curl http://localhost:8080/info
 ```
 
-Main options are:
-- `-host` to select which host to run on, default is `localhost`, use `0.0.0.0` to listen on all interfaces
-- `-port` to select which port to listen to, default is `8080`
-- `-nthreads` to select the number of HTTP threads, default is `10`
+Useful server options:
 
-To see all options, do:
-```
-./dede --help
-```
+- `-host`: address to bind, default `localhost`.
+- `-port`: HTTP port, default `8080`.
+- `-nthreads`: number of HTTP threads, default `10`.
+- `-service_start_list`: load services and optional predictions on startup.
 
-## Services auto-start
+Show all options:
 
-A list of services can be stored into a file and passed to the `dede` server so that they are all created upon server start. A list fo predictions can also be run automatically upon server start. The file is passed with:
-
-```
-./dede -service_start_list <yourfile>
+```bash
+./build/main/dede --help
 ```
 
-File format is as follows:
+## Run Tests
 
-- service creation:
-```
-service_create;sname;JSON string
-```
-where `sname` is the service name and the JSON is a string without external quotes
+Install test dependencies:
 
-- service prediction
+```bash
+sudo apt-get install -y libgtest-dev python3-numpy
 ```
+
+Build with tests:
+
+```bash
+rm -rf build
+mkdir build
+cd build
+
+DEEPDETECT_ARCH=cpu \
+DEEPDETECT_BUILD=default \
+DEEPDETECT_RELEASE=OFF \
+DEEPDETECT_DEFAULT_MODELS=false \
+BUILD_TESTS=ON \
+USE_PREBUILT_TORCH=ON \
+../build.sh
+
+ctest --output-on-failure
+
+cd ..
+```
+
+Some tests download fixtures and can take a long time, especially on CPU-only
+machines.
+
+## Service Auto-Start
+
+Pass a service startup list to `dede`:
+
+```bash
+./build/main/dede -service_start_list /path/to/services.txt
+```
+
+File format:
+
+```text
+service_create;service_name;JSON string
 service_predict;JSON string
 ```
 
-## Pure command line JSON API
+The JSON string is the same request body used by the REST API, without external
+quotes.
 
-To use deepdetect without the client/server architecture while passing the exact same JSON messages from the API:
+## Pure Command-Line JSON API
 
-```
-./dede --jsonapi 1 <other options>
-```
+Use the same JSON API without running the HTTP server:
 
-where `<other options>` stands for the command line parameters from the command line JSON API:
-
-```
--info (/info JSON call) type: bool default: false
--service_create (/service/service_name call JSON string) type: string default: ""
--service_delete (/service/service_name DELETE call JSON string) type: string default: ""
--service_name (service name string for JSON call /service/service_name) type: string default: ""
--service_predict (/predict POST call JSON string) type: string default: ""
--service_train (/train POST call JSON string) type: string default: ""
--service_train_delete (/train DELETE call JSON string) type: string default: ""
--service_train_status (/train GET call JSON string) type: string default: ""
-
+```bash
+./build/main/dede --jsonapi 1 -info true
 ```
 
-The options above can be obtained from running
+Show command-line JSON API options:
 
-```
-./dede --help
-```
-
-Example of creating a service then listing it:
-
-```
-./dede --jsonapi 1 --service_name test --service_create '{"mllib":"torch","description":"classification service","type":"supervised","parameters":{"input":{"connector":"image"},"mllib":{"template":"resnet50","nclasses":10}},"model":{"repository":"/path/to/model/"}}'
+```bash
+./build/main/dede --jsonapi 1 --help
 ```
 
-Note that in command line mode the `--service_xxx` calls are executed sequentially, and synchronously. Also note the logs are those from the server, the JSON API response is not available in pure command line mode.
+## Troubleshooting
+
+- `Could not find Torch`: activate `.venv` and verify `python -c "import torch; print(torch.utils.cmake_prefix_path)"`.
+- `USE_TORCH_CPU_ONLY=ON requires a CPU-only LibTorch package`: install the CPU PyTorch wheel or remove CPU-only flags.
+- `GPU Torch support requires a CUDA LibTorch package`: install the CUDA PyTorch wheel that matches your CUDA variant.
+- `Could not find TensorRT libnvinfer.so`: set `TENSORRT_DIR`, or set both `TENSORRT_LIB_DIR` and `TENSORRT_INC_DIR`.
+- `DEEPDETECT_GPU_VARIANT=default requires DD_CUDA_VERSION >= 13`: use CUDA 13 or switch to `DEEPDETECT_GPU_VARIANT=legacy61` with CUDA 12.x.
+- OpenCV CUDA build failures: use the Docker TensorRT build, or provide a known-good OpenCV build with `DEEPDETECT_OPENCV4_BUILD_PATH`.
+
+## Code Style
+
+Run clang-format through CMake:
+
+```bash
+cmake --build build --target clang-format
+```
