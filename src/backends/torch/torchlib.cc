@@ -27,9 +27,13 @@
 #include "generators/net_caffe.h"
 #include "generators/net_caffe_recurrent.h"
 
+#include <algorithm>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <cmath>
+#include <numeric>
+#include <random>
 #include <set>
 #include <torch/csrc/jit/runtime/graph_executor.h>
 
@@ -57,7 +61,9 @@ namespace dd
     }
 
     std::set<int>
-    requested_test_prediction_indices(const APIData &ad_out, size_t test_id)
+    requested_test_prediction_indices(const APIData &ad_out, size_t test_id,
+                                      const TorchDataset &dataset,
+                                      double iteration)
     {
       std::set<int> indices;
       if (!ad_out.has("test_predictions"))
@@ -66,18 +72,47 @@ namespace dd
       APIData cfg = ad_out.getobj("test_predictions");
       if (cfg.has("enabled") && !cfg.get("enabled").get<bool>())
         return indices;
-      if (!cfg.has("indices"))
+      if (cfg.has("indices"))
+        {
+          APIData indices_cfg = cfg.getobj("indices");
+          std::string key = "test" + std::to_string(test_id);
+          if (!indices_cfg.has(key))
+            return indices;
+
+          std::vector<int> requested
+              = indices_cfg.get(key).get<std::vector<int>>();
+          for (int index : requested)
+            if (index >= 0)
+              indices.insert(index);
+          return indices;
+        }
+      if (!cfg.has("sample_count"))
         return indices;
 
-      APIData indices_cfg = cfg.getobj("indices");
-      std::string key = "test" + std::to_string(test_id);
-      if (!indices_cfg.has(key))
+      int sample_count = cfg.get("sample_count").get<int>();
+      if (sample_count <= 0)
+        return indices;
+      c10::optional<size_t> dataset_size = dataset.size();
+      if (!dataset_size.has_value() || *dataset_size == 0)
         return indices;
 
-      std::vector<int> requested = indices_cfg.get(key).get<std::vector<int>>();
-      for (int index : requested)
-        if (index >= 0)
-          indices.insert(index);
+      std::vector<int> candidates(*dataset_size);
+      std::iota(candidates.begin(), candidates.end(), 0);
+      if (static_cast<size_t>(sample_count) < candidates.size())
+        {
+          int sample_seed = cfg.has("sample_seed")
+                                ? cfg.get("sample_seed").get<int>()
+                                : 0;
+          std::mt19937 rng(
+              static_cast<uint32_t>(sample_seed)
+              + static_cast<uint32_t>(test_id * 1000003)
+              + static_cast<uint32_t>(
+                  std::llround(iteration) * 9176));
+          std::shuffle(candidates.begin(), candidates.end(), rng);
+          candidates.resize(static_cast<size_t>(sample_count));
+        }
+      for (int index : candidates)
+        indices.insert(index);
       return indices;
     }
 
@@ -2245,8 +2280,11 @@ namespace dd
     _module.eval();
     torch::NoGradGuard no_grad;
     int entry_id = 0;
+    double test_prediction_iteration
+        = static_cast<double>(this->get_meas("iteration") + 1);
     std::set<int> requested_prediction_indices
-        = requested_test_prediction_indices(ad_out, test_id);
+        = requested_test_prediction_indices(ad_out, test_id, dataset,
+                                            test_prediction_iteration);
     std::set<int> collected_prediction_indices;
     std::set<int> visited_detection_prediction_indices;
     std::map<int, std::vector<APIData>> detection_prediction_classes;
@@ -2666,9 +2704,7 @@ namespace dd
         APIData test_prediction_set;
         test_prediction_set.add("test_id", static_cast<int>(test_id));
         test_prediction_set.add("test_name", test_name);
-        test_prediction_set.add("iteration",
-                                static_cast<double>(
-                                    this->get_meas("iteration") + 1));
+        test_prediction_set.add("iteration", test_prediction_iteration);
         test_prediction_set.add("samples", test_prediction_samples);
         test_predictions.add("test" + std::to_string(test_id),
                              test_prediction_set);
