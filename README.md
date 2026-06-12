@@ -116,8 +116,7 @@ Use Docker for containerized serving and reproducible service environments.
 See [docs/docker.md](docs/docker.md).
 
 Build from source when you need a custom C++ build, server options, TensorRT
-support, or local development changes. Start with [docs/source.md](docs/source.md)
-and [docs/dependencies.md](docs/dependencies.md).
+support, or local development changes. Start with [docs/source.md](docs/source.md).
 
 ## Python Client
 
@@ -131,7 +130,6 @@ deepdetect` and the `deepdetect` CLI. Wheel build and packaging details are in
 - [REST API reference](docs/api.md)
 - [Docker usage](docs/docker.md)
 - [Source builds](docs/source.md)
-- [Build dependencies](docs/dependencies.md)
 - [Python wheel and embedded runtime](bindings/python/README.md)
 - [Python CLI specification](bindings/python/deepdetect/cli/CLI_SPEC.md)
 
