@@ -31,7 +31,7 @@ Each train and inference command accepts:
 
 ```shell
 --config CONFIG.yaml
---set dotted.key=value
+--set key=value
 --output-format jsonl|json|text
 ```
 
@@ -44,6 +44,10 @@ Configuration precedence is:
 
 YAML is intended for repeatable runs. CLI flags are intended for discoverable
 interactive use and agent function-call arguments.
+Config files and `--set` map to top-level CLI option names such as
+`base_lr=0.001`, `batch_size=4`, or `visdom=true`; version 1 does not expose
+direct nested overrides for profile-internal DeepDetect parameters such as
+`solver`, `crop_size`, or augmentation blocks.
 
 Example default-style configs are provided next to this document:
 
