@@ -69,6 +69,11 @@ def _add_train_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--height", type=int)
     parser.add_argument("--iterations", type=int)
     parser.add_argument("--batch-size", type=int)
+    parser.add_argument(
+        "--iter-size",
+        type=int,
+        help="gradient accumulation steps before each optimizer update",
+    )
     parser.add_argument("--base-lr", type=float)
     parser.add_argument("--test-interval", type=int)
     parser.add_argument("--gpu", action=argparse.BooleanOptionalAction, default=None)

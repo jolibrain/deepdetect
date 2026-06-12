@@ -10,7 +10,7 @@ from typing import Any
 import deepdetect
 
 from .checks import run_training_checks
-from .config import cli_options
+from .config import cli_options, save_config
 from .events import EventWriter, MetricEventExtractor, metric_events
 from .options import (
     normalize_gpu_options,
@@ -43,6 +43,7 @@ def run_train(args: Any) -> int:
         height=args.height,
         iterations=args.iterations,
         batch_size=args.batch_size,
+        iter_size=args.iter_size,
         base_lr=args.base_lr,
         test_interval=args.test_interval,
         gpu=args.gpu,
@@ -86,6 +87,7 @@ def run_train(args: Any) -> int:
         "height",
         "iterations",
         "batch_size",
+        "iter_size",
         "test_interval",
         "poll_interval",
     ):
@@ -136,6 +138,7 @@ def run_train(args: Any) -> int:
 
         if not resume:
             stage_model(options["weights"], options["repository"])
+        save_training_config(options)
         dd = deepdetect.DeepDetect()
         configure_gpu_compatibility(dd.build_info, requested=bool(options["gpu"]))
         service_parameters = profile.service_parameters(options)
@@ -212,6 +215,12 @@ def create_training_terminal_reporter(options: dict[str, Any]):
     if str(options.get("terminal", "verbose")) == "live":
         return EventWriter(output_format="jsonl")
     return EventWriter(output_format=options["output_format"])
+
+
+def save_training_config(options: dict[str, Any]) -> Path:
+    path = Path(options["repository"]).expanduser().resolve() / "config.yaml"
+    save_config(path, options)
+    return path
 
 
 def training_live_terminal_enabled(options: dict[str, Any]) -> bool:

@@ -142,10 +142,12 @@ def test_default_example_configs_load():
     assert yolox["width"] == 640
     assert yolox["height"] == 640
     assert yolox["confidence_threshold"] == 0.25
+    assert yolox["iter_size"] == 2
     assert yolox["dataset_check"] == "full"
     assert segformer["width"] == 480
     assert segformer["height"] == 480
     assert segformer["batch_size"] == 4
+    assert segformer["iter_size"] == 1
     assert segformer["dataset_check"] == "full"
 
 
@@ -191,6 +193,8 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
             "3",
             "--batch-size",
             "2",
+            "--iter-size",
+            "4",
             "--width",
             "320",
             "--height",
@@ -213,6 +217,7 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
     assert train_call[1]["async"] is True
     assert train_call[1]["parameters"]["mllib"]["gpu"] is True
     assert train_call[1]["parameters"]["mllib"]["gpuid"] == [1, 3]
+    assert train_call[1]["parameters"]["mllib"]["solver"]["iter_size"] == 4
     assert train_call[1]["parameters"]["input"]["width"] == 320
     assert train_call[1]["parameters"]["input"]["height"] == 352
     assert train_call[1]["parameters"]["output"]["measure"] == [
@@ -225,6 +230,12 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
     assert manifest["status"] == "finished"
     assert manifest["job"] == 7
     assert manifest["run_name"] == "ring-hand-yolox"
+    saved_config = config.load_config(tmp_path / "repo" / "config.yaml")
+    assert saved_config["batch_size"] == 2
+    assert saved_config["iter_size"] == 4
+    assert saved_config["width"] == 320
+    assert saved_config["gpuid"] == [1, 3]
+    assert saved_config["run_name"] == "ring-hand-yolox"
     events = [
         json.loads(line)
         for line in capsys.readouterr().out.splitlines()

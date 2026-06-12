@@ -36,6 +36,18 @@ def load_config(path: Path | None) -> dict[str, Any]:
     return data
 
 
+def save_config(path: Path, values: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        yaml.safe_dump(
+            _plain_data(values),
+            default_flow_style=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def parse_overrides(values: list[str] | None) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for value in values or []:
@@ -60,3 +72,12 @@ def parse_overrides(values: list[str] | None) -> dict[str, Any]:
 def cli_options(**values: Any) -> dict[str, Any]:
     return {key: value for key, value in values.items() if value is not None}
 
+
+def _plain_data(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _plain_data(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain_data(item) for item in value]
+    return copy.deepcopy(value)
