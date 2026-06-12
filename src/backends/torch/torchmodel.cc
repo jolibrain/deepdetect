@@ -43,12 +43,12 @@ namespace dd
           size_t separator = line.find(':');
           if (separator == std::string::npos)
             continue;
-          std::string key = boost::algorithm::trim_copy(
-              line.substr(0, separator));
+          std::string key
+              = boost::algorithm::trim_copy(line.substr(0, separator));
           if (key != "iteration")
             continue;
-          std::string iteration = boost::algorithm::trim_copy(
-              line.substr(separator + 1));
+          std::string iteration
+              = boost::algorithm::trim_copy(line.substr(separator + 1));
           if (iteration.empty())
             break;
           return iteration;
@@ -174,22 +174,22 @@ namespace dd
 
     if (resume_from == "best")
       {
-        std::string iteration = read_best_iteration(
-            _repo + this->_best_model_filename);
+        std::string iteration
+            = read_best_iteration(_repo + this->_best_model_filename);
         std::string best_sstate = _repo + "/solver-" + iteration + ".pt";
         if (!fileops::file_exists(best_sstate))
           {
-            std::string msg = "could not find best solver state "
-                              + best_sstate;
+            std::string msg
+                = "could not find best solver state " + best_sstate;
             logger->error(msg);
             throw MLLibBadParamException(msg);
           }
-        std::string best_traced = existing_checkpoint(_repo, iteration,
-                                                      traced_ext);
-        std::string best_native = existing_checkpoint(_repo, iteration,
-                                                      native_ext);
-        std::string best_head_weights = existing_checkpoint(
-            _repo, iteration, head_weights_ext);
+        std::string best_traced
+            = existing_checkpoint(_repo, iteration, traced_ext);
+        std::string best_native
+            = existing_checkpoint(_repo, iteration, native_ext);
+        std::string best_head_weights
+            = existing_checkpoint(_repo, iteration, head_weights_ext);
         if (best_traced.empty() && best_native.empty()
             && best_head_weights.empty())
           {

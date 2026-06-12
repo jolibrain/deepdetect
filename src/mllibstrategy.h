@@ -410,7 +410,7 @@ namespace dd
     std::unordered_map<std::string, double>
         _meas; /**< model measures, used as a per service value. */
     std::unordered_map<std::string, std::vector<double>>
-        _meas_per_iter; /**< model measures per iteration. */
+        _meas_per_iter;       /**< model measures per iteration. */
     APIData _status_payloads; /**< structured status payloads. */
     std::vector<std::string> _test_names;
 
@@ -431,8 +431,8 @@ namespace dd
 
   protected:
     mutable std::mutex
-        _meas_per_iter_mutex;         /**< mutex over measures history. */
-    mutable std::mutex _meas_mutex;   /**< mutex around current measures. */
+        _meas_per_iter_mutex;       /**< mutex over measures history. */
+    mutable std::mutex _meas_mutex; /**< mutex around current measures. */
     mutable std::mutex _status_payloads_mutex;
     const int _max_meas_points = 1e7; // 10M points max per measure
   };

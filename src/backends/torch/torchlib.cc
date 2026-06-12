@@ -100,14 +100,12 @@ namespace dd
       std::iota(candidates.begin(), candidates.end(), 0);
       if (static_cast<size_t>(sample_count) < candidates.size())
         {
-          int sample_seed = cfg.has("sample_seed")
-                                ? cfg.get("sample_seed").get<int>()
-                                : 0;
+          int sample_seed
+              = cfg.has("sample_seed") ? cfg.get("sample_seed").get<int>() : 0;
           std::mt19937 rng(
               static_cast<uint32_t>(sample_seed)
               + static_cast<uint32_t>(test_id * 1000003)
-              + static_cast<uint32_t>(
-                  std::llround(iteration) * 9176));
+              + static_cast<uint32_t>(std::llround(iteration) * 9176));
           std::shuffle(candidates.begin(), candidates.end(), rng);
           candidates.resize(static_cast<size_t>(sample_count));
         }
@@ -2229,11 +2227,10 @@ namespace dd
     size_t test_crop_samples = 1;
     if (dataset._test && dataset._img_rand_aug_cv._crop_params._crop_size > 0)
       {
-        int crop_samples = dataset._img_rand_aug_cv._crop_params
-                               ._test_crop_samples;
-        test_crop_samples = crop_samples > 0
-                                ? static_cast<size_t>(crop_samples)
-                                : 1;
+        int crop_samples
+            = dataset._img_rand_aug_cv._crop_params._test_crop_samples;
+        test_crop_samples
+            = crop_samples > 0 ? static_cast<size_t>(crop_samples) : 1;
       }
 
     if (update_progress)
@@ -2302,13 +2299,14 @@ namespace dd
           {
             size_t tensor_batch_size
                 = static_cast<size_t>(batch.data[0].size(0));
-            source_batch_size
-                = (tensor_batch_size + test_crop_samples - 1)
-                  / test_crop_samples;
+            source_batch_size = (tensor_batch_size + test_crop_samples - 1)
+                                / test_crop_samples;
             if (batch.data[0].sizes().size() >= 4)
               {
-                bbox_coordinate_width = static_cast<int>(batch.data[0].size(3));
-                bbox_coordinate_height = static_cast<int>(batch.data[0].size(2));
+                bbox_coordinate_width
+                    = static_cast<int>(batch.data[0].size(3));
+                bbox_coordinate_height
+                    = static_cast<int>(batch.data[0].size(2));
               }
           }
 
@@ -2423,9 +2421,8 @@ namespace dd
                     ad_bbox_per_iou[iou_thres].add(std::to_string(entry_id),
                                                    vbad);
                   }
-                int source_index
-                    = static_cast<int>(
-                        static_cast<size_t>(entry_id) / test_crop_samples);
+                int source_index = static_cast<int>(
+                    static_cast<size_t>(entry_id) / test_crop_samples);
                 if (requested_prediction_indices.count(source_index) > 0)
                   {
                     visited_detection_prediction_indices.insert(source_index);
@@ -2450,10 +2447,14 @@ namespace dd
                           continue;
 
                         APIData bbox;
-                        bbox.add("xmin", static_cast<double>(bboxes_acc[j][0]));
-                        bbox.add("ymin", static_cast<double>(bboxes_acc[j][1]));
-                        bbox.add("xmax", static_cast<double>(bboxes_acc[j][2]));
-                        bbox.add("ymax", static_cast<double>(bboxes_acc[j][3]));
+                        bbox.add("xmin",
+                                 static_cast<double>(bboxes_acc[j][0]));
+                        bbox.add("ymin",
+                                 static_cast<double>(bboxes_acc[j][1]));
+                        bbox.add("xmax",
+                                 static_cast<double>(bboxes_acc[j][2]));
+                        bbox.add("ymax",
+                                 static_cast<double>(bboxes_acc[j][3]));
 
                         APIData cls;
                         cls.add("cat",
@@ -2545,9 +2546,8 @@ namespace dd
                 bad.add("pred", vals);
                 ad_res.add(std::to_string(entry_id), bad);
 
-                int source_index
-                    = static_cast<int>(
-                        static_cast<size_t>(entry_id) / test_crop_samples);
+                int source_index = static_cast<int>(
+                    static_cast<size_t>(entry_id) / test_crop_samples);
                 if (entry_id % static_cast<int>(test_crop_samples) == 0
                     && requested_prediction_indices.count(source_index) > 0
                     && collected_prediction_indices.count(source_index) == 0)
@@ -2558,7 +2558,8 @@ namespace dd
 
                     APIData sample;
                     sample.add("index", source_index);
-                    sample.add("uri", test_prediction_uri(dataset, source_index));
+                    sample.add("uri",
+                               test_prediction_uri(dataset, source_index));
                     sample.add("imgsize", imgsize);
                     sample.add("vals", vals);
                     test_prediction_samples.push_back(sample);
@@ -2682,8 +2683,7 @@ namespace dd
             APIData sample;
             sample.add("index", source_index);
             sample.add("uri", test_prediction_uri(dataset, source_index));
-            auto imgsize_it
-                = detection_prediction_imgsizes.find(source_index);
+            auto imgsize_it = detection_prediction_imgsizes.find(source_index);
             if (imgsize_it != detection_prediction_imgsizes.end())
               {
                 APIData imgsize;

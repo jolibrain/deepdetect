@@ -889,7 +889,7 @@ namespace dd
     if (!infile.is_open())
       {
         throw InputConnectorBadParamException("Could not open bbox file: "
-                                             + bboxfname);
+                                              + bboxfname);
       }
     std::string line;
     double wfactor = inputc->_width > 0 ? static_cast<double>(inputc->_width)
