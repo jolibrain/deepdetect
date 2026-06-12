@@ -12,6 +12,24 @@ height: 640
 iterations: 100
 batch_size: 2
 iter_size: 2
+augmentation:
+  mirror: true
+  rotate: true
+  crop_size: 0
+  test_crop_samples: 10
+  cutout: 0.1
+  geometry:
+    prob: 0.1
+    persp_horizontal: true
+    persp_vertical: true
+    zoom_in: true
+    zoom_out: true
+    pad_mode: constant
+  noise:
+    prob: 0.01
+  distort:
+    prob: 0.01
+class_weights: null
 base_lr: 0.0001
 test_interval: 100
 gpu: false
