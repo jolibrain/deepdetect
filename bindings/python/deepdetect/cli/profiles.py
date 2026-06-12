@@ -43,6 +43,7 @@ class ModelProfile:
             "height": self.default_height,
             "iterations": 100,
             "batch_size": 2 if self.name == "yolox" else 4,
+            "iter_size": int(self.train_mllib.get("solver", {}).get("iter_size", 1)),
             "base_lr": 0.0001,
             "test_interval": 100,
             "gpu": False,
@@ -117,6 +118,7 @@ class ModelProfile:
             mllib["gpuid"] = copy.deepcopy(options["gpuid"])
         mllib.setdefault("solver", {})
         mllib["solver"]["iterations"] = int(options["iterations"])
+        mllib["solver"]["iter_size"] = int(options["iter_size"])
         mllib["solver"]["base_lr"] = float(options["base_lr"])
         mllib["solver"]["test_interval"] = int(options["test_interval"])
         if options.get("resume"):

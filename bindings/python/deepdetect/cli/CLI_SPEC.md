@@ -45,7 +45,7 @@ Configuration precedence is:
 YAML is intended for repeatable runs. CLI flags are intended for discoverable
 interactive use and agent function-call arguments.
 Config files and `--set` map to top-level CLI option names such as
-`base_lr=0.001`, `batch_size=4`, or `visdom=true`; version 1 does not expose
+`base_lr=0.001`, `iter_size=2`, `batch_size=4`, or `visdom=true`; version 1 does not expose
 direct nested overrides for profile-internal DeepDetect parameters such as
 `solver`, `crop_size`, or augmentation blocks.
 
@@ -101,8 +101,9 @@ Shared training options:
   staging `--weights`. `latest` uses the newest checkpoint and solver state
   found in the repository. `best` reads `best_model.txt` and resumes the
   matching `checkpoint-N.*` and `solver-N.pt` files.
-- `--iterations`, `--batch-size`, `--base-lr`, `--test-interval`: common solver
-  controls.
+- `--iterations`, `--batch-size`, `--iter-size`, `--base-lr`,
+  `--test-interval`: common solver controls. `--iter-size` controls gradient
+  accumulation before each optimizer update.
 - `--service-name`: DeepDetect service name.
 - `--job-dir`: directory for CLI run manifests. Defaults to `--repository`.
   When omitted, `run.json` and `metrics.jsonl` are written directly in the
@@ -125,6 +126,10 @@ Training creates a run directory containing:
 - `run.json`: run ID, command, model, service name, config snapshot, job ID when
   available, status, and latest status body.
 - `metrics.jsonl`: metric events extracted from DeepDetect status payloads.
+
+Training also writes `config.yaml` at the root of `--repository`. This file is
+the effective training configuration after profile defaults, YAML config,
+explicit CLI arguments, and `--set` overrides have all been applied.
 
 On resume, `--weights` is optional because the model state comes from
 `--repository`. When Visdom is enabled, the CLI replays previous metric history
