@@ -11,6 +11,7 @@ from PIL import Image
 from deepdetect import DeepDetect
 from deepdetect.cli import config
 from deepdetect.cli import inference
+from deepdetect.cli import __file__ as cli_package_file
 from deepdetect.cli import main as cli
 from deepdetect.cli import results
 from deepdetect.cli import runs
@@ -133,7 +134,7 @@ def test_config_merge_and_set_overrides(tmp_path):
 
 
 def test_default_example_configs_load():
-    root = Path(__file__).resolve().parents[1] / "deepdetect" / "cli"
+    root = Path(cli_package_file).resolve().parent
 
     yolox = config.load_config(root / "yolox-default.yaml")
     segformer = config.load_config(root / "segformer-default.yaml")
