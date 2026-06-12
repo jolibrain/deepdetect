@@ -18,7 +18,7 @@ from deepdetect.cli import runs
 from deepdetect.cli import training
 from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
-from deepdetect.cli.visualize import detection_overlay_image
+from deepdetect.cli.visualize import detection_overlay_image, segmentation_overlay_images
 
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
@@ -1626,6 +1626,27 @@ def test_segmentation_result_image_is_rgb_chw_overlay(tmp_path):
 
     assert array.shape == (3, 2, 2)
     assert array.dtype.name == "uint8"
+
+
+def test_segmentation_overlay_uses_distinct_class_colors(tmp_path):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (3, 1), color="white").save(image)
+
+    mask, overlay = segmentation_overlay_images(
+        image,
+        {
+            "imgsize": {"width": 3, "height": 1},
+            "vals": [0, 1, 2],
+        },
+    )
+
+    mask_rgb = mask.convert("RGB")
+    assert mask_rgb.getpixel((0, 0)) == (0, 0, 0)
+    assert mask_rgb.getpixel((1, 0)) != (0, 0, 0)
+    assert mask_rgb.getpixel((2, 0)) != (0, 0, 0)
+    assert mask_rgb.getpixel((1, 0)) != mask_rgb.getpixel((2, 0))
+    assert overlay.getpixel((0, 0)) == (255, 255, 255)
+    assert overlay.getpixel((1, 0)) != overlay.getpixel((2, 0))
 
 
 def test_detection_result_image_draws_normalized_bbox_on_original_size(tmp_path):

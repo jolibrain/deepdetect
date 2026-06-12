@@ -1,10 +1,30 @@
 from __future__ import annotations
 
+import colorsys
+import hashlib
 from pathlib import Path
 from typing import Any
-import hashlib
 
 from PIL import Image, ImageDraw
+
+SEGMENTATION_CLASS_COLORS = (
+    (255, 64, 64),
+    (64, 160, 255),
+    (76, 175, 80),
+    (255, 193, 7),
+    (156, 39, 176),
+    (0, 188, 212),
+    (255, 112, 67),
+    (63, 81, 181),
+    (139, 195, 74),
+    (233, 30, 99),
+    (121, 85, 72),
+    (0, 150, 136),
+    (205, 220, 57),
+    (96, 125, 139),
+    (255, 152, 0),
+    (103, 58, 183),
+)
 
 
 def output_path_for(
@@ -125,7 +145,7 @@ def segmentation_overlay_images(
 
     class_values = bytes(int(value) for value in values)
     mask = Image.frombytes("P", (width, height), class_values)
-    mask.putpalette([0, 0, 0, 255, 64, 64] + [0, 0, 0] * 254)
+    mask.putpalette(_segmentation_palette())
 
     image = Image.open(image_path).convert("RGBA")
     if original_size:
@@ -143,3 +163,19 @@ def segmentation_overlay_images(
         image = image.resize((width, height))
     overlay = Image.alpha_composite(image, color_mask).convert("RGB")
     return mask, overlay
+
+
+def _segmentation_palette() -> list[int]:
+    palette = [0, 0, 0]
+    for class_index in range(1, 256):
+        color = _segmentation_class_color(class_index)
+        palette.extend(color)
+    return palette
+
+
+def _segmentation_class_color(class_index: int) -> tuple[int, int, int]:
+    if 1 <= class_index <= len(SEGMENTATION_CLASS_COLORS):
+        return SEGMENTATION_CLASS_COLORS[class_index - 1]
+    hue = ((class_index - 1) * 0.61803398875) % 1.0
+    red, green, blue = colorsys.hsv_to_rgb(hue, 0.72, 1.0)
+    return int(red * 255), int(green * 255), int(blue * 255)
