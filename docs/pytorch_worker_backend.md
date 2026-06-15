@@ -404,7 +404,8 @@ Phase 2 introduces a small Python SDK in
 - `WorkerReporter` for status, scalar metric, artifact, and log events;
 - `Cancellation` for cooperative training shutdown;
 - `WorkerContractError`, `MetricContractError`,
-  `PredictionContractError`, and `DatasetContractError` for typed failures.
+  `PredictionContractError`, `DatasetContractError`, and
+  `WorkerDependencyError` for typed failures.
 
 Minimal worker skeleton:
 
@@ -447,7 +448,7 @@ stable protocol categories before crossing into C++.
 The first template should be a real file that future workers can copy:
 
 ```text
-bindings/python/deepdetect/pytorch_worker/templates/train_worker.py
+bindings/python/deepdetect/pytorch_worker/builtin/vision/detection/torchvision_fasterrcnn.py
 ```
 
 The template implements object detection finetuning with torchvision.
@@ -464,8 +465,8 @@ The template must:
 - replace the box predictor for `nclasses`;
 - preserve label `0` as background;
 - train with model-owned losses;
-- keep optimizer, scheduler, AMP, gradient accumulation, and distributed
-  wrappers inside the worker;
+- keep optimizer and gradient accumulation inside the worker;
+- leave scheduler, AMP, and distributed wrappers as later extensions;
 - report metrics every optimizer step;
 - evaluate every configured test interval;
 - return predictions in DeepDetect detection schema;
@@ -575,23 +576,25 @@ PyTorch equivalent internally. AMP scaler state is part of checkpoints.
   - `test_processed`
   - `test_total`
 - emit `test_active = 0` when evaluation completes;
-- emit metrics with `_testX` suffix for multiple test sets;
+- emit metrics with `_testX` suffix for multiple test sets when an evaluator is
+  configured;
 - emit sampled `test_predictions` for visual result sinks.
 
-Preferred detection metrics:
+The torchvision detector worker emits detection metrics for every test set:
 
 - `map`
 - `map-05`
 - `map-50`
 - `map-90`
 
-If the optional evaluator dependency is unavailable, the worker must emit a
-`dependency_error` warning and still emit test progress and sampled
-predictions.
+Metric names are suffixed with `_testX` when reported by the worker, for example
+`map-50_test0`. It also emits test progress and sampled predictions for visual
+result sinks. A later common evaluator slice can move this calculation out of
+the worker without changing the reporting channel.
 
 ### Prediction Schema
 
-Worker predictions must convert to DeepDetect detection output shape:
+Sampled training visualizations use the DeepDetect detection output shape:
 
 ```json
 {
@@ -618,6 +621,30 @@ Worker predictions must convert to DeepDetect detection output shape:
 Coordinates are in the `imgsize` coordinate system. If predictions are produced
 on resized model inputs, the worker must map them back to the original image
 coordinate system or set `imgsize` to the exact prediction coordinate size.
+
+The worker `/predict` method returns the internal supervised-output connector
+shape consumed by the C++ bridge:
+
+```json
+{
+  "results": [
+    {
+      "uri": "/data/images/img001.jpg",
+      "loss": 0.0,
+      "probs": [0.91],
+      "cats": ["1"],
+      "bboxes": [
+        {
+          "xmin": 100.0,
+          "ymin": 50.0,
+          "xmax": 200.0,
+          "ymax": 180.0
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## LLM Worker Authoring Rules
 

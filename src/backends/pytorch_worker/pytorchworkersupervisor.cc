@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <poll.h>
 #include <rapidjson/document.h>
 #include <signal.h>
@@ -64,8 +65,22 @@ namespace dd
                 msg = error["message"].GetString();
             }
           throw MLLibInternalException("pytorch worker " + category + ": "
-                                      + msg);
+                                       + msg);
         }
+    }
+
+    bool debug_enabled()
+    {
+      const char *debug = std::getenv("DEEPDETECT_DEBUG");
+      const char *worker_debug = std::getenv("DEEPDETECT_WORKER_DEBUG");
+      return (debug && *debug) || (worker_debug && *worker_debug);
+    }
+
+    void debug_log(const std::string &message)
+    {
+      if (debug_enabled())
+        std::cerr << "[deepdetect-debug][pytorch-supervisor] " << message
+                  << std::endl;
     }
   }
 
@@ -106,19 +121,21 @@ namespace dd
   {
     if (running())
       return;
+    debug_log("start: creating worker socket");
 
     char dir_template[] = "/tmp/dd-pytorch-worker-XXXXXX";
     char *created_dir = ::mkdtemp(dir_template);
     if (!created_dir)
       throw MLLibInternalException("failed creating pytorch worker temp dir: "
-                                  + std::string(std::strerror(errno)));
+                                   + std::string(std::strerror(errno)));
     _socket_dir = created_dir;
     _socket_path = _socket_dir + "/worker.sock";
+    debug_log("start: socket path " + _socket_path);
 
     _listen_fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
     if (_listen_fd < 0)
       throw MLLibInternalException("failed creating pytorch worker socket: "
-                                  + std::string(std::strerror(errno)));
+                                   + std::string(std::strerror(errno)));
 
     sockaddr_un addr;
     std::memset(&addr, 0, sizeof(addr));
@@ -128,27 +145,31 @@ namespace dd
     if (::bind(_listen_fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr))
         != 0)
       throw MLLibInternalException("failed binding pytorch worker socket: "
-                                  + std::string(std::strerror(errno)));
+                                   + std::string(std::strerror(errno)));
     if (::listen(_listen_fd, 1) != 0)
-      throw MLLibInternalException("failed listening on pytorch worker socket: "
-                                  + std::string(std::strerror(errno)));
+      throw MLLibInternalException(
+          "failed listening on pytorch worker socket: "
+          + std::string(std::strerror(errno)));
 
     std::string python = python_executable(mllib_params);
+    debug_log("start: python executable " + python);
     _pid = ::fork();
     if (_pid < 0)
       throw MLLibInternalException("failed forking pytorch worker: "
-                                  + std::string(std::strerror(errno)));
+                                   + std::string(std::strerror(errno)));
     if (_pid == 0)
       {
         ::setsid();
         ::setenv("DEEPDETECT_WORKER_SOCKET", _socket_path.c_str(), 1);
         ::setenv("DEEPDETECT_REPOSITORY", _repository.c_str(), 1);
+        debug_log("child: exec python worker runtime");
         ::execlp(python.c_str(), python.c_str(), "-m",
                  "deepdetect.pytorch_worker.runtime",
                  static_cast<char *>(nullptr));
         ::_exit(127);
       }
 
+    debug_log("start: waiting for worker connection");
     pollfd pfd;
     pfd.fd = _listen_fd;
     pfd.events = POLLIN;
@@ -156,6 +177,7 @@ namespace dd
     if (poll_status <= 0)
       {
         terminate();
+        debug_log("start: worker launch timeout");
         throw MLLibInternalException(
             "pytorch worker launch timeout; check Python environment");
       }
@@ -165,8 +187,9 @@ namespace dd
       {
         terminate();
         throw MLLibInternalException("failed accepting pytorch worker socket: "
-                                    + std::string(std::strerror(errno)));
+                                     + std::string(std::strerror(errno)));
       }
+    debug_log("start: worker connected");
   }
 
   bool PytorchWorkerSupervisor::running() const
@@ -176,6 +199,7 @@ namespace dd
 
   void PytorchWorkerSupervisor::shutdown()
   {
+    debug_log("shutdown");
     if (running())
       {
         APIData params;
@@ -193,6 +217,7 @@ namespace dd
 
   void PytorchWorkerSupervisor::terminate()
   {
+    debug_log("terminate");
     close_fd(_fd);
     close_fd(_listen_fd);
     if (_pid > 0)
@@ -245,8 +270,9 @@ namespace dd
     _socket_dir.clear();
   }
 
-  std::string PytorchWorkerSupervisor::make_request_json(
-      int id, const std::string &method, const APIData &params) const
+  std::string
+  PytorchWorkerSupervisor::make_request_json(int id, const std::string &method,
+                                             const APIData &params) const
   {
     std::string params_json = params.toJSONString();
     return "{\"id\":" + std::to_string(id) + ",\"method\":\"" + method
@@ -260,6 +286,8 @@ namespace dd
     if (!running())
       throw MLLibInternalException("pytorch worker is not running");
     request_id = _next_id++;
+    debug_log("send request id=" + std::to_string(request_id)
+              + " method=" + method);
     send_frame(make_request_json(request_id, method, params));
   }
 
@@ -274,6 +302,8 @@ namespace dd
       {
         if (message_id(message) == id)
           {
+            debug_log("received response id=" + std::to_string(id)
+                      + " method=" + method);
             throw_response_error(message);
             rapidjson::Document doc;
             doc.Parse<rapidjson::kParseNanAndInfFlag>(message.c_str());
@@ -282,8 +312,12 @@ namespace dd
             return out;
           }
         _pending.push_back(message);
+        debug_log("queued async worker event while waiting for method="
+                  + method);
       }
-    throw MLLibInternalException("timeout waiting for pytorch worker response");
+    debug_log("timeout waiting for method=" + method);
+    throw MLLibInternalException(
+        "timeout waiting for pytorch worker response");
   }
 
   bool PytorchWorkerSupervisor::read_message(std::string &message,
@@ -293,6 +327,7 @@ namespace dd
       {
         message = _pending.front();
         _pending.pop_front();
+        debug_log("read queued worker message");
         return true;
       }
     return read_frame(message, timeout_ms);
@@ -315,8 +350,8 @@ namespace dd
     written = 0;
     while (written < message.size())
       {
-        ssize_t n = ::write(_fd, message.data() + written,
-                            message.size() - written);
+        ssize_t n
+            = ::write(_fd, message.data() + written, message.size() - written);
         if (n < 0 && errno == EINTR)
           continue;
         if (n <= 0)
@@ -341,7 +376,7 @@ namespace dd
         if (errno == EINTR)
           return false;
         throw MLLibInternalException("polling pytorch worker failed: "
-                                    + std::string(std::strerror(errno)));
+                                     + std::string(std::strerror(errno)));
       }
     uint32_t network_size = 0;
     if (!read_exact(&network_size, sizeof(network_size)))

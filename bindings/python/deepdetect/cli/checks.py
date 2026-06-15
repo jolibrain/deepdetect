@@ -76,7 +76,7 @@ def validate_detection_lists(list_paths: list[Path], nclasses: int) -> dict[str,
 
     progress = _progress(
         total=total_samples,
-        desc="checking YOLOX dataset",
+        desc="checking detection dataset",
         unit="sample",
     )
     try:
@@ -89,8 +89,8 @@ def validate_detection_lists(list_paths: list[Path], nclasses: int) -> dict[str,
                 if not line.strip():
                     continue
                 image_raw, bbox_raw = line.split()
-                image_path = Path(image_raw)
-                bbox_path = Path(bbox_raw)
+                image_path = _resolve_dataset_entry_path(list_path.parent, image_raw)
+                bbox_path = _resolve_dataset_entry_path(list_path.parent, bbox_raw)
                 if not image_path.is_file():
                     raise FileNotFoundError(
                         f"{list_path}:{line_number}: image not found: {image_path}"
@@ -145,6 +145,13 @@ def validate_detection_lists(list_paths: list[Path], nclasses: int) -> dict[str,
     }
 
 
+def _resolve_dataset_entry_path(base: Path, value: str) -> Path:
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = base / path
+    return path.resolve()
+
+
 def _progress(*, total: int, desc: str, unit: str):
     try:
         from tqdm import tqdm
@@ -168,7 +175,7 @@ class _NullProgress:
         return None
 
 
-def run_training_checks(model: str, options: dict[str, Any]) -> list[dict[str, Any]]:
+def run_training_checks(task: str, options: dict[str, Any]) -> list[dict[str, Any]]:
     train_data = Path(options["train_data"])
     test_data = _test_data_paths(options["test_data"])
     dataset_check = str(options.get("dataset_check", "full"))
@@ -191,7 +198,7 @@ def run_training_checks(model: str, options: dict[str, Any]) -> list[dict[str, A
     for index, path in enumerate(test_data):
         name = "test_list" if len(test_data) == 1 else f"test_list_test{index}"
         checks.append({"name": name, **check_dataset_list(path)})
-    if model == "segformer" and not options.get("skip_mask_validation", False):
+    if task == "segmentation" and not options.get("skip_mask_validation", False):
         checks.append(
             {
                 "name": "segmentation_masks",
@@ -200,7 +207,7 @@ def run_training_checks(model: str, options: dict[str, Any]) -> list[dict[str, A
                 ),
             }
         )
-    if model == "yolox":
+    if task == "detection":
         checks.append(
             {
                 "name": "detection_bboxes",

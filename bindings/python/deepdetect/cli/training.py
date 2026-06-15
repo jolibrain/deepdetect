@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -31,6 +32,7 @@ from .utils import (
 
 
 def run_train(args: Any) -> int:
+    _debug("run_train: resolving profile and options")
     profile = get_profile(args.model)
     cli_values = cli_options(
         train_data=args.train_data,
@@ -78,7 +80,7 @@ def run_train(args: Any) -> int:
         raise ValueError("resume must be one of: latest, best")
     if options.get("terminal") not in {"verbose", "live"}:
         raise ValueError("terminal must be one of: verbose, live")
-    if resume is None and not options.get("weights"):
+    if resume is None and profile.requires_weights and not options.get("weights"):
         raise ValueError("weights is required unless --resume is used")
     if options.get("job_dir") is None:
         options["job_dir"] = Path(options["repository"])
@@ -103,6 +105,14 @@ def run_train(args: Any) -> int:
         validate_resume_repository(Path(options["repository"]), str(resume))
 
     writer = create_training_terminal_reporter(options)
+    _debug(
+        "run_train: terminal=%s visdom=%s dataset_check=%s"
+        % (
+            options.get("terminal"),
+            options.get("visdom"),
+            options.get("dataset_check"),
+        )
+    )
     manifest = create_or_resume_run_manifest(
         args.model,
         options,
@@ -122,10 +132,12 @@ def run_train(args: Any) -> int:
         run_id=manifest.data["run_id"],
         run_dir=manifest.run_dir,
     )
+    _debug("run_train: metric sinks initialized")
     extractor = MetricEventExtractor()
 
     try:
         if resume:
+            _debug("run_train: replaying resume history")
             replay_resume_history(
                 Path(options["repository"]),
                 writer=writer,
@@ -133,14 +145,20 @@ def run_train(args: Any) -> int:
                 extractor=extractor,
                 visdom_sink=visdom_sink,
             )
-        for check in run_training_checks(args.model, options):
+        _debug("run_train: running dataset checks")
+        for check in run_training_checks(profile.task, options):
             writer.emit("dataset_check", run_id=manifest.data["run_id"], **check)
+        _debug("run_train: dataset checks complete")
 
-        if not resume:
-            stage_model(options["weights"], options["repository"])
+        if not resume and options.get("weights") is not None:
+            _debug("run_train: staging model weights")
+            options["weights"] = stage_model(options["weights"], options["repository"])
         save_training_config(options)
+        _debug("run_train: config saved")
         dd = deepdetect.DeepDetect()
+        _debug("run_train: DeepDetect runtime created")
         configure_gpu_compatibility(dd.build_info, requested=bool(options["gpu"]))
+        _debug("run_train: GPU compatibility checked")
         service_parameters = profile.service_parameters(options)
         train_parameters = profile.train_parameters(options)
         result_visualizer = create_training_result_visualizer(
@@ -154,11 +172,15 @@ def run_train(args: Any) -> int:
             train_parameters["output_parameters"].update(
                 result_visualizer.train_output_parameters()
             )
+            _debug("run_train: result visualizer enabled")
         if training_live_terminal_enabled(options):
             dd.set_log_level("warn")
+        _debug("run_train: creating service")
         with dd.create_service(options["service_name"], **service_parameters) as service:
+            _debug("run_train: service created")
             if training_live_terminal_enabled(options):
                 dd.set_service_log_level(options["service_name"], "warn")
+            _debug("run_train: starting service.train")
             result = service.train(
                 [
                     Path(options["train_data"]).resolve(),
@@ -167,7 +189,11 @@ def run_train(args: Any) -> int:
                 asynchronous=not bool(options["sync"]),
                 **train_parameters,
             )
+            _debug(
+                "run_train: service.train returned %s" % type(result).__name__
+            )
             if isinstance(result, deepdetect.TrainingJob):
+                _debug("run_train: monitoring async training job")
                 final_status = monitor_training(
                     result,
                     writer=writer,
@@ -179,6 +205,7 @@ def run_train(args: Any) -> int:
                     poll_interval=float(options["poll_interval"]),
                 )
             else:
+                _debug("run_train: processing synchronous training result")
                 final_status = {"status": "finished", **result}
                 writer.emit(
                     "training_status",
@@ -199,11 +226,20 @@ def run_train(args: Any) -> int:
             run_id=manifest.data["run_id"],
             status=final_status.get("status", "finished"),
         )
-        manifest.update(status=final_status.get("status", "finished"), last_status=final_status)
+        manifest.update(
+            status=final_status.get("status", "finished"),
+            last_status=final_status,
+        )
         return 0
     finally:
+        _debug("run_train: closing sinks and terminal")
         metric_sink.close()
         writer.close()
+
+
+def _debug(message: str) -> None:
+    if os.environ.get("DEEPDETECT_DEBUG") or os.environ.get("DEEPDETECT_CLI_DEBUG"):
+        print(f"[deepdetect-debug][cli] {message}", file=sys.stderr, flush=True)
 
 
 def create_training_terminal_reporter(options: dict[str, Any]):
@@ -438,6 +474,7 @@ def monitor_training(
     extractor = extractor or MetricEventExtractor()
     manifest.update(job=job.job, status="running")
     while True:
+        _debug(f"monitor_training: polling job {job.job}")
         output_parameters: dict[str, Any] = {
             "measure_hist": True,
             "max_hist_points": 10000,
@@ -446,6 +483,15 @@ def monitor_training(
             output_parameters["test_predictions"] = True
         status = job.status(output_parameters=output_parameters)
         state = str(status.get("status", "")).lower()
+        measure = status.get("measure") if isinstance(status.get("measure"), dict) else {}
+        _debug(
+            "monitor_training: status=%s iteration=%s train_loss=%s"
+            % (
+                state,
+                measure.get("iteration"),
+                measure.get("train_loss"),
+            )
+        )
         writer.emit(
             "training_status",
             run_id=manifest.data["run_id"],

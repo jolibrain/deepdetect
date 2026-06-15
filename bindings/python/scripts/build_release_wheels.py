@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 BUILD_WHEEL = REPO_ROOT / "bindings" / "python" / "scripts" / "build_wheel.py"
 BUILD_REQUIREMENTS = ["auditwheel>=6", "scikit-build-core", "pybind11", "numpy>=1.23"]
 TORCH_DEPENDENCY = "torch==2.12.1"
+TORCHVISION_DEPENDENCY = "torchvision==0.27.1"
 
 
 def run(command: list[str]) -> None:
@@ -99,6 +100,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--cpu-torch-dependency", default=TORCH_DEPENDENCY)
     parser.add_argument("--gpu-torch-dependency", default=TORCH_DEPENDENCY)
+    parser.add_argument("--cpu-torchvision-dependency", default=TORCHVISION_DEPENDENCY)
+    parser.add_argument("--gpu-torchvision-dependency", default=TORCHVISION_DEPENDENCY)
     parser.add_argument(
         "--cpu-torch-index-url",
         default="https://download.pytorch.org/whl/cpu",
@@ -153,6 +156,7 @@ def create_managed_env(
     args: argparse.Namespace,
     mode: str,
     torch_dependency: str,
+    torchvision_dependency: str,
     torch_index_url: str,
 ) -> str:
     env_dir = (REPO_ROOT / args.env_root / mode).resolve()
@@ -165,7 +169,7 @@ def create_managed_env(
     run(
         pip_install_command(
             python,
-            [torch_dependency],
+            [torch_dependency, torchvision_dependency],
             index_url=torch_index_url,
         )
     )
@@ -184,6 +188,7 @@ def wheel_command(
     mode: str,
     name: str,
     torch_dependency: str,
+    torchvision_dependency: str,
     args: argparse.Namespace,
 ) -> list[str]:
     command = [
@@ -197,6 +202,8 @@ def wheel_command(
         args.distribution_version,
         "--torch-dependency",
         torch_dependency,
+        "--torchvision-dependency",
+        torchvision_dependency,
         "--build-dir",
         f"build/python-wheel-{mode}",
         "--sdk-prefix",
@@ -235,6 +242,7 @@ def build_variant(
     python: str,
     name: str,
     torch_dependency: str,
+    torchvision_dependency: str,
     torch_index_url: str,
 ) -> None:
     managed = not python
@@ -243,6 +251,7 @@ def build_variant(
             args=args,
             mode=mode,
             torch_dependency=torch_dependency,
+            torchvision_dependency=torchvision_dependency,
             torch_index_url=torch_index_url,
         )
     try:
@@ -252,6 +261,7 @@ def build_variant(
                 mode=mode,
                 name=name,
                 torch_dependency=torch_dependency,
+                torchvision_dependency=torchvision_dependency,
                 args=args,
             )
         )
@@ -272,6 +282,7 @@ def main() -> None:
             python=args.cpu_python,
             name=args.cpu_name,
             torch_dependency=args.cpu_torch_dependency,
+            torchvision_dependency=args.cpu_torchvision_dependency,
             torch_index_url=args.cpu_torch_index_url,
         )
     if not args.skip_gpu:
@@ -281,6 +292,7 @@ def main() -> None:
             python=args.gpu_python,
             name=args.gpu_name,
             torch_dependency=args.gpu_torch_dependency,
+            torchvision_dependency=args.gpu_torchvision_dependency,
             torch_index_url=args.gpu_torch_index_url,
         )
 

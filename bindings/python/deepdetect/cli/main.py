@@ -151,7 +151,7 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
     parser.add_argument("--visualize", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--benchmark", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--warmup", type=int)
-    if model == "yolox":
+    if PROFILES[model].task == "detection":
         parser.add_argument("--confidence-threshold", type=float)
         parser.add_argument("--best-bbox", type=int)
     parser.set_defaults(func=run_infer)

@@ -12,6 +12,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TORCH_DEPENDENCY = "torch==2.12.1"
+TORCHVISION_DEPENDENCY = "torchvision==0.27.1"
 TORCH_FIXTURES = {
     "resnet50_training_torch241_small": (
         "https://www.deepdetect.com/dd/examples/torch/"
@@ -70,6 +71,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--distribution-name", required=True)
     parser.add_argument("--venv-dir", required=True)
     parser.add_argument("--torch-dependency", default=TORCH_DEPENDENCY)
+    parser.add_argument("--torchvision-dependency", default=TORCHVISION_DEPENDENCY)
     parser.add_argument("--torch-index-url", default="")
     parser.add_argument("--expected-cuda", type=parse_bool, required=True)
     parser.add_argument("--pytest-tests", default="bindings/python/tests")
@@ -127,6 +129,8 @@ from pathlib import Path
 
 import deepdetect
 import torch
+import torchvision
+from torchvision.ops import nms as _torchvision_nms
 
 if {expected_cuda!r} and torch.cuda.device_count() <= 0:
     raise SystemExit("GPU wheel test expected at least one visible CUDA device")
@@ -156,6 +160,7 @@ if bool(build_info.get("cuda")) is not {expected_cuda!r}:
         f"Expected deepdetect cuda={expected_cuda!r}, got {{build_info.get('cuda')!r}}"
     )
 print(json.dumps(dd.info(), indent=2, sort_keys=True))
+print(f"torch={{torch.__version__}} torchvision={{torchvision.__version__}}")
 """
 
 
@@ -237,7 +242,7 @@ def main() -> None:
     run(
         pip_install_command(
             python,
-            [args.torch_dependency],
+            [args.torch_dependency, args.torchvision_dependency],
             index_url=args.torch_index_url,
         )
     )

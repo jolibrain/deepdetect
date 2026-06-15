@@ -13,6 +13,7 @@ from deepdetect.cli import config
 from deepdetect.cli import inference
 from deepdetect.cli import __file__ as cli_package_file
 from deepdetect.cli import main as cli
+from deepdetect.cli.checks import validate_detection_lists
 from deepdetect.cli import results
 from deepdetect.cli import runs
 from deepdetect.cli import training
@@ -110,6 +111,27 @@ def write_training_files(tmp_path: Path):
     train.write_text(f"{image} {target}\n", encoding="utf-8")
     test.write_text(f"{image} {target}\n", encoding="utf-8")
     return weights, train, test
+
+
+def test_detection_dataset_validation_resolves_relative_entries(tmp_path):
+    dataset = tmp_path / "dataset"
+    images = dataset / "images"
+    labels = dataset / "labels"
+    images.mkdir(parents=True)
+    labels.mkdir()
+    image = images / "image.jpg"
+    Image.new("RGB", (8, 8), color="white").save(image)
+    bbox = labels / "target.txt"
+    bbox.write_text("1 0 0 4 4\n", encoding="utf-8")
+    train = dataset / "train.txt"
+    train.write_text("images/image.jpg labels/target.txt\n", encoding="utf-8")
+
+    summary = validate_detection_lists([train], nclasses=2)
+
+    assert summary["checked_images"] == 1
+    assert summary["checked_bbox_files"] == 1
+    assert summary["positive_boxes"] == 1
+    assert summary["class_counts"] == {1: 1}
 
 
 def write_resume_repository(repository: Path, *, iteration: int = 10) -> Path:
@@ -250,6 +272,62 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
     ]
     assert "dataset_check" in {event["event"] for event in events}
     assert "metric" in {event["event"] for event in events}
+
+
+def test_train_torchvision_detector_uses_pytorch_backend_without_weights(
+    monkeypatch, tmp_path, capsys
+):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+    ]
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    _weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(tmp_path / "runs"),
+            "--iterations",
+            "1",
+            "--dataset-check",
+            "none",
+        ]
+    )
+
+    assert code == 0
+    create = next(call for call in runtime.calls if call[0] == "create")
+    assert create[2]["mllib"] == "pytorch"
+    assert create[2]["parameters"]["mllib"]["module"] == (
+        "deepdetect.pytorch_worker.builtin.vision.detection.torchvision_fasterrcnn"
+    )
+    assert create[2]["parameters"]["mllib"]["task"] == "detection"
+    assert create[2]["parameters"]["mllib"]["python"] == sys.executable
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert "weights" not in train_call[1]["parameters"]["mllib"]
+    assert train_call[1]["parameters"]["output"]["measure"] == [
+        "map-05",
+        "map-50",
+        "map-90",
+    ]
+    saved_config = config.load_config(tmp_path / "repo" / "config.yaml")
+    assert saved_config["weights"] is None
+    assert saved_config["batch_size"] == 1
+    events = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    assert "run_finished" in {event["event"] for event in events}
 
 
 def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):

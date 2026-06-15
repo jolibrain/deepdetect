@@ -57,7 +57,7 @@ def run_infer(args: Any) -> int:
         validate_positive(numeric, int(options[numeric]))
     if int(options["warmup"]) < 0:
         raise ValueError("warmup must be non-negative")
-    if profile.name == "yolox":
+    if profile.task == "detection":
         threshold = float(options["confidence_threshold"])
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("confidence threshold must be between 0 and 1")
@@ -65,7 +65,8 @@ def run_infer(args: Any) -> int:
             validate_positive("best_bbox", int(options["best_bbox"]))
 
     writer = EventWriter(output_format=options["output_format"])
-    stage_model(options["weights"], options["repository"])
+    if options.get("weights") is not None:
+        options["weights"] = stage_model(options["weights"], options["repository"])
     dd = deepdetect.DeepDetect()
     configure_gpu_compatibility(dd.build_info, requested=bool(options["gpu"]))
     service_parameters = profile.service_parameters(options)
@@ -97,7 +98,7 @@ def run_infer(args: Any) -> int:
 
     if options.get("visualize") or options.get("output") is not None:
         write_visual_outputs(
-            profile.name,
+            profile.task,
             images,
             all_predictions,
             Path(options["output"] or "deepdetect-output"),
@@ -114,7 +115,7 @@ def run_infer(args: Any) -> int:
 
 
 def write_visual_outputs(
-    model: str,
+    task: str,
     images: list[Path],
     predictions: list[dict[str, Any]],
     output: Path,
@@ -122,7 +123,7 @@ def write_visual_outputs(
 ) -> None:
     multiple = len(images) > 1
     for image, prediction in zip(images, predictions):
-        if model == "yolox":
+        if task == "detection":
             path = output_path_for(output, image, multiple=multiple, suffix="_detections")
             render_detections(image, prediction, path)
             writer.emit("artifact", kind="detections", image=str(image), path=str(path))

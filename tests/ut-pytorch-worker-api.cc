@@ -98,15 +98,19 @@ namespace
   }
 
   JDoc poll_until_terminal(JsonAPI &japi, const std::string &service, int job,
-                           int max_attempts = 100)
+                           int max_attempts = 100,
+                           bool test_predictions = false)
   {
     JDoc status;
     for (int attempt = 0; attempt < max_attempts; ++attempt)
       {
-        const std::string request = "{\"service\":\"" + service
-                                    + "\",\"job\":" + std::to_string(job)
-                                    + ",\"timeout\":0,\"parameters\":{"
-                                      "\"output\":{\"measure_hist\":true}}}";
+        const std::string output = test_predictions
+                                       ? "\"output\":{\"measure_hist\":true,"
+                                         "\"test_predictions\":true}"
+                                       : "\"output\":{\"measure_hist\":true}";
+        const std::string request
+            = "{\"service\":\"" + service + "\",\"job\":" + std::to_string(job)
+              + ",\"timeout\":0,\"parameters\":{" + output + "}}";
         status = japi.service_train_status(request);
         EXPECT_EQ(200, status_code(status)) << japi.jrender(status);
         if (status_code(status) != 200)
@@ -150,6 +154,40 @@ namespace
     return status;
   }
 
+}
+
+TEST(pytorchworkerapi, training_status_can_return_test_predictions_payload)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_test_predictions";
+  const std::string repo = repo_path(service);
+  prepare_repo(repo);
+
+  ASSERT_EQ(
+      created_str,
+      japi.jrender(japi.service_create(
+          service, create_request(repo, ",\"emit_test_predictions\":true"))));
+
+  JDoc train = japi.service_train(train_request(service, 2, true));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 100, true);
+  ASSERT_STREQ("finished", status["head"]["status"].GetString())
+      << japi.jrender(status);
+  ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"].HasMember("test_predictions"))
+      << japi.jrender(status);
+  const auto &predictions = status["body"]["test_predictions"];
+  ASSERT_TRUE(predictions.HasMember("test0")) << japi.jrender(status);
+  ASSERT_TRUE(predictions["test0"].HasMember("samples"))
+      << japi.jrender(status);
+  ASSERT_EQ(1U, predictions["test0"]["samples"].Size())
+      << japi.jrender(status);
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
 }
 
 TEST(pytorchworkerapi, service_create_async_train_status_and_predict)
