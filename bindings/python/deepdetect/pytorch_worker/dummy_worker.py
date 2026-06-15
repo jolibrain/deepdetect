@@ -3,17 +3,19 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from .sdk import Cancellation, DeepDetectWorkerBase, WorkerContext, WorkerReporter
 
-class DeepDetectWorker:
+
+class DeepDetectWorker(DeepDetectWorkerBase):
     def __init__(self) -> None:
-        self.context: dict[str, Any] = {}
+        super().__init__()
         self.torch_version = ""
 
-    def configure(self, context: dict[str, Any]) -> dict[str, Any]:
+    def configure(self, context: WorkerContext) -> dict[str, Any]:
         import torch
 
+        super().configure(context)
         self.torch_version = str(getattr(torch, "__version__", "unknown"))
-        self.context = dict(context)
         return {
             "worker": "dummy",
             "torch_version": self.torch_version,
@@ -23,8 +25,8 @@ class DeepDetectWorker:
         self,
         params: dict[str, Any],
         *,
-        reporter: Any,
-        cancellation: Any,
+        reporter: WorkerReporter,
+        cancellation: Cancellation,
     ) -> dict[str, Any]:
         request = params.get("request", {})
         mllib = request.get("parameters", {}).get("mllib", {})

@@ -7,36 +7,20 @@ import socket
 import sys
 import threading
 import traceback
-from dataclasses import dataclass
 from types import ModuleType
 from typing import Any
 
 from .protocol import ProtocolError, read_frame, write_frame
-
-
-@dataclass
-class Cancellation:
-    requested: bool = False
-
-
-class Reporter:
-    def __init__(self, runtime: "WorkerRuntime") -> None:
-        self._runtime = runtime
-
-    def status(self, **payload: Any) -> None:
-        self._runtime.event("status", payload)
-
-    def metric(self, name: str, value: Any, *, iteration: Any = None) -> None:
-        payload = {"name": name, "value": value}
-        if iteration is not None:
-            payload["iteration"] = iteration
-        self._runtime.event("metric", payload)
-
-    def artifact(self, **payload: Any) -> None:
-        self._runtime.event("artifact", payload)
-
-    def log(self, level: str, message: str, **payload: Any) -> None:
-        self._runtime.event("log", {"level": level, "message": message, **payload})
+from .sdk import (
+    Cancellation,
+    DeepDetectWorkerBase,
+    WorkerContext,
+    WorkerContractError,
+    WorkerReporter,
+    WorkerSDKError,
+    validate_optional_result_dict,
+    validate_prediction_result,
+)
 
 
 class WorkerRuntime:
@@ -47,7 +31,7 @@ class WorkerRuntime:
         self.context: dict[str, Any] = {}
         self.cancellation = Cancellation()
         self.train_thread: threading.Thread | None = None
-        self.reporter = Reporter(self)
+        self.reporter = WorkerReporter(self.event)
 
     def serve(self) -> int:
         while True:
@@ -84,8 +68,8 @@ class WorkerRuntime:
                 elif method == "configure":
                     self.context = dict(params)
                     self.worker = self._load_worker(params)
-                    result = self.worker.configure(self.context)
-                    self.reply(message_id, result or {})
+                    result = self._configure_worker(params)
+                    self.reply(message_id, result)
                 elif method == "train_start":
                     if self.worker is None:
                         raise RuntimeError("worker is not configured")
@@ -105,7 +89,7 @@ class WorkerRuntime:
                 elif method == "predict":
                     if self.worker is None:
                         raise RuntimeError("worker is not configured")
-                    self.reply(message_id, self.worker.predict(params))
+                    self.reply(message_id, self._predict(params))
                 elif method == "shutdown":
                     self.reply(message_id, {"status": "shutdown"})
                     return 0
@@ -124,10 +108,29 @@ class WorkerRuntime:
                 reporter=self.reporter,
                 cancellation=self.cancellation,
             )
+            result = validate_optional_result_dict(
+                result, WorkerContractError, "train result"
+            )
             self.event("train_result", result or {"status": "finished"})
         except Exception as error:
-            payload = self.failure_payload("training_error", error)
+            category = self.failure_category(error)
+            if category == "internal_error":
+                category = "training_error"
+            payload = self.failure_payload(category, error)
             self.event("failure", payload)
+
+    def _configure_worker(self, params: dict[str, Any]) -> dict[str, Any]:
+        if isinstance(self.worker, DeepDetectWorkerBase):
+            context = WorkerContext.from_configure_params(params)
+            result = self.worker.configure(context)
+        else:
+            result = self.worker.configure(dict(params))
+        return validate_optional_result_dict(
+            result, WorkerContractError, "configure result"
+        )
+
+    def _predict(self, params: dict[str, Any]) -> dict[str, Any]:
+        return validate_prediction_result(self.worker.predict(params))
 
     def _load_worker(self, params: dict[str, Any]) -> Any:
         mllib = params.get("mllib", {}) if isinstance(params, dict) else {}
@@ -137,8 +140,16 @@ class WorkerRuntime:
         try:
             worker_class = getattr(module, str(class_name))
         except AttributeError as error:
-            raise RuntimeError(f"worker class {class_name!r} not found") from error
-        return worker_class()
+            raise WorkerContractError(
+                f"worker class {class_name!r} not found"
+            ) from error
+        if not callable(worker_class):
+            raise WorkerContractError(f"worker class {class_name!r} is not callable")
+        worker = worker_class()
+        for method in ("configure", "train", "predict"):
+            if not callable(getattr(worker, method, None)):
+                raise WorkerContractError(f"worker must implement {method}()")
+        return worker
 
     @staticmethod
     def _import_module(module_name: str, entrypoint: Any = None) -> ModuleType:
@@ -168,12 +179,12 @@ class WorkerRuntime:
 
     @staticmethod
     def failure_category(error: BaseException) -> str:
+        if isinstance(error, WorkerSDKError):
+            return error.category
         if isinstance(error, (ImportError, ModuleNotFoundError)):
             return "dependency_error"
         if isinstance(error, ProtocolError):
             return "protocol_error"
-        if isinstance(error, RuntimeError) and "worker class" in str(error):
-            return "worker_contract_error"
         return "internal_error"
 
     @staticmethod

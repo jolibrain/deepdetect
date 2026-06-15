@@ -394,6 +394,54 @@ The runtime provides:
 - `rank`: distributed rank metadata;
 - helper functions for checkpoint paths and repository artifact paths.
 
+### Worker SDK
+
+Phase 2 introduces a small Python SDK in
+`deepdetect.pytorch_worker.sdk`. Worker authors should subclass
+`DeepDetectWorkerBase` and use:
+
+- `WorkerContext` for repository and backend configuration access;
+- `WorkerReporter` for status, scalar metric, artifact, and log events;
+- `Cancellation` for cooperative training shutdown;
+- `WorkerContractError`, `MetricContractError`,
+  `PredictionContractError`, and `DatasetContractError` for typed failures.
+
+Minimal worker skeleton:
+
+```python
+from deepdetect.pytorch_worker.sdk import DeepDetectWorkerBase
+
+
+class DeepDetectWorker(DeepDetectWorkerBase):
+    def configure(self, context):
+        super().configure(context)
+        return {"worker": "my-worker"}
+
+    def train(self, params, *, reporter, cancellation):
+        for iteration in range(1, 11):
+            if cancellation.requested:
+                return {"status": "cancelled", "iteration": iteration - 1}
+            reporter.status(phase="train", iteration=iteration, test_active=0)
+            reporter.metric("train_loss", 1.0 / iteration, iteration=iteration)
+        return {"status": "finished", "iteration": 10}
+
+    def predict(self, params):
+        return {"results": [{"uri": "sample", "probs": [1.0], "cats": ["ok"]}]}
+```
+
+The runtime validates SDK outputs at the Python boundary before sending them to
+C++:
+
+- metrics must be finite numeric scalars with non-empty names;
+- status, artifact, log, train, configure, and predict payloads must be JSON
+  serializable;
+- predict must return `{"results": [...]}`;
+- detection bboxes must contain finite `xmin`, `ymin`, `xmax`, and `ymax`.
+
+Existing non-SDK workers that implement compatible `configure`, `train`, and
+`predict` methods remain loadable. Contract failures are reported through the
+stable protocol categories before crossing into C++.
+
 ## Normative Object Detection Worker Template
 
 The first template should be a real file that future workers can copy:
