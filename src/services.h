@@ -59,6 +59,10 @@
 #ifdef USE_TORCH
 #include "backends/torch/torchlib.h"
 #endif
+#ifdef USE_PYTORCH_WORKER
+#include "backends/pytorch_worker/pytorchworkerinputconns.h"
+#include "backends/pytorch_worker/pytorchworkerlib.h"
+#endif
 #ifdef USE_TENSORRT
 #include "backends/tensorrt/tensorrtlib.h"
 #endif
@@ -110,9 +114,18 @@ namespace dd
       MLService<TorchLib, CSVTSTorchInputFileConn, SupervisedOutput,
                 TorchModel>
 #endif
-#ifdef USE_TENSORRT
+#ifdef USE_PYTORCH_WORKER
 #if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
     || defined(USE_NCNN) || defined(USE_TORCH)
+      ,
+#endif
+      MLService<PytorchWorkerLib, ImgPytorchInputFileConn, SupervisedOutput,
+                PytorchWorkerModel>
+#endif
+#ifdef USE_TENSORRT
+#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
+    || defined(USE_NCNN) || defined(USE_TORCH)                                \
+    || defined(USE_PYTORCH_WORKER)
       ,
 #endif
       MLService<TensorRTLib, ImgTensorRTInputFileConn, SupervisedOutput,

@@ -57,6 +57,12 @@ endif()
 if (USE_NCNN)
   list(APPEND ddetect_SOURCES backends/ncnn/ncnnlib.cc backends/ncnn/ncnnmodel.cc backends/ncnn/caffe2ncnn.cc backends/ncnn/upgrade_proto.cpp)
 endif()
+if (USE_PYTORCH_WORKER)
+  list(APPEND ddetect_SOURCES
+    backends/pytorch_worker/pytorchworkerlib.cc
+    backends/pytorch_worker/pytorchworkersupervisor.cc
+  )
+endif()
 if (USE_TORCH)
   list(APPEND ddetect_SOURCES
 	generators/net_caffe.cc

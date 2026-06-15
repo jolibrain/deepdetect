@@ -152,6 +152,13 @@ if (USE_JSON_API)
   REGISTER_TEST(ut_dto ut-dto.cc)
   REGISTER_TEST(ut_embedded_runtime ut-embedded-runtime.cc)
   REGISTER_TEST(ut_retired_backends ut-retired-backends.cc)
+  if (USE_PYTORCH_WORKER)
+    REGISTER_TEST(ut_pytorch_worker_api ut-pytorch-worker-api.cc)
+    target_compile_definitions(
+      ut_pytorch_worker_api
+      PRIVATE DEEPDETECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+    )
+  endif()
 endif()
 
 DOWNLOAD_DATASET(
