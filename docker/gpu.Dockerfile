@@ -105,7 +105,6 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
 
 # Install Python compatibility helpers
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-RUN python -m pip install --break-system-packages --upgrade pip
 RUN python -m pip install --break-system-packages typing_extensions
 RUN python -m pip install --break-system-packages torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}
 

@@ -79,8 +79,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     util-linux \
     libgstreamer1.0-dev
 
-RUN python3 -m pip install --break-system-packages --upgrade pip
-
 WORKDIR /tmp/
 
 ENV CCACHE_DIR=/ccache

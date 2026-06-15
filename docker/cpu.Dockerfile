@@ -100,7 +100,6 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 
 # Install Python compatibility helpers
-RUN python -m pip install --break-system-packages --upgrade pip
 RUN python -m pip install --break-system-packages future pyyaml typing_extensions
 RUN python -m pip install --break-system-packages torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cpu
 
