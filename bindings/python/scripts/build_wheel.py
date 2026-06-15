@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 PYTHON_PROJECT = REPO_ROOT / "bindings" / "python"
 TORCH_VERSION = "2.12.1"
 TORCH_DEPENDENCY = "torch==2.12.1"
+TORCHVISION_DEPENDENCY = "torchvision==0.27.1"
 
 AUDITWHEEL_EXCLUDES = [
     "libc10.so",
@@ -181,6 +182,11 @@ def parse_args() -> argparse.Namespace:
         default=TORCH_DEPENDENCY,
         help="dependency string written to generated wheel metadata",
     )
+    parser.add_argument(
+        "--torchvision-dependency",
+        default=TORCHVISION_DEPENDENCY,
+        help="torchvision dependency string written to generated wheel metadata",
+    )
     parser.add_argument("--config", default="Release")
     parser.add_argument("--jobs", default=str(os.cpu_count() or 2))
     parser.add_argument("--cmake", default=os.environ.get("CMAKE_COMMAND", "cmake"))
@@ -213,11 +219,13 @@ def project_for_wheel(
     distribution_name: str,
     distribution_version: str,
     torch_dependency: str,
+    torchvision_dependency: str,
 ) -> Path:
     if (
         distribution_name == "deepdetect"
         and not distribution_version
         and torch_dependency == TORCH_DEPENDENCY
+        and torchvision_dependency == TORCHVISION_DEPENDENCY
     ):
         return PYTHON_PROJECT
 
@@ -246,6 +254,11 @@ def project_for_wheel(
     contents = contents.replace(
         f'"{TORCH_DEPENDENCY}"',
         f'"{torch_dependency}"',
+        1,
+    )
+    contents = contents.replace(
+        f'"{TORCHVISION_DEPENDENCY}"',
+        f'"{torchvision_dependency}"',
         1,
     )
     pyproject.write_text(contents, encoding="utf-8")
@@ -288,6 +301,7 @@ def main() -> None:
             str(build_dir),
             f"-DCMAKE_BUILD_TYPE={args.config}",
             "-DUSE_TORCH=ON",
+            "-DUSE_PYTORCH_WORKER=ON",
             "-DUSE_PREBUILT_TORCH=ON",
             "-DUSE_TENSORRT=OFF",
             "-DUSE_XGBOOST=OFF",
@@ -356,6 +370,7 @@ def main() -> None:
             distribution_name=args.distribution_name,
             distribution_version=args.distribution_version,
             torch_dependency=args.torch_dependency,
+            torchvision_dependency=args.torchvision_dependency,
         )
         wheel_command = [
             sys.executable,

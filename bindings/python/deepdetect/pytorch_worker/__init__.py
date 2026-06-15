@@ -8,6 +8,7 @@ from .sdk import (
     PredictionContractError,
     WorkerContext,
     WorkerContractError,
+    WorkerDependencyError,
     WorkerReporter,
     WorkerSDKError,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "PredictionContractError",
     "WorkerContext",
     "WorkerContractError",
+    "WorkerDependencyError",
     "WorkerReporter",
     "WorkerSDKError",
 ]

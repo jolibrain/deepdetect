@@ -3,9 +3,33 @@ import time
 import sys
 import types
 
+from PIL import Image
+
 from deepdetect.pytorch_worker.protocol import read_frame, write_frame
 from deepdetect.pytorch_worker.runtime import WorkerRuntime
-from deepdetect.pytorch_worker.sdk import DeepDetectWorkerBase
+from deepdetect.pytorch_worker.sdk import (
+    DatasetContractError,
+    DeepDetectWorkerBase,
+    WorkerContext,
+    WorkerReporter,
+)
+from deepdetect.pytorch_worker.builtin.vision.detection.base import (
+    DetectionTrainingWorkerBase,
+)
+from deepdetect.pytorch_worker.builtin.vision.detection.common import (
+    DetectionListDataset,
+)
+from deepdetect.pytorch_worker.builtin.vision.detection.torchvision_fasterrcnn import (
+    DetectionEvalBox,
+    DeepDetectWorker,
+    detection_map_metrics,
+    detection_metric_thresholds,
+    read_detection_list,
+    report_detection_metrics,
+)
+from deepdetect.pytorch_worker.templates.train_worker import (
+    DeepDetectWorker as CompatibilityDeepDetectWorker,
+)
 
 
 class MemorySocket:
@@ -140,6 +164,158 @@ def test_dummy_worker_reports_metrics_and_predicts():
         server.close()
         client.close()
         thread.join(timeout=2)
+
+
+def test_torchvision_worker_detection_list_resolves_relative_paths(tmp_path):
+    image = tmp_path / "image.jpg"
+    Image.new("RGB", (8, 8), color="white").save(image)
+    bbox = tmp_path / "target.txt"
+    bbox.write_text("1 0 0 4 4\n", encoding="utf-8")
+    data = tmp_path / "train.txt"
+    data.write_text("image.jpg target.txt\n", encoding="utf-8")
+
+    samples = read_detection_list(data, nclasses=2)
+
+    assert len(samples) == 1
+    assert samples[0].index == 0
+    assert samples[0].image == image.resolve()
+    assert samples[0].target == bbox.resolve()
+
+
+def test_detection_list_dataset_defers_file_and_target_validation(tmp_path):
+    data = tmp_path / "train.txt"
+    data.write_text("missing.jpg missing.txt\n", encoding="utf-8")
+
+    dataset = DetectionListDataset(data, nclasses=2, torch=object())
+
+    assert len(dataset) == 1
+    assert dataset.samples[0].image == tmp_path / "missing.jpg"
+    assert dataset.samples[0].target == tmp_path / "missing.txt"
+
+
+def test_detection_base_configure_uses_adapter_metadata(tmp_path):
+    class FakeTorch:
+        __version__ = "fake-torch"
+
+        class cuda:
+            @staticmethod
+            def is_available():
+                return False
+
+        @staticmethod
+        def device(name):
+            return name
+
+    class FakeDetectionWorker(DetectionTrainingWorkerBase):
+        worker_name = "fake-detector"
+
+        def import_backend(self):
+            return (FakeTorch(),)
+
+        def create_model(self, nclasses, *backend):
+            raise AssertionError("configure should not create the model")
+
+    context = WorkerContext(
+        repository=str(tmp_path),
+        mllib={"nclasses": 3},
+        raw={},
+    )
+
+    result = FakeDetectionWorker().configure(context)
+
+    assert result == {
+        "worker": "fake-detector",
+        "task": "detection",
+        "nclasses": 3,
+        "device": "cpu",
+        "torch_version": "fake-torch",
+    }
+
+
+def test_torchvision_worker_old_template_import_path_is_compatible():
+    assert CompatibilityDeepDetectWorker is DeepDetectWorker
+
+
+def test_torchvision_worker_detection_list_rejects_invalid_class(tmp_path):
+    image = tmp_path / "image.jpg"
+    Image.new("RGB", (8, 8), color="white").save(image)
+    bbox = tmp_path / "target.txt"
+    bbox.write_text("2 0 0 4 4\n", encoding="utf-8")
+    data = tmp_path / "train.txt"
+    data.write_text("image.jpg target.txt\n", encoding="utf-8")
+
+    try:
+        read_detection_list(data, nclasses=2)
+    except DatasetContractError as error:
+        assert "invalid class" in str(error)
+    else:
+        raise AssertionError("invalid class was accepted")
+
+
+def test_torchvision_detection_metric_thresholds_use_native_names():
+    thresholds = detection_metric_thresholds(
+        {"measure": ["map", "map-05", "map-50", "map-90"]}
+    )
+
+    assert thresholds == {
+        "map-05": 0.05,
+        "map-50": 0.5,
+        "map-90": 0.9,
+    }
+
+
+def test_torchvision_detection_map_metrics_use_iou_thresholds():
+    targets = [DetectionEvalBox(0, 1, (0.0, 0.0, 10.0, 10.0))]
+    predictions = [DetectionEvalBox(0, 1, (5.0, 5.0, 15.0, 15.0), 0.9)]
+
+    metrics = detection_map_metrics(predictions, targets)
+
+    assert metrics["map-05"] == 1.0
+    assert metrics["map-50"] == 0.0
+    assert metrics["map-90"] == 0.0
+    assert abs(metrics["map"] - (1.0 / 3.0)) < 1e-12
+
+
+def test_torchvision_detection_map_metrics_penalize_early_false_positive():
+    targets = [DetectionEvalBox(0, 1, (0.0, 0.0, 10.0, 10.0))]
+    predictions = [
+        DetectionEvalBox(0, 1, (20.0, 20.0, 30.0, 30.0), 0.9),
+        DetectionEvalBox(0, 1, (0.0, 0.0, 10.0, 10.0), 0.8),
+    ]
+
+    metrics = detection_map_metrics(predictions, targets, {"map-50": 0.5})
+
+    assert metrics == {"map": 0.5, "map-50": 0.5}
+
+
+def test_torchvision_detection_map_metrics_without_targets_are_zero():
+    predictions = [DetectionEvalBox(0, 1, (0.0, 0.0, 10.0, 10.0), 0.9)]
+
+    metrics = detection_map_metrics(predictions, [])
+
+    assert metrics == {
+        "map": 0.0,
+        "map-05": 0.0,
+        "map-50": 0.0,
+        "map-90": 0.0,
+    }
+
+
+def test_torchvision_detection_metrics_are_reported_per_test_set():
+    events = []
+    reporter = WorkerReporter(lambda event, payload: events.append((event, payload)))
+
+    report_detection_metrics(
+        reporter,
+        {"map": 0.2, "map-50": 0.3},
+        iteration=7,
+        test_index=1,
+    )
+
+    assert events == [
+        ("metric", {"name": "map_test1", "value": 0.2, "iteration": 7}),
+        ("metric", {"name": "map-50_test1", "value": 0.3, "iteration": 7}),
+    ]
 
 
 def test_runtime_maps_non_finite_metric_to_contract_error():

@@ -10,6 +10,8 @@
 #include "backends/pytorch_worker/pytorchworkerinputconns.h"
 #include "supervisedoutputconnector.h"
 
+#include <cstdlib>
+#include <iostream>
 #include <rapidjson/document.h>
 
 namespace dd
@@ -29,6 +31,20 @@ namespace dd
     {
       return value.IsString() ? value.GetString() : fallback;
     }
+
+    bool debug_enabled()
+    {
+      const char *debug = std::getenv("DEEPDETECT_DEBUG");
+      const char *worker_debug = std::getenv("DEEPDETECT_WORKER_DEBUG");
+      return (debug && *debug) || (worker_debug && *worker_debug);
+    }
+
+    void debug_log(const std::string &message)
+    {
+      if (debug_enabled())
+        std::cerr << "[deepdetect-debug][pytorch-lib] " << message
+                  << std::endl;
+    }
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -36,7 +52,7 @@ namespace dd
   PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                    TMLModel>::PytorchWorkerLib(const PytorchWorkerModel &model)
       : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>(
-            model)
+          model)
   {
     this->_libname = "pytorch";
   }
@@ -47,7 +63,7 @@ namespace dd
                    TMLModel>::PytorchWorkerLib(PytorchWorkerLib
                                                    &&other) noexcept
       : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>(
-            std::move(other)),
+          std::move(other)),
         _worker(std::move(other._worker)),
         _mllib_params(std::move(other._mllib_params)),
         _nclasses(other._nclasses)
@@ -86,18 +102,22 @@ namespace dd
   void PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                         TMLModel>::configure_worker(const APIData &ad)
   {
+    debug_log("configure_worker: starting supervisor");
     _worker = std::make_shared<PytorchWorkerSupervisor>(this->_mlmodel._repo,
                                                         this->_logger);
     _worker->start(ad);
 
     APIData hello_params;
     hello_params.add("protocol_version", 1);
+    debug_log("configure_worker: sending hello");
     _worker->request("hello", hello_params);
 
     APIData params;
     params.add("repository", this->_mlmodel._repo);
     params.add("mllib", ad);
+    debug_log("configure_worker: sending configure");
     _worker->request("configure", params);
+    debug_log("configure_worker: configured");
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -132,7 +152,9 @@ namespace dd
     std::lock_guard<std::mutex> lock(_worker_mutex);
     this->_tjob_running.store(true);
     APIData params = request_params(ad);
+    debug_log("train: sending train_start");
     _worker->request("train_start", params);
+    debug_log("train: train_start acknowledged");
 
     bool finished = false;
     bool cancel_sent = false;
@@ -158,6 +180,7 @@ namespace dd
           continue;
         process_worker_message(message, finished, status, out);
       }
+    debug_log("train: finished with status=" + std::to_string(status));
     this->_tjob_running.store(false);
     return status;
   }
@@ -177,6 +200,7 @@ namespace dd
       return;
 
     std::string event = json_string(doc["event"]);
+    debug_log("process_worker_message: event=" + event);
     const rapidjson::Value &payload
         = doc.HasMember("payload") ? doc["payload"] : doc;
     if (event == "metric" && payload.IsObject())
@@ -227,9 +251,17 @@ namespace dd
   {
     for (auto it = payload.MemberBegin(); it != payload.MemberEnd(); ++it)
       {
+        std::string name = it->name.GetString();
+        if (name == "test_predictions" && it->value.IsObject())
+          {
+            APIData status_payload;
+            status_payload.fromRapidJson(it->value);
+            this->add_status_payload(name, status_payload);
+            continue;
+          }
         double value = 0.0;
         if (json_number(it->value, value))
-          this->add_meas(it->name.GetString(), value);
+          this->add_meas(name, value);
       }
   }
 

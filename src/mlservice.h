@@ -44,6 +44,17 @@
 
 namespace dd
 {
+  inline bool output_parameter_enabled(const APIData &ad,
+                                       const std::string &key)
+  {
+    if (!ad.has(key))
+      return false;
+    const ad_variant_type value = ad.get(key);
+    if (value.is<bool>())
+      return value.get<bool>();
+    return true;
+  }
+
   /**
    * \brief lock exception
    */
@@ -347,6 +358,8 @@ namespace dd
           if (ad_params_out.has("measure_hist")
               && ad_params_out.get("measure_hist").get<bool>())
             this->collect_measures_history(out);
+          if (output_parameter_enabled(ad_params_out, "test_predictions"))
+            this->collect_status_payload(out, "test_predictions");
           return status;
         }
     }
@@ -377,8 +390,7 @@ namespace dd
               jmrepo.add("repository", this->_mlmodel._repo);
               out.add("model", jmrepo);
               this->collect_measures(out);
-              if (ad_params_out.has("test_predictions")
-                  && ad_params_out.get("test_predictions").get<bool>())
+              if (output_parameter_enabled(ad_params_out, "test_predictions"))
                 this->collect_status_payload(out, "test_predictions");
               std::chrono::time_point<std::chrono::system_clock> trun
                   = std::chrono::system_clock::now();
@@ -390,8 +402,7 @@ namespace dd
                 max_hist_points
                     = ad_params_out.get("max_hist_points").get<int>();
               this->collect_measures_history(out, max_hist_points);
-              if (ad_params_out.has("test_predictions")
-                  && ad_params_out.get("test_predictions").get<bool>())
+              if (output_parameter_enabled(ad_params_out, "test_predictions"))
                 this->collect_status_payload(out, "test_predictions");
               out.add("mltype", this->_mltype);
               out.add("sname", this->_sname);
@@ -443,6 +454,8 @@ namespace dd
                 max_hist_points
                     = ad_params_out.get("max_hist_points").get<int>();
               this->collect_measures_history(out, max_hist_points);
+              if (output_parameter_enabled(ad_params_out, "test_predictions"))
+                this->collect_status_payload(out, "test_predictions");
               out.add("mltype", this->_mltype);
               out.add("sname", this->_sname);
               out.add("description", this->_description);

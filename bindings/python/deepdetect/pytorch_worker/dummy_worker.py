@@ -29,7 +29,11 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         cancellation: Cancellation,
     ) -> dict[str, Any]:
         request = params.get("request", {})
-        mllib = request.get("parameters", {}).get("mllib", {})
+        context_mllib = dict(self.context.mllib) if self.context is not None else {}
+        request_mllib = request.get("parameters", {}).get("mllib", {})
+        if not isinstance(request_mllib, dict):
+            request_mllib = {}
+        mllib = {**context_mllib, **request_mllib}
         solver = mllib.get("solver", {})
         iterations = int(solver.get("iterations", 5))
         iterations = max(1, min(iterations, 1000000))
@@ -45,14 +49,39 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                 )
                 return {"status": "cancelled", "iteration": iteration - 1}
             loss = 1.0 / float(iteration)
-            reporter.status(
-                phase="train",
-                iteration=iteration,
-                iterations=iterations,
-                test_active=0,
-                elapsed_time_ms=iteration,
-                remain_time=max(0, iterations - iteration),
-            )
+            status_payload = {
+                "phase": "train",
+                "iteration": iteration,
+                "iterations": iterations,
+                "test_active": 0,
+                "elapsed_time_ms": iteration,
+                "remain_time": max(0, iterations - iteration),
+            }
+            if mllib.get("emit_test_predictions") and iteration == iterations:
+                status_payload["test_predictions"] = {
+                    "test0": {
+                        "iteration": iteration,
+                        "samples": [
+                            {
+                                "index": 0,
+                                "imgsize": {"width": 64, "height": 64},
+                                "classes": [
+                                    {
+                                        "cat": "dummy",
+                                        "prob": 1.0,
+                                        "bbox": {
+                                            "xmin": 0.0,
+                                            "ymin": 0.0,
+                                            "xmax": 1.0,
+                                            "ymax": 1.0,
+                                        },
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                }
+            reporter.status(**status_payload)
             reporter.metric("iteration", iteration, iteration=iteration)
             reporter.metric("train_loss", loss, iteration=iteration)
             reporter.metric("learning_rate", learning_rate, iteration=iteration)

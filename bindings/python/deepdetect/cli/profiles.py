@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,10 +15,12 @@ class ModelProfile:
     name: str
     task: str
     description: str
-    default_weights: Path
+    backend: str
+    default_weights: Path | None
     default_repository: Path
     default_service_name: str
     default_nclasses: int
+    requires_weights: bool
     service_input: dict[str, Any]
     service_mllib: dict[str, Any]
     train_input: dict[str, Any]
@@ -43,9 +46,14 @@ class ModelProfile:
             "width": self.default_width,
             "height": self.default_height,
             "iterations": 100,
-            "batch_size": 2 if self.name == "yolox" else 4,
+            "batch_size": int(
+                self.train_mllib.get("net", {}).get(
+                    "batch_size", 2 if self.task == "detection" else 4
+                )
+            ),
             "iter_size": int(self.train_mllib.get("solver", {}).get("iter_size", 1)),
             "augmentation": _augmentation_defaults(self.train_mllib),
+            "service_mllib": None,
             "class_weights": None,
             "base_lr": 0.0001,
             "test_interval": 100,
@@ -95,11 +103,14 @@ class ModelProfile:
         }
 
     def service_parameters(self, options: dict[str, Any]) -> dict[str, Any]:
-        mllib = copy.deepcopy(self.service_mllib)
+        _validate_mapping_option(options, "service_mllib")
+        mllib = _deep_merge(self.service_mllib, options.get("service_mllib"))
         mllib["gpu"] = bool(options["gpu"])
         if options.get("gpuid") is not None:
             mllib["gpuid"] = copy.deepcopy(options["gpuid"])
         mllib["nclasses"] = int(options["nclasses"])
+        if self.backend == "pytorch":
+            mllib.setdefault("python", sys.executable)
         if options.get("resume"):
             mllib["resume_from"] = str(options["resume"])
         input_parameters = copy.deepcopy(self.service_input)
@@ -107,7 +118,7 @@ class ModelProfile:
         input_parameters["height"] = int(options["height"])
         return {
             "model": {"repository": str(Path(options["repository"]).resolve())},
-            "mllib": "torch",
+            "mllib": self.backend,
             "description": self.description,
             "input_parameters": input_parameters,
             "mllib_parameters": mllib,
@@ -135,9 +146,11 @@ class ModelProfile:
         if options.get("resume"):
             mllib["resume"] = True
             mllib["resume_from"] = str(options["resume"])
+        if options.get("weights") is not None:
+            mllib["weights"] = str(Path(options["weights"]).expanduser().resolve())
         mllib.setdefault("net", {})
         mllib["net"]["batch_size"] = int(options["batch_size"])
-        if self.name == "yolox":
+        if self.task == "detection":
             mllib["net"]["test_batch_size"] = int(options["batch_size"])
         input_parameters = copy.deepcopy(self.train_input)
         if "width" in self.service_input:
@@ -155,7 +168,7 @@ class ModelProfile:
         input_parameters["width"] = int(options["width"])
         input_parameters["height"] = int(options["height"])
         output = copy.deepcopy(self.predict_output)
-        if self.name == "yolox":
+        if self.task == "detection":
             output["confidence_threshold"] = float(options["confidence_threshold"])
             if options.get("best_bbox") is not None:
                 output["best_bbox"] = int(options["best_bbox"])
@@ -170,10 +183,12 @@ PROFILES = {
         name="yolox",
         task="detection",
         description="YOLOX object detection",
+        backend="torch",
         default_weights=DEFAULT_MODEL_ROOT / "yolox/yolox-nano_cls2.pt",
         default_repository=Path("deepdetect-models/yolox"),
         default_service_name="python-yolox-train",
         default_nclasses=2,
+        requires_weights=True,
         service_input={
             "connector": "image",
             "height": 640,
@@ -212,10 +227,12 @@ PROFILES = {
         name="segformer",
         task="segmentation",
         description="SegFormer semantic segmentation",
+        backend="torch",
         default_weights=DEFAULT_MODEL_ROOT / "segformer/segformer-b0-cls2.pt",
         default_repository=Path("deepdetect-models/segformer"),
         default_service_name="python-segformer-train",
         default_nclasses=2,
+        requires_weights=True,
         service_input={
             "connector": "image",
             "width": 480,
@@ -262,6 +279,39 @@ PROFILES = {
         },
         predict_output={"segmentation": True, "confidences": ["best"]},
     ),
+    "torchvision-detector": ModelProfile(
+        name="torchvision-detector",
+        task="detection",
+        description="Torchvision Faster R-CNN object detection worker",
+        backend="pytorch",
+        default_weights=None,
+        default_repository=Path("deepdetect-models/torchvision-detector"),
+        default_service_name="python-torchvision-detector-train",
+        default_nclasses=2,
+        requires_weights=False,
+        service_input={
+            "connector": "image",
+            "height": 640,
+            "width": 640,
+            "rgb": True,
+            "bbox": True,
+            "db": False,
+        },
+        service_mllib={
+            "task": "detection",
+            "module": "deepdetect.pytorch_worker.builtin.vision.detection.torchvision_fasterrcnn",
+            "class": "DeepDetectWorker",
+        },
+        train_input={"seed": 12347, "db": False, "shuffle": True},
+        train_mllib={
+            "solver": {"iter_size": 1, "solver_type": "ADAM"},
+            "net": {"batch_size": 1},
+            "resume": False,
+        },
+        train_output={"measure": ["map-05", "map-50", "map-90"]},
+        predict_input={"height": 640, "width": 640},
+        predict_output={"bbox": True},
+    ),
 }
 
 
@@ -290,7 +340,15 @@ def _deep_merge(*values: Mapping[str, Any] | None) -> dict[str, Any]:
 
 
 def _augmentation_defaults(mllib: Mapping[str, Any]) -> dict[str, Any]:
-    non_augmentation_keys = {"solver", "net", "resume", "resume_from", "gpu", "gpuid"}
+    non_augmentation_keys = {
+        "solver",
+        "net",
+        "resume",
+        "resume_from",
+        "gpu",
+        "gpuid",
+        "weights",
+    }
     return {
         key: copy.deepcopy(value)
         for key, value in mllib.items()

@@ -142,7 +142,7 @@ class TrainingResultVisualizer:
                 if image_path is None:
                     continue
                 image = result_image_array(
-                    self.model,
+                    self.task,
                     image_path,
                     prediction,
                     image_size=self.image_size,
@@ -302,13 +302,13 @@ def visdom_result_image_arrays(images: list[np.ndarray]) -> list[np.ndarray]:
 
 
 def result_image_array(
-    model: str,
+    task: str,
     image_path: Path,
     prediction: dict[str, Any],
     *,
     image_size: tuple[int, int],
 ) -> np.ndarray:
-    if model == "yolox":
+    if task == "detection" or task == "yolox" or task == "torchvision-detector":
         image = detection_overlay_image(
             image_path,
             prediction,

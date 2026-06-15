@@ -34,10 +34,12 @@ class WorkerRuntime:
         self.reporter = WorkerReporter(self.event)
 
     def serve(self) -> int:
+        debug("runtime: serving")
         while True:
             try:
                 message = read_frame(self.sock)
             except EOFError:
+                debug("runtime: socket closed")
                 return 0
             except Exception as error:
                 self.failure("protocol_error", error)
@@ -46,8 +48,10 @@ class WorkerRuntime:
             method = message.get("method")
             message_id = message.get("id")
             params = message.get("params") or {}
+            debug(f"runtime: received method={method!r} id={message_id!r}")
             try:
                 if method == "hello":
+                    debug("runtime: replying to hello")
                     self.reply(
                         message_id,
                         {
@@ -66,10 +70,13 @@ class WorkerRuntime:
                         },
                     )
                 elif method == "configure":
+                    debug("runtime: loading worker")
                     self.context = dict(params)
                     self.worker = self._load_worker(params)
+                    debug("runtime: configuring worker")
                     result = self._configure_worker(params)
                     self.reply(message_id, result)
+                    debug("runtime: worker configured")
                 elif method == "train_start":
                     if self.worker is None:
                         raise RuntimeError("worker is not configured")
@@ -77,6 +84,7 @@ class WorkerRuntime:
                         raise RuntimeError("training is already running")
                     self.cancellation = Cancellation()
                     self.reply(message_id, {"status": "started"})
+                    debug("runtime: training thread starting")
                     self.train_thread = threading.Thread(
                         target=self._run_train,
                         args=(params,),
@@ -84,6 +92,7 @@ class WorkerRuntime:
                     )
                     self.train_thread.start()
                 elif method == "train_cancel":
+                    debug("runtime: cancellation requested")
                     self.cancellation.requested = True
                     self.reply(message_id, {"status": "cancelling"})
                 elif method == "predict":
@@ -91,11 +100,13 @@ class WorkerRuntime:
                         raise RuntimeError("worker is not configured")
                     self.reply(message_id, self._predict(params))
                 elif method == "shutdown":
+                    debug("runtime: shutdown requested")
                     self.reply(message_id, {"status": "shutdown"})
                     return 0
                 else:
                     raise ProtocolError(f"unknown method: {method!r}")
             except Exception as error:
+                debug(f"runtime: method={method!r} failed: {error}")
                 self.reply_error(
                     message_id,
                     self.failure_payload(self.failure_category(error), error),
@@ -103,6 +114,7 @@ class WorkerRuntime:
 
     def _run_train(self, params: dict[str, Any]) -> None:
         try:
+            debug("runtime: worker.train entered")
             result = self.worker.train(
                 params,
                 reporter=self.reporter,
@@ -112,7 +124,9 @@ class WorkerRuntime:
                 result, WorkerContractError, "train result"
             )
             self.event("train_result", result or {"status": "finished"})
+            debug("runtime: worker.train finished")
         except Exception as error:
+            debug(f"runtime: worker.train failed: {error}")
             category = self.failure_category(error)
             if category == "internal_error":
                 category = "training_error"
@@ -136,6 +150,7 @@ class WorkerRuntime:
         mllib = params.get("mllib", {}) if isinstance(params, dict) else {}
         module_name = mllib.get("module") or "deepdetect.pytorch_worker.dummy_worker"
         class_name = mllib.get("class") or "DeepDetectWorker"
+        debug(f"runtime: importing worker module={module_name!r} class={class_name!r}")
         module = self._import_module(str(module_name), mllib.get("entrypoint"))
         try:
             worker_class = getattr(module, str(class_name))
@@ -146,6 +161,7 @@ class WorkerRuntime:
         if not callable(worker_class):
             raise WorkerContractError(f"worker class {class_name!r} is not callable")
         worker = worker_class()
+        debug("runtime: worker instance created")
         for method in ("configure", "train", "predict"):
             if not callable(getattr(worker, method, None)):
                 raise WorkerContractError(f"worker must implement {method}()")
@@ -203,11 +219,21 @@ class WorkerRuntime:
             write_frame(self.sock, message)
 
 
+def debug(message: str) -> None:
+    if os.environ.get("DEEPDETECT_DEBUG") or os.environ.get("DEEPDETECT_WORKER_DEBUG"):
+        print(
+            f"[deepdetect-debug][worker-runtime] {message}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
 def main() -> int:
     socket_path = os.environ.get("DEEPDETECT_WORKER_SOCKET")
     if not socket_path:
         print("DEEPDETECT_WORKER_SOCKET is not set", file=sys.stderr)
         return 2
+    debug(f"runtime: connecting socket={socket_path}")
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.connect(socket_path)
     try:

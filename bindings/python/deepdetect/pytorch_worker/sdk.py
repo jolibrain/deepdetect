@@ -28,6 +28,10 @@ class DatasetContractError(WorkerSDKError):
     category = "dataset_contract_error"
 
 
+class WorkerDependencyError(WorkerSDKError):
+    category = "dependency_error"
+
+
 @dataclass
 class Cancellation:
     requested: bool = False
