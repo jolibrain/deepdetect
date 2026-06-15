@@ -604,6 +604,46 @@ namespace dd
           }
 #endif // USE_TORCH
 
+#ifdef USE_PYTORCH_WORKER
+        else if (mllib == "pytorch")
+          {
+            PytorchWorkerModel pytorchmodel(ad_model, ad, _logger);
+            read_metrics_json(pytorchmodel._repo, ad);
+            if (type == "supervised")
+              {
+                if (input == "image")
+                  add_service(
+                      sname,
+                      std::move(
+                          MLService<PytorchWorkerLib, ImgPytorchInputFileConn,
+                                    SupervisedOutput, PytorchWorkerModel>(
+                              sname, pytorchmodel, description)),
+                      ad);
+                else
+                  return dd_input_connector_not_found_1004();
+                if (store_config
+                    && JsonAPI::store_json_config_blob(pytorchmodel._repo,
+                                                       jstr))
+                  {
+                    _logger->error(
+                        "couldn't write {} file in model repository {}",
+                        JsonAPI::_json_config_blob_fname, pytorchmodel._repo);
+                  }
+              }
+            else
+              {
+                return dd_service_bad_request_1006();
+              }
+          }
+#else
+        else if (mllib == "pytorch")
+          {
+            return dd_service_bad_request_1006(
+                "the managed Python PyTorch worker backend is disabled; "
+                "rebuild with USE_PYTORCH_WORKER=ON");
+          }
+#endif // USE_PYTORCH_WORKER
+
 #ifdef USE_DLIB
         else if (mllib == "dlib")
           {
