@@ -1,8 +1,11 @@
 import threading
 import time
+import sys
+import types
 
 from deepdetect.pytorch_worker.protocol import read_frame, write_frame
 from deepdetect.pytorch_worker.runtime import WorkerRuntime
+from deepdetect.pytorch_worker.sdk import DeepDetectWorkerBase
 
 
 class MemorySocket:
@@ -64,6 +67,13 @@ def read_until(sock, *, event=None, message_id=None, timeout=5.0):
             return message
         if message_id is not None and message.get("id") == message_id:
             return message
+
+
+def install_worker_module(name, worker_class):
+    module = types.ModuleType(name)
+    module.DeepDetectWorker = worker_class
+    sys.modules[name] = module
+    return module
 
 
 def test_protocol_roundtrip():
@@ -130,3 +140,84 @@ def test_dummy_worker_reports_metrics_and_predicts():
         server.close()
         client.close()
         thread.join(timeout=2)
+
+
+def test_runtime_maps_non_finite_metric_to_contract_error():
+    class BadMetricWorker(DeepDetectWorkerBase):
+        def train(self, params, *, reporter, cancellation):
+            reporter.metric("bad_metric", float("inf"), iteration=1)
+            return {"status": "finished"}
+
+        def predict(self, params):
+            return {"results": []}
+
+    module_name = "test_bad_metric_worker"
+    install_worker_module(module_name, BadMetricWorker)
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(server, 1, "configure", {"mllib": {"module": module_name}})
+        assert read_until(server, message_id=1)["result"] == {}
+        request(server, 2, "train_start", {"request": {"parameters": {}}})
+        assert read_until(server, message_id=2)["result"]["status"] == "started"
+        failure = read_until(server, event="failure")
+        assert failure["payload"]["category"] == "metric_contract_error"
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+        sys.modules.pop(module_name, None)
+
+
+def test_runtime_rejects_missing_worker_methods():
+    class MissingMethodsWorker:
+        def configure(self, context):
+            return {}
+
+    module_name = "test_missing_methods_worker"
+    install_worker_module(module_name, MissingMethodsWorker)
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(server, 1, "configure", {"mllib": {"module": module_name}})
+        response = read_until(server, message_id=1)
+        assert response["error"]["category"] == "worker_contract_error"
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+        sys.modules.pop(module_name, None)
+
+
+def test_runtime_rejects_malformed_predictions():
+    class BadPredictionWorker(DeepDetectWorkerBase):
+        def train(self, params, *, reporter, cancellation):
+            return {"status": "finished"}
+
+        def predict(self, params):
+            return {"not_results": []}
+
+    module_name = "test_bad_prediction_worker"
+    install_worker_module(module_name, BadPredictionWorker)
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(server, 1, "configure", {"mllib": {"module": module_name}})
+        assert read_until(server, message_id=1)["result"] == {}
+        request(server, 2, "predict", {"request": {"data": ["image.jpg"]}})
+        response = read_until(server, message_id=2)
+        assert response["error"]["category"] == "prediction_contract_error"
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+        sys.modules.pop(module_name, None)
