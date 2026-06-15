@@ -80,7 +80,6 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     python3-dev \
     python3-pip \
     python3-six \
-    pypy-enum34 \
     python3-yaml \
     unzip \
     libgoogle-perftools-dev \
