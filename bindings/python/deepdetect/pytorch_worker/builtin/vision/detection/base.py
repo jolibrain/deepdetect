@@ -12,6 +12,7 @@ from ....sdk import (
     WorkerContext,
     WorkerReporter,
 )
+from ....artifacts import write_json_artifact
 
 from .common import (
     DetectionEvalBox,
@@ -129,6 +130,13 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         test_datasets = [self.create_dataset(path, torch=torch) for path in test_lists]
         self.debug(
             "train: test samples=%s" % [len(dataset) for dataset in test_datasets]
+        )
+        self.write_repository_contract(
+            train_dataset=train_dataset,
+            test_datasets=test_datasets,
+            request=request,
+            request_params=request_params,
+            effective_mllib=mllib,
         )
         train_loader = make_loader(
             train_dataset,
@@ -392,6 +400,66 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
     def create_dataset(self, list_path: Path, *, torch: Any) -> DetectionListDataset:
         return DetectionListDataset(list_path, nclasses=self.nclasses, torch=torch)
 
+    def write_repository_contract(
+        self,
+        *,
+        train_dataset: DetectionListDataset,
+        test_datasets: list[DetectionListDataset],
+        request: dict[str, Any],
+        request_params: dict[str, Any],
+        effective_mllib: dict[str, Any],
+    ) -> None:
+        if self.context is None:
+            return
+        input_params = training_parameter_section(request_params, "input")
+        output_params = training_parameter_section(request_params, "output")
+        data = request.get("data", [])
+        data_paths = [str(Path(str(path)).expanduser()) for path in data]
+        test_manifests = [
+            {
+                "index": index,
+                "path": str(dataset.list_path),
+                "samples": len(dataset),
+            }
+            for index, dataset in enumerate(test_datasets)
+        ]
+        config_payload = {
+            "worker": self.worker_name,
+            "task": self.task_name,
+            "repository": self.context.repository,
+            "configure_mllib": dict(self.context.mllib),
+            "train_mllib": effective_mllib,
+            "input_parameters": input_params,
+            "output_parameters": output_params,
+            "data": data_paths,
+        }
+        manifest_payload = {
+            "version": 1,
+            "boundary": "path-backed",
+            "task": self.task_name,
+            "nclasses": self.nclasses,
+            "repository": self.context.repository,
+            "train": {
+                "path": str(train_dataset.list_path),
+                "samples": len(train_dataset),
+            },
+            "tests": test_manifests,
+            "input_parameters": input_params,
+            "output_parameters": output_params,
+        }
+        write_json_artifact(
+            self.context.artifact_path("pytorch_worker_config.json"),
+            config_payload,
+        )
+        write_json_artifact(
+            self.context.artifact_path("connector_manifest.json"),
+            manifest_payload,
+        )
+        write_json_artifact(
+            self.context.artifact_path("class_mapping.json"),
+            class_mapping(self.nclasses, effective_mllib),
+        )
+
     def create_optimizer(self, torch: Any, model: Any, *, base_lr: float) -> Any:
         return torch.optim.AdamW(
             [param for param in model.parameters() if param.requires_grad],
@@ -420,3 +488,25 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
 
     def create_model(self, nclasses: int, *backend: Any) -> Any:
         raise NotImplementedError
+
+
+def training_parameter_section(params: dict[str, Any], name: str) -> dict[str, Any]:
+    value = params.get(name)
+    if value is None:
+        value = params.get(f"{name}_parameters")
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def class_mapping(nclasses: int, mllib: dict[str, Any]) -> dict[str, str]:
+    names = mllib.get("class_names")
+    if names is None:
+        names = mllib.get("classes")
+    mapping = {"0": "background"}
+    for index in range(1, int(nclasses)):
+        label = str(index)
+        if isinstance(names, list) and index < len(names):
+            label = str(names[index])
+        elif isinstance(names, dict):
+            label = str(names.get(str(index), names.get(index, label)))
+        mapping[str(index)] = label
+    return mapping

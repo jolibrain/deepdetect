@@ -443,48 +443,50 @@ Existing non-SDK workers that implement compatible `configure`, `train`, and
 `predict` methods remain loadable. Contract failures are reported through the
 stable protocol categories before crossing into C++.
 
-## Normative Object Detection Worker Template
+## Object Detection Worker Base And Adapters
 
-The first template should be a real file that future workers can copy:
+Built-in object detection workers use a shared base plus small model adapters:
 
 ```text
-bindings/python/deepdetect/pytorch_worker/builtin/vision/detection/torchvision_fasterrcnn.py
+bindings/python/deepdetect/pytorch_worker/builtin/vision/detection/base.py
+bindings/python/deepdetect/pytorch_worker/builtin/vision/detection/common.py
 ```
 
-The template implements object detection finetuning with torchvision.
+`DetectionTrainingWorkerBase` owns the standard train, evaluation, predict,
+checkpoint, metric, test-progress, and visual-result flow. Detection adapters
+should subclass it unless they need a fundamentally different training loop.
 
-Default model:
+Required adapter hooks:
 
-```python
-torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn
-```
+- `import_backend()`: imports framework dependencies and returns a tuple whose
+  first element is `torch`;
+- `create_model(nclasses, *backend)`: creates a trainable model and preserves
+  class `0` as background.
 
-The template must:
+Optional adapter hooks:
 
-- create a torchvision detection model;
-- replace the box predictor for `nclasses`;
-- preserve label `0` as background;
-- train with model-owned losses;
-- keep optimizer and gradient accumulation inside the worker;
-- leave scheduler, AMP, and distributed wrappers as later extensions;
-- report metrics every optimizer step;
-- evaluate every configured test interval;
-- return predictions in DeepDetect detection schema;
-- save checkpoints and optimizer state in the DeepDetect repository.
+- `backend_versions(*backend)`: adds dependency versions to configure output;
+- `create_optimizer(torch, model, base_lr=...)`: overrides AdamW;
+- `training_losses(model, images, targets)`: adapts non-callable loss APIs;
+- `predict_batch(model, images)`: adapts non-callable prediction APIs;
+- `create_dataset(list_path, torch=...)`: overrides the default bbox-list
+  dataset.
+
+Two built-in adapters document the intended split:
+
+- `torchvision_fasterrcnn.py`: production-style torchvision Faster R-CNN
+  adapter exposed by the CLI as `torchvision-detector`;
+- `reference_torch_detector.py`: tiny torch-only reference adapter, importable
+  for tests and worker-authoring examples but not exposed as a CLI profile.
 
 ### Detection Dataset Contract
 
-The template defines `DeepDetectDetectionDataset`.
+The default base dataset is `DetectionListDataset`.
 
-Input manifest sample:
+Input list sample:
 
-```json
-{
-  "sample_index": 12,
-  "image": "/data/images/img001.jpg",
-  "target": "/data/labels/img001.txt",
-  "test_index": 0
-}
+```text
+/data/images/img001.jpg /data/labels/img001.txt
 ```
 
 Bbox sidecar format:
@@ -505,7 +507,7 @@ Rules:
 Each `__getitem__` returns:
 
 ```python
-image, target
+image, target, meta
 ```
 
 where `image` is a `[3, H, W]` tensor and `target` contains:
@@ -515,24 +517,22 @@ where `image` is a `[3, H, W]` tensor and `target` contains:
     "boxes": FloatTensor[N, 4],
     "labels": Int64Tensor[N],
     "image_id": Int64Tensor[1],
-    "area": FloatTensor[N],
-    "iscrowd": UInt8Tensor[N],
 }
 ```
 
-This follows the torchvision detection finetuning contract, where boxes are
-`[x0, y0, x1, y1]` and label `0` is background.
+`meta` contains the sample index, image path, width, and height. Boxes are
+`[x0, y0, x1, y1]` absolute pixel coordinates and label `0` is background.
 
 ### Training Loop Contract
 
-The template runtime drives training roughly as:
+The base runtime drives training roughly as:
 
 ```python
 for iteration in range(start_iteration, max_iterations):
     batch = next(train_iterator)
-    metrics = worker.train_one_iteration(batch)
+    losses = worker.training_losses(model, images, targets)
     reporter.status(iteration=iteration, phase="train")
-    for name, value in metrics.items():
+    for name, value in losses.items():
         reporter.metric(name, value, iteration=iteration)
     if iteration % test_interval == 0:
         for test_index, test_set in enumerate(test_sets):
@@ -541,32 +541,30 @@ for iteration in range(start_iteration, max_iterations):
         break
 ```
 
-`train_one_iteration` must:
+`training_losses` must:
 
-- put model in train mode;
-- move images and targets to the selected device;
-- call the model to get torchvision loss dict;
-- sum losses into `train_loss`;
-- run backward and optimizer step;
-- support gradient accumulation by reporting only after the optimizer step;
-- return finite scalar metrics only.
+- return a dict of differentiable scalar torch losses;
+- keep loss names stable and human-readable;
+- let the base sum the losses into `train_loss`;
+- let the base run backward, optimizer steps, and gradient accumulation;
+- return finite scalar loss tensors only.
 
 Required per-optimizer-step metrics:
 
 - `train_loss`
-- every finite scalar from torchvision loss dict, for example:
+- every finite scalar from the adapter loss dict, for example:
   - `loss_classifier`
   - `loss_box_reg`
   - `loss_objectness`
   - `loss_rpn_box_reg`
 - `learning_rate`
 
-If AMP is enabled, the worker uses `torch.cuda.amp` or the current supported
-PyTorch equivalent internally. AMP scaler state is part of checkpoints.
+If an adapter adds AMP, scheduling, or distributed wrappers, it must keep those
+inside the worker and include their state in checkpoints.
 
 ### Evaluation Contract
 
-`evaluate(test_set)` must:
+The base `evaluate` implementation:
 
 - set model to eval mode;
 - report:
@@ -580,7 +578,22 @@ PyTorch equivalent internally. AMP scaler state is part of checkpoints.
   configured;
 - emit sampled `test_predictions` for visual result sinks.
 
-The torchvision detector worker emits detection metrics for every test set:
+Detection adapters must return prediction dicts containing:
+
+```python
+{
+    "boxes": FloatTensor[N, 4],
+    "scores": FloatTensor[N],
+    "labels": Int64Tensor[N],
+}
+```
+
+Boxes must be finite absolute pixel coordinates in the original image
+coordinate system. Scores must be finite confidence values. Labels must be
+positive foreground class ids; class `0` is reserved for background and is not
+rendered as a predicted object.
+
+The base emits detection metrics for every test set:
 
 - `map`
 - `map-05`
@@ -589,8 +602,7 @@ The torchvision detector worker emits detection metrics for every test set:
 
 Metric names are suffixed with `_testX` when reported by the worker, for example
 `map-50_test0`. It also emits test progress and sampled predictions for visual
-result sinks. A later common evaluator slice can move this calculation out of
-the worker without changing the reporting channel.
+result sinks.
 
 ### Prediction Schema
 
@@ -654,6 +666,8 @@ academic repositories into DeepDetect-compatible workers.
 Agents should:
 
 - preserve the class contract;
+- use `DetectionTrainingWorkerBase` for object detection workers unless the
+  train/eval/predict loop must change;
 - avoid implementing protocol/socket code in model workers;
 - isolate external repository code behind:
   - `build_model`
@@ -748,20 +762,28 @@ Mapping to DeepDetect API:
 
 ## Model Repository Contract
 
-The worker writes or updates:
+DeepDetect, the CLI, and Python workers own separate repository files:
 
-- `config.json` or `config.yaml`: effective worker config.
-- `connector_manifest.json`: data and preprocessing contract.
-- `class_mapping.json`: DeepDetect class id to label mapping.
-- `checkpoint-latest.pt`: model and optimizer state.
-- `checkpoint-N.pt`: periodic checkpoints.
+- `config.json`: DeepDetect service config blob, written by the C++ API.
+- `config.yaml`: effective CLI training config, written by the Python CLI.
+- `pytorch_worker_config.json`: effective worker config, written by the Python
+  worker.
+- `connector_manifest.json`: data and preprocessing contract, written by the
+  Python worker.
+- `class_mapping.json`: DeepDetect class id to label mapping, written by the
+  Python worker.
+- `checkpoint-latest.pt` and `solver-latest.pt`: latest model and optimizer
+  state.
+- `checkpoint-N.pt` and `solver-N.pt`: periodic model and optimizer state.
 - `best_model.txt`: best checkpoint metadata when a best metric is configured.
 - `metrics.jsonl`: optional worker-side metric mirror.
 - `exports/`: optional deployment artifacts.
 - `visual_results/` or existing DeepDetect visual result paths when requested.
 
-The C++ supervisor remains responsible for the DeepDetect service config blob
-and normal API status files.
+The initial V1 `connector_manifest.json` is path-backed. It records train and
+test list paths, sample counts, task, class count, input parameters, and output
+parameters. It intentionally does not expand every sample path, to keep large
+training repositories auditable without producing huge metadata files.
 
 ## Distributed Training
 

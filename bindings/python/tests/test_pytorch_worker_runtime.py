@@ -1,13 +1,16 @@
+import json
 import threading
 import time
 import sys
 import types
 
+import pytest
 from PIL import Image
 
 from deepdetect.pytorch_worker.protocol import read_frame, write_frame
 from deepdetect.pytorch_worker.runtime import WorkerRuntime
 from deepdetect.pytorch_worker.sdk import (
+    Cancellation,
     DatasetContractError,
     DeepDetectWorkerBase,
     WorkerContext,
@@ -29,6 +32,9 @@ from deepdetect.pytorch_worker.builtin.vision.detection.torchvision_fasterrcnn i
 )
 from deepdetect.pytorch_worker.templates.train_worker import (
     DeepDetectWorker as CompatibilityDeepDetectWorker,
+)
+from deepdetect.pytorch_worker.builtin.vision.detection.reference_torch_detector import (
+    DeepDetectWorker as ReferenceTorchDetectorWorker,
 )
 
 
@@ -230,6 +236,234 @@ def test_detection_base_configure_uses_adapter_metadata(tmp_path):
         "device": "cpu",
         "torch_version": "fake-torch",
     }
+
+
+def write_detection_list(tmp_path):
+    image = tmp_path / "image.jpg"
+    Image.new("RGB", (16, 12), color="white").save(image)
+    bbox = tmp_path / "target.txt"
+    bbox.write_text("1 1 2 8 9\n", encoding="utf-8")
+    data = tmp_path / "train.txt"
+    data.write_text("image.jpg target.txt\n", encoding="utf-8")
+    return image, data
+
+
+def test_reference_torch_detector_configures_without_torchvision(tmp_path):
+    pytest.importorskip("torch")
+    worker = ReferenceTorchDetectorWorker()
+    result = worker.configure(
+        WorkerContext(
+            repository=str(tmp_path),
+            mllib={"nclasses": 2},
+            raw={},
+        )
+    )
+
+    assert result["worker"] == "reference-torch-detector"
+    assert result["task"] == "detection"
+    assert result["nclasses"] == 2
+    assert result["device"] == "cpu"
+    assert result["torch_version"]
+
+
+def test_reference_torch_detector_trains_one_cpu_iteration(tmp_path):
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    _image, data = write_detection_list(tmp_path)
+    worker = ReferenceTorchDetectorWorker()
+    worker.configure(
+        WorkerContext(
+            repository=str(tmp_path),
+            mllib={"nclasses": 2},
+            raw={},
+        )
+    )
+    events = []
+    reporter = WorkerReporter(lambda event, payload: events.append((event, payload)))
+
+    result = worker.train(
+        {
+            "request": {
+                "data": [str(data), str(data)],
+                "parameters": {
+                    "mllib": {
+                        "solver": {
+                            "iterations": 1,
+                            "test_interval": 1,
+                            "base_lr": 0.001,
+                        },
+                        "net": {"batch_size": 1},
+                    },
+                    "output": {
+                        "measure": ["map-50"],
+                        "test_predictions": {"sample_count": 1},
+                    },
+                },
+            }
+        },
+        reporter=reporter,
+        cancellation=Cancellation(),
+    )
+
+    assert result["status"] == "finished"
+    metric_names = {payload["name"] for event, payload in events if event == "metric"}
+    assert {"train_loss", "loss_classifier", "loss_box_reg", "map_test0"} <= metric_names
+    worker_config = json.loads(
+        (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
+    )
+    assert worker_config["worker"] == "reference-torch-detector"
+    assert worker_config["task"] == "detection"
+    assert worker_config["train_mllib"]["solver"]["iterations"] == 1
+    manifest = json.loads(
+        (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["boundary"] == "path-backed"
+    assert manifest["nclasses"] == 2
+    assert manifest["train"]["path"] == str(data.resolve())
+    assert manifest["train"]["samples"] == 1
+    assert manifest["tests"] == [
+        {"index": 0, "path": str(data.resolve()), "samples": 1}
+    ]
+    class_mapping = json.loads(
+        (tmp_path / "class_mapping.json").read_text(encoding="utf-8")
+    )
+    assert class_mapping == {"0": "background", "1": "1"}
+    assert (tmp_path / "checkpoint-1.pt").is_file()
+    assert (tmp_path / "checkpoint-latest.pt").is_file()
+    assert (tmp_path / "solver-1.pt").is_file()
+    assert (tmp_path / "solver-latest.pt").is_file()
+
+
+def test_reference_torch_detector_predicts_detection_schema(tmp_path):
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    image, _data = write_detection_list(tmp_path)
+    worker = ReferenceTorchDetectorWorker()
+    worker.configure(
+        WorkerContext(
+            repository=str(tmp_path),
+            mllib={"nclasses": 2},
+            raw={},
+        )
+    )
+
+    result = worker.predict(
+        {
+            "request": {
+                "data": [str(image)],
+                "parameters": {"output": {"bbox": True}},
+            }
+        }
+    )
+
+    prediction = result["results"][0]
+    assert prediction["uri"] == str(image.resolve())
+    assert prediction["probs"][0] >= 0.0
+    assert prediction["cats"] == ["1"]
+    bbox = prediction["bboxes"][0]
+    assert 0.0 <= bbox["xmin"] < bbox["xmax"] <= 16.0
+    assert 0.0 <= bbox["ymin"] < bbox["ymax"] <= 12.0
+
+
+def test_runtime_loads_reference_detector_from_mllib_module(tmp_path):
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    image, data = write_detection_list(tmp_path)
+    module_name = (
+        "deepdetect.pytorch_worker.builtin.vision.detection.reference_torch_detector"
+    )
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(
+            server,
+            1,
+            "configure",
+            {
+                "repository": str(tmp_path),
+                "mllib": {
+                    "module": module_name,
+                    "class": "DeepDetectWorker",
+                    "nclasses": 2,
+                },
+            },
+        )
+        configured = read_until(server, message_id=1)
+        assert configured["result"]["worker"] == "reference-torch-detector"
+        assert configured["result"]["task"] == "detection"
+
+        request(
+            server,
+            2,
+            "train_start",
+            {
+                "request": {
+                    "data": [str(data), str(data)],
+                    "parameters": {
+                        "mllib": {
+                            "solver": {
+                                "iterations": 1,
+                                "test_interval": 1,
+                                "base_lr": 0.001,
+                            },
+                            "net": {"batch_size": 1},
+                        },
+                        "output": {
+                            "measure": ["map-50"],
+                            "test_predictions": {"sample_count": 1},
+                        },
+                    },
+                }
+            },
+        )
+        assert read_until(server, message_id=2)["result"]["status"] == "started"
+        metrics = set()
+        saw_test_predictions = False
+        while True:
+            message = read_frame(server)
+            if message.get("event") == "metric":
+                metrics.add(message["payload"]["name"])
+            elif message.get("event") == "status":
+                saw_test_predictions = saw_test_predictions or (
+                    "test_predictions" in message["payload"]
+                )
+            elif message.get("event") == "failure":
+                raise AssertionError(message["payload"])
+            elif message.get("event") == "train_result":
+                assert message["payload"]["status"] == "finished"
+                break
+        assert {"train_loss", "loss_classifier", "loss_box_reg", "map_test0"} <= metrics
+        assert saw_test_predictions
+        manifest = json.loads(
+            (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
+        )
+        assert manifest["train"]["samples"] == 1
+        assert manifest["tests"][0]["samples"] == 1
+        assert json.loads(
+            (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
+        )["worker"] == "reference-torch-detector"
+
+        request(
+            server,
+            3,
+            "predict",
+            {
+                "request": {
+                    "data": [str(image)],
+                    "parameters": {"output": {"bbox": True}},
+                }
+            },
+        )
+        prediction = read_until(server, message_id=3)
+        assert prediction["result"]["results"][0]["uri"] == str(image.resolve())
+        assert prediction["result"]["results"][0]["bboxes"]
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
 
 
 def test_torchvision_worker_old_template_import_path_is_compatible():

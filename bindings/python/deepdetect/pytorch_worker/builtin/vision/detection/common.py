@@ -650,21 +650,19 @@ def save_checkpoint(
     if context is None or iteration <= 0:
         return
     context.repository_path.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "iteration": iteration,
-            "nclasses": int(getattr(model, "nclasses", 0) or 0),
-            "model_state": model.state_dict(),
-        },
-        context.artifact_path(f"checkpoint-{iteration}.pt"),
-    )
-    torch.save(
-        {
-            "iteration": iteration,
-            "optimizer_state": optimizer.state_dict(),
-        },
-        context.artifact_path(f"solver-{iteration}.pt"),
-    )
+    model_payload = {
+        "iteration": iteration,
+        "nclasses": int(getattr(model, "nclasses", 0) or 0),
+        "model_state": model.state_dict(),
+    }
+    solver_payload = {
+        "iteration": iteration,
+        "optimizer_state": optimizer.state_dict(),
+    }
+    torch.save(model_payload, context.artifact_path(f"checkpoint-{iteration}.pt"))
+    torch.save(model_payload, context.artifact_path("checkpoint-latest.pt"))
+    torch.save(solver_payload, context.artifact_path(f"solver-{iteration}.pt"))
+    torch.save(solver_payload, context.artifact_path("solver-latest.pt"))
 
 
 def request_dict(params: dict[str, Any]) -> dict[str, Any]:
