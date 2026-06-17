@@ -279,6 +279,8 @@ namespace dd
         = payload.HasMember("message")
               ? json_string(payload["message"], "worker failure")
               : "worker failure";
+    if (payload.HasMember("traceback") && payload["traceback"].IsString())
+      message += " traceback=" + std::string(payload["traceback"].GetString());
     throw MLLibInternalException("pytorch worker " + category + ": "
                                  + message);
   }

@@ -17,6 +17,7 @@ from .sdk import (
     WorkerContext,
     WorkerContractError,
     WorkerReporter,
+    WorkerLaunchError,
     WorkerSDKError,
     validate_optional_result_dict,
     validate_prediction_result,
@@ -109,7 +110,9 @@ class WorkerRuntime:
                 debug(f"runtime: method={method!r} failed: {error}")
                 self.reply_error(
                     message_id,
-                    self.failure_payload(self.failure_category(error), error),
+                    self.failure_payload(
+                        self.failure_category(error), error, method=method
+                    ),
                 )
 
     def _run_train(self, params: dict[str, Any]) -> None:
@@ -130,7 +133,7 @@ class WorkerRuntime:
             category = self.failure_category(error)
             if category == "internal_error":
                 category = "training_error"
-            payload = self.failure_payload(category, error)
+            payload = self.failure_payload(category, error, method="train")
             self.event("failure", payload)
 
     def _configure_worker(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -170,11 +173,19 @@ class WorkerRuntime:
     @staticmethod
     def _import_module(module_name: str, entrypoint: Any = None) -> ModuleType:
         if entrypoint:
+            if not isinstance(entrypoint, (str, bytes, os.PathLike)):
+                raise WorkerLaunchError(
+                    f"worker entrypoint must be a path: {entrypoint!r}"
+                )
+            if not os.path.exists(entrypoint):
+                raise WorkerLaunchError(
+                    f"worker entrypoint does not exist: {entrypoint}"
+                )
             spec = importlib.util.spec_from_file_location(
                 "_deepdetect_worker", entrypoint
             )
             if spec is None or spec.loader is None:
-                raise RuntimeError(f"cannot load worker entrypoint: {entrypoint}")
+                raise WorkerLaunchError(f"cannot load worker entrypoint: {entrypoint}")
             module = importlib.util.module_from_spec(spec)
             sys.modules["_deepdetect_worker"] = module
             spec.loader.exec_module(module)
@@ -204,8 +215,10 @@ class WorkerRuntime:
         return "internal_error"
 
     @staticmethod
-    def failure_payload(category: str, error: BaseException) -> dict[str, Any]:
-        return {
+    def failure_payload(
+        category: str, error: BaseException, *, method: str | None = None
+    ) -> dict[str, Any]:
+        payload = {
             "category": category,
             "message": str(error),
             "retryable": False,
@@ -213,6 +226,9 @@ class WorkerRuntime:
                 traceback.format_exception(type(error), error, error.__traceback__)
             )[-4096:],
         }
+        if method:
+            payload["method"] = method
+        return payload
 
     def send(self, message: dict[str, Any]) -> None:
         with self._send_lock:

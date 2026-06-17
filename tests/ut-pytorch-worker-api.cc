@@ -291,3 +291,46 @@ TEST(pytorchworkerapi, invalid_worker_class_reports_contract_error)
 
   cleanup_repo(repo);
 }
+
+TEST(pytorchworkerapi, invalid_worker_module_reports_dependency_error)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_bad_module";
+  const std::string repo = repo_path(service);
+  prepare_repo(repo);
+
+  JDoc response = japi.service_create(
+      service, create_request(
+                   repo, ",\"module\":\"deepdetect_missing_worker_module\""));
+  ASSERT_EQ(500, status_code(response)) << japi.jrender(response);
+  ASSERT_TRUE(response["status"].HasMember("dd_msg"))
+      << japi.jrender(response);
+  const std::string msg = response["status"]["dd_msg"].GetString();
+  ASSERT_NE(std::string::npos, msg.find("dependency_error")) << msg;
+  ASSERT_NE(std::string::npos, msg.find("configure")) << msg;
+
+  cleanup_repo(repo);
+}
+
+TEST(pytorchworkerapi, invalid_python_executable_reports_launch_error)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_bad_python";
+  const std::string repo = repo_path(service);
+  prepare_repo(repo);
+
+  JDoc response = japi.service_create(
+      service, create_request(repo, ",\"python\":\"/tmp/missing-dd-python\""));
+  ASSERT_EQ(500, status_code(response)) << japi.jrender(response);
+  ASSERT_TRUE(response["status"].HasMember("dd_msg"))
+      << japi.jrender(response);
+  const std::string msg = response["status"]["dd_msg"].GetString();
+  ASSERT_NE(std::string::npos, msg.find("worker_launch_error")) << msg;
+  ASSERT_NE(std::string::npos, msg.find("exit_code=127")) << msg;
+  ASSERT_NE(std::string::npos, msg.find("failed executing pytorch worker"))
+      << msg;
+
+  cleanup_repo(repo);
+}
