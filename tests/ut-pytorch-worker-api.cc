@@ -12,6 +12,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
 #include <filesystem>
 #include <string>
 #include <thread>
@@ -68,6 +69,71 @@ namespace
     std::filesystem::create_directories(repo);
   }
 
+  void write_text_file(const std::filesystem::path &path,
+                       const std::string &contents)
+  {
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream out(path);
+    ASSERT_TRUE(out.good()) << path;
+    out << contents;
+  }
+
+  void write_ppm_image(const std::filesystem::path &path, int width,
+                       int height, int red, int green, int blue)
+  {
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream out(path, std::ios::binary);
+    ASSERT_TRUE(out.good()) << path;
+    out << "P6\n" << width << " " << height << "\n255\n";
+    for (int index = 0; index < width * height; ++index)
+      {
+        const unsigned char pixel[3] = { static_cast<unsigned char>(red),
+                                         static_cast<unsigned char>(green),
+                                         static_cast<unsigned char>(blue) };
+        out.write(reinterpret_cast<const char *>(pixel), sizeof(pixel));
+      }
+  }
+
+  struct DetectionFixture
+  {
+    std::string root;
+    std::string train_list;
+    std::string test0_list;
+    std::string test1_list;
+  };
+
+  DetectionFixture prepare_detection_fixture(const std::string &name)
+  {
+    DetectionFixture fixture;
+    fixture.root = repo_path(name);
+    cleanup_repo(fixture.root);
+    std::filesystem::create_directories(fixture.root);
+
+    const std::filesystem::path root(fixture.root);
+    const auto image0 = root / "images" / "sample0.ppm";
+    const auto image1 = root / "images" / "sample1.ppm";
+    const auto target0 = root / "labels" / "sample0.txt";
+    const auto target1 = root / "labels" / "sample1.txt";
+    const auto train = root / "train.txt";
+    const auto test0 = root / "test0.txt";
+    const auto test1 = root / "test1.txt";
+
+    write_ppm_image(image0, 16, 12, 255, 64, 32);
+    write_ppm_image(image1, 16, 12, 32, 128, 255);
+    write_text_file(target0, "1 1 2 8 9\n");
+    write_text_file(target1, "1 3 1 12 10\n");
+    write_text_file(train, image0.string() + " " + target0.string() + "\n"
+                               + image1.string() + " " + target1.string()
+                               + "\n");
+    write_text_file(test0, image0.string() + " " + target0.string() + "\n");
+    write_text_file(test1, image1.string() + " " + target1.string() + "\n");
+
+    fixture.train_list = train.string();
+    fixture.test0_list = test0.string();
+    fixture.test1_list = test1.string();
+    return fixture;
+  }
+
   int status_code(const JDoc &doc)
   {
     return doc["status"]["code"].GetInt();
@@ -95,6 +161,21 @@ namespace
              "\"mllib\":{\"solver\":{\"iterations\":"
            + std::to_string(iterations)
            + ",\"base_lr\":0.01}}},\"data\":[\"dummy\"]}";
+  }
+
+  std::string reference_detector_train_request(const std::string &service,
+                                               const DetectionFixture &fixture)
+  {
+    return "{\"service\":\"" + service
+           + "\",\"async\":true,\"parameters\":{\"input\":{},"
+             "\"output\":{\"measure_hist\":true,\"test_predictions\":true,"
+             "\"measure\":[\"map-50\"]},\"mllib\":{\"solver\":{\"iterations\":"
+             "2,"
+             "\"base_lr\":0.001,\"test_interval\":1},\"net\":{\"batch_size\":"
+             "1}}},"
+             "\"data\":[\""
+           + fixture.train_list + "\",\"" + fixture.test0_list + "\",\""
+           + fixture.test1_list + "\"]}";
   }
 
   JDoc poll_until_terminal(JsonAPI &japi, const std::string &service, int job,
@@ -154,6 +235,74 @@ namespace
     return status;
   }
 
+}
+
+TEST(pytorchworkerapi, reference_detector_trains_tiny_detection_fixture)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_reference_detector";
+  const std::string repo = repo_path(service);
+  const DetectionFixture fixture
+      = prepare_detection_fixture(service + "_fixture");
+  prepare_repo(repo);
+
+  const std::string module
+      = "deepdetect.pytorch_worker.builtin.vision.detection."
+        "reference_torch_detector";
+  ASSERT_EQ(created_str,
+            japi.jrender(japi.service_create(
+                service, create_request(repo, ",\"module\":\"" + module
+                                                  + "\",\"gpu\":false"))));
+
+  JDoc train
+      = japi.service_train(reference_detector_train_request(service, fixture));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
+  ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 120, true);
+  ASSERT_STREQ("finished", status["head"]["status"].GetString())
+      << japi.jrender(status);
+  ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"].HasMember("measure_hist"))
+      << japi.jrender(status);
+  const auto &hist = status["body"]["measure_hist"];
+  ASSERT_TRUE(hist.HasMember("iteration_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("train_loss_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test0_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test1_hist")) << japi.jrender(status);
+  ASSERT_GE(hist["iteration_hist"].Size(), 1U) << japi.jrender(status);
+
+  ASSERT_TRUE(status["body"].HasMember("test_predictions"))
+      << japi.jrender(status);
+  const auto &predictions = status["body"]["test_predictions"];
+  ASSERT_TRUE(predictions.HasMember("test0")) << japi.jrender(status);
+  ASSERT_TRUE(predictions.HasMember("test1")) << japi.jrender(status);
+  ASSERT_TRUE(predictions["test0"].HasMember("samples"))
+      << japi.jrender(status);
+  ASSERT_TRUE(predictions["test1"].HasMember("samples"))
+      << japi.jrender(status);
+  ASSERT_GE(predictions["test0"]["samples"].Size(), 1U)
+      << japi.jrender(status);
+  ASSERT_GE(predictions["test1"]["samples"].Size(), 1U)
+      << japi.jrender(status);
+
+  ASSERT_TRUE(std::filesystem::is_regular_file(
+      std::filesystem::path(repo) / "pytorch_worker_config.json"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
+                                               / "connector_manifest.json"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
+                                               / "class_mapping.json"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
+                                               / "checkpoint-latest.pt"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
+                                               / "solver-latest.pt"));
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+  cleanup_repo(fixture.root);
 }
 
 TEST(pytorchworkerapi, training_status_can_return_test_predictions_payload)
