@@ -9,6 +9,7 @@ from .sdk import (
     WorkerContext,
     WorkerContractError,
     WorkerDependencyError,
+    WorkerLaunchError,
     WorkerReporter,
     WorkerSDKError,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "WorkerContext",
     "WorkerContractError",
     "WorkerDependencyError",
+    "WorkerLaunchError",
     "WorkerReporter",
     "WorkerSDKError",
 ]

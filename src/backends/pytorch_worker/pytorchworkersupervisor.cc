@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
 #include <poll.h>
 #include <rapidjson/document.h>
@@ -46,27 +47,6 @@ namespace dd
           || !doc["id"].IsInt())
         return -1;
       return doc["id"].GetInt();
-    }
-
-    void throw_response_error(const std::string &message)
-    {
-      rapidjson::Document doc;
-      doc.Parse<rapidjson::kParseNanAndInfFlag>(message.c_str());
-      if (!doc.HasParseError() && doc.IsObject() && doc.HasMember("error"))
-        {
-          const auto &error = doc["error"];
-          std::string category = "internal_error";
-          std::string msg = "worker returned an error";
-          if (error.IsObject())
-            {
-              if (error.HasMember("category") && error["category"].IsString())
-                category = error["category"].GetString();
-              if (error.HasMember("message") && error["message"].IsString())
-                msg = error["message"].GetString();
-            }
-          throw MLLibInternalException("pytorch worker " + category + ": "
-                                       + msg);
-        }
     }
 
     bool debug_enabled()
@@ -151,14 +131,30 @@ namespace dd
           "failed listening on pytorch worker socket: "
           + std::string(std::strerror(errno)));
 
+    int stderr_pipe[2] = { -1, -1 };
+    if (::pipe(stderr_pipe) != 0)
+      throw MLLibInternalException(
+          "failed creating pytorch worker stderr pipe: "
+          + std::string(std::strerror(errno)));
+    int flags = ::fcntl(stderr_pipe[0], F_GETFL, 0);
+    if (flags >= 0)
+      ::fcntl(stderr_pipe[0], F_SETFL, flags | O_NONBLOCK);
+
     std::string python = python_executable(mllib_params);
     debug_log("start: python executable " + python);
     _pid = ::fork();
     if (_pid < 0)
-      throw MLLibInternalException("failed forking pytorch worker: "
-                                   + std::string(std::strerror(errno)));
+      {
+        close_fd(stderr_pipe[0]);
+        close_fd(stderr_pipe[1]);
+        throw MLLibInternalException("failed forking pytorch worker: "
+                                     + std::string(std::strerror(errno)));
+      }
     if (_pid == 0)
       {
+        close_fd(stderr_pipe[0]);
+        ::dup2(stderr_pipe[1], STDERR_FILENO);
+        close_fd(stderr_pipe[1]);
         ::setsid();
         ::setenv("DEEPDETECT_WORKER_SOCKET", _socket_path.c_str(), 1);
         ::setenv("DEEPDETECT_REPOSITORY", _repository.c_str(), 1);
@@ -166,20 +162,60 @@ namespace dd
         ::execlp(python.c_str(), python.c_str(), "-m",
                  "deepdetect.pytorch_worker.runtime",
                  static_cast<char *>(nullptr));
+        std::cerr << "failed executing pytorch worker runtime with " << python
+                  << ": " << std::strerror(errno) << std::endl;
         ::_exit(127);
       }
+    close_fd(stderr_pipe[1]);
+    _stderr_fd = stderr_pipe[0];
 
     debug_log("start: waiting for worker connection");
-    pollfd pfd;
-    pfd.fd = _listen_fd;
-    pfd.events = POLLIN;
-    int poll_status = ::poll(&pfd, 1, 10000);
-    if (poll_status <= 0)
+    auto start_time = std::chrono::steady_clock::now();
+    bool ready = false;
+    while (!ready)
       {
-        terminate();
-        debug_log("start: worker launch timeout");
-        throw MLLibInternalException(
-            "pytorch worker launch timeout; check Python environment");
+        pollfd pfds[2];
+        pfds[0].fd = _listen_fd;
+        pfds[0].events = POLLIN;
+        pfds[0].revents = 0;
+        pfds[1].fd = _stderr_fd;
+        pfds[1].events = POLLIN;
+        pfds[1].revents = 0;
+        int nfds = _stderr_fd >= 0 ? 2 : 1;
+        int poll_status = ::poll(pfds, nfds, 100);
+        if (poll_status < 0 && errno != EINTR)
+          {
+            terminate();
+            throw MLLibInternalException(
+                "pytorch worker worker_launch_error: polling launch failed: "
+                + std::string(std::strerror(errno)) + diagnostic_suffix());
+          }
+        if (_stderr_fd >= 0 && nfds > 1
+            && (pfds[1].revents & (POLLIN | POLLHUP)))
+          read_worker_stderr();
+        if (poll_status > 0 && (pfds[0].revents & POLLIN))
+          ready = true;
+        if (reap_child() && !ready)
+          {
+            read_worker_stderr();
+            terminate();
+            throw MLLibInternalException(
+                "pytorch worker worker_launch_error: worker exited before "
+                "connecting"
+                + diagnostic_suffix());
+          }
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start_time);
+        if (elapsed.count() >= 10000)
+          {
+            read_worker_stderr();
+            terminate();
+            debug_log("start: worker launch timeout");
+            throw MLLibInternalException(
+                "pytorch worker worker_launch_error: launch timeout; check "
+                "Python environment"
+                + diagnostic_suffix());
+          }
       }
     _fd = ::accept(_listen_fd, nullptr, nullptr);
     close_fd(_listen_fd);
@@ -230,6 +266,8 @@ namespace dd
             wait_for_exit(500);
           }
       }
+    read_worker_stderr();
+    close_fd(_stderr_fd);
     cleanup_socket();
   }
 
@@ -240,24 +278,79 @@ namespace dd
     auto start = std::chrono::steady_clock::now();
     while (true)
       {
-        int status = 0;
-        pid_t result = ::waitpid(_pid, &status, WNOHANG);
-        if (result == _pid)
-          {
-            _pid = -1;
-            return;
-          }
-        if (result < 0 && errno == ECHILD)
-          {
-            _pid = -1;
-            return;
-          }
+        read_worker_stderr();
+        if (reap_child())
+          return;
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - start);
         if (elapsed.count() >= timeout_ms)
           return;
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
       }
+  }
+
+  bool PytorchWorkerSupervisor::reap_child()
+  {
+    if (_pid <= 0)
+      return true;
+    int status = 0;
+    pid_t result = ::waitpid(_pid, &status, WNOHANG);
+    if (result == _pid)
+      {
+        if (WIFEXITED(status))
+          _exit_code = WEXITSTATUS(status);
+        if (WIFSIGNALED(status))
+          _signal = WTERMSIG(status);
+        _pid = -1;
+        return true;
+      }
+    if (result < 0 && errno == ECHILD)
+      {
+        _pid = -1;
+        return true;
+      }
+    return false;
+  }
+
+  void PytorchWorkerSupervisor::read_worker_stderr()
+  {
+    if (_stderr_fd < 0)
+      return;
+    char buffer[4096];
+    while (true)
+      {
+        ssize_t n = ::read(_stderr_fd, buffer, sizeof(buffer));
+        if (n > 0)
+          {
+            append_stderr(buffer, static_cast<size_t>(n));
+            continue;
+          }
+        if (n < 0 && errno == EINTR)
+          continue;
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+          return;
+        return;
+      }
+  }
+
+  void PytorchWorkerSupervisor::append_stderr(const char *data, size_t size)
+  {
+    constexpr size_t max_tail = 8192;
+    _stderr_tail.append(data, size);
+    if (_stderr_tail.size() > max_tail)
+      _stderr_tail.erase(0, _stderr_tail.size() - max_tail);
+  }
+
+  std::string PytorchWorkerSupervisor::diagnostic_suffix() const
+  {
+    std::string suffix;
+    if (_exit_code >= 0)
+      suffix += " exit_code=" + std::to_string(_exit_code);
+    if (_signal >= 0)
+      suffix += " signal=" + std::to_string(_signal);
+    if (!_stderr_tail.empty())
+      suffix += " stderr_tail=" + _stderr_tail;
+    return suffix;
   }
 
   void PytorchWorkerSupervisor::cleanup_socket()
@@ -304,7 +397,9 @@ namespace dd
           {
             debug_log("received response id=" + std::to_string(id)
                       + " method=" + method);
-            throw_response_error(message);
+            std::string error_message = response_error_message(message);
+            if (!error_message.empty())
+              throw MLLibInternalException(error_message);
             rapidjson::Document doc;
             doc.Parse<rapidjson::kParseNanAndInfFlag>(message.c_str());
             APIData out;
@@ -317,7 +412,36 @@ namespace dd
       }
     debug_log("timeout waiting for method=" + method);
     throw MLLibInternalException(
-        "timeout waiting for pytorch worker response");
+        "pytorch worker timeout_error: timeout waiting for response"
+        + diagnostic_suffix());
+  }
+
+  std::string PytorchWorkerSupervisor::response_error_message(
+      const std::string &message) const
+  {
+    rapidjson::Document doc;
+    doc.Parse<rapidjson::kParseNanAndInfFlag>(message.c_str());
+    if (doc.HasParseError() || !doc.IsObject() || !doc.HasMember("error"))
+      return "";
+    const auto &error = doc["error"];
+    std::string category = "internal_error";
+    std::string msg = "worker returned an error";
+    std::string method;
+    if (error.IsObject())
+      {
+        if (error.HasMember("category") && error["category"].IsString())
+          category = error["category"].GetString();
+        if (error.HasMember("message") && error["message"].IsString())
+          msg = error["message"].GetString();
+        if (error.HasMember("method") && error["method"].IsString())
+          method = error["method"].GetString();
+      }
+    std::string out = "pytorch worker " + category + ": ";
+    if (!method.empty())
+      out += method + ": ";
+    out += msg;
+    out += diagnostic_suffix();
+    return out;
   }
 
   bool PytorchWorkerSupervisor::read_message(std::string &message,
@@ -330,6 +454,7 @@ namespace dd
         debug_log("read queued worker message");
         return true;
       }
+    read_worker_stderr();
     return read_frame(message, timeout_ms);
   }
 
@@ -369,6 +494,7 @@ namespace dd
     pfd.fd = _fd;
     pfd.events = POLLIN;
     int poll_status = ::poll(&pfd, 1, timeout_ms);
+    read_worker_stderr();
     if (poll_status == 0)
       return false;
     if (poll_status < 0)
@@ -380,15 +506,26 @@ namespace dd
       }
     uint32_t network_size = 0;
     if (!read_exact(&network_size, sizeof(network_size)))
-      throw MLLibInternalException("pytorch worker disconnected");
+      {
+        read_worker_stderr();
+        throw MLLibInternalException(disconnected_message());
+      }
     uint32_t size = ntohl(network_size);
     if (size == 0 || size > 64 * 1024 * 1024)
       throw MLLibInternalException("invalid pytorch worker frame size");
     std::string payload(size, '\0');
     if (!read_exact(payload.data(), payload.size()))
-      throw MLLibInternalException("pytorch worker disconnected");
+      {
+        read_worker_stderr();
+        throw MLLibInternalException(disconnected_message());
+      }
     message = std::move(payload);
     return true;
+  }
+
+  std::string PytorchWorkerSupervisor::disconnected_message() const
+  {
+    return "pytorch worker internal_error: disconnected" + diagnostic_suffix();
   }
 
   bool PytorchWorkerSupervisor::read_exact(void *buffer, size_t size)

@@ -14,6 +14,7 @@ from deepdetect.pytorch_worker.sdk import (
     DatasetContractError,
     DeepDetectWorkerBase,
     WorkerContext,
+    WorkerDependencyError,
     WorkerReporter,
 )
 from deepdetect.pytorch_worker.builtin.vision.detection.base import (
@@ -596,6 +597,125 @@ def test_runtime_rejects_missing_worker_methods():
         request(server, 1, "configure", {"mllib": {"module": module_name}})
         response = read_until(server, message_id=1)
         assert response["error"]["category"] == "worker_contract_error"
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+        sys.modules.pop(module_name, None)
+
+
+def test_runtime_reports_missing_entrypoint_as_launch_error(tmp_path):
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(
+            server,
+            1,
+            "configure",
+            {"mllib": {"entrypoint": str(tmp_path / "missing_worker.py")}},
+        )
+        response = read_until(server, message_id=1)
+        assert response["error"]["category"] == "worker_launch_error"
+        assert response["error"]["method"] == "configure"
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+
+
+def test_runtime_reports_configure_dependency_error():
+    class DependencyWorker(DeepDetectWorkerBase):
+        def configure(self, context):
+            raise WorkerDependencyError("missing optional package")
+
+        def train(self, params, *, reporter, cancellation):
+            return {"status": "finished"}
+
+        def predict(self, params):
+            return {"results": []}
+
+    module_name = "test_dependency_worker"
+    install_worker_module(module_name, DependencyWorker)
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(server, 1, "configure", {"mllib": {"module": module_name}})
+        response = read_until(server, message_id=1)
+        assert response["error"]["category"] == "dependency_error"
+        assert response["error"]["method"] == "configure"
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+        sys.modules.pop(module_name, None)
+
+
+def test_runtime_reports_generic_training_exception_as_training_error():
+    class FailingTrainWorker(DeepDetectWorkerBase):
+        def train(self, params, *, reporter, cancellation):
+            raise RuntimeError("training exploded")
+
+        def predict(self, params):
+            return {"results": []}
+
+    module_name = "test_failing_train_worker"
+    install_worker_module(module_name, FailingTrainWorker)
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(server, 1, "configure", {"mllib": {"module": module_name}})
+        assert read_until(server, message_id=1)["result"] == {}
+        request(server, 2, "train_start", {"request": {"parameters": {}}})
+        assert read_until(server, message_id=2)["result"]["status"] == "started"
+        failure = read_until(server, event="failure")
+        assert failure["payload"]["category"] == "training_error"
+        assert failure["payload"]["method"] == "train"
+        assert "training exploded" in failure["payload"]["traceback"]
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+        sys.modules.pop(module_name, None)
+
+
+def test_runtime_cooperative_cancellation_returns_cancelled_result():
+    class CancellableWorker(DeepDetectWorkerBase):
+        def train(self, params, *, reporter, cancellation):
+            deadline = time.monotonic() + 2.0
+            while not cancellation.requested and time.monotonic() < deadline:
+                time.sleep(0.01)
+            if cancellation.requested:
+                return {"status": "cancelled"}
+            return {"status": "finished"}
+
+        def predict(self, params):
+            return {"results": []}
+
+    module_name = "test_cancellable_worker"
+    install_worker_module(module_name, CancellableWorker)
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(server, 1, "configure", {"mllib": {"module": module_name}})
+        assert read_until(server, message_id=1)["result"] == {}
+        request(server, 2, "train_start", {"request": {"parameters": {}}})
+        assert read_until(server, message_id=2)["result"]["status"] == "started"
+        request(server, 3, "train_cancel")
+        assert read_until(server, message_id=3)["result"]["status"] == "cancelling"
+        result = read_until(server, event="train_result")
+        assert result["payload"]["status"] == "cancelled"
     finally:
         request(server, 99, "shutdown")
         read_until(server, message_id=99)

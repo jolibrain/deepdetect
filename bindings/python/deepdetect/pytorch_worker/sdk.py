@@ -32,6 +32,10 @@ class WorkerDependencyError(WorkerSDKError):
     category = "dependency_error"
 
 
+class WorkerLaunchError(WorkerSDKError):
+    category = "worker_launch_error"
+
+
 @dataclass
 class Cancellation:
     requested: bool = False

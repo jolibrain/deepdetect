@@ -27,8 +27,8 @@ namespace dd
     ~PytorchWorkerSupervisor();
 
     PytorchWorkerSupervisor(const PytorchWorkerSupervisor &) = delete;
-    PytorchWorkerSupervisor &
-    operator=(const PytorchWorkerSupervisor &) = delete;
+    PytorchWorkerSupervisor &operator=(const PytorchWorkerSupervisor &)
+        = delete;
 
     void start(const APIData &mllib_params);
     void shutdown();
@@ -51,15 +51,25 @@ namespace dd
     bool read_exact(void *buffer, size_t size);
     void cleanup_socket();
     void wait_for_exit(int timeout_ms);
+    bool reap_child();
+    void read_worker_stderr();
+    void append_stderr(const char *data, size_t size);
+    std::string diagnostic_suffix() const;
+    std::string response_error_message(const std::string &message) const;
+    std::string disconnected_message() const;
 
     std::string _repository;
     std::shared_ptr<spdlog::logger> _logger;
     pid_t _pid = -1;
     int _fd = -1;
     int _listen_fd = -1;
+    int _stderr_fd = -1;
     int _next_id = 1;
+    int _exit_code = -1;
+    int _signal = -1;
     std::string _socket_dir;
     std::string _socket_path;
+    std::string _stderr_tail;
     std::deque<std::string> _pending;
   };
 }
