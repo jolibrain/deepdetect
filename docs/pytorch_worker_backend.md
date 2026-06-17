@@ -450,11 +450,27 @@ Built-in object detection workers use a shared base plus small model adapters:
 ```text
 bindings/python/deepdetect/pytorch_worker/builtin/vision/detection/base.py
 bindings/python/deepdetect/pytorch_worker/builtin/vision/detection/common.py
+bindings/python/deepdetect/pytorch_worker/builtin/vision/detection/training.py
 ```
 
 `DetectionTrainingWorkerBase` owns the standard train, evaluation, predict,
 checkpoint, metric, test-progress, and visual-result flow. Detection adapters
 should subclass it unless they need a fundamentally different training loop.
+
+The base delegates reusable trainer concerns to small helpers in
+`training.py`:
+
+- `DetectionTrainRequest` and `DetectionTrainOptions` parse train data,
+  solver, net, and CLI/API overrides;
+- `DetectionCheckpointManager` loads and saves model and optimizer state;
+- `DetectionRepositoryContractWriter` writes the effective worker config,
+  connector manifest, and class mapping;
+- `DetectionProgressReporter` emits stable train/test status and metric
+  events.
+
+These helpers are part of the worker-authoring surface for built-in or
+LLM-authored detection workers. Adapters should use the base hooks before
+reimplementing any train-loop, checkpoint, metric, or repository behavior.
 
 Required adapter hooks:
 

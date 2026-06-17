@@ -11,12 +11,24 @@ from .common import (
     report_detection_metrics,
 )
 from .reference_torch_detector import DeepDetectWorker as ReferenceTorchDetectorWorker
+from .training import (
+    DetectionCheckpointManager,
+    DetectionProgressReporter,
+    DetectionRepositoryContractWriter,
+    DetectionTrainOptions,
+    DetectionTrainRequest,
+)
 
 __all__ = [
+    "DetectionCheckpointManager",
     "DetectionEvalBox",
     "DetectionListDataset",
+    "DetectionProgressReporter",
+    "DetectionRepositoryContractWriter",
     "DetectionSample",
     "DetectionTrainingWorkerBase",
+    "DetectionTrainOptions",
+    "DetectionTrainRequest",
     "ReferenceTorchDetectorWorker",
     "detection_map_metrics",
     "detection_metric_thresholds",

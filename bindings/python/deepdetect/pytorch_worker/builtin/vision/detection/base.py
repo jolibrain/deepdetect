@@ -12,36 +12,34 @@ from ....sdk import (
     WorkerContext,
     WorkerReporter,
 )
-from ....artifacts import write_json_artifact
 
 from .common import (
     DetectionEvalBox,
     DetectionListDataset,
-    checkpoint_path,
     connector_prediction,
     debug as detection_debug,
     detection_map_metrics,
     detection_metric_thresholds,
-    latest_checkpoint,
     make_loader,
-    maybe_load_checkpoint,
-    maybe_load_solver,
-    merged_mllib,
     move_target,
-    optional_positive_int,
-    parameters_dict,
     parse_test_prediction_config,
-    positive_int,
     prediction_eval_boxes,
     prediction_sample,
     read_image_tensor,
     report_detection_metrics,
-    report_train_step,
-    request_dict,
     sampled_indices,
-    save_checkpoint,
     select_device,
     target_eval_boxes,
+)
+from .training import (
+    DetectionCheckpointManager,
+    DetectionProgressReporter,
+    DetectionRepositoryContractWriter,
+    DetectionTrainRequest,
+    optional_positive_int,
+    parameters_dict,
+    positive_int,
+    request_dict,
 )
 
 
@@ -89,33 +87,21 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: importing backend")
         backend = self.import_backend()
         torch = backend[0]
-        request = request_dict(params)
-        request_params = parameters_dict(request)
-        mllib = merged_mllib(self.context, request_params)
-        solver = dict(
-            mllib.get("solver", {}) if isinstance(mllib.get("solver"), dict) else {}
-        )
-        net = dict(mllib.get("net", {}) if isinstance(mllib.get("net"), dict) else {})
-
-        data = request.get("data", [])
-        if not isinstance(data, list) or not data:
-            raise DatasetContractError("train request data must contain a train list path")
-        train_list = Path(str(data[0]))
-        test_lists = [Path(str(path)) for path in data[1:]]
-
-        iterations = positive_int(solver.get("iterations", 1), "iterations")
-        test_interval = positive_int(
-            solver.get("test_interval", iterations), "test_interval"
-        )
-        batch_size = positive_int(net.get("batch_size", 1), "batch_size")
-        iter_size = positive_int(solver.get("iter_size", 1), "iter_size")
-        base_lr = float(solver.get("base_lr", 0.0001))
+        train_request = DetectionTrainRequest.from_params(self.context, params)
+        options = train_request.options
         self.debug(
             "train: options iterations=%s test_interval=%s batch_size=%s "
             "iter_size=%s base_lr=%s"
-            % (iterations, test_interval, batch_size, iter_size, base_lr)
+            % (
+                options.iterations,
+                options.test_interval,
+                options.batch_size,
+                options.iter_size,
+                options.base_lr,
+            )
         )
 
+        progress = DetectionProgressReporter(reporter)
         if self.multi_gpu_requested:
             reporter.log(
                 "warning",
@@ -123,24 +109,26 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 "the first id in this slice",
             )
 
-        self.debug(f"train: loading train dataset {train_list}")
-        train_dataset = self.create_dataset(train_list, torch=torch)
+        self.debug(f"train: loading train dataset {train_request.train_list}")
+        train_dataset = self.create_dataset(train_request.train_list, torch=torch)
         self.debug(f"train: train samples={len(train_dataset)}")
-        self.debug(f"train: loading {len(test_lists)} test datasets")
-        test_datasets = [self.create_dataset(path, torch=torch) for path in test_lists]
+        self.debug(f"train: loading {len(train_request.test_lists)} test datasets")
+        test_datasets = [
+            self.create_dataset(path, torch=torch) for path in train_request.test_lists
+        ]
         self.debug(
             "train: test samples=%s" % [len(dataset) for dataset in test_datasets]
         )
-        self.write_repository_contract(
+        self.repository_contract_writer().write(
             train_dataset=train_dataset,
             test_datasets=test_datasets,
-            request=request,
-            request_params=request_params,
-            effective_mllib=mllib,
+            request=train_request.request,
+            request_params=train_request.request_params,
+            effective_mllib=train_request.effective_mllib,
         )
         train_loader = make_loader(
             train_dataset,
-            batch_size=batch_size,
+            batch_size=options.batch_size,
             shuffle=True,
             torch=torch,
         )
@@ -149,14 +137,15 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: creating model")
         self.model = self.create_model(self.nclasses, *backend).to(self.device)
         self.debug("train: model created")
-        maybe_load_checkpoint(
-            self.model, torch, self.device, checkpoint_path(mllib, self.context)
+        checkpoint_manager = DetectionCheckpointManager(self.context, torch, self.device)
+        checkpoint_manager.load_model_for_training(
+            self.model, train_request.effective_mllib
         )
         self.debug("train: checkpoint load checked")
         self.model.train()
         self.debug("train: creating optimizer")
-        optimizer = self.create_optimizer(torch, self.model, base_lr=base_lr)
-        maybe_load_solver(optimizer, torch, self.device, self.context, mllib)
+        optimizer = self.create_optimizer(torch, self.model, base_lr=options.base_lr)
+        checkpoint_manager.load_optimizer(optimizer, train_request.effective_mllib)
         optimizer.zero_grad(set_to_none=True)
         self.debug("train: entering training loop")
 
@@ -164,17 +153,13 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         optimizer_steps = 0
         accumulated = 0
         latest_loss = 0.0
-        while optimizer_steps < iterations:
+        while optimizer_steps < options.iterations:
             if cancellation.requested:
-                reporter.status(
-                    phase="cancelled",
+                progress.cancelled(
                     iteration=optimizer_steps,
-                    iterations=iterations,
-                    test_active=0,
+                    iterations=options.iterations,
                 )
-                save_checkpoint(
-                    self.context, self.model, optimizer, torch, optimizer_steps
-                )
+                checkpoint_manager.save(self.model, optimizer, optimizer_steps)
                 return {"status": "cancelled", "iteration": optimizer_steps}
 
             try:
@@ -190,11 +175,11 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 self.debug("train: running first forward/backward")
             loss_dict = self.training_losses(self.model, images, targets)
             total_loss = sum(loss for loss in loss_dict.values())
-            (total_loss / float(iter_size)).backward()
+            (total_loss / float(options.iter_size)).backward()
             accumulated += 1
             latest_loss = float(total_loss.detach().cpu().item())
 
-            if accumulated < iter_size:
+            if accumulated < options.iter_size:
                 continue
 
             optimizer.step()
@@ -205,12 +190,11 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 name: float(value.detach().cpu().item())
                 for name, value in loss_dict.items()
             }
-            report_train_step(
-                reporter,
+            progress.train_step(
                 iteration=optimizer_steps,
-                iterations=iterations,
+                iterations=options.iterations,
                 start_time=start_time,
-                base_lr=base_lr,
+                base_lr=options.base_lr,
                 train_loss=latest_loss,
                 losses=loss_values,
             )
@@ -218,8 +202,8 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
             should_test = (
                 test_datasets
                 and (
-                    optimizer_steps % test_interval == 0
-                    or optimizer_steps == iterations
+                    optimizer_steps % options.test_interval == 0
+                    or optimizer_steps == options.iterations
                 )
             )
             if should_test:
@@ -228,25 +212,22 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     test_datasets,
                     reporter=reporter,
                     iteration=optimizer_steps,
-                    request_params=request_params,
+                    request_params=train_request.request_params,
                     torch=torch,
                     cancellation=cancellation,
                 )
                 self.model.train()
-                save_checkpoint(
-                    self.context, self.model, optimizer, torch, optimizer_steps
-                )
+                checkpoint_manager.save(self.model, optimizer, optimizer_steps)
                 self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
 
-        save_checkpoint(self.context, self.model, optimizer, torch, iterations)
+        checkpoint_manager.save(self.model, optimizer, options.iterations)
         self.debug("train: finished")
-        reporter.status(
-            phase="finished",
-            iteration=iterations,
-            iterations=iterations,
-            test_active=0,
-        )
-        return {"status": "finished", "iteration": iterations, "train_loss": latest_loss}
+        progress.finished(iteration=options.iterations, iterations=options.iterations)
+        return {
+            "status": "finished",
+            "iteration": options.iterations,
+            "train_loss": latest_loss,
+        }
 
     def evaluate(
         self,
@@ -268,6 +249,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         test_prediction_config = parse_test_prediction_config(output)
         metric_thresholds = detection_metric_thresholds(output)
         predictions_payload: dict[str, Any] = {}
+        progress = DetectionProgressReporter(reporter)
 
         self.model.eval()
         with torch.no_grad():
@@ -283,14 +265,12 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 eval_predictions: list[DetectionEvalBox] = []
                 eval_targets: list[DetectionEvalBox] = []
                 processed = 0
-                reporter.status(
-                    phase="test",
+                progress.test_progress(
                     iteration=iteration,
-                    test_active=1,
-                    test_set_index=test_index,
+                    test_index=test_index,
                     test_sets_total=len(test_datasets),
-                    test_processed=0,
-                    test_total=len(dataset),
+                    processed=0,
+                    total=len(dataset),
                 )
                 loader = make_loader(dataset, batch_size=1, shuffle=False, torch=torch)
                 for images, targets, metas in loader:
@@ -313,14 +293,12 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                                     best_bbox=test_prediction_config["best_bbox"],
                                 )
                             )
-                    reporter.status(
-                        phase="test",
+                    progress.test_progress(
                         iteration=iteration,
-                        test_active=1,
-                        test_set_index=test_index,
+                        test_index=test_index,
                         test_sets_total=len(test_datasets),
-                        test_processed=processed,
-                        test_total=len(dataset),
+                        processed=processed,
+                        total=len(dataset),
                     )
                 predictions_payload[f"test{test_index}"] = {
                     "iteration": iteration,
@@ -347,15 +325,10 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 )
                 self.debug(f"evaluate: test{test_index} metrics reported")
 
-        reporter.status(
-            phase="train",
+        progress.test_finished(
             iteration=iteration,
-            test_active=0,
-            test_set_index=max(0, len(test_datasets) - 1),
             test_sets_total=len(test_datasets),
-            test_processed=0,
-            test_total=0,
-            test_predictions=predictions_payload,
+            predictions_payload=predictions_payload,
         )
 
     def predict(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -372,12 +345,10 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
             raise PredictionContractError("predict data must be a list")
         if self.model is None:
             self.model = self.create_model(self.nclasses, *backend).to(self.device)
-            loaded = maybe_load_checkpoint(
-                self.model,
-                torch,
-                self.device,
-                latest_checkpoint(self.context),
+            checkpoint_manager = DetectionCheckpointManager(
+                self.context, torch, self.device
             )
+            loaded = checkpoint_manager.load_model_for_prediction(self.model)
             if loaded is None:
                 self.model.eval()
         self.model.eval()
@@ -400,64 +371,12 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
     def create_dataset(self, list_path: Path, *, torch: Any) -> DetectionListDataset:
         return DetectionListDataset(list_path, nclasses=self.nclasses, torch=torch)
 
-    def write_repository_contract(
-        self,
-        *,
-        train_dataset: DetectionListDataset,
-        test_datasets: list[DetectionListDataset],
-        request: dict[str, Any],
-        request_params: dict[str, Any],
-        effective_mllib: dict[str, Any],
-    ) -> None:
-        if self.context is None:
-            return
-        input_params = training_parameter_section(request_params, "input")
-        output_params = training_parameter_section(request_params, "output")
-        data = request.get("data", [])
-        data_paths = [str(Path(str(path)).expanduser()) for path in data]
-        test_manifests = [
-            {
-                "index": index,
-                "path": str(dataset.list_path),
-                "samples": len(dataset),
-            }
-            for index, dataset in enumerate(test_datasets)
-        ]
-        config_payload = {
-            "worker": self.worker_name,
-            "task": self.task_name,
-            "repository": self.context.repository,
-            "configure_mllib": dict(self.context.mllib),
-            "train_mllib": effective_mllib,
-            "input_parameters": input_params,
-            "output_parameters": output_params,
-            "data": data_paths,
-        }
-        manifest_payload = {
-            "version": 1,
-            "boundary": "path-backed",
-            "task": self.task_name,
-            "nclasses": self.nclasses,
-            "repository": self.context.repository,
-            "train": {
-                "path": str(train_dataset.list_path),
-                "samples": len(train_dataset),
-            },
-            "tests": test_manifests,
-            "input_parameters": input_params,
-            "output_parameters": output_params,
-        }
-        write_json_artifact(
-            self.context.artifact_path("pytorch_worker_config.json"),
-            config_payload,
-        )
-        write_json_artifact(
-            self.context.artifact_path("connector_manifest.json"),
-            manifest_payload,
-        )
-        write_json_artifact(
-            self.context.artifact_path("class_mapping.json"),
-            class_mapping(self.nclasses, effective_mllib),
+    def repository_contract_writer(self) -> DetectionRepositoryContractWriter:
+        return DetectionRepositoryContractWriter(
+            self.context,
+            worker_name=self.worker_name,
+            task_name=self.task_name,
+            nclasses=self.nclasses,
         )
 
     def create_optimizer(self, torch: Any, model: Any, *, base_lr: float) -> Any:
@@ -488,25 +407,3 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
 
     def create_model(self, nclasses: int, *backend: Any) -> Any:
         raise NotImplementedError
-
-
-def training_parameter_section(params: dict[str, Any], name: str) -> dict[str, Any]:
-    value = params.get(name)
-    if value is None:
-        value = params.get(f"{name}_parameters")
-    return dict(value) if isinstance(value, dict) else {}
-
-
-def class_mapping(nclasses: int, mllib: dict[str, Any]) -> dict[str, str]:
-    names = mllib.get("class_names")
-    if names is None:
-        names = mllib.get("classes")
-    mapping = {"0": "background"}
-    for index in range(1, int(nclasses)):
-        label = str(index)
-        if isinstance(names, list) and index < len(names):
-            label = str(names[index])
-        elif isinstance(names, dict):
-            label = str(names.get(str(index), names.get(index, label)))
-        mapping[str(index)] = label
-    return mapping

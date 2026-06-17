@@ -23,6 +23,13 @@ from deepdetect.pytorch_worker.builtin.vision.detection.base import (
 from deepdetect.pytorch_worker.builtin.vision.detection.common import (
     DetectionListDataset,
 )
+from deepdetect.pytorch_worker.builtin.vision.detection.training import (
+    DetectionProgressReporter,
+    DetectionRepositoryContractWriter,
+    DetectionTrainOptions,
+    DetectionTrainRequest,
+    class_mapping,
+)
 from deepdetect.pytorch_worker.builtin.vision.detection.torchvision_fasterrcnn import (
     DetectionEvalBox,
     DeepDetectWorker,
@@ -236,6 +243,152 @@ def test_detection_base_configure_uses_adapter_metadata(tmp_path):
         "nclasses": 3,
         "device": "cpu",
         "torch_version": "fake-torch",
+    }
+
+
+def test_detection_train_request_merges_config_and_train_overrides(tmp_path):
+    train = tmp_path / "train.txt"
+    test = tmp_path / "test.txt"
+    context = WorkerContext(
+        repository=str(tmp_path),
+        mllib={
+            "nclasses": 2,
+            "solver": {"iterations": 10, "test_interval": 5},
+            "net": {"batch_size": 4},
+            "base_only": True,
+        },
+        raw={},
+    )
+
+    parsed = DetectionTrainRequest.from_params(
+        context,
+        {
+            "request": {
+                "data": [str(train), str(test)],
+                "parameters": {
+                    "mllib": {
+                        "solver": {"iterations": 3, "iter_size": 2},
+                        "net": {"batch_size": 1},
+                    }
+                },
+            }
+        },
+    )
+
+    assert parsed.train_list == train
+    assert parsed.test_lists == [test]
+    assert parsed.effective_mllib["base_only"] is True
+    assert parsed.options == DetectionTrainOptions(
+        iterations=3,
+        test_interval=3,
+        batch_size=1,
+        iter_size=2,
+        base_lr=0.0001,
+    )
+
+
+def test_detection_repository_contract_writer_persists_expected_artifacts(tmp_path):
+    class FakeDataset:
+        def __init__(self, path, size):
+            self.list_path = path
+            self.size = size
+
+        def __len__(self):
+            return self.size
+
+    context = WorkerContext(
+        repository=str(tmp_path),
+        mllib={"nclasses": 3, "class_names": ["background", "ring", "hand"]},
+        raw={},
+    )
+    train = FakeDataset(tmp_path / "train.txt", 12)
+    tests = [FakeDataset(tmp_path / "test.txt", 3)]
+
+    DetectionRepositoryContractWriter(
+        context,
+        worker_name="fake-detector",
+        task_name="detection",
+        nclasses=3,
+    ).write(
+        train_dataset=train,
+        test_datasets=tests,
+        request={
+            "data": [str(train.list_path), str(tests[0].list_path)],
+        },
+        request_params={
+            "input": {"width": 320},
+            "output": {"measure": ["map-50"]},
+        },
+        effective_mllib=context.mllib,
+    )
+
+    config = json.loads(
+        (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
+    )
+    manifest = json.loads(
+        (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
+    )
+    classes = json.loads(
+        (tmp_path / "class_mapping.json").read_text(encoding="utf-8")
+    )
+
+    assert config["worker"] == "fake-detector"
+    assert config["input_parameters"] == {"width": 320}
+    assert manifest["train"] == {"path": str(train.list_path), "samples": 12}
+    assert manifest["tests"] == [
+        {"index": 0, "path": str(tests[0].list_path), "samples": 3}
+    ]
+    assert classes == {"0": "background", "1": "ring", "2": "hand"}
+
+
+def test_detection_progress_reporter_emits_stable_status_and_metrics():
+    events = []
+    progress = DetectionProgressReporter(
+        WorkerReporter(lambda event, payload: events.append((event, payload)))
+    )
+
+    progress.train_step(
+        iteration=2,
+        iterations=5,
+        start_time=time.monotonic(),
+        base_lr=0.01,
+        train_loss=1.5,
+        losses={"loss_box": 0.5},
+    )
+    progress.test_progress(
+        iteration=2,
+        test_index=1,
+        test_sets_total=3,
+        processed=4,
+        total=10,
+    )
+    progress.test_finished(
+        iteration=2,
+        test_sets_total=3,
+        predictions_payload={"test1": {"iteration": 2, "samples": []}},
+    )
+
+    status_payloads = [payload for event, payload in events if event == "status"]
+    metric_payloads = [payload for event, payload in events if event == "metric"]
+    assert status_payloads[0]["phase"] == "train"
+    assert status_payloads[1]["test_set_index"] == 1
+    assert status_payloads[1]["test_processed"] == 4
+    assert status_payloads[2]["test_active"] == 0
+    assert "test_predictions" in status_payloads[2]
+    assert {"name": "train_loss", "value": 1.5, "iteration": 2} in metric_payloads
+    assert {"name": "loss_box", "value": 0.5, "iteration": 2} in metric_payloads
+
+
+def test_detection_class_mapping_accepts_dict_and_list_names():
+    assert class_mapping(3, {"classes": ["background", "ring", "hand"]}) == {
+        "0": "background",
+        "1": "ring",
+        "2": "hand",
+    }
+    assert class_mapping(3, {"class_names": {"1": "ring", 2: "hand"}}) == {
+        "0": "background",
+        "1": "ring",
+        "2": "hand",
     }
 
 
