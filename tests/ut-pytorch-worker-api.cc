@@ -602,6 +602,18 @@ TEST(pytorchworkerapi, reference_detector_trains_connector_pull_tensors)
   ASSERT_FALSE(manifest.HasParseError());
   ASSERT_STREQ("connector-tensor-pull", manifest["boundary"].GetString())
       << japi.jrender(manifest);
+  ASSERT_TRUE(manifest.HasMember("connector")) << japi.jrender(manifest);
+  ASSERT_STREQ("shared_memory",
+               manifest["connector"]["transport"].GetString())
+      << japi.jrender(manifest);
+  ASSERT_TRUE(manifest["connector"].HasMember("input_width"))
+      << japi.jrender(manifest);
+  ASSERT_TRUE(manifest["connector"].HasMember("input_height"))
+      << japi.jrender(manifest);
+  ASSERT_TRUE(manifest["connector"].HasMember("train_shuffle"))
+      << japi.jrender(manifest);
+  ASSERT_FALSE(manifest["connector"]["augmentation_enabled"].GetBool())
+      << japi.jrender(manifest);
   ASSERT_EQ(2, manifest["train"]["samples"].GetInt())
       << japi.jrender(manifest);
   ASSERT_EQ(2U, manifest["tests"].Size()) << japi.jrender(manifest);

@@ -32,6 +32,12 @@ namespace dd
     return vout();
   }
 
+  vout visitor_vad::operator()(const APINull &null_value)
+  {
+    (void)null_value;
+    return vout();
+  }
+
   vout visitor_vad::operator()(const double &d)
   {
     (void)d;

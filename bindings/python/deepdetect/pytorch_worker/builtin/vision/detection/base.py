@@ -277,6 +277,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
             request=train_request.request,
             request_params=train_request.request_params,
             effective_mllib=train_request.effective_mllib,
+            connector_info=dataset_info,
         )
 
         self.debug("train: creating model")
@@ -852,7 +853,14 @@ class ConnectorBatchPrefetcher:
     def next(
         self,
     ) -> tuple[list[Any], list[dict[str, Any]], list[dict[str, Any]]] | None:
+        start = time.monotonic()
         item = self._queue.get()
+        elapsed = (time.monotonic() - start) * 1000.0
+        detection_debug(
+            "prefetch_queue_wait elapsed_ms=%.3f item_type=%s"
+            % (elapsed, type(item).__name__),
+            tag="connector",
+        )
         if isinstance(item, BaseException):
             raise item
         return item

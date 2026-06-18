@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import sys
+import time
 from dataclasses import dataclass
 from numbers import Real
 from pathlib import Path
@@ -132,17 +135,35 @@ class WorkerConnector:
         }
         if test_index is not None:
             params["test_index"] = int(test_index)
+        start = time.monotonic()
         result = self._request("connector_batch_next", params)
+        elapsed = (time.monotonic() - start) * 1000.0
         if not isinstance(result, dict):
             raise DatasetContractError("connector_batch_next result must be an object")
+        debug_log(
+            "connector",
+            "connector_batch_next wait_ms=%.3f batch_id=%s split=%s sample_count=%s"
+            % (
+                elapsed,
+                result.get("batch_id"),
+                result.get("split", split),
+                result.get("sample_count"),
+            ),
+        )
         return result
 
     def batch_done(self, batch_id: Any) -> None:
         if batch_id is None:
             return
+        start = time.monotonic()
         result = self._request("connector_batch_done", {"batch_id": str(batch_id)})
+        elapsed = (time.monotonic() - start) * 1000.0
         if not isinstance(result, dict):
             raise DatasetContractError("connector_batch_done result must be an object")
+        debug_log(
+            "connector",
+            "connector_batch_done ack_ms=%.3f batch_id=%s" % (elapsed, batch_id),
+        )
 
 
 class DeepDetectWorkerBase:
@@ -204,6 +225,17 @@ def validate_optional_result_dict(
         raise error_type(f"{label} must return a dict")
     validate_json_payload(result, error_type, label)
     return result
+
+
+def debug_log(tag: str, message: str) -> None:
+    if os.environ.get("DEEPDETECT_DEBUG") or os.environ.get(
+        "DEEPDETECT_WORKER_DEBUG"
+    ):
+        print(
+            f"[deepdetect-debug][{tag}] {message}",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def validate_prediction_result(result: Any) -> dict[str, Any]:
