@@ -15,6 +15,7 @@
 #include <fstream>
 #include <filesystem>
 #include <string>
+#include <sys/wait.h>
 #include <thread>
 
 using namespace dd;
@@ -67,6 +68,16 @@ namespace
   {
     cleanup_repo(repo);
     std::filesystem::create_directories(repo);
+  }
+
+  bool python_has_torchvision()
+  {
+    const std::string command
+        = "\"" + python_executable()
+          + "\" -c \"import torch, torchvision; from torchvision.ops import "
+            "nms\" >/dev/null 2>&1";
+    const int status = std::system(command.c_str());
+    return status != -1 && WIFEXITED(status) && WEXITSTATUS(status) == 0;
   }
 
   void write_text_file(const std::filesystem::path &path,
@@ -163,14 +174,16 @@ namespace
            + ",\"base_lr\":0.01}}},\"data\":[\"dummy\"]}";
   }
 
-  std::string reference_detector_train_request(const std::string &service,
-                                               const DetectionFixture &fixture)
+  std::string detection_train_request(const std::string &service,
+                                      const DetectionFixture &fixture,
+                                      int iterations)
   {
     return "{\"service\":\"" + service
            + "\",\"async\":true,\"parameters\":{\"input\":{},"
              "\"output\":{\"measure_hist\":true,\"test_predictions\":true,"
              "\"measure\":[\"map-50\"]},\"mllib\":{\"solver\":{\"iterations\":"
-             "2,"
+           + std::to_string(iterations)
+           + ","
              "\"base_lr\":0.001,\"test_interval\":1},\"net\":{\"batch_size\":"
              "1}}},"
              "\"data\":[\""
@@ -256,7 +269,7 @@ TEST(pytorchworkerapi, reference_detector_trains_tiny_detection_fixture)
                                                   + "\",\"gpu\":false"))));
 
   JDoc train
-      = japi.service_train(reference_detector_train_request(service, fixture));
+      = japi.service_train(detection_train_request(service, fixture, 2));
   ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
   ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
   ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
@@ -295,6 +308,72 @@ TEST(pytorchworkerapi, reference_detector_trains_tiny_detection_fixture)
                                                / "connector_manifest.json"));
   ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
                                                / "class_mapping.json"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
+                                               / "checkpoint-latest.pt"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
+                                               / "solver-latest.pt"));
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi, torchvision_detector_trains_tiny_detection_fixture)
+{
+  configure_pythonpath();
+  if (!python_has_torchvision())
+    GTEST_SKIP() << "selected Python cannot import torchvision custom ops";
+
+  JsonAPI japi;
+  const std::string service = "pytorchworker_torchvision_detector";
+  const std::string repo = repo_path(service);
+  const DetectionFixture fixture
+      = prepare_detection_fixture(service + "_fixture");
+  prepare_repo(repo);
+
+  const std::string module
+      = "deepdetect.pytorch_worker.builtin.vision.detection."
+        "torchvision_fasterrcnn";
+  ASSERT_EQ(created_str,
+            japi.jrender(japi.service_create(
+                service, create_request(repo, ",\"module\":\"" + module
+                                                  + "\",\"gpu\":false"))));
+
+  JDoc train
+      = japi.service_train(detection_train_request(service, fixture, 1));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
+  ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 240, true);
+  ASSERT_STREQ("finished", status["head"]["status"].GetString())
+      << japi.jrender(status);
+  ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"].HasMember("measure_hist"))
+      << japi.jrender(status);
+  const auto &hist = status["body"]["measure_hist"];
+  ASSERT_TRUE(hist.HasMember("iteration_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("train_loss_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_classifier_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_box_reg_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test0_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test1_hist")) << japi.jrender(status);
+
+  ASSERT_TRUE(status["body"].HasMember("test_predictions"))
+      << japi.jrender(status);
+  const auto &predictions = status["body"]["test_predictions"];
+  ASSERT_TRUE(predictions.HasMember("test0")) << japi.jrender(status);
+  ASSERT_TRUE(predictions.HasMember("test1")) << japi.jrender(status);
+  ASSERT_TRUE(predictions["test0"].HasMember("samples"))
+      << japi.jrender(status);
+  ASSERT_TRUE(predictions["test1"].HasMember("samples"))
+      << japi.jrender(status);
+
+  ASSERT_TRUE(std::filesystem::is_regular_file(
+      std::filesystem::path(repo) / "pytorch_worker_config.json"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
+                                               / "connector_manifest.json"));
   ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
                                                / "checkpoint-latest.pt"));
   ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
