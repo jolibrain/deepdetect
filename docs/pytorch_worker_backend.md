@@ -198,6 +198,51 @@ Object detection can use `DetectionTensorBatchDataset` to adapt parsed
 `DetectionListDataset`. This is used only by tests until C++ connectors emit
 real tensor batches.
 
+The Python worker runtime can already accept tensor-backed training requests
+for this test/development path:
+
+```json
+{
+  "request": {
+    "data": [],
+    "tensor_batches": {
+      "train": [{"kind": "tensor_batch", "inputs": []}],
+      "tests": [[{"kind": "tensor_batch", "inputs": []}]]
+    }
+  }
+}
+```
+
+`data` and `tensor_batches` are mutually exclusive. Tensor-backed requests use
+the same detection train loop, metrics, checkpoints, and evaluation flow as
+path-backed requests. The repository config and connector manifest record only
+batch and sample counts, not the full tensor values.
+
+C++ `APIData` cannot currently carry arrays of arrays, so the Python runtime
+also accepts the equivalent C++-friendly test-set and detection-target shapes:
+
+```json
+{
+  "tensor_batches": {
+    "train": [{"kind": "tensor_batch", "inputs": []}],
+    "tests": [{"batches": [{"kind": "tensor_batch", "inputs": []}]}]
+  }
+}
+```
+
+```json
+{
+  "targets": {
+    "samples": [
+      {
+        "boxes": [{"xmin": 1, "ymin": 2, "xmax": 8, "ymax": 9}],
+        "labels": [1]
+      }
+    ]
+  }
+}
+```
+
 ### Reserved V2: GPU Tensor References
 
 The protocol reserves a GPU tensor boundary for later work. V1 must not
@@ -509,7 +554,7 @@ The base delegates reusable trainer concerns to small helpers in
 `training.py`:
 
 - `DetectionTrainRequest` and `DetectionTrainOptions` parse train data,
-  solver, net, and CLI/API overrides;
+  tensor batches, solver, net, and CLI/API overrides;
 - `DetectionCheckpointManager` loads and saves model and optimizer state;
 - `DetectionRepositoryContractWriter` writes the effective worker config,
   connector manifest, and class mapping;
@@ -844,10 +889,57 @@ DeepDetect, the CLI, and Python workers own separate repository files:
 - `exports/`: optional deployment artifacts.
 - `visual_results/` or existing DeepDetect visual result paths when requested.
 
-The initial V1 `connector_manifest.json` is path-backed. It records train and
-test list paths, sample counts, task, class count, input parameters, and output
-parameters. It intentionally does not expand every sample path, to keep large
-training repositories auditable without producing huge metadata files.
+The initial V1 `connector_manifest.json` is path-backed for normal training. It
+records train and test list paths, sample counts, task, class count, input
+parameters, and output parameters. It intentionally does not expand every
+sample path, to keep large training repositories auditable without producing
+huge metadata files.
+
+Tensor-backed Python test/development runs write `boundary: "tensor-backed"` and
+record train/test batch counts plus materialized sample counts. They do not
+persist inline tensor values or future shared-memory descriptors.
+
+For CLI smoke testing before shared-memory transport exists, managed PyTorch
+detection training can request C++ connector-produced inline tensors with:
+
+```yaml
+mllib:
+  data_source: connector_tensor_inline
+```
+
+or:
+
+```shell
+--set mllib.data_source=connector_tensor_inline
+```
+
+This path is detection-only and intended for tiny local tests. It reads image
+and bbox list files through the C++ image connector, emits inline CPU tensor
+batches, and then uses the same Python worker train loop as the future
+production tensor path.
+
+For larger local runs before shared-memory transport, detection training can
+use the pull-mode CPU tensor boundary:
+
+```yaml
+mllib:
+  data_source: connector_tensor_pull
+```
+
+or:
+
+```shell
+--set mllib.data_source=connector_tensor_pull
+```
+
+In this mode the C++ connector parses dataset list files once, then serves
+preprocessed CPU tensor batches on demand through the worker protocol. The
+Python worker owns the training loop and optimizer, requests
+`connector_dataset_info` at startup, then calls `connector_batch_next` for
+training and evaluation batches. This avoids pre-serializing full datasets
+before model creation while preserving the same metrics, checkpoints, and
+repository contracts. It remains an interim inline-value transport; shared
+memory and GPU tensor references are deferred to later phases.
 
 ## Distributed Training
 

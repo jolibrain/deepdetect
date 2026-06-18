@@ -143,6 +143,63 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
+  APIData PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                           TMLModel>::train_request(const APIData &ad)
+  {
+    if (!connector_tensor_inline_requested(ad))
+      return ad;
+    debug_log("train_request: building connector_tensor_inline batches");
+    APIData request = ad;
+    request.add("data", std::vector<std::string>());
+    request.add("tensor_batches",
+                this->_inputc.inline_detection_tensor_batches(ad));
+    return request;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  bool
+  PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                   TMLModel>::connector_tensor_inline_requested(const APIData
+                                                                    &ad) const
+  {
+    return connector_data_source_requested(ad, "connector_tensor_inline");
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  bool
+  PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                   TMLModel>::connector_tensor_pull_requested(const APIData
+                                                                  &ad) const
+  {
+    return connector_data_source_requested(ad, "connector_tensor_pull");
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  bool PytorchWorkerLib<
+      TInputConnectorStrategy, TOutputConnectorStrategy,
+      TMLModel>::connector_data_source_requested(const APIData &ad,
+                                                 const std::string &name) const
+  {
+    if (ad.has("parameters"))
+      {
+        APIData parameters = ad.getobj("parameters");
+        if (parameters.has("mllib"))
+          {
+            APIData mllib = parameters.getobj("mllib");
+            if (mllib.has("data_source"))
+              return mllib.get("data_source").get<std::string>() == name;
+          }
+      }
+    if (_mllib_params.has("data_source"))
+      return _mllib_params.get("data_source").get<std::string>() == name;
+    return false;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
   int PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                        TMLModel>::train(const APIData &ad, APIData &out)
   {
@@ -150,39 +207,110 @@ namespace dd
       throw MLLibInternalException("pytorch worker is not configured");
 
     std::lock_guard<std::mutex> lock(_worker_mutex);
-    this->_tjob_running.store(true);
-    APIData params = request_params(ad);
-    debug_log("train: sending train_start");
-    _worker->request("train_start", params);
-    debug_log("train: train_start acknowledged");
-
-    bool finished = false;
-    bool cancel_sent = false;
-    int status = 1;
-    while (!finished)
+    const bool pull_requested = connector_tensor_pull_requested(ad);
+    if (pull_requested)
       {
-        if (!this->_tjob_running.load() && !cancel_sent)
-          {
-            APIData cancel_params;
-            try
-              {
-                int request_id = -1;
-                _worker->send_request("train_cancel", cancel_params,
-                                      request_id);
-              }
-            catch (...)
-              {
-              }
-            cancel_sent = true;
-          }
-        std::string message;
-        if (!_worker->read_message(message, 200))
-          continue;
-        process_worker_message(message, finished, status, out);
+        debug_log("train: starting connector_tensor_pull session");
+        this->_inputc.start_inline_detection_pull_session(ad);
       }
-    debug_log("train: finished with status=" + std::to_string(status));
-    this->_tjob_running.store(false);
-    return status;
+    try
+      {
+        APIData params = request_params(train_request(ad));
+        this->_tjob_running.store(true);
+        debug_log("train: sending train_start");
+        _worker->request("train_start", params);
+        debug_log("train: train_start acknowledged");
+
+        bool finished = false;
+        bool cancel_sent = false;
+        int status = 1;
+        while (!finished)
+          {
+            if (!this->_tjob_running.load() && !cancel_sent)
+              {
+                APIData cancel_params;
+                try
+                  {
+                    int request_id = -1;
+                    _worker->send_request("train_cancel", cancel_params,
+                                          request_id);
+                  }
+                catch (...)
+                  {
+                  }
+                cancel_sent = true;
+              }
+            std::string message;
+            if (!_worker->read_message(message, 200))
+              continue;
+            if (process_worker_request(message))
+              continue;
+            process_worker_message(message, finished, status, out);
+          }
+        debug_log("train: finished with status=" + std::to_string(status));
+        this->_tjob_running.store(false);
+        if (pull_requested)
+          this->_inputc.cleanup_inline_detection_pull_session();
+        return status;
+      }
+    catch (...)
+      {
+        this->_tjob_running.store(false);
+        if (pull_requested)
+          this->_inputc.cleanup_inline_detection_pull_session();
+        throw;
+      }
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  bool PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                        TMLModel>::process_worker_request(const std::string
+                                                              &message)
+  {
+    rapidjson::Document doc;
+    doc.Parse<rapidjson::kParseNanAndInfFlag>(message.c_str());
+    if (doc.HasParseError() || !doc.IsObject() || !doc.HasMember("method")
+        || !doc.HasMember("id") || !doc["id"].IsInt())
+      return false;
+
+    const int request_id = doc["id"].GetInt();
+    const std::string method = json_string(doc["method"]);
+    debug_log("process_worker_request: method=" + method);
+    try
+      {
+        APIData result;
+        if (method == "connector_dataset_info")
+          result = this->_inputc.connector_dataset_info();
+        else if (method == "connector_batch_next")
+          {
+            APIData params;
+            if (doc.HasMember("params") && doc["params"].IsObject())
+              params.fromRapidJson(doc["params"]);
+            result = this->_inputc.connector_batch_next(params);
+          }
+        else if (method == "connector_batch_done")
+          {
+            APIData params;
+            if (doc.HasMember("params") && doc["params"].IsObject())
+              params.fromRapidJson(doc["params"]);
+            result = this->_inputc.connector_batch_done(params);
+          }
+        else
+          {
+            _worker->send_error_response(request_id, "worker_contract_error",
+                                         "unknown worker request method: "
+                                             + method);
+            return true;
+          }
+        _worker->send_response(request_id, result);
+      }
+    catch (const std::exception &error)
+      {
+        _worker->send_error_response(request_id, "dataset_contract_error",
+                                     error.what());
+      }
+    return true;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import mmap
+import os
 from typing import Any, Mapping
 
 from .sdk import DatasetContractError, WorkerContractError
@@ -44,6 +46,19 @@ class TensorBatchRef:
     inputs: tuple[TensorRef, ...]
     targets: Any = None
     meta: Any = None
+
+
+@dataclass
+class MaterializedTensor:
+    tensor: Any
+    resources: list[Any]
+
+    def close(self) -> None:
+        for resource in reversed(self.resources):
+            close = getattr(resource, "close", None)
+            if callable(close):
+                close()
+        self.resources.clear()
 
 
 def parse_tensor_ref(value: Any) -> TensorRef:
@@ -150,6 +165,54 @@ def materialize_inline_tensor_ref(ref: TensorRef, torch: Any) -> Any:
     return torch.tensor(list(ref.storage.values), dtype=dtype).reshape(ref.shape)
 
 
+def materialize_tensor_ref(ref: TensorRef, torch: Any) -> MaterializedTensor:
+    if ref.storage.type == "inline_test_stub":
+        return MaterializedTensor(materialize_inline_tensor_ref(ref, torch), [])
+    if ref.storage.type == "shared_memory":
+        return materialize_shared_memory_tensor_ref(ref, torch)
+    raise DatasetContractError(
+        f"tensor storage cannot be materialized: {ref.storage.type}"
+    )
+
+
+def materialize_shared_memory_tensor_ref(ref: TensorRef, torch: Any) -> MaterializedTensor:
+    if ref.device != "cpu":
+        raise DatasetContractError(
+            f"tensor ref device is reserved for future use: {ref.device}"
+        )
+    if not ref.storage.name:
+        raise WorkerContractError("shared_memory tensor storage requires name")
+    expected_nbytes = math.prod(ref.shape) * _dtype_nbytes(ref.dtype)
+    if ref.storage.nbytes < expected_nbytes:
+        raise WorkerContractError(
+            "shared_memory tensor nbytes is smaller than tensor shape requires"
+        )
+    if ref.storage.offset + expected_nbytes > ref.storage.nbytes:
+        raise WorkerContractError("shared_memory tensor offset exceeds storage size")
+    if not os.path.isfile(ref.storage.name):
+        raise DatasetContractError(
+            f"shared_memory tensor storage not found: {ref.storage.name}"
+        )
+
+    import numpy as np
+
+    file_handle = open(ref.storage.name, "r+b")
+    try:
+        mm = mmap.mmap(file_handle.fileno(), ref.storage.nbytes, access=mmap.ACCESS_WRITE)
+    except Exception:
+        file_handle.close()
+        raise
+    dtype = _numpy_dtype(np, ref.dtype)
+    array = np.ndarray(
+        shape=ref.shape,
+        dtype=dtype,
+        buffer=mm,
+        offset=ref.storage.offset,
+    )
+    tensor = torch.from_numpy(array)
+    return MaterializedTensor(tensor, [mm, file_handle])
+
+
 def _torch_dtype(torch: Any, dtype: str) -> Any:
     mapping = {
         "bool": torch.bool,
@@ -158,6 +221,36 @@ def _torch_dtype(torch: Any, dtype: str) -> Any:
         "int32": torch.int32,
         "int64": torch.int64,
         "uint8": torch.uint8,
+    }
+    try:
+        return mapping[dtype]
+    except KeyError as error:
+        raise WorkerContractError(f"unsupported tensor dtype: {dtype}") from error
+
+
+def _numpy_dtype(np: Any, dtype: str) -> Any:
+    mapping = {
+        "bool": np.bool_,
+        "float32": np.float32,
+        "float64": np.float64,
+        "int32": np.int32,
+        "int64": np.int64,
+        "uint8": np.uint8,
+    }
+    try:
+        return mapping[dtype]
+    except KeyError as error:
+        raise WorkerContractError(f"unsupported tensor dtype: {dtype}") from error
+
+
+def _dtype_nbytes(dtype: str) -> int:
+    mapping = {
+        "bool": 1,
+        "float32": 4,
+        "float64": 8,
+        "int32": 4,
+        "int64": 8,
+        "uint8": 1,
     }
     try:
         return mapping[dtype]

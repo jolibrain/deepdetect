@@ -1,4 +1,5 @@
 import json
+import struct
 import threading
 import time
 import sys
@@ -19,7 +20,10 @@ from deepdetect.pytorch_worker.sdk import (
     WorkerReporter,
 )
 from deepdetect.pytorch_worker.tensors import parse_tensor_batch_ref, parse_tensor_ref
-from deepdetect.pytorch_worker.tensors import materialize_inline_tensor_ref
+from deepdetect.pytorch_worker.tensors import (
+    materialize_inline_tensor_ref,
+    materialize_tensor_ref,
+)
 from deepdetect.pytorch_worker.builtin.vision.detection.base import (
     DetectionTrainingWorkerBase,
 )
@@ -129,6 +133,71 @@ def test_protocol_roundtrip():
         right.close()
 
 
+def test_runtime_routes_training_thread_connector_request():
+    class ConnectorWorker(DeepDetectWorkerBase):
+        def train(self, params, *, reporter, cancellation):
+            info = self.context.connector.dataset_info()
+            reporter.metric("train_samples", info["train_samples"], iteration=1)
+            return {"status": "finished", "train_samples": info["train_samples"]}
+
+        def predict(self, params):
+            return {"results": []}
+
+    module_name = "unit_test_connector_worker"
+    install_worker_module(module_name, ConnectorWorker)
+    runtime_sock, host_sock = socket_pair()
+    runtime = WorkerRuntime(runtime_sock)
+    thread = threading.Thread(target=runtime.serve, daemon=True)
+    thread.start()
+    try:
+        request(
+            host_sock,
+            1,
+            "configure",
+            {"repository": "/tmp/dd-test", "mllib": {"module": module_name}},
+        )
+        configure_response = read_until(host_sock, message_id=1)
+        assert configure_response["result"] == {}
+
+        request(host_sock, 2, "train_start", {"request": {"data": []}})
+        train_start_response = read_until(host_sock, message_id=2)
+        assert train_start_response["result"] == {"status": "started"}
+
+        connector_request = read_frame(host_sock)
+        assert "method" in connector_request, connector_request
+        assert connector_request["method"] == "connector_dataset_info"
+        assert connector_request["id"] < 0
+        write_frame(
+            host_sock,
+            {
+                "id": connector_request["id"],
+                "result": {
+                    "task": "detection",
+                    "boundary": "connector-tensor-pull",
+                    "train_samples": 3,
+                    "test_samples": [1],
+                },
+            },
+        )
+
+        metric = read_until(host_sock, event="metric")
+        assert metric["payload"] == {
+            "name": "train_samples",
+            "value": 3,
+            "iteration": 1,
+        }
+        result = read_until(host_sock, event="train_result")
+        assert result["payload"] == {"status": "finished", "train_samples": 3}
+
+        request(host_sock, 3, "shutdown")
+        shutdown_response = read_until(host_sock, message_id=3)
+        assert shutdown_response["result"] == {"status": "shutdown"}
+    finally:
+        host_sock.close()
+        runtime_sock.close()
+        thread.join(timeout=2)
+
+
 def tensor_ref_payload(**overrides):
     payload = {
         "kind": "tensor_ref",
@@ -169,6 +238,65 @@ def inline_tensor_ref_payload(shape, values, *, dtype="float32"):
             "values": list(values),
         },
     )
+
+
+def detection_tensor_batch_payload(
+    *,
+    sample_id=7,
+    width=16,
+    height=12,
+    value=0.5,
+):
+    return {
+        "kind": "tensor_batch",
+        "inputs": [
+            inline_tensor_ref_payload(
+                (1, 3, height, width),
+                [value] * (1 * 3 * height * width),
+            )
+        ],
+        "targets": {
+            "boxes": [[[1, 2, min(8, width), min(9, height)]]],
+            "labels": [[1]],
+        },
+        "meta": {
+            "sample_ids": [sample_id],
+            "paths": [f"tensor://sample{sample_id}"],
+            "widths": [width],
+            "heights": [height],
+        },
+    }
+
+
+def cxx_compatible_detection_tensor_batch_payload(
+    *,
+    sample_id=7,
+    width=16,
+    height=12,
+    value=0.5,
+):
+    payload = detection_tensor_batch_payload(
+        sample_id=sample_id,
+        width=width,
+        height=height,
+        value=value,
+    )
+    payload["targets"] = {
+        "samples": [
+            {
+                "boxes": [
+                    {
+                        "xmin": 1,
+                        "ymin": 2,
+                        "xmax": min(8, width),
+                        "ymax": min(9, height),
+                    }
+                ],
+                "labels": [1],
+            }
+        ]
+    }
+    return payload
 
 
 def test_tensor_ref_parses_cpu_metadata():
@@ -222,14 +350,31 @@ def test_inline_tensor_ref_rejects_mismatched_value_count():
     assert "values count" in str(error.value)
 
 
-def test_shared_memory_tensor_ref_is_not_materialized_yet():
+def test_shared_memory_tensor_ref_materializes_torch_tensor(tmp_path):
     torch = pytest.importorskip("torch")
-    ref = parse_tensor_ref(tensor_ref_payload())
+    storage = tmp_path / "tensor.bin"
+    storage.write_bytes(struct.pack("6f", 1, 2, 3, 4, 5, 6))
+    ref = parse_tensor_ref(
+        tensor_ref_payload(
+            shape=[2, 3],
+            strides=None,
+            storage={
+                "type": "shared_memory",
+                "name": str(storage),
+                "offset": 0,
+                "nbytes": 24,
+            },
+        )
+    )
 
-    with pytest.raises(DatasetContractError) as error:
-        materialize_inline_tensor_ref(ref, torch)
-
-    assert "cannot be materialized" in str(error.value)
+    materialized = materialize_tensor_ref(ref, torch)
+    try:
+        tensor = materialized.tensor
+        assert tuple(tensor.shape) == (2, 3)
+        assert tensor.dtype == torch.float32
+        assert tensor[1, 2].item() == 6.0
+    finally:
+        materialized.close()
 
 
 @pytest.mark.parametrize(
@@ -323,6 +468,22 @@ def test_detection_tensor_batch_dataset_returns_detection_sample_contract():
         "width": 5,
         "height": 4,
     }
+
+
+def test_detection_tensor_batch_dataset_accepts_cxx_compatible_targets():
+    torch = pytest.importorskip("torch")
+    batch = parse_tensor_batch_ref(
+        cxx_compatible_detection_tensor_batch_payload(sample_id=43)
+    )
+
+    dataset = DetectionTensorBatchDataset([batch], nclasses=2, torch=torch)
+    _image, target, meta = dataset[0]
+
+    assert len(dataset) == 1
+    assert target["boxes"].tolist() == [[1.0, 2.0, 8.0, 9.0]]
+    assert target["labels"].tolist() == [1]
+    assert target["image_id"].tolist() == [43]
+    assert meta["path"] == "tensor://sample43"
 
 
 def test_detection_tensor_batch_dataset_feeds_reference_detector_loss():
@@ -521,6 +682,89 @@ def test_detection_train_request_merges_config_and_train_overrides(tmp_path):
     )
 
 
+def test_detection_train_request_accepts_tensor_batches(tmp_path):
+    context = WorkerContext(
+        repository=str(tmp_path),
+        mllib={"nclasses": 2, "solver": {"iterations": 10}},
+        raw={},
+    )
+
+    parsed = DetectionTrainRequest.from_params(
+        context,
+        {
+            "request": {
+                "data": [],
+                "tensor_batches": {
+                    "train": [detection_tensor_batch_payload(sample_id=1)],
+                    "tests": [[detection_tensor_batch_payload(sample_id=2)]],
+                },
+                "parameters": {
+                    "mllib": {
+                        "solver": {"iterations": 1, "test_interval": 1},
+                    }
+                },
+            }
+        },
+    )
+
+    assert parsed.source == "tensor"
+    assert parsed.train_list is None
+    assert parsed.test_lists == []
+    assert len(parsed.train_tensor_batches) == 1
+    assert len(parsed.test_tensor_batches) == 1
+    assert len(parsed.test_tensor_batches[0]) == 1
+    assert parsed.options.iterations == 1
+
+
+def test_detection_train_request_accepts_cxx_compatible_tensor_test_sets(tmp_path):
+    parsed = DetectionTrainRequest.from_params(
+        WorkerContext(repository=str(tmp_path), mllib={"nclasses": 2}, raw={}),
+        {
+            "request": {
+                "data": [],
+                "tensor_batches": {
+                    "train": [
+                        cxx_compatible_detection_tensor_batch_payload(sample_id=1)
+                    ],
+                    "tests": [
+                        {
+                            "batches": [
+                                cxx_compatible_detection_tensor_batch_payload(
+                                    sample_id=2
+                                )
+                            ]
+                        }
+                    ],
+                },
+            }
+        },
+    )
+
+    assert parsed.source == "tensor"
+    assert len(parsed.train_tensor_batches) == 1
+    assert len(parsed.test_tensor_batches) == 1
+    assert len(parsed.test_tensor_batches[0]) == 1
+
+
+def test_detection_train_request_rejects_mixed_path_and_tensor_sources(tmp_path):
+    train = tmp_path / "train.txt"
+
+    with pytest.raises(DatasetContractError) as error:
+        DetectionTrainRequest.from_params(
+            None,
+            {
+                "request": {
+                    "data": [str(train)],
+                    "tensor_batches": {
+                        "train": [detection_tensor_batch_payload()],
+                    },
+                }
+            },
+        )
+
+    assert "must not mix" in str(error.value)
+
+
 def test_detection_repository_contract_writer_persists_expected_artifacts(tmp_path):
     class FakeDataset:
         def __init__(self, path, size):
@@ -573,6 +817,68 @@ def test_detection_repository_contract_writer_persists_expected_artifacts(tmp_pa
         {"index": 0, "path": str(tests[0].list_path), "samples": 3}
     ]
     assert classes == {"0": "background", "1": "ring", "2": "hand"}
+
+
+def test_detection_repository_contract_writer_persists_tensor_backed_artifacts(tmp_path):
+    class FakeTensorDataset:
+        def __init__(self, batches, size):
+            self.batches = batches
+            self.size = size
+
+        def __len__(self):
+            return self.size
+
+    context = WorkerContext(
+        repository=str(tmp_path),
+        mllib={"nclasses": 2},
+        raw={},
+    )
+    train = FakeTensorDataset([object(), object()], 4)
+    tests = [FakeTensorDataset([object()], 2)]
+
+    DetectionRepositoryContractWriter(
+        context,
+        worker_name="fake-detector",
+        task_name="detection",
+        nclasses=2,
+    ).write(
+        train_dataset=train,
+        test_datasets=tests,
+        source="tensor",
+        request={
+            "data": [],
+            "tensor_batches": {"train": ["redacted"], "tests": [["redacted"]]},
+        },
+        request_params={},
+        effective_mllib=context.mllib,
+    )
+
+    config = json.loads(
+        (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
+    )
+    manifest = json.loads(
+        (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
+    )
+
+    assert config["data"] == []
+    assert config["tensor_batches"] == {
+        "train_batches": 2,
+        "test_batches": [1],
+    }
+    assert manifest["boundary"] == "tensor-backed"
+    assert manifest["train"] == {
+        "source": "tensor-backed",
+        "batches": 2,
+        "samples": 4,
+    }
+    assert manifest["tests"] == [
+        {
+            "index": 0,
+            "source": "tensor-backed",
+            "batches": 1,
+            "samples": 2,
+        }
+    ]
 
 
 def test_detection_progress_reporter_emits_stable_status_and_metrics():
@@ -846,6 +1152,105 @@ def test_runtime_loads_reference_detector_from_mllib_module(tmp_path):
         prediction = read_until(server, message_id=3)
         assert prediction["result"]["results"][0]["uri"] == str(image.resolve())
         assert prediction["result"]["results"][0]["bboxes"]
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+
+
+def test_runtime_trains_reference_detector_from_tensor_batches(tmp_path):
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    module_name = (
+        "deepdetect.pytorch_worker.builtin.vision.detection.reference_torch_detector"
+    )
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(
+            server,
+            1,
+            "configure",
+            {
+                "repository": str(tmp_path),
+                "mllib": {
+                    "module": module_name,
+                    "class": "DeepDetectWorker",
+                    "nclasses": 2,
+                },
+            },
+        )
+        configured = read_until(server, message_id=1)
+        assert configured["result"]["worker"] == "reference-torch-detector"
+
+        request(
+            server,
+            2,
+            "train_start",
+            {
+                "request": {
+                    "data": [],
+                    "tensor_batches": {
+                        "train": [detection_tensor_batch_payload(sample_id=10)],
+                        "tests": [[detection_tensor_batch_payload(sample_id=11)]],
+                    },
+                    "parameters": {
+                        "mllib": {
+                            "solver": {
+                                "iterations": 1,
+                                "test_interval": 1,
+                                "base_lr": 0.001,
+                            },
+                            "net": {"batch_size": 1},
+                        },
+                        "output": {
+                            "measure": ["map-50"],
+                            "test_predictions": {"sample_count": 1},
+                        },
+                    },
+                }
+            },
+        )
+        assert read_until(server, message_id=2)["result"]["status"] == "started"
+        metrics = set()
+        saw_test_predictions = False
+        while True:
+            message = read_frame(server)
+            if message.get("event") == "metric":
+                metrics.add(message["payload"]["name"])
+            elif message.get("event") == "status":
+                saw_test_predictions = saw_test_predictions or (
+                    "test_predictions" in message["payload"]
+                )
+            elif message.get("event") == "failure":
+                raise AssertionError(message["payload"])
+            elif message.get("event") == "train_result":
+                assert message["payload"]["status"] == "finished"
+                break
+        assert {"train_loss", "loss_classifier", "loss_box_reg", "map_test0"} <= metrics
+        assert saw_test_predictions
+        manifest = json.loads(
+            (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
+        )
+        assert manifest["boundary"] == "tensor-backed"
+        assert manifest["train"] == {
+            "source": "tensor-backed",
+            "batches": 1,
+            "samples": 1,
+        }
+        assert manifest["tests"] == [
+            {
+                "index": 0,
+                "source": "tensor-backed",
+                "batches": 1,
+                "samples": 1,
+            }
+        ]
+        assert (tmp_path / "checkpoint-latest.pt").is_file()
+        assert (tmp_path / "solver-latest.pt").is_file()
     finally:
         request(server, 99, "shutdown")
         read_until(server, message_id=99)

@@ -24,9 +24,8 @@ namespace dd
 {
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel = PytorchWorkerModel>
-  class PytorchWorkerLib
-      : public MLLib<TInputConnectorStrategy, TOutputConnectorStrategy,
-                     TMLModel>
+  class PytorchWorkerLib : public MLLib<TInputConnectorStrategy,
+                                        TOutputConnectorStrategy, TMLModel>
   {
   public:
     PytorchWorkerLib(const PytorchWorkerModel &model);
@@ -43,10 +42,16 @@ namespace dd
     void configure_worker(const APIData &ad);
     void process_worker_message(const std::string &message, bool &finished,
                                 int &status, APIData &out);
+    bool process_worker_request(const std::string &message);
     void process_metric(const rapidjson::Value &payload);
     void process_status(const rapidjson::Value &payload);
     void process_failure(const rapidjson::Value &payload);
     APIData request_params(const APIData &ad) const;
+    APIData train_request(const APIData &ad);
+    bool connector_tensor_inline_requested(const APIData &ad) const;
+    bool connector_tensor_pull_requested(const APIData &ad) const;
+    bool connector_data_source_requested(const APIData &ad,
+                                         const std::string &name) const;
 
     std::shared_ptr<PytorchWorkerSupervisor> _worker;
     APIData _mllib_params;
