@@ -175,6 +175,7 @@ class DetectionRepositoryContractWriter:
         request: dict[str, Any],
         request_params: dict[str, Any],
         effective_mllib: dict[str, Any],
+        connector_info: dict[str, Any] | None = None,
     ) -> None:
         if self.context is None:
             return
@@ -267,6 +268,10 @@ class DetectionRepositoryContractWriter:
             "input_parameters": input_params,
             "output_parameters": output_params,
         }
+        if source == "connector_pull" and connector_info is not None:
+            manifest_payload["connector"] = connector_session_summary(
+                connector_info
+            )
         write_json_artifact(
             self.context.artifact_path("pytorch_worker_config.json"),
             config_payload,
@@ -404,6 +409,22 @@ def dataset_batch_count(dataset: Any) -> int:
     if isinstance(batches, list):
         return len(batches)
     return len(dataset)
+
+
+def connector_session_summary(info: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for key in (
+        "transport",
+        "input_width",
+        "input_height",
+        "train_shuffle",
+        "train_samples",
+        "test_samples",
+        "augmentation_enabled",
+    ):
+        if key in info:
+            summary[key] = info[key]
+    return summary
 
 
 @dataclass(frozen=True)

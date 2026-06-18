@@ -48,11 +48,14 @@
 namespace dd
 {
   class APIData;
+  struct APINull
+  {
+  };
 
   // recursive variant container, see utils/variant.hpp and
   // utils/recursive_wrapper.hpp
   typedef mapbox::util::variant<
-      std::string, double, int, long int, long long int, bool,
+      APINull, std::string, double, int, long int, long long int, bool,
       std::vector<std::string>, std::vector<double>, std::vector<int>,
       std::vector<bool>, std::vector<cv::Mat>,
 #ifdef USE_CUDA_CV
@@ -118,6 +121,7 @@ namespace dd
     ~visitor_vad(){};
 
     vout operator()(const std::string &str);
+    vout operator()(const APINull &null_value);
     vout operator()(const double &d);
     vout operator()(const int &i);
     vout operator()(const long int &i);
@@ -395,6 +399,15 @@ namespace dd
         _jv->AddMember(_jvkey,
                        JVal().SetString(str.c_str(), _jd->GetAllocator()),
                        _jd->GetAllocator());
+    }
+    void operator()(const APINull &null_value)
+    {
+      (void)null_value;
+      JVal value(rapidjson::kNullType);
+      if (!_jv)
+        _jd->AddMember(_jvkey, value, _jd->GetAllocator());
+      else
+        _jv->AddMember(_jvkey, value, _jd->GetAllocator());
     }
     void operator()(const int &i)
     {

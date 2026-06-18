@@ -15,6 +15,7 @@ from deepdetect.pytorch_worker.sdk import (
     DatasetContractError,
     DeepDetectWorkerBase,
     WorkerContext,
+    WorkerConnector,
     WorkerContractError,
     WorkerDependencyError,
     WorkerReporter,
@@ -262,8 +263,16 @@ def detection_tensor_batch_payload(
         "meta": {
             "sample_ids": [sample_id],
             "paths": [f"tensor://sample{sample_id}"],
+            "target_paths": [f"tensor://sample{sample_id}.txt"],
             "widths": [width],
             "heights": [height],
+            "original_widths": [width],
+            "original_heights": [height],
+            "preprocessed_widths": [width],
+            "preprocessed_heights": [height],
+            "augmentation_applied": False,
+            "augmentation_seed": None,
+            "augmentation_policy": "none",
         },
     }
 
@@ -484,6 +493,54 @@ def test_detection_tensor_batch_dataset_accepts_cxx_compatible_targets():
     assert target["labels"].tolist() == [1]
     assert target["image_id"].tolist() == [43]
     assert meta["path"] == "tensor://sample43"
+
+
+def test_detection_tensor_batch_dataset_accepts_pull_response_metadata(
+    monkeypatch, capsys
+):
+    torch = pytest.importorskip("torch")
+    monkeypatch.delenv("DEEPDETECT_DEBUG", raising=False)
+    monkeypatch.delenv("DEEPDETECT_WORKER_DEBUG", raising=False)
+    payload = cxx_compatible_detection_tensor_batch_payload(sample_id=44)
+    payload["meta"]["future_connector_field"] = {"ignored": True}
+
+    def request(method, params):
+        if method == "connector_batch_next":
+            assert params["split"] == "train"
+            return {
+                "status": "ok",
+                "end": False,
+                "batch_id": "batch-44",
+                "split": "train",
+                "test_index": None,
+                "epoch": 1,
+                "cursor_start": 0,
+                "cursor_end": 1,
+                "requested_batch_size": 1,
+                "sample_count": 1,
+                "transport": "inline",
+                "tensor_nbytes": 2304,
+                "future_top_level_field": "ignored",
+                "batch": payload,
+            }
+        if method == "connector_batch_done":
+            return {"status": "ok"}
+        raise AssertionError(method)
+
+    connector = WorkerConnector(request)
+    response = connector.next_batch(split="train", batch_size=1)
+    connector.batch_done(response["batch_id"])
+    batch = parse_tensor_batch_ref(response["batch"])
+    dataset = DetectionTensorBatchDataset([batch], nclasses=2, torch=torch)
+    _image, target, meta = dataset[0]
+
+    assert response["sample_count"] == 1
+    assert batch.meta["target_paths"] == ["tensor://sample44.txt"]
+    assert batch.meta["augmentation_applied"] is False
+    assert batch.meta["augmentation_seed"] is None
+    assert target["image_id"].tolist() == [44]
+    assert meta["path"] == "tensor://sample44"
+    assert capsys.readouterr().err == ""
 
 
 def test_detection_tensor_batch_dataset_feeds_reference_detector_loss():
@@ -879,6 +936,55 @@ def test_detection_repository_contract_writer_persists_tensor_backed_artifacts(t
             "samples": 2,
         }
     ]
+
+
+def test_detection_repository_contract_writer_persists_connector_summary(tmp_path):
+    context = WorkerContext(
+        repository=str(tmp_path),
+        mllib={"nclasses": 2},
+        raw={},
+    )
+    train = type("DatasetSummary", (), {"__len__": lambda self: 5})()
+    tests = [type("DatasetSummary", (), {"__len__": lambda self: 2})()]
+
+    DetectionRepositoryContractWriter(
+        context,
+        worker_name="fake-detector",
+        task_name="detection",
+        nclasses=2,
+    ).write(
+        train_dataset=train,
+        test_datasets=tests,
+        source="connector_pull",
+        request={"data": ["train.txt", "test.txt"]},
+        request_params={},
+        effective_mllib=context.mllib,
+        connector_info={
+            "transport": "shared_memory",
+            "input_width": 320,
+            "input_height": 240,
+            "train_shuffle": True,
+            "train_samples": 5,
+            "test_samples": [2],
+            "augmentation_enabled": False,
+            "ignored": "value",
+        },
+    )
+
+    manifest = json.loads(
+        (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
+    )
+
+    assert manifest["boundary"] == "connector-tensor-pull"
+    assert manifest["connector"] == {
+        "transport": "shared_memory",
+        "input_width": 320,
+        "input_height": 240,
+        "train_shuffle": True,
+        "train_samples": 5,
+        "test_samples": [2],
+        "augmentation_enabled": False,
+    }
 
 
 def test_detection_progress_reporter_emits_stable_status_and_metrics():

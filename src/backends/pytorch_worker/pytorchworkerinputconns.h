@@ -12,8 +12,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <random>
 #include <sstream>
@@ -158,6 +160,11 @@ namespace dd
       info.add("train_samples", static_cast<int>(_pull_train.size()));
       info.add("test_samples", test_samples);
       info.add("test_sets_total", static_cast<int>(_pull_tests.size()));
+      info.add("transport", _pull_transport);
+      info.add("input_width", _width);
+      info.add("input_height", _height);
+      info.add("train_shuffle", _shuffle);
+      info.add("augmentation_enabled", false);
       return info;
     }
 
@@ -181,7 +188,8 @@ namespace dd
 
       if (split == "train")
         return connector_batch_next_from(_pull_train, _pull_train_pos,
-                                         batch_size, reset_epoch, true);
+                                         batch_size, reset_epoch, true, split,
+                                         APINull());
       if (split != "test")
         throw InputConnectorBadParamException(
             "connector_tensor_pull split must be train or test");
@@ -194,7 +202,7 @@ namespace dd
       return connector_batch_next_from(
           _pull_tests[static_cast<size_t>(test_index)],
           _pull_test_pos[static_cast<size_t>(test_index)], batch_size,
-          reset_epoch, false);
+          reset_epoch, false, split, test_index);
     }
 
   private:
@@ -209,6 +217,18 @@ namespace dd
 
     using DetectionPair
         = std::pair<std::filesystem::path, std::filesystem::path>;
+
+    struct TensorWriteStats
+    {
+      long long int nbytes = 0;
+      double shared_memory_write_ms = 0.0;
+    };
+
+    struct PullBatchBuildResult
+    {
+      APIData batch;
+      TensorWriteStats tensor;
+    };
 
     void configure_pull_transport(const APIData &ad)
     {
@@ -357,8 +377,11 @@ namespace dd
 
     APIData connector_batch_next_from(const std::vector<DetectionPair> &pairs,
                                       size_t &cursor, int batch_size,
-                                      bool reset_epoch, bool shuffle_on_reset)
+                                      bool reset_epoch, bool shuffle_on_reset,
+                                      const std::string &split,
+                                      const ad_variant_type &test_index)
     {
+      const auto total_start = std::chrono::steady_clock::now();
       if (reset_epoch)
         {
           cursor = 0;
@@ -367,19 +390,42 @@ namespace dd
         }
       APIData response;
       response.add("status", std::string("ok"));
+      const size_t cursor_start = cursor;
+      response.add("split", split);
+      response.add("test_index", test_index);
+      response.add("epoch", split == "train" ? _pull_epoch : 0);
+      response.add("cursor_start", static_cast<int>(cursor_start));
+      response.add("requested_batch_size", batch_size);
+      response.add("transport", _pull_transport);
       if (cursor >= pairs.size())
         {
           response.add("end", true);
+          response.add("cursor_end", static_cast<int>(cursor_start));
+          response.add("sample_count", 0);
+          response.add("tensor_nbytes", static_cast<long long int>(0));
           return response;
         }
       const size_t count
           = std::min(static_cast<size_t>(batch_size), pairs.size() - cursor);
       const std::string batch_id = next_pull_batch_id();
+      const auto build_start = std::chrono::steady_clock::now();
+      PullBatchBuildResult built
+          = inline_detection_batch(pairs, cursor, count, batch_id);
+      const auto build_end = std::chrono::steady_clock::now();
       response.add("end", false);
       response.add("batch_id", batch_id);
-      response.add("batch",
-                   inline_detection_batch(pairs, cursor, count, batch_id));
+      response.add("cursor_end", static_cast<int>(cursor + count));
+      response.add("sample_count", static_cast<int>(count));
+      response.add("tensor_nbytes", built.tensor.nbytes);
+      response.add("batch", built.batch);
       cursor += count;
+      const auto total_end = std::chrono::steady_clock::now();
+      const double build_ms = elapsed_ms(build_start, build_end);
+      const double shm_ms = built.tensor.shared_memory_write_ms;
+      debug_log_connector_batch(batch_id, split, count,
+                                std::max(0.0, build_ms - shm_ms), shm_ms,
+                                built.tensor.nbytes, _pull_transport,
+                                elapsed_ms(total_start, total_end));
       return response;
     }
 
@@ -424,20 +470,25 @@ namespace dd
                 std::vector<APIData>{ inline_image_tensor_ref(image) });
       batch.add("targets", detection_targets(bboxes));
       batch.add("meta", detection_meta(sample_index, image_path.string(),
-                                       image.cols, image.rows));
+                                       bbox_path.string(), orig_width,
+                                       orig_height, image.cols, image.rows));
       return batch;
     }
 
-    APIData inline_detection_batch(const std::vector<DetectionPair> &pairs,
-                                   size_t offset, size_t count,
-                                   const std::string &batch_id)
+    PullBatchBuildResult
+    inline_detection_batch(const std::vector<DetectionPair> &pairs,
+                           size_t offset, size_t count,
+                           const std::string &batch_id)
     {
       std::vector<double> values;
       std::vector<std::vector<DetectionBBox>> targets;
       std::vector<int> sample_ids;
       std::vector<std::string> paths;
+      std::vector<std::string> target_paths;
       std::vector<int> widths;
       std::vector<int> heights;
+      std::vector<int> original_widths;
+      std::vector<int> original_heights;
       int rows = 0;
       int cols = 0;
       int channels = 0;
@@ -489,18 +540,24 @@ namespace dd
               read_detection_bboxes(pair.second, orig_width, orig_height));
           sample_ids.push_back(static_cast<int>(offset + index));
           paths.push_back(pair.first.string());
+          target_paths.push_back(pair.second.string());
           widths.push_back(image.cols);
           heights.push_back(image.rows);
+          original_widths.push_back(orig_width);
+          original_heights.push_back(orig_height);
         }
 
+      TensorWriteStats tensor_stats;
       APIData batch;
       batch.add("kind", std::string("tensor_batch"));
       batch.add("inputs", std::vector<APIData>{ pull_image_tensor_ref(
                               values, static_cast<int>(count), channels, rows,
-                              cols, batch_id) });
+                              cols, batch_id, tensor_stats) });
       batch.add("targets", detection_targets(targets));
-      batch.add("meta", detection_meta(sample_ids, paths, widths, heights));
-      return batch;
+      batch.add("meta", detection_meta(sample_ids, paths, target_paths,
+                                       original_widths, original_heights,
+                                       widths, heights));
+      return PullBatchBuildResult{ batch, tensor_stats };
     }
 
     APIData inline_image_tensor_ref(const cv::Mat &image) const
@@ -542,25 +599,29 @@ namespace dd
 
     APIData pull_image_tensor_ref(const std::vector<double> &values,
                                   int batch_size, int channels, int rows,
-                                  int cols, const std::string &batch_id)
+                                  int cols, const std::string &batch_id,
+                                  TensorWriteStats &stats)
     {
+      stats.nbytes = static_cast<long long int>(values.size() * sizeof(float));
       if (_pull_transport == "inline")
         return inline_image_tensor_ref(values, batch_size, channels, rows,
                                        cols, "connector_tensor_pull");
       return shared_memory_image_tensor_ref(values, batch_size, channels, rows,
-                                            cols, batch_id);
+                                            cols, batch_id, stats);
     }
 
     APIData shared_memory_image_tensor_ref(const std::vector<double> &values,
                                            int batch_size, int channels,
                                            int rows, int cols,
-                                           const std::string &batch_id)
+                                           const std::string &batch_id,
+                                           TensorWriteStats &stats)
     {
       if (_pull_shm_dir.empty())
         throw InputConnectorBadParamException(
             "connector_tensor_pull shared memory session is not initialized");
       const std::filesystem::path path
           = _pull_shm_dir / ("batch-" + batch_id + "-input0.bin");
+      const auto write_start = std::chrono::steady_clock::now();
       std::ofstream out(path, std::ios::binary | std::ios::trunc);
       if (!out.is_open())
         throw InputConnectorBadParamException(
@@ -574,13 +635,15 @@ namespace dd
       if (!out.good())
         throw InputConnectorBadParamException(
             "Could not write shared memory tensor file: " + path.string());
+      const auto write_end = std::chrono::steady_clock::now();
+      stats.shared_memory_write_ms = elapsed_ms(write_start, write_end);
       _pull_batch_files[batch_id].push_back(path);
 
       APIData storage;
       storage.add("type", std::string("shared_memory"));
       storage.add("name", path.string());
       storage.add("offset", 0);
-      storage.add("nbytes", static_cast<int>(values.size() * sizeof(float)));
+      storage.add("nbytes", static_cast<int>(stats.nbytes));
 
       APIData lifetime;
       lifetime.add("owner", std::string("deepdetect"));
@@ -729,27 +792,86 @@ namespace dd
     }
 
     APIData detection_meta(int sample_index, const std::string &path,
-                           int width, int height) const
+                           const std::string &target_path, int original_width,
+                           int original_height, int width, int height) const
     {
       APIData meta;
       meta.add("sample_ids", std::vector<int>{ sample_index });
       meta.add("paths", std::vector<std::string>{ path });
+      meta.add("target_paths", std::vector<std::string>{ target_path });
       meta.add("widths", std::vector<int>{ width });
       meta.add("heights", std::vector<int>{ height });
+      meta.add("original_widths", std::vector<int>{ original_width });
+      meta.add("original_heights", std::vector<int>{ original_height });
+      meta.add("preprocessed_widths", std::vector<int>{ width });
+      meta.add("preprocessed_heights", std::vector<int>{ height });
+      add_detection_augmentation_meta(meta);
       return meta;
     }
 
     APIData detection_meta(const std::vector<int> &sample_ids,
                            const std::vector<std::string> &paths,
+                           const std::vector<std::string> &target_paths,
+                           const std::vector<int> &original_widths,
+                           const std::vector<int> &original_heights,
                            const std::vector<int> &widths,
                            const std::vector<int> &heights) const
     {
       APIData meta;
       meta.add("sample_ids", sample_ids);
       meta.add("paths", paths);
+      meta.add("target_paths", target_paths);
       meta.add("widths", widths);
       meta.add("heights", heights);
+      meta.add("original_widths", original_widths);
+      meta.add("original_heights", original_heights);
+      meta.add("preprocessed_widths", widths);
+      meta.add("preprocessed_heights", heights);
+      add_detection_augmentation_meta(meta);
       return meta;
+    }
+
+    static void add_detection_augmentation_meta(APIData &meta)
+    {
+      meta.add("augmentation_applied", false);
+      meta.add("augmentation_seed", APINull());
+      meta.add("augmentation_policy", std::string("none"));
+    }
+
+    static bool debug_enabled()
+    {
+      const char *debug = std::getenv("DEEPDETECT_DEBUG");
+      const char *worker_debug = std::getenv("DEEPDETECT_WORKER_DEBUG");
+      return (debug && *debug) || (worker_debug && *worker_debug);
+    }
+
+    static double elapsed_ms(const std::chrono::steady_clock::time_point &start,
+                             const std::chrono::steady_clock::time_point &end)
+    {
+      return std::chrono::duration<double, std::milli>(end - start).count();
+    }
+
+    static void debug_log_connector_batch(const std::string &batch_id,
+                                          const std::string &split,
+                                          size_t sample_count,
+                                          double preprocessing_packing_ms,
+                                          double shared_memory_write_ms,
+                                          long long int bytes_written,
+                                          const std::string &transport,
+                                          double total_ms)
+    {
+      if (!debug_enabled())
+        return;
+      std::cerr << "[deepdetect-debug][connector_tensor_pull] "
+                << "connector_batch_next"
+                << " batch_id=" << batch_id << " split=" << split
+                << " sample_count=" << sample_count
+                << " transport=" << transport
+                << " total_ms=" << total_ms
+                << " preprocessing_packing_ms="
+                << preprocessing_packing_ms
+                << " shared_memory_write_ms=" << shared_memory_write_ms
+                << " bytes_written=" << bytes_written << std::endl;
     }
 
     static std::filesystem::path

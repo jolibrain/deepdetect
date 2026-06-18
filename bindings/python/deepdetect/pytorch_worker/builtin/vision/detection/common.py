@@ -108,7 +108,20 @@ class DetectionTensorBatchDataset:
                 raise DatasetContractError(
                     "detection tensor batches must contain exactly one image input"
                 )
+            start = time.monotonic()
             materialized = materialize_tensor_ref(batch.inputs[0], self.torch)
+            elapsed = (time.monotonic() - start) * 1000.0
+            debug(
+                "tensor_materialize batch_index=%s storage=%s nbytes=%s "
+                "elapsed_ms=%.3f"
+                % (
+                    batch_index,
+                    batch.inputs[0].storage.type,
+                    batch.inputs[0].storage.nbytes,
+                    elapsed,
+                ),
+                tag="connector",
+            )
             try:
                 images = materialized.tensor
                 if int(images.ndim) == 3:
