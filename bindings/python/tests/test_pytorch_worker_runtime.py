@@ -14,14 +14,19 @@ from deepdetect.pytorch_worker.sdk import (
     DatasetContractError,
     DeepDetectWorkerBase,
     WorkerContext,
+    WorkerContractError,
     WorkerDependencyError,
     WorkerReporter,
 )
+from deepdetect.pytorch_worker.tensors import parse_tensor_batch_ref, parse_tensor_ref
+from deepdetect.pytorch_worker.tensors import materialize_inline_tensor_ref
 from deepdetect.pytorch_worker.builtin.vision.detection.base import (
     DetectionTrainingWorkerBase,
 )
 from deepdetect.pytorch_worker.builtin.vision.detection.common import (
     DetectionListDataset,
+    DetectionTensorBatchDataset,
+    make_loader,
 )
 from deepdetect.pytorch_worker.builtin.vision.detection.training import (
     DetectionProgressReporter,
@@ -122,6 +127,235 @@ def test_protocol_roundtrip():
     finally:
         left.close()
         right.close()
+
+
+def tensor_ref_payload(**overrides):
+    payload = {
+        "kind": "tensor_ref",
+        "device": "cpu",
+        "dtype": "float32",
+        "shape": [2, 3, 4],
+        "layout": "strided",
+        "strides": [12, 4, 1],
+        "storage": {
+            "type": "shared_memory",
+            "name": "dd-test-batch",
+            "offset": 0,
+            "nbytes": 96,
+        },
+        "lifetime": {
+            "owner": "deepdetect",
+            "valid_until_ack": "batch_done",
+        },
+        "cuda": {
+            "ipc_handle": None,
+            "stream": None,
+        },
+    }
+    payload.update(overrides)
+    return payload
+
+
+def inline_tensor_ref_payload(shape, values, *, dtype="float32"):
+    return tensor_ref_payload(
+        dtype=dtype,
+        shape=list(shape),
+        strides=None,
+        storage={
+            "type": "inline_test_stub",
+            "name": "unit-test",
+            "offset": 0,
+            "nbytes": 0,
+            "values": list(values),
+        },
+    )
+
+
+def test_tensor_ref_parses_cpu_metadata():
+    ref = parse_tensor_ref(tensor_ref_payload())
+
+    assert ref.device == "cpu"
+    assert ref.dtype == "float32"
+    assert ref.shape == (2, 3, 4)
+    assert ref.strides == (12, 4, 1)
+    assert ref.storage.type == "shared_memory"
+    assert ref.storage.name == "dd-test-batch"
+    assert ref.storage.nbytes == 96
+    assert ref.lifetime["owner"] == "deepdetect"
+
+
+def test_tensor_ref_accepts_inline_test_stub_storage():
+    ref = parse_tensor_ref(
+        tensor_ref_payload(
+            storage={
+                "type": "inline_test_stub",
+                "name": "unit-test",
+                "offset": 0,
+                "nbytes": 0,
+            },
+            strides=None,
+        )
+    )
+
+    assert ref.storage.type == "inline_test_stub"
+    assert ref.strides is None
+
+
+def test_inline_tensor_ref_materializes_torch_tensor():
+    torch = pytest.importorskip("torch")
+    ref = parse_tensor_ref(inline_tensor_ref_payload((2, 3), range(6)))
+
+    tensor = materialize_inline_tensor_ref(ref, torch)
+
+    assert tuple(tensor.shape) == (2, 3)
+    assert tensor.dtype == torch.float32
+    assert tensor[1, 2].item() == 5.0
+
+
+def test_inline_tensor_ref_rejects_mismatched_value_count():
+    torch = pytest.importorskip("torch")
+    ref = parse_tensor_ref(inline_tensor_ref_payload((2, 3), [1, 2]))
+
+    with pytest.raises(WorkerContractError) as error:
+        materialize_inline_tensor_ref(ref, torch)
+
+    assert "values count" in str(error.value)
+
+
+def test_shared_memory_tensor_ref_is_not_materialized_yet():
+    torch = pytest.importorskip("torch")
+    ref = parse_tensor_ref(tensor_ref_payload())
+
+    with pytest.raises(DatasetContractError) as error:
+        materialize_inline_tensor_ref(ref, torch)
+
+    assert "cannot be materialized" in str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"kind": "not_tensor_ref"}, "kind"),
+        ({"dtype": "complex64"}, "dtype"),
+        ({"shape": [1, 0, 3]}, "shape"),
+        ({"strides": [3, 1]}, "strides length"),
+        ({"layout": "channels_last"}, "layout"),
+        ({"storage": {"type": "unknown"}}, "storage type"),
+        ({"storage": {"type": "shared_memory", "nbytes": 4}}, "requires name"),
+        ({"storage": {"type": "shared_memory", "name": "x", "nbytes": 0}}, "nbytes"),
+    ],
+)
+def test_tensor_ref_rejects_invalid_metadata(override, message):
+    with pytest.raises(WorkerContractError) as error:
+        parse_tensor_ref(tensor_ref_payload(**override))
+
+    assert message in str(error.value)
+
+
+def test_tensor_ref_rejects_reserved_gpu_device_for_consumption():
+    with pytest.raises(DatasetContractError) as error:
+        parse_tensor_ref(tensor_ref_payload(device="cuda:0"))
+
+    assert "reserved for future use" in str(error.value)
+
+
+def test_tensor_batch_ref_parses_inputs_targets_and_metadata():
+    batch = parse_tensor_batch_ref(
+        {
+            "kind": "tensor_batch",
+            "inputs": [tensor_ref_payload()],
+            "targets": {
+                "labels": [1, 2],
+            },
+            "meta": {
+                "sample_ids": [10, 11],
+            },
+        }
+    )
+
+    assert len(batch.inputs) == 1
+    assert batch.targets == {"labels": [1, 2]}
+    assert batch.meta == {"sample_ids": [10, 11]}
+
+
+def test_tensor_batch_ref_requires_non_empty_inputs():
+    with pytest.raises(WorkerContractError) as error:
+        parse_tensor_batch_ref({"kind": "tensor_batch", "inputs": []})
+
+    assert "non-empty" in str(error.value)
+
+
+def test_detection_tensor_batch_dataset_returns_detection_sample_contract():
+    torch = pytest.importorskip("torch")
+    batch = parse_tensor_batch_ref(
+        {
+            "kind": "tensor_batch",
+            "inputs": [
+                inline_tensor_ref_payload(
+                    (1, 3, 4, 5),
+                    [0.25] * (1 * 3 * 4 * 5),
+                )
+            ],
+            "targets": {
+                "boxes": [[[1, 1, 4, 3]]],
+                "labels": [[1]],
+            },
+            "meta": {
+                "sample_ids": [42],
+                "paths": ["tensor://sample0"],
+                "widths": [5],
+                "heights": [4],
+            },
+        }
+    )
+
+    dataset = DetectionTensorBatchDataset([batch], nclasses=2, torch=torch)
+    image, target, meta = dataset[0]
+
+    assert len(dataset) == 1
+    assert tuple(image.shape) == (3, 4, 5)
+    assert tuple(target["boxes"].shape) == (1, 4)
+    assert target["labels"].tolist() == [1]
+    assert target["image_id"].tolist() == [42]
+    assert meta == {
+        "index": 42,
+        "path": "tensor://sample0",
+        "width": 5,
+        "height": 4,
+    }
+
+
+def test_detection_tensor_batch_dataset_feeds_reference_detector_loss():
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    batch = parse_tensor_batch_ref(
+        {
+            "kind": "tensor_batch",
+            "inputs": [
+                inline_tensor_ref_payload(
+                    (1, 3, 12, 16),
+                    [0.5] * (1 * 3 * 12 * 16),
+                )
+            ],
+            "targets": {
+                "boxes": [[[1, 2, 8, 9]]],
+                "labels": [[1]],
+            },
+            "meta": {"sample_ids": [7]},
+        }
+    )
+    dataset = DetectionTensorBatchDataset([batch], nclasses=2, torch=torch)
+    loader = make_loader(dataset, batch_size=1, shuffle=False, torch=torch)
+    images, targets, _metas = next(iter(loader))
+    worker = ReferenceTorchDetectorWorker()
+    backend = worker.import_backend()
+    model = worker.create_model(2, *backend)
+
+    losses = worker.training_losses(model, images, targets)
+    total = sum(losses.values())
+    total.backward()
+
+    assert {"loss_classifier", "loss_box_reg"} <= set(losses)
 
 
 def test_dummy_worker_reports_metrics_and_predicts():

@@ -173,6 +173,31 @@ V1.1 must preserve the worker class contract. A worker that currently consumes
 path-backed samples should be able to consume tensor-backed samples through a
 dataset adapter without changing model, optimizer, metric, or checkpoint code.
 
+The first Phase 3 slice defines and validates the tensor-reference metadata
+only. It does not open shared memory, construct torch tensors from references,
+or change existing path-backed training. Python workers can import
+`deepdetect.pytorch_worker.tensors` for:
+
+- `TensorRef`, `TensorStorageRef`, and `TensorBatchRef`;
+- `parse_tensor_ref(...)` for one tensor reference;
+- `parse_tensor_batch_ref(...)` for a future connector-produced batch.
+
+Consumable tensor refs are CPU-only in this slice. GPU/CUDA refs remain
+reserved and are rejected by the parser until CUDA IPC ownership and stream
+semantics are implemented.
+
+The next Python-only slice adds executable test materialization for
+`storage.type: "inline_test_stub"`:
+
+- `storage.values` contains flat unit-test values;
+- `materialize_inline_tensor_ref(ref, torch)` creates a CPU torch tensor;
+- `shared_memory` refs remain metadata-only and are rejected by materialization.
+
+Object detection can use `DetectionTensorBatchDataset` to adapt parsed
+`TensorBatchRef` objects into the same `(image, target, meta)` tuples as
+`DetectionListDataset`. This is used only by tests until C++ connectors emit
+real tensor batches.
+
 ### Reserved V2: GPU Tensor References
 
 The protocol reserves a GPU tensor boundary for later work. V1 must not
@@ -205,6 +230,29 @@ Reserved `TensorRef` shape:
   }
 }
 ```
+
+For unit tests only, `storage.type: "inline_test_stub"` is accepted as metadata
+so parser behavior can be validated without allocating shared memory. Runtime
+training must continue to use the path-backed dataset flow until C++ connector
+tensor emission and Python tensor materialization are implemented.
+
+An inline test tensor may include values:
+
+```json
+{
+  "kind": "tensor_ref",
+  "device": "cpu",
+  "dtype": "float32",
+  "shape": [1, 3, 12, 16],
+  "storage": {
+    "type": "inline_test_stub",
+    "values": [0.0, 0.1]
+  }
+}
+```
+
+The `values` list must contain exactly the product of `shape` entries. It is
+not a production transport.
 
 ## Worker Protocol
 

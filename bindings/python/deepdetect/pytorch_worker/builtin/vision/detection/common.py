@@ -15,6 +15,7 @@ from ....sdk import (
     WorkerDependencyError,
     WorkerReporter,
 )
+from ....tensors import TensorBatchRef, materialize_inline_tensor_ref
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,74 @@ class DetectionListDataset:
         return image, target, meta
 
 
+class DetectionTensorBatchDataset:
+    def __init__(
+        self,
+        batches: list[TensorBatchRef],
+        *,
+        nclasses: int,
+        torch: Any,
+    ):
+        self.batches = batches
+        self.nclasses = nclasses
+        self.torch = torch
+        self.samples = self._materialize_samples()
+        if not self.samples:
+            raise DatasetContractError("tensor batch dataset contains no samples")
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, position: int) -> tuple[Any, dict[str, Any], dict[str, Any]]:
+        return self.samples[position]
+
+    def _materialize_samples(self) -> list[tuple[Any, dict[str, Any], dict[str, Any]]]:
+        samples = []
+        for batch_index, batch in enumerate(self.batches):
+            if len(batch.inputs) != 1:
+                raise DatasetContractError(
+                    "detection tensor batches must contain exactly one image input"
+                )
+            images = materialize_inline_tensor_ref(batch.inputs[0], self.torch)
+            if int(images.ndim) == 3:
+                images = images.unsqueeze(0)
+            if int(images.ndim) != 4 or int(images.shape[1]) != 3:
+                raise DatasetContractError(
+                    "detection tensor input must have shape [N, 3, H, W]"
+                )
+            targets = batch.targets if isinstance(batch.targets, dict) else {}
+            meta = batch.meta if isinstance(batch.meta, dict) else {}
+            for sample_index in range(int(images.shape[0])):
+                image = images[sample_index].contiguous()
+                height = int(image.shape[-2])
+                width = int(image.shape[-1])
+                global_index = len(samples)
+                sample_meta = {
+                    "index": _meta_value(meta, "sample_ids", sample_index, global_index),
+                    "path": _meta_value(
+                        meta,
+                        "paths",
+                        sample_index,
+                        f"tensor://batch{batch_index}/{sample_index}",
+                    ),
+                    "width": int(_meta_value(meta, "widths", sample_index, width)),
+                    "height": int(_meta_value(meta, "heights", sample_index, height)),
+                }
+                boxes = _target_rows(targets, "boxes", sample_index)
+                labels = _target_rows(targets, "labels", sample_index)
+                target = _tensor_detection_target(
+                    boxes,
+                    labels,
+                    torch=self.torch,
+                    nclasses=self.nclasses,
+                    image_id=int(sample_meta["index"]),
+                    width=int(sample_meta["width"]),
+                    height=int(sample_meta["height"]),
+                )
+                samples.append((image, target, sample_meta))
+        return samples
+
+
 def read_detection_list(
     list_path: Path,
     *,
@@ -121,6 +190,66 @@ def read_detection_list(
                 debug(f"read_detection_list: parsed {len(samples)} samples")
     debug(f"read_detection_list: parsed {len(samples)} samples total")
     return samples
+
+
+def _meta_value(meta: dict[str, Any], key: str, index: int, default: Any) -> Any:
+    values = meta.get(key)
+    if isinstance(values, list) and index < len(values):
+        return values[index]
+    return default
+
+
+def _target_rows(targets: dict[str, Any], key: str, index: int) -> list[Any]:
+    rows = targets.get(key, [])
+    if not isinstance(rows, list) or not rows:
+        return []
+    if len(rows) > index and isinstance(rows[index], list):
+        row = rows[index]
+        if key == "boxes" and (not row or isinstance(row[0], list)):
+            return row
+        if key == "labels" and (not row or not isinstance(row[0], list)):
+            return row
+    if index == 0:
+        return rows
+    return []
+
+
+def _tensor_detection_target(
+    boxes: list[Any],
+    labels: list[Any],
+    *,
+    torch: Any,
+    nclasses: int,
+    image_id: int,
+    width: int,
+    height: int,
+) -> dict[str, Any]:
+    if len(boxes) != len(labels):
+        raise DatasetContractError("tensor detection boxes and labels length mismatch")
+    parsed_boxes = []
+    parsed_labels = []
+    for box, label in zip(boxes, labels):
+        if not isinstance(box, list) or len(box) != 4:
+            raise DatasetContractError("tensor detection boxes must be [x0,y0,x1,y1]")
+        label = int(label)
+        if label <= 0 or label >= nclasses:
+            raise DatasetContractError(
+                f"invalid class {label} for nclasses={nclasses}"
+            )
+        xmin, ymin, xmax, ymax = (float(value) for value in box)
+        xmin = clamp(xmin, 0.0, float(width))
+        xmax = clamp(xmax, 0.0, float(width))
+        ymin = clamp(ymin, 0.0, float(height))
+        ymax = clamp(ymax, 0.0, float(height))
+        if xmax <= xmin or ymax <= ymin:
+            raise DatasetContractError("invalid tensor detection bbox coordinates")
+        parsed_boxes.append([xmin, ymin, xmax, ymax])
+        parsed_labels.append(label)
+    return {
+        "boxes": torch.tensor(parsed_boxes, dtype=torch.float32).reshape((-1, 4)),
+        "labels": torch.tensor(parsed_labels, dtype=torch.int64),
+        "image_id": torch.tensor([image_id], dtype=torch.int64),
+    }
 
 
 def resolve_dataset_path(base: Path, value: str, *, resolve: bool = True) -> Path:
