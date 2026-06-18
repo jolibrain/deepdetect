@@ -46,16 +46,22 @@ class WorkerContext:
     repository: str
     mllib: Mapping[str, Any]
     raw: Mapping[str, Any]
+    connector: "WorkerConnector | None" = None
 
     @classmethod
-    def from_configure_params(cls, params: Mapping[str, Any]) -> "WorkerContext":
+    def from_configure_params(
+        cls,
+        params: Mapping[str, Any],
+        *,
+        connector: "WorkerConnector | None" = None,
+    ) -> "WorkerContext":
         repository = params.get("repository", "")
         if not isinstance(repository, str):
             raise WorkerContractError("configure.repository must be a string")
         mllib = params.get("mllib", {})
         if not isinstance(mllib, Mapping):
             raise WorkerContractError("configure.mllib must be an object")
-        return cls(repository=repository, mllib=mllib, raw=params)
+        return cls(repository=repository, mllib=mllib, raw=params, connector=connector)
 
     @property
     def repository_path(self) -> Path:
@@ -99,6 +105,46 @@ class WorkerReporter:
         self._emit("log", event_payload)
 
 
+class WorkerConnector:
+    def __init__(self, request: Callable[[str, dict[str, Any]], dict[str, Any]]):
+        self._request = request
+
+    def dataset_info(self) -> dict[str, Any]:
+        result = self._request("connector_dataset_info", {})
+        if not isinstance(result, dict):
+            raise DatasetContractError("connector_dataset_info result must be an object")
+        return result
+
+    def next_batch(
+        self,
+        *,
+        split: str,
+        batch_size: int,
+        test_index: int | None = None,
+        reset_epoch: bool = False,
+    ) -> dict[str, Any]:
+        if split not in {"train", "test"}:
+            raise DatasetContractError("connector batch split must be train or test")
+        params: dict[str, Any] = {
+            "split": split,
+            "batch_size": positive_connector_batch_size(batch_size),
+            "reset_epoch": bool(reset_epoch),
+        }
+        if test_index is not None:
+            params["test_index"] = int(test_index)
+        result = self._request("connector_batch_next", params)
+        if not isinstance(result, dict):
+            raise DatasetContractError("connector_batch_next result must be an object")
+        return result
+
+    def batch_done(self, batch_id: Any) -> None:
+        if batch_id is None:
+            return
+        result = self._request("connector_batch_done", {"batch_id": str(batch_id)})
+        if not isinstance(result, dict):
+            raise DatasetContractError("connector_batch_done result must be an object")
+
+
 class DeepDetectWorkerBase:
     def __init__(self) -> None:
         self.context: WorkerContext | None = None
@@ -118,6 +164,13 @@ class DeepDetectWorkerBase:
 
     def predict(self, params: dict[str, Any]) -> dict[str, Any]:
         raise WorkerContractError("worker must implement predict()")
+
+
+def positive_connector_batch_size(value: Any) -> int:
+    size = int(value)
+    if size <= 0:
+        raise DatasetContractError("connector batch_size must be positive")
+    return size
 
 
 def finite_scalar(

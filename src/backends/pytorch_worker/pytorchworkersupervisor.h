@@ -38,6 +38,9 @@ namespace dd
                     int timeout_ms = 10000);
     void send_request(const std::string &method, const APIData &params,
                       int &request_id);
+    void send_response(int request_id, const APIData &result);
+    void send_error_response(int request_id, const std::string &category,
+                             const std::string &message);
     bool read_message(std::string &message, int timeout_ms);
 
     bool running() const;

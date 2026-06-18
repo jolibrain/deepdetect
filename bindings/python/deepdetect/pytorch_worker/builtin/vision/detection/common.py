@@ -15,7 +15,7 @@ from ....sdk import (
     WorkerDependencyError,
     WorkerReporter,
 )
-from ....tensors import TensorBatchRef, materialize_inline_tensor_ref
+from ....tensors import TensorBatchRef, materialize_tensor_ref
 
 
 @dataclass(frozen=True)
@@ -108,43 +108,51 @@ class DetectionTensorBatchDataset:
                 raise DatasetContractError(
                     "detection tensor batches must contain exactly one image input"
                 )
-            images = materialize_inline_tensor_ref(batch.inputs[0], self.torch)
-            if int(images.ndim) == 3:
-                images = images.unsqueeze(0)
-            if int(images.ndim) != 4 or int(images.shape[1]) != 3:
-                raise DatasetContractError(
-                    "detection tensor input must have shape [N, 3, H, W]"
-                )
-            targets = batch.targets if isinstance(batch.targets, dict) else {}
-            meta = batch.meta if isinstance(batch.meta, dict) else {}
-            for sample_index in range(int(images.shape[0])):
-                image = images[sample_index].contiguous()
-                height = int(image.shape[-2])
-                width = int(image.shape[-1])
-                global_index = len(samples)
-                sample_meta = {
-                    "index": _meta_value(meta, "sample_ids", sample_index, global_index),
-                    "path": _meta_value(
-                        meta,
-                        "paths",
-                        sample_index,
-                        f"tensor://batch{batch_index}/{sample_index}",
-                    ),
-                    "width": int(_meta_value(meta, "widths", sample_index, width)),
-                    "height": int(_meta_value(meta, "heights", sample_index, height)),
-                }
-                boxes = _target_rows(targets, "boxes", sample_index)
-                labels = _target_rows(targets, "labels", sample_index)
-                target = _tensor_detection_target(
-                    boxes,
-                    labels,
-                    torch=self.torch,
-                    nclasses=self.nclasses,
-                    image_id=int(sample_meta["index"]),
-                    width=int(sample_meta["width"]),
-                    height=int(sample_meta["height"]),
-                )
-                samples.append((image, target, sample_meta))
+            materialized = materialize_tensor_ref(batch.inputs[0], self.torch)
+            try:
+                images = materialized.tensor
+                if int(images.ndim) == 3:
+                    images = images.unsqueeze(0)
+                if int(images.ndim) != 4 or int(images.shape[1]) != 3:
+                    raise DatasetContractError(
+                        "detection tensor input must have shape [N, 3, H, W]"
+                    )
+                targets = batch.targets if isinstance(batch.targets, dict) else {}
+                meta = batch.meta if isinstance(batch.meta, dict) else {}
+                for sample_index in range(int(images.shape[0])):
+                    image = images[sample_index].clone().contiguous()
+                    height = int(image.shape[-2])
+                    width = int(image.shape[-1])
+                    global_index = len(samples)
+                    sample_meta = {
+                        "index": _meta_value(
+                            meta, "sample_ids", sample_index, global_index
+                        ),
+                        "path": _meta_value(
+                            meta,
+                            "paths",
+                            sample_index,
+                            f"tensor://batch{batch_index}/{sample_index}",
+                        ),
+                        "width": int(_meta_value(meta, "widths", sample_index, width)),
+                        "height": int(
+                            _meta_value(meta, "heights", sample_index, height)
+                        ),
+                    }
+                    boxes = _target_rows(targets, "boxes", sample_index)
+                    labels = _target_rows(targets, "labels", sample_index)
+                    target = _tensor_detection_target(
+                        boxes,
+                        labels,
+                        torch=self.torch,
+                        nclasses=self.nclasses,
+                        image_id=int(sample_meta["index"]),
+                        width=int(sample_meta["width"]),
+                        height=int(sample_meta["height"]),
+                    )
+                    samples.append((image, target, sample_meta))
+            finally:
+                materialized.close()
         return samples
 
 
@@ -200,6 +208,13 @@ def _meta_value(meta: dict[str, Any], key: str, index: int, default: Any) -> Any
 
 
 def _target_rows(targets: dict[str, Any], key: str, index: int) -> list[Any]:
+    sample = _target_sample(targets, index)
+    if sample is not None:
+        if key == "boxes":
+            return _sample_boxes(sample.get("boxes", []))
+        if key == "labels":
+            labels = sample.get("labels", [])
+            return labels if isinstance(labels, list) else []
     rows = targets.get(key, [])
     if not isinstance(rows, list) or not rows:
         return []
@@ -212,6 +227,34 @@ def _target_rows(targets: dict[str, Any], key: str, index: int) -> list[Any]:
     if index == 0:
         return rows
     return []
+
+
+def _target_sample(targets: dict[str, Any], index: int) -> dict[str, Any] | None:
+    samples = targets.get("samples")
+    if isinstance(samples, list) and index < len(samples):
+        sample = samples[index]
+        if isinstance(sample, dict):
+            return sample
+    return None
+
+
+def _sample_boxes(boxes: Any) -> list[Any]:
+    if not isinstance(boxes, list):
+        return []
+    result = []
+    for box in boxes:
+        if isinstance(box, dict):
+            result.append(
+                [
+                    box.get("xmin", 0.0),
+                    box.get("ymin", 0.0),
+                    box.get("xmax", 0.0),
+                    box.get("ymax", 0.0),
+                ]
+            )
+        else:
+            result.append(box)
+    return result
 
 
 def _tensor_detection_target(

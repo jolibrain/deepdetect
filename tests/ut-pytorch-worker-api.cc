@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <filesystem>
+#include <sstream>
 #include <string>
 #include <sys/wait.h>
 #include <thread>
@@ -191,6 +192,125 @@ namespace
            + fixture.test1_list + "\"]}";
   }
 
+  std::string tensor_values_json(int count, double value)
+  {
+    std::ostringstream out;
+    out << "[";
+    for (int index = 0; index < count; ++index)
+      {
+        if (index > 0)
+          out << ",";
+        out << value;
+      }
+    out << "]";
+    return out.str();
+  }
+
+  std::string inline_tensor_ref_json(int width, int height, double value)
+  {
+    const int channels = 3;
+    const int batch = 1;
+    const int count = batch * channels * width * height;
+    return "{\"kind\":\"tensor_ref\",\"device\":\"cpu\","
+           "\"dtype\":\"float32\",\"shape\":["
+           + std::to_string(batch) + "," + std::to_string(channels) + ","
+           + std::to_string(height) + "," + std::to_string(width)
+           + "],\"layout\":\"strided\",\"storage\":{"
+             "\"type\":\"inline_test_stub\",\"name\":\"unit-test\","
+             "\"offset\":0,\"nbytes\":0,\"values\":"
+           + tensor_values_json(count, value)
+           + "},\"lifetime\":{\"owner\":\"deepdetect\","
+             "\"valid_until_ack\":\"batch_done\"},\"cuda\":{}}";
+  }
+
+  std::string tensor_detection_batch_json(int sample_id, double value)
+  {
+    constexpr int width = 16;
+    constexpr int height = 12;
+    return "{\"kind\":\"tensor_batch\",\"inputs\":["
+           + inline_tensor_ref_json(width, height, value)
+           + "],\"targets\":{\"samples\":[{\"boxes\":[{\"xmin\":1,"
+             "\"ymin\":2,\"xmax\":8,\"ymax\":9}],\"labels\":[1]}]},"
+             "\"meta\":{\"sample_ids\":["
+           + std::to_string(sample_id) + "],\"paths\":[\"tensor://sample"
+           + std::to_string(sample_id) + "\"],\"widths\":["
+           + std::to_string(width) + "],\"heights\":[" + std::to_string(height)
+           + "]}}";
+  }
+
+  std::string tensor_detection_train_request(const std::string &service,
+                                             int iterations)
+  {
+    return "{\"service\":\"" + service
+           + "\",\"async\":true,\"parameters\":{\"input\":{},"
+             "\"output\":{\"measure_hist\":true,\"test_predictions\":true,"
+             "\"measure\":[\"map-50\"]},\"mllib\":{\"solver\":{\"iterations\":"
+           + std::to_string(iterations)
+           + ",\"base_lr\":0.001,\"test_interval\":1},"
+             "\"net\":{\"batch_size\":1}}},\"data\":[],"
+             "\"tensor_batches\":{\"train\":["
+           + tensor_detection_batch_json(10, 0.5)
+           + "],\"tests\":[{\"batches\":["
+           + tensor_detection_batch_json(11, 0.25) + "]}]}}";
+  }
+
+  std::string
+  connector_tensor_detection_train_request(const std::string &service,
+                                           const DetectionFixture &fixture,
+                                           int iterations)
+  {
+    return "{\"service\":\"" + service
+           + "\",\"async\":true,\"parameters\":{\"input\":{},"
+             "\"output\":{\"measure_hist\":true,\"test_predictions\":true,"
+             "\"measure\":[\"map-50\"]},\"mllib\":{\"data_source\":"
+             "\"connector_tensor_inline\",\"solver\":{\"iterations\":"
+           + std::to_string(iterations)
+           + ",\"base_lr\":0.001,\"test_interval\":1},"
+             "\"net\":{\"batch_size\":1}}},\"data\":[\""
+           + fixture.train_list + "\",\"" + fixture.test0_list + "\"]}";
+  }
+
+  std::string connector_tensor_pull_detection_train_request(
+      const std::string &service, const DetectionFixture &fixture,
+      int iterations)
+  {
+    return "{\"service\":\"" + service
+           + "\",\"async\":true,\"parameters\":{\"input\":{},"
+             "\"output\":{\"measure_hist\":true,\"test_predictions\":true,"
+             "\"measure\":[\"map-50\"]},\"mllib\":{\"data_source\":"
+             "\"connector_tensor_pull\",\"solver\":{\"iterations\":"
+           + std::to_string(iterations)
+           + ",\"base_lr\":0.001,\"test_interval\":1},"
+             "\"net\":{\"batch_size\":2}}},\"data\":[\""
+           + fixture.train_list + "\",\"" + fixture.test0_list + "\",\""
+           + fixture.test1_list + "\"]}";
+  }
+
+  std::string connector_tensor_detection_train_request_with_max(
+      const std::string &service, const DetectionFixture &fixture,
+      int max_samples)
+  {
+    return "{\"service\":\"" + service
+           + "\",\"async\":true,\"parameters\":{\"input\":{},"
+             "\"output\":{\"measure_hist\":true},\"mllib\":{\"data_source\":"
+             "\"connector_tensor_inline\","
+             "\"connector_tensor_inline_max_samples\":"
+           + std::to_string(max_samples)
+           + ",\"solver\":{\"iterations\":1,\"base_lr\":0.001,"
+             "\"test_interval\":1},\"net\":{\"batch_size\":1}}},\"data\":[\""
+           + fixture.train_list + "\",\"" + fixture.test0_list + "\"]}";
+  }
+
+  JDoc read_json_file(const std::filesystem::path &path)
+  {
+    std::ifstream in(path);
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    JDoc doc;
+    doc.Parse<rapidjson::kParseNanAndInfFlag>(buffer.str().c_str());
+    return doc;
+  }
+
   JDoc poll_until_terminal(JsonAPI &japi, const std::string &service, int job,
                            int max_attempts = 100,
                            bool test_predictions = false)
@@ -312,6 +432,277 @@ TEST(pytorchworkerapi, reference_detector_trains_tiny_detection_fixture)
                                                / "checkpoint-latest.pt"));
   ASSERT_TRUE(std::filesystem::is_regular_file(std::filesystem::path(repo)
                                                / "solver-latest.pt"));
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi, reference_detector_trains_inline_tensor_batches)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_reference_detector_tensors";
+  const std::string repo = repo_path(service);
+  prepare_repo(repo);
+
+  const std::string module
+      = "deepdetect.pytorch_worker.builtin.vision.detection."
+        "reference_torch_detector";
+  ASSERT_EQ(created_str,
+            japi.jrender(japi.service_create(
+                service, create_request(repo, ",\"module\":\"" + module
+                                                  + "\",\"gpu\":false"))));
+
+  JDoc train = japi.service_train(tensor_detection_train_request(service, 1));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
+  ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 120, true);
+  ASSERT_STREQ("finished", status["head"]["status"].GetString())
+      << japi.jrender(status);
+  ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"].HasMember("measure_hist"))
+      << japi.jrender(status);
+  const auto &hist = status["body"]["measure_hist"];
+  ASSERT_TRUE(hist.HasMember("train_loss_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_classifier_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_box_reg_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test0_hist")) << japi.jrender(status);
+
+  const std::filesystem::path repo_dir(repo);
+  ASSERT_TRUE(
+      std::filesystem::is_regular_file(repo_dir / "connector_manifest.json"));
+  JDoc manifest = read_json_file(repo_dir / "connector_manifest.json");
+  ASSERT_FALSE(manifest.HasParseError());
+  ASSERT_STREQ("tensor-backed", manifest["boundary"].GetString())
+      << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["train"]["batches"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["train"]["samples"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(1U, manifest["tests"].Size()) << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["tests"][0]["batches"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["tests"][0]["samples"].GetInt())
+      << japi.jrender(manifest);
+
+  ASSERT_TRUE(
+      std::filesystem::is_regular_file(repo_dir / "checkpoint-latest.pt"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(repo_dir / "solver-latest.pt"));
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+}
+
+TEST(pytorchworkerapi, reference_detector_trains_connector_inline_tensors)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_reference_detector_connector";
+  const std::string repo = repo_path(service);
+  const DetectionFixture fixture
+      = prepare_detection_fixture(service + "_fixture");
+  prepare_repo(repo);
+
+  const std::string module
+      = "deepdetect.pytorch_worker.builtin.vision.detection."
+        "reference_torch_detector";
+  ASSERT_EQ(created_str,
+            japi.jrender(japi.service_create(
+                service, create_request(repo, ",\"module\":\"" + module
+                                                  + "\",\"gpu\":false"))));
+
+  JDoc train = japi.service_train(
+      connector_tensor_detection_train_request(service, fixture, 1));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
+  ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 120, true);
+  ASSERT_STREQ("finished", status["head"]["status"].GetString())
+      << japi.jrender(status);
+  ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"].HasMember("measure_hist"))
+      << japi.jrender(status);
+  const auto &hist = status["body"]["measure_hist"];
+  ASSERT_TRUE(hist.HasMember("train_loss_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_classifier_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_box_reg_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test0_hist")) << japi.jrender(status);
+
+  const std::filesystem::path repo_dir(repo);
+  JDoc manifest = read_json_file(repo_dir / "connector_manifest.json");
+  ASSERT_FALSE(manifest.HasParseError());
+  ASSERT_STREQ("tensor-backed", manifest["boundary"].GetString())
+      << japi.jrender(manifest);
+  ASSERT_EQ(2, manifest["train"]["batches"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(2, manifest["train"]["samples"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(1U, manifest["tests"].Size()) << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["tests"][0]["batches"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["tests"][0]["samples"].GetInt())
+      << japi.jrender(manifest);
+
+  ASSERT_TRUE(
+      std::filesystem::is_regular_file(repo_dir / "checkpoint-latest.pt"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(repo_dir / "solver-latest.pt"));
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi, reference_detector_trains_connector_pull_tensors)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service
+      = "pytorchworker_reference_detector_connector_pull";
+  const std::string repo = repo_path(service);
+  const DetectionFixture fixture
+      = prepare_detection_fixture(service + "_fixture");
+  prepare_repo(repo);
+
+  const std::string module
+      = "deepdetect.pytorch_worker.builtin.vision.detection."
+        "reference_torch_detector";
+  ASSERT_EQ(created_str,
+            japi.jrender(japi.service_create(
+                service, create_request(repo, ",\"module\":\"" + module
+                                                  + "\",\"gpu\":false"))));
+
+  JDoc train = japi.service_train(
+      connector_tensor_pull_detection_train_request(service, fixture, 1));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
+  ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 120, true);
+  ASSERT_STREQ("finished", status["head"]["status"].GetString())
+      << japi.jrender(status);
+  ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"].HasMember("measure_hist"))
+      << japi.jrender(status);
+  const auto &hist = status["body"]["measure_hist"];
+  ASSERT_TRUE(hist.HasMember("train_loss_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_classifier_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("loss_box_reg_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test0_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("map_test1_hist")) << japi.jrender(status);
+
+  const std::filesystem::path repo_dir(repo);
+  JDoc manifest = read_json_file(repo_dir / "connector_manifest.json");
+  ASSERT_FALSE(manifest.HasParseError());
+  ASSERT_STREQ("connector-tensor-pull", manifest["boundary"].GetString())
+      << japi.jrender(manifest);
+  ASSERT_EQ(2, manifest["train"]["samples"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(2U, manifest["tests"].Size()) << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["tests"][0]["samples"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(1, manifest["tests"][1]["samples"].GetInt())
+      << japi.jrender(manifest);
+
+  ASSERT_TRUE(
+      std::filesystem::is_regular_file(repo_dir / "checkpoint-latest.pt"));
+  ASSERT_TRUE(std::filesystem::is_regular_file(repo_dir / "solver-latest.pt"));
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi,
+     reference_detector_trains_service_level_connector_pull_tensors)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service
+      = "pytorchworker_reference_detector_service_connector_pull";
+  const std::string repo = repo_path(service);
+  const DetectionFixture fixture
+      = prepare_detection_fixture(service + "_fixture");
+  prepare_repo(repo);
+
+  const std::string module
+      = "deepdetect.pytorch_worker.builtin.vision.detection."
+        "reference_torch_detector";
+  ASSERT_EQ(
+      created_str,
+      japi.jrender(japi.service_create(
+          service, create_request(repo, ",\"module\":\"" + module
+                                            + "\",\"gpu\":false,"
+                                              "\"data_source\":"
+                                              "\"connector_tensor_pull\""))));
+
+  JDoc train
+      = japi.service_train(detection_train_request(service, fixture, 1));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
+  ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 120, true);
+  ASSERT_STREQ("finished", status["head"]["status"].GetString())
+      << japi.jrender(status);
+
+  const std::filesystem::path repo_dir(repo);
+  JDoc manifest = read_json_file(repo_dir / "connector_manifest.json");
+  ASSERT_FALSE(manifest.HasParseError());
+  ASSERT_STREQ("connector-tensor-pull", manifest["boundary"].GetString())
+      << japi.jrender(manifest);
+  ASSERT_EQ(2, manifest["train"]["samples"].GetInt())
+      << japi.jrender(manifest);
+  ASSERT_EQ(2U, manifest["tests"].Size()) << japi.jrender(manifest);
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi, connector_inline_tensor_mode_rejects_large_lists)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_connector_tensor_limit";
+  const std::string repo = repo_path(service);
+  const DetectionFixture fixture
+      = prepare_detection_fixture(service + "_fixture");
+  prepare_repo(repo);
+
+  const std::string module
+      = "deepdetect.pytorch_worker.builtin.vision.detection."
+        "reference_torch_detector";
+  ASSERT_EQ(created_str,
+            japi.jrender(japi.service_create(
+                service, create_request(repo, ",\"module\":\"" + module
+                                                  + "\",\"gpu\":false"))));
+
+  JDoc train = japi.service_train(
+      connector_tensor_detection_train_request_with_max(service, fixture, 1));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
+  ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+
+  JDoc status = poll_until_terminal(japi, service, job, 120);
+  ASSERT_STREQ("error", status["head"]["status"].GetString())
+      << japi.jrender(status);
+  ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"].HasMember("Error")) << japi.jrender(status);
+  ASSERT_TRUE(status["body"]["Error"].HasMember("dd_msg"))
+      << japi.jrender(status);
+  const std::string msg = status["body"]["Error"]["dd_msg"].GetString();
+  ASSERT_NE(std::string::npos,
+            msg.find("connector_tensor_inline is limited to 1 samples"))
+      << msg;
 
   ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
   cleanup_repo(repo);

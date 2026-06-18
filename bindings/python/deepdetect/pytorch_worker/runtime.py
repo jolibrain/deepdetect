@@ -16,6 +16,7 @@ from .sdk import (
     DeepDetectWorkerBase,
     WorkerContext,
     WorkerContractError,
+    WorkerConnector,
     WorkerReporter,
     WorkerLaunchError,
     WorkerSDKError,
@@ -33,6 +34,10 @@ class WorkerRuntime:
         self.cancellation = Cancellation()
         self.train_thread: threading.Thread | None = None
         self.reporter = WorkerReporter(self.event)
+        self.connector = WorkerConnector(self.request)
+        self._next_request_id = -1
+        self._pending_condition = threading.Condition()
+        self._pending_responses: dict[int, dict[str, Any]] = {}
 
     def serve(self) -> int:
         debug("runtime: serving")
@@ -41,8 +46,10 @@ class WorkerRuntime:
                 message = read_frame(self.sock)
             except EOFError:
                 debug("runtime: socket closed")
+                self._fail_pending_requests("worker supervisor disconnected")
                 return 0
             except Exception as error:
+                self._fail_pending_requests(str(error))
                 self.failure("protocol_error", error)
                 return 2
 
@@ -50,6 +57,8 @@ class WorkerRuntime:
             message_id = message.get("id")
             params = message.get("params") or {}
             debug(f"runtime: received method={method!r} id={message_id!r}")
+            if self._route_response(message):
+                continue
             try:
                 if method == "hello":
                     debug("runtime: replying to hello")
@@ -138,7 +147,10 @@ class WorkerRuntime:
 
     def _configure_worker(self, params: dict[str, Any]) -> dict[str, Any]:
         if isinstance(self.worker, DeepDetectWorkerBase):
-            context = WorkerContext.from_configure_params(params)
+            context = WorkerContext.from_configure_params(
+                params,
+                connector=self.connector,
+            )
             result = self.worker.configure(context)
         else:
             result = self.worker.configure(dict(params))
@@ -200,6 +212,54 @@ class WorkerRuntime:
 
     def event(self, name: str, payload: dict[str, Any]) -> None:
         self.send({"event": name, "payload": payload})
+
+    def request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        with self._pending_condition:
+            message_id = self._next_request_id
+            self._next_request_id -= 1
+            self._pending_responses[message_id] = {}
+        self.send({"id": message_id, "method": method, "params": params})
+        debug(f"runtime: sent request method={method!r} id={message_id!r}")
+        with self._pending_condition:
+            while not self._pending_responses[message_id]:
+                self._pending_condition.wait()
+            message = self._pending_responses.pop(message_id)
+        error = message.get("error")
+        if isinstance(error, dict):
+            raise WorkerContractError(
+                str(error.get("message") or f"worker request {method} failed")
+            )
+        result = message.get("result", {})
+        if not isinstance(result, dict):
+            raise WorkerContractError(f"worker request {method} result must be an object")
+        return result
+
+    def _route_response(self, message: dict[str, Any]) -> bool:
+        message_id = message.get("id")
+        if not isinstance(message_id, int) or message_id >= 0:
+            return False
+        if "method" in message:
+            return False
+        if "result" not in message and "error" not in message:
+            return False
+        with self._pending_condition:
+            if message_id not in self._pending_responses:
+                return False
+            self._pending_responses[message_id] = dict(message)
+            self._pending_condition.notify_all()
+        debug(f"runtime: routed response id={message_id!r}")
+        return True
+
+    def _fail_pending_requests(self, message: str) -> None:
+        with self._pending_condition:
+            for message_id in list(self._pending_responses):
+                self._pending_responses[message_id] = {
+                    "error": {
+                        "category": "protocol_error",
+                        "message": message,
+                    }
+                }
+            self._pending_condition.notify_all()
 
     def failure(self, category: str, error: BaseException) -> None:
         self.event("failure", self.failure_payload(category, error))

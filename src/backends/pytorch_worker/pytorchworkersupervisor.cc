@@ -384,6 +384,23 @@ namespace dd
     send_frame(make_request_json(request_id, method, params));
   }
 
+  void PytorchWorkerSupervisor::send_response(int request_id,
+                                              const APIData &result)
+  {
+    send_frame("{\"id\":" + std::to_string(request_id)
+               + ",\"result\":" + result.toJSONString() + "}");
+  }
+
+  void PytorchWorkerSupervisor::send_error_response(
+      int request_id, const std::string &category, const std::string &message)
+  {
+    APIData error;
+    error.add("category", category);
+    error.add("message", message);
+    send_frame("{\"id\":" + std::to_string(request_id)
+               + ",\"error\":" + error.toJSONString() + "}");
+  }
+
   APIData PytorchWorkerSupervisor::request(const std::string &method,
                                            const APIData &params,
                                            int timeout_ms)
