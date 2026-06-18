@@ -13,6 +13,14 @@ from .sdk import (
     WorkerReporter,
     WorkerSDKError,
 )
+from .tensors import (
+    TensorBatchRef,
+    TensorRef,
+    TensorStorageRef,
+    materialize_inline_tensor_ref,
+    parse_tensor_batch_ref,
+    parse_tensor_ref,
+)
 
 __all__ = [
     "Cancellation",
@@ -20,10 +28,16 @@ __all__ = [
     "DeepDetectWorkerBase",
     "MetricContractError",
     "PredictionContractError",
+    "TensorBatchRef",
+    "TensorRef",
+    "TensorStorageRef",
     "WorkerContext",
     "WorkerContractError",
     "WorkerDependencyError",
     "WorkerLaunchError",
     "WorkerReporter",
     "WorkerSDKError",
+    "materialize_inline_tensor_ref",
+    "parse_tensor_batch_ref",
+    "parse_tensor_ref",
 ]
