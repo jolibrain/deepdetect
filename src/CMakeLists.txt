@@ -21,7 +21,8 @@ endif()
 set(ddetect_SOURCES deepdetect.h deepdetect.cc embedded_runtime.cc
     ${PROJECT_SOURCE_DIR}/include/deepdetect/runtime.h mllibstrategy.h mlmodel.h
     mlservice.h inputconnectorstrategy.h imginputfileconn.h csvinputfileconn.h
-    csvinputfileconn.cc csvtsinputfileconn.h csvtsinputfileconn.cc
+    imgdataaug.h imgdataaug.cc csvinputfileconn.cc csvtsinputfileconn.h
+    csvtsinputfileconn.cc
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
     txtinputfileconn.cc apidata.h apidata.cc chain_actions.h chain_actions.cc
     service_stats.h service_stats.cc chain.h chain.cc resources.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc

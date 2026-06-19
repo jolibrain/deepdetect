@@ -146,6 +146,7 @@ endfunction()
 find_package(PythonInterp 3 REQUIRED)
 
 REGISTER_TEST(ut_common ut-common.cc)
+REGISTER_TEST(ut_imgdataaug ut-imgdataaug.cc)
 
 if (USE_JSON_API)
   REGISTER_TEST(ut_apidata ut-apidata.cc)
