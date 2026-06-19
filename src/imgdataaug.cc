@@ -1,0 +1,1099 @@
+/**
+ * DeepDetect
+ * Copyright (c) 2021 Jolibrain
+ * Authors: Emmanuel Benazera <emmanuel.benazera@jolibrain.com>
+ *
+ * This file is part of deepdetect.
+ *
+ * deepdetect is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * deepdetect is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with deepdetect.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "imgdataaug.h"
+
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+
+namespace dd
+{
+  void write_image_with_bboxes(const cv::Mat &src,
+                               const std::vector<std::vector<float>> &bboxes,
+                               const std::string fpath, int &ii)
+  {
+    cv::Mat src_bb = src.clone();
+    for (size_t bb = 0; bb < bboxes.size(); ++bb)
+      {
+        cv::Rect r(bboxes[bb][0], bboxes[bb][1], bboxes[bb][2] - bboxes[bb][0],
+                   bboxes[bb][3] - bboxes[bb][1]);
+        cv::rectangle(src_bb, r, cv::Scalar(255, 0, 0), 1, 8, 0);
+      }
+    cv::imwrite(fpath + "/test_aug_" + std::to_string(ii) + ".png", src_bb);
+    ++ii;
+  }
+
+  void ImgRandAugCV::augment(cv::Mat &src)
+  {
+    applyGeometry(src, _geometry_params);
+    applyCutout(src, _cutout_params);
+
+    int crop_x = 0;
+    int crop_y = 0;
+    applyCrop(src, _crop_params, crop_x, crop_y);
+    applyMirror(src);
+    applyRotate(src);
+    applyNoise(src);
+    applyDistort(src);
+  }
+
+  void ImgRandAugCV::augment_test(cv::Mat &src)
+  {
+    int crop_x = 0;
+    int crop_y = 0;
+    applyCrop(src, _crop_params, crop_x, crop_y, true, true);
+  }
+
+  void ImgRandAugCV::applyDuplicateBBox(
+      std::vector<std::vector<float>> &bboxes, std::vector<int> &classes,
+      const float &img_width, const float &img_height)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    std::vector<int> nclasses;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        for (int tx = -img_width; tx <= img_width; tx += img_width)
+          {
+            for (int ty = -img_height; ty <= img_height; ty += img_height)
+              {
+                std::vector<float> nbox = bbox;
+                if (tx != 0)
+                  {
+                    nbox[0] = tx + img_width - bbox[2];
+                    nbox[2] = tx + img_width - bbox[0];
+                  }
+                if (ty != 0)
+                  {
+                    nbox[1] = ty + img_height - bbox[3];
+                    nbox[3] = ty + img_height - bbox[1];
+                  }
+                nbboxes.push_back(nbox);
+                nclasses.push_back(classes.at(i));
+              }
+          }
+      }
+    bboxes = nbboxes;
+    classes = nclasses;
+  }
+
+  void ImgRandAugCV::augment_with_bbox(cv::Mat &src,
+                                       std::vector<std::vector<float>> &bboxes,
+                                       std::vector<int> &classes)
+  {
+    GeometryParams geoparams = _geometry_params;
+    if (geoparams._geometry_pad_mode == 2)
+      applyDuplicateBBox(bboxes, classes, static_cast<float>(src.cols),
+                         static_cast<float>(src.rows));
+
+    bool mirror = applyMirror(src);
+    if (mirror)
+      applyMirrorBBox(bboxes, static_cast<float>(src.cols));
+    int rot = applyRotate(src);
+    if (rot > 0)
+      applyRotateBBox(bboxes, static_cast<float>(src.cols),
+                      static_cast<float>(src.rows), rot);
+    int crop_x = 0;
+    int crop_y = 0;
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y);
+    if (cropped)
+      applyCropBBox(bboxes, classes, _crop_params,
+                    static_cast<float>(src.cols), static_cast<float>(src.rows),
+                    crop_x, crop_y);
+    applyCutout(src, _cutout_params);
+    cv::Mat src_c = src.clone();
+    applyGeometry(src_c, geoparams, true);
+    if (!geoparams._lambda.empty())
+      {
+        std::vector<std::vector<float>> bboxes_c = bboxes;
+        applyGeometryBBox(bboxes_c, geoparams, src_c.cols, src_c.rows);
+        if (!bboxes_c.empty())
+          {
+            src = src_c;
+            bboxes = bboxes_c;
+          }
+      }
+    applyNoise(src);
+    applyDistort(src);
+  }
+
+  void
+  ImgRandAugCV::augment_test_with_bbox(cv::Mat &src,
+                                       std::vector<std::vector<float>> &bboxes,
+                                       std::vector<int> &classes)
+  {
+    int crop_x = 0;
+    int crop_y = 0;
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y, true, true);
+    if (cropped)
+      applyCropBBox(bboxes, classes, _crop_params,
+                    static_cast<float>(src.cols), static_cast<float>(src.rows),
+                    crop_x, crop_y);
+  }
+
+  void ImgRandAugCV::augment_with_segmap(cv::Mat &src, cv::Mat &tgt)
+  {
+    GeometryParams geoparams = _geometry_params;
+    applyGeometry(src, geoparams, true, true);
+    if (!geoparams._lambda.empty())
+      applyGeometry(tgt, geoparams, false, false);
+
+    applyCutout(src, _cutout_params);
+
+    int crop_x = 0;
+    int crop_y = 0;
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y);
+    if (cropped)
+      applyCrop(tgt, _crop_params, crop_x, crop_y, false);
+
+    bool mirrored = applyMirror(src);
+    if (mirrored)
+      applyMirror(tgt, false);
+    int rot = applyRotate(src);
+    if (rot != 0)
+      applyRotate(tgt, false, rot);
+    applyNoise(src);
+    applyDistort(src);
+  }
+
+  void ImgRandAugCV::augment_test_with_segmap(cv::Mat &src, cv::Mat &tgt)
+  {
+    int crop_x = 0;
+    int crop_y = 0;
+    bool cropped = applyCrop(src, _crop_params, crop_x, crop_y, true, true);
+    if (cropped)
+      applyCrop(tgt, _crop_params, crop_x, crop_y, false);
+  }
+
+  bool ImgRandAugCV::roll_weighted_dice(const float &prob)
+  {
+    float r1 = 0.0;
+#pragma omp critical
+    {
+      r1 = _uniform_real_1(_rnd_gen);
+    }
+    if (r1 > prob)
+      return false;
+    else
+      return true;
+  }
+
+  bool ImgRandAugCV::applyMirror(cv::Mat &src, const bool &sample)
+  {
+    if (!_mirror)
+      return false;
+
+    bool mirror = false;
+#pragma omp critical
+    {
+      if (sample)
+        mirror = _bernouilli(_rnd_gen);
+      else
+        mirror = true;
+    }
+    if (mirror)
+      {
+        cv::Mat dst;
+        cv::flip(src, dst, 1);
+        src = dst;
+      }
+    return mirror;
+  }
+
+  void ImgRandAugCV::applyMirrorBBox(std::vector<std::vector<float>> &bboxes,
+                                     const float &img_width)
+  {
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        float xmin = bboxes.at(i)[0];
+        bboxes.at(i)[0] = img_width - bboxes.at(i)[2];
+        bboxes.at(i)[2] = img_width - xmin;
+      }
+  }
+
+  int ImgRandAugCV::applyRotate(cv::Mat &src, const bool &sample, int rot)
+  {
+    if (!_rotate)
+      return -1;
+
+#pragma omp critical
+    {
+      if (sample)
+        rot = _uniform_int_rotate(_rnd_gen);
+    }
+    if (rot == 0)
+      return rot;
+    else if (rot == 1)
+      {
+        cv::Mat dst;
+        cv::transpose(src, dst);
+        cv::flip(dst, src, 0);
+      }
+    else if (rot == 2)
+      {
+        cv::Mat dst;
+        cv::flip(src, dst, -1);
+        src = dst;
+      }
+    else if (rot == 3)
+      {
+        cv::Mat dst;
+        cv::transpose(src, dst);
+        cv::flip(dst, src, 1);
+      }
+    return rot;
+  }
+
+  void ImgRandAugCV::applyRotateBBox(std::vector<std::vector<float>> &bboxes,
+                                     const float &img_width,
+                                     const float &img_height, const int &rot)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        std::vector<float> nbox;
+        if (rot == 1)
+          {
+            nbox.push_back(bbox[1]);
+            nbox.push_back(img_height - bbox[2]);
+            nbox.push_back(bbox[3]);
+            nbox.push_back(img_height - bbox[0]);
+          }
+        else if (rot == 2)
+          {
+            nbox.push_back(img_width - bbox[2]);
+            nbox.push_back(img_height - bbox[3]);
+            nbox.push_back(img_width - bbox[0]);
+            nbox.push_back(img_height - bbox[1]);
+          }
+        else if (rot == 3)
+          {
+            nbox.push_back(img_width - bbox[3]);
+            nbox.push_back(bbox[0]);
+            nbox.push_back(img_width - bbox[1]);
+            nbox.push_back(bbox[2]);
+          }
+        nbboxes.push_back(nbox);
+      }
+    bboxes = nbboxes;
+  }
+
+  bool ImgRandAugCV::applyCrop(cv::Mat &src, CropParams &cp, int &crop_x,
+                               int &crop_y, const bool &sample,
+                               const bool &test)
+  {
+    if (cp._crop_size <= 0)
+      return false;
+
+    if (sample)
+      {
+        int img_width = src.cols;
+        int img_height = src.rows;
+        std::uniform_int_distribution<int> uniform_int_crop_x(
+            0, img_width - cp._crop_size);
+        std::uniform_int_distribution<int> uniform_int_crop_y(
+            0, img_height - cp._crop_size);
+
+#pragma omp critical
+        {
+          if (test)
+            {
+              crop_x = uniform_int_crop_x(_rnd_test_gen);
+              crop_y = uniform_int_crop_y(_rnd_test_gen);
+            }
+          else
+            {
+              crop_x = uniform_int_crop_x(_rnd_gen);
+              crop_y = uniform_int_crop_y(_rnd_gen);
+            }
+        }
+      }
+    cv::Rect crop(crop_x, crop_y, cp._crop_size, cp._crop_size);
+    cv::Mat dst = src(crop).clone();
+    src = dst;
+    return true;
+  }
+
+  void ImgRandAugCV::applyCropBBox(std::vector<std::vector<float>> &bboxes,
+                                   std::vector<int> &classes,
+                                   const CropParams &cp,
+                                   const float &img_width,
+                                   const float &img_height,
+                                   const float &crop_x, const float &crop_y)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    std::vector<int> nclasses;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+
+        if (bbox[2] < crop_x || bbox[0] > crop_x + cp._crop_size)
+          continue;
+        if (bbox[3] < crop_y || bbox[1] > crop_y + cp._crop_size)
+          continue;
+
+        std::vector<float> nbox;
+        nbox.push_back(std::max(0.f, bbox[0] - crop_x));
+        nbox.push_back(std::max(0.f, bbox[1] - crop_y));
+        nbox.push_back(std::min(img_width, bbox[2] - crop_x));
+        nbox.push_back(std::min(img_height, bbox[3] - crop_y));
+        nbboxes.push_back(nbox);
+        nclasses.push_back(classes.at(i));
+      }
+    if (nbboxes.empty())
+      {
+        nbboxes.push_back({ 0.0, 0.0, 0.0, 0.0 });
+        nclasses.push_back(0);
+      }
+    bboxes = nbboxes;
+    classes = nclasses;
+  }
+
+  void ImgRandAugCV::applyCutout(cv::Mat &src, CutoutParams &cp,
+                                 const bool &store_rparams)
+  {
+    if (cp._prob == 0.0)
+      return;
+
+    if (!roll_weighted_dice(cp._prob))
+      return;
+
+#pragma omp critical
+    {
+      int img_width = src.cols;
+      int img_height = src.rows;
+      int w = 0, h = 0, rect_x = 0, rect_y = 0;
+      if (cp._w == 0 && cp._h == 0)
+        {
+          float s
+              = cp._uniform_real_cutout_s(_rnd_gen) * img_width * img_height;
+          float r = cp._uniform_real_cutout_r(_rnd_gen);
+
+          w = std::min(img_width,
+                       static_cast<int>(std::floor(std::sqrt(s / r))));
+          h = std::min(img_height,
+                       static_cast<int>(std::floor(std::sqrt(s * r))));
+          std::uniform_int_distribution<int> distx(0, img_width - w);
+          std::uniform_int_distribution<int> disty(0, img_height - h);
+          rect_x = distx(_rnd_gen);
+          rect_y = disty(_rnd_gen);
+        }
+
+      cv::Rect rect(rect_x, rect_y, w, h);
+      cv::Mat selected_area = src(rect);
+      if (selected_area.channels() == 3)
+        cv::randu(selected_area,
+                  cv::Scalar(cp._cutout_vl, cp._cutout_vl, cp._cutout_vl),
+                  cv::Scalar(cp._cutout_vh, cp._cutout_vh, cp._cutout_vh));
+      else
+        cv::randu(selected_area, cv::Scalar(cp._cutout_vl),
+                  cv::Scalar(cp._cutout_vh));
+
+      if (store_rparams)
+        {
+          cp._w = w;
+          cp._h = h;
+          cp._rect_x = rect_x;
+          cp._rect_y = rect_y;
+        }
+    }
+  }
+
+  void ImgRandAugCV::getEnlargedImage(const cv::Mat &in_img,
+                                      const GeometryParams &cp,
+                                      cv::Mat &in_img_enlarged)
+  {
+    int pad_mode = cv::BORDER_REFLECT101;
+    switch (cp._geometry_pad_mode)
+      {
+      case 1:
+        pad_mode = cv::BORDER_CONSTANT;
+        break;
+      case 2:
+        pad_mode = cv::BORDER_REFLECT101;
+        break;
+      case 3:
+        pad_mode = cv::BORDER_REPLICATE;
+        break;
+      default:
+        break;
+      }
+    cv::copyMakeBorder(in_img, in_img_enlarged, in_img.rows, in_img.rows,
+                       in_img.cols, in_img.cols, pad_mode);
+  }
+
+  void ImgRandAugCV::getQuads(const int &rows, const int &cols,
+                              const GeometryParams &cp,
+                              cv::Point2f (&inputQuad)[4],
+                              cv::Point2f (&outputQuad)[4])
+  {
+    float x0, x1, y0, y1;
+    x0 = cols;
+    x1 = 2 * cols - 1;
+    y0 = rows;
+    y1 = 2 * rows - 1;
+    if (cp._geometry_zoom_out || cp._geometry_zoom_in)
+      {
+        bool zoom_in = cp._geometry_zoom_in;
+        bool zoom_out = cp._geometry_zoom_out;
+        if (cp._geometry_zoom_out && cp._geometry_zoom_in)
+          {
+            if (_bernouilli(_rnd_gen))
+              zoom_in = false;
+            else
+              zoom_out = false;
+          }
+
+        float x0min, x0max, y0min, y0max;
+        if (zoom_in)
+          {
+            x0max = cols + cols * cp._geometry_zoom_factor;
+            y0max = rows + rows * cp._geometry_zoom_factor;
+          }
+        else
+          {
+            x0max = x0;
+            y0max = y0;
+          }
+        if (zoom_out)
+          {
+            x0min = cols - cols * cp._geometry_zoom_factor;
+            y0min = rows - rows * cp._geometry_zoom_factor;
+          }
+        else
+          {
+            x0min = x0;
+            y0min = y0;
+          }
+
+        x0 = ((x0max - x0min) * _uniform_real_1(_rnd_gen) + x0min);
+        x1 = 3 * cols - x0;
+        y0 = ((y0max - y0min) * _uniform_real_1(_rnd_gen) + y0min);
+        y1 = 3 * rows - y0;
+      }
+
+    inputQuad[0] = cv::Point2f(x0, y0);
+    inputQuad[1] = cv::Point2f(x1, y0);
+    inputQuad[2] = cv::Point2f(x1, y1);
+    inputQuad[3] = cv::Point2f(x0, y1);
+
+    outputQuad[0] = cv::Point2f(0, 0);
+    outputQuad[1] = cv::Point2f(cols - 1, 0);
+    outputQuad[2] = cv::Point2f(cols - 1, rows - 1);
+    outputQuad[3] = cv::Point2f(0, rows - 1);
+    if (cp._geometry_persp_horizontal)
+      {
+        if (_bernouilli(_rnd_gen))
+          {
+            outputQuad[0].y
+                = rows * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[3].y = rows - outputQuad[0].y;
+          }
+        else
+          {
+            outputQuad[1].y
+                = rows * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[2].y = rows - outputQuad[1].y;
+          }
+      }
+    if (cp._geometry_persp_vertical)
+      {
+        if (_bernouilli(_rnd_gen))
+          {
+            outputQuad[3].x
+                = cols * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[2].x = cols - outputQuad[3].x;
+          }
+        else
+          {
+            outputQuad[0].x
+                = cols * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[1].x = cols - outputQuad[0].x;
+          }
+      }
+    if (cp._geometry_transl_horizontal)
+      {
+        float tx = cols * cp._geometry_transl_factor
+                   * (2 * _uniform_real_1(_rnd_gen) - 1);
+        for (int i = 0; i < 4; ++i)
+          outputQuad[i].x += tx;
+      }
+    if (cp._geometry_transl_vertical)
+      {
+        float ty = rows * cp._geometry_transl_factor
+                   * (2 * _uniform_real_1(_rnd_gen) - 1);
+        for (int i = 0; i < 4; ++i)
+          outputQuad[i].y += ty;
+      }
+  }
+
+  void ImgRandAugCV::applyGeometry(cv::Mat &src, GeometryParams &cp,
+                                   const bool &store_rparams,
+                                   const bool &sample)
+  {
+    if (!cp._prob)
+      return;
+
+    if (sample)
+      {
+        if (!roll_weighted_dice(cp._prob))
+          return;
+      }
+
+    cv::Mat src_enlarged;
+    getEnlargedImage(src, cp, src_enlarged);
+
+    cv::Point2f inputQuad[4];
+    cv::Point2f outputQuad[4];
+
+#pragma omp critical
+    {
+      if (sample)
+        getQuads(src.rows, src.cols, cp, inputQuad, outputQuad);
+    }
+
+    cv::Mat lambda
+        = (sample ? cv::getPerspectiveTransform(inputQuad, outputQuad)
+                  : cp._lambda);
+    int inter_flag = cv::INTER_NEAREST;
+    int border_mode = (cp._geometry_pad_mode == 1 ? cv::BORDER_CONSTANT
+                                                  : cv::BORDER_REPLICATE);
+    cv::warpPerspective(src_enlarged, src, lambda, src.size(), inter_flag,
+                        border_mode);
+
+    if (store_rparams)
+      cp._lambda = lambda;
+  }
+
+  void ImgRandAugCV::warpBBoxes(std::vector<std::vector<float>> &bboxes,
+                                cv::Mat lambda)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        std::vector<cv::Point2f> origBBox;
+        std::vector<cv::Point2f> warpedBBox;
+
+        cv::Point2f p1;
+        p1.x = bbox[0];
+        p1.y = bbox[1];
+        origBBox.push_back(p1);
+        cv::Point2f p2;
+        p2.x = bbox[2];
+        p2.y = bbox[3];
+        origBBox.push_back(p2);
+        cv::Point2f p3;
+        p3.x = bbox[0];
+        p3.y = bbox[3];
+        origBBox.push_back(p3);
+        cv::Point2f p4;
+        p4.x = bbox[2];
+        p4.y = bbox[1];
+        origBBox.push_back(p4);
+
+        cv::perspectiveTransform(origBBox, warpedBBox, lambda);
+        float xmin = warpedBBox[0].x;
+        float ymin = warpedBBox[0].y;
+        float xmax = warpedBBox[0].x;
+        float ymax = warpedBBox[0].y;
+        for (int i = 1; i < 4; ++i)
+          {
+            if (warpedBBox[i].x < xmin)
+              xmin = warpedBBox[i].x;
+            if (warpedBBox[i].x > xmax)
+              xmax = warpedBBox[i].x;
+            if (warpedBBox[i].y < ymin)
+              ymin = warpedBBox[i].y;
+            if (warpedBBox[i].y > ymax)
+              ymax = warpedBBox[i].y;
+          }
+
+        std::vector<float> nbox = { xmin, ymin, xmax, ymax };
+        nbboxes.push_back(nbox);
+      }
+    bboxes = nbboxes;
+  }
+
+  void ImgRandAugCV::filterBBoxes(std::vector<std::vector<float>> &bboxes,
+                                  const GeometryParams &cp,
+                                  const int &img_width, const int &img_height)
+  {
+    std::vector<std::vector<float>> nbboxes;
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        std::vector<float> bbox = bboxes.at(i);
+        if (bbox[2] >= 0.0 && bbox[0] <= img_width && bbox[3] >= 0.0
+            && bbox[1] <= img_height)
+          {
+            std::vector<float> nbbox;
+            nbbox.push_back(std::max(0.0f, bbox[0]));
+            nbbox.push_back(std::max(0.0f, bbox[1]));
+            nbbox.push_back(std::min(static_cast<float>(img_width), bbox[2]));
+            nbbox.push_back(std::min(static_cast<float>(img_height), bbox[3]));
+            float surfbb = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]);
+            float surfnbb = (nbbox[2] - nbbox[0]) * (nbbox[3] - nbbox[1]);
+            if (surfnbb > cp._geometry_bbox_intersect * surfbb)
+              nbboxes.push_back(nbbox);
+          }
+      }
+    bboxes = nbboxes;
+  }
+
+  void ImgRandAugCV::applyGeometryBBox(std::vector<std::vector<float>> &bboxes,
+                                       const GeometryParams &cp,
+                                       const int &img_width,
+                                       const int &img_height)
+  {
+    for (size_t i = 0; i < bboxes.size(); ++i)
+      {
+        bboxes[i][0] += img_width;
+        bboxes[i][2] += img_width;
+        bboxes[i][1] += img_height;
+        bboxes[i][3] += img_height;
+      }
+
+    warpBBoxes(bboxes, cp._lambda);
+    filterBBoxes(bboxes, cp, img_width, img_height);
+  }
+
+  void ImgRandAugCV::applyNoise(cv::Mat &src)
+  {
+    if (_noise_params._prob == 0.0)
+      return;
+
+    bool img_is_bw = src.channels() == 1;
+    if (img_is_bw
+        && (_noise_params._hist_eq || _noise_params._decolorize
+            || _noise_params._jpg || _noise_params._convert_to_hsv
+            || _noise_params._convert_to_lab))
+      throw std::runtime_error(
+          "Image has one channel when 3 channel dataaug is enabled");
+
+    if (_noise_params._rgb)
+      {
+        cv::Mat bgr;
+        cv::cvtColor(src, bgr, cv::COLOR_RGB2BGR);
+        src = bgr;
+      }
+
+    if (_noise_params._decolorize)
+      applyNoiseDecolorize(src);
+    if (_noise_params._gauss_blur)
+      applyNoiseGaussianBlur(src);
+    if (_noise_params._hist_eq)
+      applyNoiseHistEq(src);
+    if (_noise_params._clahe)
+      applyNoiseClahe(src);
+    if (_noise_params._jpg)
+      applyNoiseJPG(src);
+    if (_noise_params._erosion)
+      applyNoiseErosion(src);
+    if (_noise_params._posterize)
+      applyNoisePosterize(src);
+    if (_noise_params._inverse)
+      applyNoiseInverse(src);
+    if (_noise_params._saltpepper)
+      applyNoiseSaltpepper(src);
+    if (_noise_params._convert_to_hsv)
+      applyNoiseConvertHSV(src);
+    if (_noise_params._convert_to_lab)
+      applyNoiseConvertLAB(src);
+
+    if (_noise_params._rgb)
+      {
+        cv::Mat rgb;
+        cv::cvtColor(src, rgb, cv::COLOR_BGR2RGB);
+        src = rgb;
+      }
+  }
+
+  void ImgRandAugCV::applyDistort(cv::Mat &src)
+  {
+    if (_distort_params._prob == 0.0)
+      return;
+
+    bool img_is_bw = src.channels() == 1;
+    if (img_is_bw
+        && (_distort_params._saturation || _distort_params._hue
+            || _distort_params._channel_order))
+      throw std::runtime_error(
+          "Image has one channel when 3 channel dataaug is enabled");
+
+    if (_distort_params._rgb)
+      {
+        cv::Mat bgr;
+        cv::cvtColor(src, bgr, cv::COLOR_RGB2BGR);
+        src = bgr;
+      }
+
+    float lprob;
+#pragma omp critical
+    {
+      lprob = _uniform_real_1(_rnd_gen);
+    }
+    if (lprob > 0.5)
+      {
+        if (_distort_params._brightness)
+          applyDistortBrightness(src);
+        if (_distort_params._contrast)
+          applyDistortContrast(src);
+        if (_distort_params._saturation)
+          applyDistortSaturation(src);
+        if (_distort_params._hue)
+          applyDistortHue(src);
+        if (_distort_params._channel_order)
+          applyDistortOrderChannel(src);
+      }
+    else
+      {
+        if (_distort_params._brightness)
+          applyDistortBrightness(src);
+        if (_distort_params._saturation)
+          applyDistortSaturation(src);
+        if (_distort_params._hue)
+          applyDistortHue(src);
+        if (_distort_params._contrast)
+          applyDistortContrast(src);
+        if (_distort_params._channel_order)
+          applyDistortOrderChannel(src);
+      }
+
+    if (_distort_params._rgb)
+      {
+        cv::Mat rgb;
+        cv::cvtColor(src, rgb, cv::COLOR_BGR2RGB);
+        src = rgb;
+      }
+  }
+
+  void ImgRandAugCV::applyNoiseDecolorize(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    if (src.channels() > 1)
+      {
+        cv::Mat grayscale;
+        cv::cvtColor(src, grayscale, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(grayscale, src, cv::COLOR_GRAY2BGR);
+      }
+  }
+
+  void ImgRandAugCV::applyNoiseGaussianBlur(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    cv::Mat out;
+    cv::GaussianBlur(src, out, cv::Size(7, 7), 1.5);
+    src = out;
+  }
+
+  void ImgRandAugCV::applyNoiseHistEq(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    if (src.channels() > 1)
+      {
+        cv::Mat ycrcb_image;
+        cv::cvtColor(src, ycrcb_image, cv::COLOR_BGR2YCrCb);
+        std::vector<cv::Mat> ycrcb_planes(3);
+        cv::split(ycrcb_image, ycrcb_planes);
+        cv::Mat dst;
+        cv::equalizeHist(ycrcb_planes[0], dst);
+        ycrcb_planes[0] = dst;
+        cv::merge(ycrcb_planes, ycrcb_image);
+        cv::cvtColor(ycrcb_image, src, cv::COLOR_YCrCb2BGR);
+      }
+    else
+      {
+        cv::Mat temp_img;
+        cv::equalizeHist(src, temp_img);
+        src = temp_img;
+      }
+  }
+
+  void ImgRandAugCV::applyNoiseClahe(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+    clahe->setClipLimit(4);
+    if (src.channels() > 1)
+      {
+        cv::Mat ycrcb_image;
+        cv::cvtColor(src, ycrcb_image, cv::COLOR_BGR2YCrCb);
+        std::vector<cv::Mat> ycrcb_planes(3);
+        cv::split(ycrcb_image, ycrcb_planes);
+        cv::Mat dst;
+        clahe->apply(ycrcb_planes[0], dst);
+        ycrcb_planes[0] = dst;
+        cv::merge(ycrcb_planes, ycrcb_image);
+        cv::cvtColor(ycrcb_image, src, cv::COLOR_YCrCb2BGR);
+      }
+    else
+      {
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+        clahe->setClipLimit(4);
+        cv::Mat temp_img;
+        clahe->apply(src, temp_img);
+        src = temp_img;
+      }
+  }
+
+  void ImgRandAugCV::applyNoiseJPG(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    std::vector<uchar> buf;
+    std::vector<int> params;
+    params.push_back(cv::IMWRITE_JPEG_QUALITY);
+#pragma omp critical
+    {
+      params.push_back(_uniform_real_1(_rnd_gen) * 100.0);
+    }
+    cv::imencode(".jpg", src, buf, params);
+    src = cv::imdecode(buf, cv::IMREAD_COLOR);
+  }
+
+  void ImgRandAugCV::applyNoiseErosion(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    cv::Mat element
+        = cv::getStructuringElement(2, cv::Size(3, 3), cv::Point(1, 1));
+    cv::erode(src, src, element);
+  }
+
+  void ImgRandAugCV::applyNoisePosterize(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    int div = 64;
+    cv::Mat lookUpTable(1, 256, CV_8U);
+    uchar *p = lookUpTable.data;
+    const int div_2 = div / 2;
+    for (int i = 0; i < 256; ++i)
+      p[i] = i / div * div + div_2;
+    cv::Mat tmp_img;
+    cv::LUT(src, lookUpTable, tmp_img);
+    src = tmp_img;
+  }
+
+  void ImgRandAugCV::applyNoiseInverse(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    cv::Mat tmp_img;
+    cv::bitwise_not(src, tmp_img);
+    src = tmp_img;
+  }
+
+  void ImgRandAugCV::applyNoiseSaltpepper(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    const int noise_pixels_n
+        = std::floor(_noise_params._saltpepper_fraction * src.cols * src.rows);
+    const std::vector<uchar> val_black = { 0, 0, 0 };
+    const std::vector<uchar> val_white = { 255, 255, 255 };
+    if (src.channels() == 1)
+      {
+#pragma omp critical
+        {
+          if (src.depth() == CV_8U)
+            {
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  uchar *ptr = src.ptr<uchar>(j);
+                  if (_bernouilli(_rnd_gen))
+                    ptr[i] = val_black[0];
+                  else
+                    ptr[i] = val_white[0];
+                }
+            }
+          else
+            {
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  uchar *ptr = src.ptr<uchar>(j);
+                  ptr[i] = val_black[0];
+                }
+            }
+        }
+      }
+    else if (src.channels() == 3)
+      {
+#pragma omp critical
+        {
+          if (src.depth() == CV_8U)
+            {
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  cv::Vec3b *ptr = src.ptr<cv::Vec3b>(j);
+                  if (_bernouilli(_rnd_gen))
+                    {
+                      (ptr[i])[0] = val_black[0];
+                      (ptr[i])[1] = val_black[1];
+                      (ptr[i])[2] = val_black[2];
+                    }
+                  else
+                    {
+                      (ptr[i])[0] = val_white[0];
+                      (ptr[i])[1] = val_white[1];
+                      (ptr[i])[2] = val_white[2];
+                    }
+                }
+            }
+          else
+            {
+              for (int k = 0; k < noise_pixels_n; ++k)
+                {
+                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
+                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  cv::Vec3b *ptr = src.ptr<cv::Vec3b>(j);
+                  (ptr[i])[0] = val_black[0];
+                  (ptr[i])[1] = val_black[1];
+                  (ptr[i])[2] = val_black[2];
+                }
+            }
+        }
+      }
+  }
+
+  void ImgRandAugCV::applyNoiseConvertHSV(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    cv::Mat hsv_image;
+    cv::cvtColor(src, hsv_image, cv::COLOR_BGR2HSV);
+    src = hsv_image;
+  }
+
+  void ImgRandAugCV::applyNoiseConvertLAB(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_noise_params._prob))
+      return;
+    int orig_depth = src.depth();
+    cv::Mat lab_image;
+    src.convertTo(lab_image, CV_32F);
+    lab_image *= 1.0 / 255;
+    cv::cvtColor(lab_image, src, cv::COLOR_BGR2Lab);
+    src.convertTo(lab_image, orig_depth);
+    src = lab_image;
+  }
+
+  void ImgRandAugCV::applyDistortBrightness(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_brightness(_rnd_gen);
+    }
+    if (delta > 0)
+      {
+        cv::Mat tmp;
+        src.convertTo(tmp, -1, 1, delta);
+        src = tmp;
+      }
+  }
+
+  void ImgRandAugCV::applyDistortContrast(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_contrast(_rnd_gen);
+    }
+    if (std::fabs(delta - 1.f) > 1e-3)
+      {
+        cv::Mat tmp;
+        src.convertTo(tmp, -1, delta, 0);
+        src = tmp;
+      }
+  }
+
+  void ImgRandAugCV::applyDistortSaturation(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_saturation(_rnd_gen);
+    }
+    if (std::fabs(delta - 1.f) >= 1e-3)
+      {
+        cv::Mat tmp;
+        cv::cvtColor(src, tmp, cv::COLOR_BGR2HSV);
+        std::vector<cv::Mat> channels;
+        cv::split(tmp, channels);
+        channels[1].convertTo(channels[1], -1, delta, 0);
+        cv::merge(channels, tmp);
+        cvtColor(tmp, src, cv::COLOR_HSV2BGR);
+      }
+  }
+
+  void ImgRandAugCV::applyDistortHue(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    float delta;
+#pragma omp critical
+    {
+      delta = _distort_params._uniform_real_hue(_rnd_gen);
+    }
+    if (std::fabs(delta) > 0)
+      {
+        cv::Mat tmp;
+        cv::cvtColor(src, tmp, cv::COLOR_BGR2HSV);
+        std::vector<cv::Mat> channels;
+        cv::split(tmp, channels);
+        channels[0].convertTo(channels[0], -1, 1, delta);
+        cv::merge(channels, tmp);
+        cvtColor(tmp, src, cv::COLOR_HSV2BGR);
+      }
+  }
+
+  void ImgRandAugCV::applyDistortOrderChannel(cv::Mat &src)
+  {
+    if (!roll_weighted_dice(_distort_params._prob))
+      return;
+    if (src.channels() == 3)
+      {
+        std::vector<cv::Mat> channels;
+        cv::split(src, channels);
+        std::shuffle(channels.begin(), channels.end(), _rnd_gen);
+        cv::merge(channels, src);
+      }
+  }
+}
