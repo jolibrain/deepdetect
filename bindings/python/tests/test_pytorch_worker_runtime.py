@@ -471,6 +471,10 @@ def test_detection_tensor_batch_dataset_returns_detection_sample_contract():
     assert tuple(target["boxes"].shape) == (1, 4)
     assert target["labels"].tolist() == [1]
     assert target["image_id"].tolist() == [42]
+    assert target["area"].tolist() == [6.0]
+    assert target["iscrowd"].tolist() == [0]
+    assert target["orig_size"].tolist() == [4, 5]
+    assert target["size"].tolist() == [4, 5]
     assert meta == {
         "index": 42,
         "path": "tensor://sample0",
@@ -492,6 +496,9 @@ def test_detection_tensor_batch_dataset_accepts_cxx_compatible_targets():
     assert target["boxes"].tolist() == [[1.0, 2.0, 8.0, 9.0]]
     assert target["labels"].tolist() == [1]
     assert target["image_id"].tolist() == [43]
+    assert target["area"].tolist() == [49.0]
+    assert target["orig_size"].tolist() == [12, 16]
+    assert target["size"].tolist() == [12, 16]
     assert meta["path"] == "tensor://sample43"
 
 
@@ -596,6 +603,73 @@ def test_detection_tensor_batch_dataset_feeds_reference_detector_loss():
     assert {"loss_classifier", "loss_box_reg"} <= set(losses)
 
 
+def test_detection_training_base_invokes_generic_adapter_hooks(tmp_path):
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    _image, data = write_detection_list(tmp_path)
+    events = []
+
+    class HookedDetector(ReferenceTorchDetectorWorker):
+        def __init__(self):
+            super().__init__()
+            self.hooks = []
+
+        def prepare_training_batch(self, images, targets, metas):
+            self.hooks.append(("prepare", len(metas)))
+            return super().prepare_training_batch(images, targets, metas)
+
+        def convert_prediction_outputs(self, outputs, images, metas):
+            self.hooks.append(("convert", len(metas)))
+            return super().convert_prediction_outputs(outputs, images, metas)
+
+        def save_training_checkpoint(
+            self, checkpoint_manager, model, optimizer, iteration
+        ):
+            self.hooks.append(("save", iteration))
+            return super().save_training_checkpoint(
+                checkpoint_manager,
+                model,
+                optimizer,
+                iteration,
+            )
+
+    worker = HookedDetector()
+    worker.configure(
+        WorkerContext(
+            repository=str(tmp_path),
+            mllib={"nclasses": 2},
+            raw={},
+        )
+    )
+
+    result = worker.train(
+        {
+            "request": {
+                "data": [str(data), str(data)],
+                "parameters": {
+                    "mllib": {
+                        "solver": {
+                            "iterations": 1,
+                            "test_interval": 1,
+                            "base_lr": 0.001,
+                        },
+                        "net": {"batch_size": 1},
+                    },
+                    "output": {"measure": ["map-50"]},
+                },
+            }
+        },
+        reporter=WorkerReporter(lambda event, payload: events.append((event, payload))),
+        cancellation=Cancellation(),
+    )
+
+    assert result["status"] == "finished"
+    assert ("prepare", 1) in worker.hooks
+    assert ("convert", 1) in worker.hooks
+    assert ("save", 1) in worker.hooks
+    assert (tmp_path / "checkpoint-latest.pt").is_file()
+
+
 def test_dummy_worker_reports_metrics_and_predicts():
     server, client = socket_pair()
     thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
@@ -617,9 +691,7 @@ def test_dummy_worker_reports_metrics_and_predicts():
             {
                 "request": {
                     "parameters": {
-                        "mllib": {
-                            "solver": {"iterations": 2, "base_lr": 0.01}
-                        }
+                        "mllib": {"solver": {"iterations": 2, "base_lr": 0.01}}
                     }
                 }
             },
@@ -666,6 +738,29 @@ def test_torchvision_worker_detection_list_resolves_relative_paths(tmp_path):
     assert samples[0].index == 0
     assert samples[0].image == image.resolve()
     assert samples[0].target == bbox.resolve()
+
+
+def test_detection_list_dataset_enriches_detr_target_metadata(tmp_path):
+    torch = pytest.importorskip("torch")
+    image = tmp_path / "image.jpg"
+    Image.new("RGB", (8, 8), color="white").save(image)
+    bbox = tmp_path / "target.txt"
+    bbox.write_text("1 0 0 4 4\n", encoding="utf-8")
+    data = tmp_path / "train.txt"
+    data.write_text("image.jpg target.txt\n", encoding="utf-8")
+
+    dataset = DetectionListDataset(data, nclasses=2, torch=torch)
+    _image, target, meta = dataset[0]
+
+    assert target["boxes"].tolist() == [[0.0, 0.0, 4.0, 4.0]]
+    assert target["labels"].tolist() == [1]
+    assert target["image_id"].tolist() == [0]
+    assert target["area"].tolist() == [16.0]
+    assert target["iscrowd"].tolist() == [0]
+    assert target["orig_size"].tolist() == [8, 8]
+    assert target["size"].tolist() == [8, 8]
+    assert meta["width"] == 8
+    assert meta["height"] == 8
 
 
 def test_detection_list_dataset_defers_file_and_target_validation(tmp_path):
@@ -883,9 +978,7 @@ def test_detection_repository_contract_writer_persists_expected_artifacts(tmp_pa
     manifest = json.loads(
         (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
     )
-    classes = json.loads(
-        (tmp_path / "class_mapping.json").read_text(encoding="utf-8")
-    )
+    classes = json.loads((tmp_path / "class_mapping.json").read_text(encoding="utf-8"))
 
     assert config["worker"] == "fake-detector"
     assert config["input_parameters"] == {"width": 320}
@@ -896,7 +989,9 @@ def test_detection_repository_contract_writer_persists_expected_artifacts(tmp_pa
     assert classes == {"0": "background", "1": "ring", "2": "hand"}
 
 
-def test_detection_repository_contract_writer_persists_tensor_backed_artifacts(tmp_path):
+def test_detection_repository_contract_writer_persists_tensor_backed_artifacts(
+    tmp_path,
+):
     class FakeTensorDataset:
         def __init__(self, batches, size):
             self.batches = batches
@@ -1131,7 +1226,12 @@ def test_reference_torch_detector_trains_one_cpu_iteration(tmp_path):
 
     assert result["status"] == "finished"
     metric_names = {payload["name"] for event, payload in events if event == "metric"}
-    assert {"train_loss", "loss_classifier", "loss_box_reg", "map_test0"} <= metric_names
+    assert {
+        "train_loss",
+        "loss_classifier",
+        "loss_box_reg",
+        "map_test0",
+    } <= metric_names
     worker_config = json.loads(
         (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
     )
@@ -1264,9 +1364,12 @@ def test_runtime_loads_reference_detector_from_mllib_module(tmp_path):
         )
         assert manifest["train"]["samples"] == 1
         assert manifest["tests"][0]["samples"] == 1
-        assert json.loads(
-            (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
-        )["worker"] == "reference-torch-detector"
+        assert (
+            json.loads(
+                (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
+            )["worker"]
+            == "reference-torch-detector"
+        )
 
         request(
             server,
@@ -1542,6 +1645,63 @@ def test_runtime_reports_missing_entrypoint_as_launch_error(tmp_path):
         response = read_until(server, message_id=1)
         assert response["error"]["category"] == "worker_launch_error"
         assert response["error"]["method"] == "configure"
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+
+
+def test_runtime_loads_external_worker_from_entrypoint(tmp_path):
+    entrypoint = tmp_path / "external_worker.py"
+    entrypoint.write_text(
+        "\n".join(
+            [
+                "class DeepDetectWorker:",
+                "    def configure(self, params):",
+                "        return {'worker': 'external-file-worker'}",
+                "    def train(self, params):",
+                "        return {'status': 'finished'}",
+                "    def predict(self, params):",
+                "        return {'results': []}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(
+            server,
+            1,
+            "configure",
+            {"mllib": {"entrypoint": str(entrypoint), "class": "DeepDetectWorker"}},
+        )
+        response = read_until(server, message_id=1)
+        assert response["result"] == {"worker": "external-file-worker"}
+    finally:
+        request(server, 99, "shutdown")
+        read_until(server, message_id=99)
+        server.close()
+        client.close()
+        thread.join(timeout=2)
+
+
+def test_runtime_reports_entrypoint_dependency_error(tmp_path):
+    entrypoint = tmp_path / "bad_worker.py"
+    entrypoint.write_text(
+        "import missing_deepdetect_test_dependency\n", encoding="utf-8"
+    )
+    server, client = socket_pair()
+    thread = threading.Thread(target=WorkerRuntime(client).serve, daemon=True)
+    thread.start()
+    try:
+        request(server, 1, "configure", {"mllib": {"entrypoint": str(entrypoint)}})
+        response = read_until(server, message_id=1)
+        assert response["error"]["category"] == "dependency_error"
+        assert "worker entrypoint dependency" in response["error"]["message"]
     finally:
         request(server, 99, "shutdown")
         read_until(server, message_id=99)

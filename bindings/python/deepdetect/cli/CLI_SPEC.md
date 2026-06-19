@@ -4,16 +4,21 @@
 
 The Python CLI provides ready-to-use image training and inference workflows on
 top of the in-process `deepdetect` bindings. Version 1 is intentionally scoped
-to two model profiles:
+to focused model profiles:
 
 - `yolox`: object detection with bounding boxes.
 - `segformer`: semantic segmentation.
+- `torchvision-detector`: managed PyTorch Faster R-CNN detection.
+- `external-pytorch-detector`: an external Python worker selected through
+  YAML/API `mllib.entrypoint`.
 
 The canonical command shape is task first:
 
 ```shell
 deepdetect train yolox ...
 deepdetect train segformer ...
+deepdetect train torchvision-detector ...
+deepdetect train external-pytorch-detector ...
 deepdetect infer yolox ...
 deepdetect infer segformer ...
 deepdetect job status RUN_DIR
@@ -56,6 +61,7 @@ Example default-style configs are provided next to this document:
 - `yolox-default.yaml`
 - `segformer-default.yaml`
 - `torchvision-detector-default.yaml`
+- `external-pytorch-detector-default.yaml`
 
 They include training keys plus inference-only keys that are ignored by
 training commands. Replace the dataset and model paths before use:
@@ -64,7 +70,24 @@ training commands. Replace the dataset and model paths before use:
 deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yaml
 deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-default.yaml
 deepdetect train torchvision-detector --config bindings/python/deepdetect/cli/torchvision-detector-default.yaml
+deepdetect train external-pytorch-detector --config bindings/python/deepdetect/cli/external-pytorch-detector-default.yaml
 ```
+
+`external-pytorch-detector` uses the `pytorch` backend and normal DeepDetect
+training flags. The YAML `service_mllib` section must select the worker file
+and class, for example:
+
+```yaml
+service_mllib:
+  entrypoint: extern/pytorch_workers/model_slug/worker.py
+  class: DeepDetectWorker
+mllib:
+  data_source: connector_tensor_pull
+```
+
+The worker file may live outside the packaged `deepdetect` module. Generated
+adapters should live under `extern/pytorch_workers/<model_slug>/`, which is
+ignored by git except for workspace documentation.
 
 ## Training Commands
 

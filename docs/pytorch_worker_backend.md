@@ -645,8 +645,16 @@ Optional adapter hooks:
 
 - `backend_versions(*backend)`: adds dependency versions to configure output;
 - `create_optimizer(torch, model, base_lr=...)`: overrides AdamW;
+- `prepare_training_batch(images, targets, metas)`: converts DeepDetect
+  detection targets before loss computation, for example pixel `xyxy` boxes to
+  DETR-style normalized `cxcywh`;
 - `training_losses(model, images, targets)`: adapts non-callable loss APIs;
 - `predict_batch(model, images)`: adapts non-callable prediction APIs;
+- `convert_prediction_outputs(outputs, images, metas)`: converts
+  model-specific predictions to DeepDetect `boxes`, `scores`, and `labels`;
+- `load_model_for_training`, `load_model_for_prediction`,
+  `load_optimizer_for_training`, and `save_training_checkpoint`: adapt custom
+  checkpoint formats while preserving the default DeepDetect checkpoint path;
 - `create_dataset(list_path, torch=...)`: overrides the default bbox-list
   dataset.
 
@@ -695,11 +703,54 @@ where `image` is a `[3, H, W]` tensor and `target` contains:
     "boxes": FloatTensor[N, 4],
     "labels": Int64Tensor[N],
     "image_id": Int64Tensor[1],
+    "area": FloatTensor[N],
+    "iscrowd": Int64Tensor[N],
+    "orig_size": Int64Tensor[2],  # [H, W]
+    "size": Int64Tensor[2],       # [H, W]
 }
 ```
 
 `meta` contains the sample index, image path, width, and height. Boxes are
 `[x0, y0, x1, y1]` absolute pixel coordinates and label `0` is background.
+The additional target fields are generic DETR-style metadata. Existing
+torchvision adapters can ignore them.
+
+### External Worker Entrypoints
+
+The `pytorch` backend can load a worker from `mllib.entrypoint`, including a
+file outside the packaged `deepdetect` module. The selected class defaults to
+`DeepDetectWorker` and must implement:
+
+```python
+DeepDetectWorker.configure(...)
+DeepDetectWorker.train(...)
+DeepDetectWorker.predict(...)
+```
+
+External object detection workers should usually subclass
+`DetectionTrainingWorkerBase` so they inherit connector tensor pull, CLI
+metrics, Visdom sampled results, repository artifacts, and checkpoint handling.
+
+The default local workspace is:
+
+```text
+extern/pytorch_workers/<model_slug>/
+```
+
+This directory is ignored by git. Each generated adapter should include
+`worker.py`, `config.yaml`, `manifest.json`, and optional notes. The manifest
+should record the upstream repository URL, local checkout path, commit or tag
+when known, license, dependencies, selected entrypoint, and generation notes.
+
+The CLI exposes this through `external-pytorch-detector`:
+
+```yaml
+service_mllib:
+  entrypoint: extern/pytorch_workers/model_slug/worker.py
+  class: DeepDetectWorker
+mllib:
+  data_source: connector_tensor_pull
+```
 
 ### Training Loop Contract
 

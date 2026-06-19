@@ -14,7 +14,9 @@ set_target_properties(_native PROPERTIES
 
 install(TARGETS _native LIBRARY DESTINATION deepdetect)
 install(FILES
+  deepdetect/cli/external-pytorch-detector-default.yaml
   deepdetect/cli/segformer-default.yaml
+  deepdetect/cli/torchvision-detector-default.yaml
   deepdetect/cli/yolox-default.yaml
   DESTINATION deepdetect/cli)
 

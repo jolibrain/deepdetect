@@ -17,6 +17,7 @@ from .sdk import (
     WorkerContext,
     WorkerContractError,
     WorkerConnector,
+    WorkerDependencyError,
     WorkerReporter,
     WorkerLaunchError,
     WorkerSDKError,
@@ -193,6 +194,10 @@ class WorkerRuntime:
                 raise WorkerLaunchError(
                     f"worker entrypoint does not exist: {entrypoint}"
                 )
+            if not os.path.isfile(entrypoint):
+                raise WorkerLaunchError(
+                    f"worker entrypoint is not a file: {entrypoint}"
+                )
             spec = importlib.util.spec_from_file_location(
                 "_deepdetect_worker", entrypoint
             )
@@ -200,7 +205,13 @@ class WorkerRuntime:
                 raise WorkerLaunchError(f"cannot load worker entrypoint: {entrypoint}")
             module = importlib.util.module_from_spec(spec)
             sys.modules["_deepdetect_worker"] = module
-            spec.loader.exec_module(module)
+            try:
+                spec.loader.exec_module(module)
+            except (ImportError, ModuleNotFoundError) as error:
+                raise WorkerDependencyError(
+                    "worker entrypoint dependency could not be imported from "
+                    f"{entrypoint}: {error}"
+                ) from error
             return module
         return importlib.import_module(module_name)
 
@@ -231,7 +242,9 @@ class WorkerRuntime:
             )
         result = message.get("result", {})
         if not isinstance(result, dict):
-            raise WorkerContractError(f"worker request {method} result must be an object")
+            raise WorkerContractError(
+                f"worker request {method} result must be an object"
+            )
         return result
 
     def _route_response(self, message: dict[str, Any]) -> bool:

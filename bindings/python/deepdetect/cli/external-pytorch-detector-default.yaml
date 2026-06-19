@@ -1,0 +1,52 @@
+# Default-style external PyTorch detector CLI configuration.
+# Fill in paths for your dataset and external worker before running.
+train_data: train.txt
+test_data:
+  - test.txt
+weights: null
+repository: deepdetect-models/external-pytorch-detector
+service_name: python-external-pytorch-detector-train
+nclasses: 2
+width: 640
+height: 640
+iterations: 100
+batch_size: 1
+iter_size: 1
+augmentation: {}
+service_mllib:
+  entrypoint: extern/pytorch_workers/model_slug/worker.py
+  class: DeepDetectWorker
+mllib:
+  data_source: connector_tensor_pull
+class_weights: null
+base_lr: 0.0001
+test_interval: 100
+gpu: false
+gpuid: null
+sync: false
+poll_interval: 0.5
+timeout: null
+job_dir: null
+run_name: null
+resume: null
+output_format: jsonl
+terminal: verbose
+dataset_check: full
+skip_mask_validation: false
+visdom: false
+visdom_server: http://localhost
+visdom_port: 8097
+visdom_base_url: /
+visdom_offline_ok: true
+visdom_save: false
+visdom_results: true
+visdom_results_count: 10
+visdom_results_seed: 12345
+
+# Inference-only options are ignored by training commands.
+output: null
+visualize: false
+benchmark: false
+warmup: 0
+confidence_threshold: 0.25
+best_bbox: null
