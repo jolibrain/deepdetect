@@ -421,6 +421,8 @@ def connector_session_summary(info: dict[str, Any]) -> dict[str, Any]:
         "train_samples",
         "test_samples",
         "augmentation_enabled",
+        "augmentation_policy",
+        "augmentation_train_only",
     ):
         if key in info:
             summary[key] = info[key]

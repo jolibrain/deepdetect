@@ -161,6 +161,7 @@ def test_default_example_configs_load():
 
     yolox = config.load_config(root / "yolox-default.yaml")
     segformer = config.load_config(root / "segformer-default.yaml")
+    torchvision = config.load_config(root / "torchvision-detector-default.yaml")
 
     assert yolox["width"] == 640
     assert yolox["height"] == 640
@@ -178,6 +179,15 @@ def test_default_example_configs_load():
     assert segformer["augmentation"]["cutout"] == 0.5
     assert segformer["class_weights"] is None
     assert segformer["dataset_check"] == "full"
+    assert torchvision["weights"] is None
+    assert torchvision["width"] == 640
+    assert torchvision["height"] == 640
+    assert torchvision["batch_size"] == 1
+    assert torchvision["augmentation"]["mirror"] is True
+    assert torchvision["augmentation"]["geometry"]["prob"] == 0.1
+    assert torchvision["mllib"]["data_source"] == "connector_tensor_pull"
+    assert torchvision["class_weights"] is None
+    assert torchvision["dataset_check"] == "full"
 
 
 def test_generated_training_run_name_is_repository_name_only():

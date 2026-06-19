@@ -252,6 +252,11 @@ namespace dd
       _rnd_test_gen = std::default_random_engine(DATAAUG_TEST_SEED);
     }
 
+    void seed_rnd_gen(unsigned int seed)
+    {
+      _rnd_gen = std::default_random_engine(seed);
+    }
+
     void augment(cv::Mat &src);
     void augment_with_bbox(cv::Mat &src,
                            std::vector<std::vector<float>> &bboxes,

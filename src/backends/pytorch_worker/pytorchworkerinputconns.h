@@ -8,6 +8,7 @@
 #ifndef PYTORCHWORKERINPUTCONNS_H
 #define PYTORCHWORKERINPUTCONNS_H
 
+#include "imgdataaug.h"
 #include "imginputfileconn.h"
 
 #include <algorithm>
@@ -93,6 +94,7 @@ namespace dd
         input_params = ad.getobj("parameters").getobj("input");
       fillup_parameters(input_params);
       configure_pull_transport(ad);
+      configure_pull_augmentation(ad);
       if (input_params.has("bbox") && !input_params.get("bbox").get<bool>())
         throw InputConnectorBadParamException(
             "connector_tensor_pull requires input bbox=true");
@@ -164,7 +166,11 @@ namespace dd
       info.add("input_width", _width);
       info.add("input_height", _height);
       info.add("train_shuffle", _shuffle);
-      info.add("augmentation_enabled", false);
+      info.add("augmentation_enabled", _pull_augmentation_enabled);
+      info.add("augmentation_policy", _pull_augmentation_enabled
+                                          ? std::string("opencv")
+                                          : std::string("none"));
+      info.add("augmentation_train_only", true);
       return info;
     }
 
@@ -409,8 +415,10 @@ namespace dd
           = std::min(static_cast<size_t>(batch_size), pairs.size() - cursor);
       const std::string batch_id = next_pull_batch_id();
       const auto build_start = std::chrono::steady_clock::now();
-      PullBatchBuildResult built
-          = inline_detection_batch(pairs, cursor, count, batch_id);
+      const bool apply_augmentation
+          = split == "train" && _pull_augmentation_enabled;
+      PullBatchBuildResult built = inline_detection_batch(
+          pairs, cursor, count, batch_id, apply_augmentation);
       const auto build_end = std::chrono::steady_clock::now();
       response.add("end", false);
       response.add("batch_id", batch_id);
@@ -433,6 +441,145 @@ namespace dd
     {
       ++_pull_next_batch_id;
       return std::to_string(_pull_next_batch_id);
+    }
+
+    void configure_pull_augmentation(const APIData &ad)
+    {
+      _pull_augmentation_enabled = false;
+      _pull_augmentation_policy = "none";
+      _pull_img_rand_aug_cv = ImgRandAugCV();
+
+      if (!ad.has("parameters"))
+        return;
+      APIData parameters = ad.getobj("parameters");
+      if (!parameters.has("mllib"))
+        return;
+      APIData mllib = parameters.getobj("mllib");
+      const bool has_data_augmentation
+          = mllib.has("mirror") || mllib.has("rotate")
+            || mllib.has("crop_size") || mllib.has("cutout")
+            || mllib.has("geometry") || mllib.has("noise")
+            || mllib.has("distort");
+      if (!has_data_augmentation)
+        return;
+
+      bool has_mirror = mllib.has("mirror") && mllib.get("mirror").get<bool>();
+      bool has_rotate = mllib.has("rotate") && mllib.get("rotate").get<bool>();
+      if (_width != _height && has_rotate)
+        {
+          has_rotate = false;
+          _logger->warn(
+              "rotate augment was not applied. To enable rotate, select "
+              "img_width and img_height to be equal.");
+        }
+
+      CropParams crop_params;
+      if (mllib.has("crop_size"))
+        {
+          crop_params = CropParams(mllib.get("crop_size").get<int>());
+          if (mllib.has("test_crop_samples"))
+            crop_params._test_crop_samples
+                = mllib.get("test_crop_samples").get<int>();
+        }
+
+      CutoutParams cutout_params;
+      if (mllib.has("cutout"))
+        cutout_params = CutoutParams(mllib.get("cutout").get<double>());
+
+      GeometryParams geometry_params;
+      APIData geometry = mllib.getobj("geometry");
+      if (!geometry.empty())
+        {
+          geometry_params._prob = geometry.get("prob").get<double>();
+          if (geometry.has("persp_vertical"))
+            geometry_params._geometry_persp_vertical
+                = geometry.get("persp_vertical").get<bool>();
+          if (geometry.has("persp_horizontal"))
+            geometry_params._geometry_persp_horizontal
+                = geometry.get("persp_horizontal").get<bool>();
+          if (geometry.has("transl_vertical"))
+            geometry_params._geometry_transl_vertical
+                = geometry.get("transl_vertical").get<bool>();
+          if (geometry.has("transl_horizontal"))
+            geometry_params._geometry_transl_horizontal
+                = geometry.get("transl_horizontal").get<bool>();
+          if (geometry.has("zoom_out"))
+            geometry_params._geometry_zoom_out
+                = geometry.get("zoom_out").get<bool>();
+          if (geometry.has("zoom_in"))
+            geometry_params._geometry_zoom_in
+                = geometry.get("zoom_in").get<bool>();
+          if (geometry.has("persp_factor"))
+            geometry_params._geometry_persp_factor
+                = geometry.get("persp_factor").get<double>();
+          if (geometry.has("transl_factor"))
+            geometry_params._geometry_transl_factor
+                = geometry.get("transl_factor").get<double>();
+          if (geometry.has("zoom_factor"))
+            geometry_params._geometry_zoom_factor
+                = geometry.get("zoom_factor").get<double>();
+          if (geometry.has("pad_mode"))
+            geometry_params.set_pad_mode(
+                geometry.get("pad_mode").get<std::string>());
+        }
+
+      NoiseParams noise_params(_bw);
+      noise_params._rgb = _rgb;
+      APIData noise = mllib.getobj("noise");
+      if (!noise.empty())
+        noise_params._prob = noise.get("prob").get<double>();
+
+      DistortParams distort_params(_bw);
+      distort_params._rgb = _rgb;
+      APIData distort = mllib.getobj("distort");
+      if (!distort.empty())
+        distort_params._prob = distort.get("prob").get<double>();
+
+      _pull_img_rand_aug_cv
+          = ImgRandAugCV(has_mirror, has_rotate, crop_params, cutout_params,
+                         geometry_params, noise_params, distort_params);
+      if (_seed >= 0)
+        _pull_img_rand_aug_cv.seed_rnd_gen(static_cast<unsigned int>(_seed));
+      _pull_augmentation_enabled = true;
+      _pull_augmentation_policy = "opencv";
+    }
+
+    void apply_detection_augmentation(cv::Mat &image,
+                                      std::vector<DetectionBBox> &targets)
+    {
+      std::vector<std::vector<float>> bboxes;
+      std::vector<int> classes;
+      bboxes.reserve(targets.size());
+      classes.reserve(targets.size());
+      for (const DetectionBBox &target : targets)
+        {
+          bboxes.push_back({ static_cast<float>(target.xmin),
+                             static_cast<float>(target.ymin),
+                             static_cast<float>(target.xmax),
+                             static_cast<float>(target.ymax) });
+          classes.push_back(target.label);
+        }
+
+      _pull_img_rand_aug_cv.augment_with_bbox(image, bboxes, classes);
+      targets.clear();
+      const size_t count = std::min(bboxes.size(), classes.size());
+      targets.reserve(count);
+      for (size_t index = 0; index < count; ++index)
+        {
+          if (classes[index] <= 0 || bboxes[index].size() != 4)
+            continue;
+          DetectionBBox bbox;
+          bbox.label = classes[index];
+          bbox.xmin = std::max(0.0, static_cast<double>(bboxes[index][0]));
+          bbox.ymin = std::max(0.0, static_cast<double>(bboxes[index][1]));
+          bbox.xmax = std::min(static_cast<double>(image.cols),
+                               static_cast<double>(bboxes[index][2]));
+          bbox.ymax = std::min(static_cast<double>(image.rows),
+                               static_cast<double>(bboxes[index][3]));
+          if (bbox.xmax <= bbox.xmin || bbox.ymax <= bbox.ymin)
+            continue;
+          targets.push_back(bbox);
+        }
     }
 
     APIData inline_detection_batch(const std::filesystem::path &image_path,
@@ -475,10 +622,9 @@ namespace dd
       return batch;
     }
 
-    PullBatchBuildResult
-    inline_detection_batch(const std::vector<DetectionPair> &pairs,
-                           size_t offset, size_t count,
-                           const std::string &batch_id)
+    PullBatchBuildResult inline_detection_batch(
+        const std::vector<DetectionPair> &pairs, size_t offset, size_t count,
+        const std::string &batch_id, bool apply_augmentation = false)
     {
       std::vector<double> values;
       std::vector<std::vector<DetectionBBox>> targets;
@@ -489,6 +635,8 @@ namespace dd
       std::vector<int> heights;
       std::vector<int> original_widths;
       std::vector<int> original_heights;
+      std::vector<int> preprocessed_widths;
+      std::vector<int> preprocessed_heights;
       int rows = 0;
       int cols = 0;
       int channels = 0;
@@ -513,13 +661,19 @@ namespace dd
           if (dimg._imgs.empty())
             throw InputConnectorBadParamException("Could not read image: "
                                                   + pair.first.string());
-          const cv::Mat &image = dimg._imgs[0];
+          cv::Mat image = dimg._imgs[0].clone();
           const int orig_height = dimg._imgs_size.empty()
                                       ? image.rows
                                       : dimg._imgs_size[0].first;
           const int orig_width = dimg._imgs_size.empty()
                                      ? image.cols
                                      : dimg._imgs_size[0].second;
+          const int preprocessed_width = image.cols;
+          const int preprocessed_height = image.rows;
+          std::vector<DetectionBBox> sample_targets
+              = read_detection_bboxes(pair.second, orig_width, orig_height);
+          if (apply_augmentation)
+            apply_detection_augmentation(image, sample_targets);
           if (index == 0)
             {
               rows = image.rows;
@@ -536,8 +690,7 @@ namespace dd
           std::vector<double> image_values = image_values_chw(image);
           values.insert(values.end(), image_values.begin(),
                         image_values.end());
-          targets.push_back(
-              read_detection_bboxes(pair.second, orig_width, orig_height));
+          targets.push_back(sample_targets);
           sample_ids.push_back(static_cast<int>(offset + index));
           paths.push_back(pair.first.string());
           target_paths.push_back(pair.second.string());
@@ -545,6 +698,8 @@ namespace dd
           heights.push_back(image.rows);
           original_widths.push_back(orig_width);
           original_heights.push_back(orig_height);
+          preprocessed_widths.push_back(preprocessed_width);
+          preprocessed_heights.push_back(preprocessed_height);
         }
 
       TensorWriteStats tensor_stats;
@@ -554,9 +709,11 @@ namespace dd
                               values, static_cast<int>(count), channels, rows,
                               cols, batch_id, tensor_stats) });
       batch.add("targets", detection_targets(targets));
-      batch.add("meta", detection_meta(sample_ids, paths, target_paths,
-                                       original_widths, original_heights,
-                                       widths, heights));
+      batch.add("meta",
+                detection_meta(sample_ids, paths, target_paths,
+                               original_widths, original_heights,
+                               preprocessed_widths, preprocessed_heights,
+                               widths, heights, apply_augmentation));
       return PullBatchBuildResult{ batch, tensor_stats };
     }
 
@@ -805,7 +962,7 @@ namespace dd
       meta.add("original_heights", std::vector<int>{ original_height });
       meta.add("preprocessed_widths", std::vector<int>{ width });
       meta.add("preprocessed_heights", std::vector<int>{ height });
-      add_detection_augmentation_meta(meta);
+      add_detection_augmentation_meta(meta, false);
       return meta;
     }
 
@@ -814,8 +971,11 @@ namespace dd
                            const std::vector<std::string> &target_paths,
                            const std::vector<int> &original_widths,
                            const std::vector<int> &original_heights,
+                           const std::vector<int> &preprocessed_widths,
+                           const std::vector<int> &preprocessed_heights,
                            const std::vector<int> &widths,
-                           const std::vector<int> &heights) const
+                           const std::vector<int> &heights,
+                           bool augmentation_applied) const
     {
       APIData meta;
       meta.add("sample_ids", sample_ids);
@@ -825,17 +985,23 @@ namespace dd
       meta.add("heights", heights);
       meta.add("original_widths", original_widths);
       meta.add("original_heights", original_heights);
-      meta.add("preprocessed_widths", widths);
-      meta.add("preprocessed_heights", heights);
-      add_detection_augmentation_meta(meta);
+      meta.add("preprocessed_widths", preprocessed_widths);
+      meta.add("preprocessed_heights", preprocessed_heights);
+      add_detection_augmentation_meta(meta, augmentation_applied);
       return meta;
     }
 
-    static void add_detection_augmentation_meta(APIData &meta)
+    void add_detection_augmentation_meta(APIData &meta,
+                                         bool augmentation_applied) const
     {
-      meta.add("augmentation_applied", false);
-      meta.add("augmentation_seed", APINull());
-      meta.add("augmentation_policy", std::string("none"));
+      meta.add("augmentation_applied", augmentation_applied);
+      if (augmentation_applied && _seed >= 0)
+        meta.add("augmentation_seed", _seed);
+      else
+        meta.add("augmentation_seed", APINull());
+      meta.add("augmentation_policy", augmentation_applied
+                                          ? _pull_augmentation_policy
+                                          : std::string("none"));
     }
 
     static bool debug_enabled()
@@ -845,31 +1011,26 @@ namespace dd
       return (debug && *debug) || (worker_debug && *worker_debug);
     }
 
-    static double elapsed_ms(const std::chrono::steady_clock::time_point &start,
-                             const std::chrono::steady_clock::time_point &end)
+    static double
+    elapsed_ms(const std::chrono::steady_clock::time_point &start,
+               const std::chrono::steady_clock::time_point &end)
     {
       return std::chrono::duration<double, std::milli>(end - start).count();
     }
 
-    static void debug_log_connector_batch(const std::string &batch_id,
-                                          const std::string &split,
-                                          size_t sample_count,
-                                          double preprocessing_packing_ms,
-                                          double shared_memory_write_ms,
-                                          long long int bytes_written,
-                                          const std::string &transport,
-                                          double total_ms)
+    static void debug_log_connector_batch(
+        const std::string &batch_id, const std::string &split,
+        size_t sample_count, double preprocessing_packing_ms,
+        double shared_memory_write_ms, long long int bytes_written,
+        const std::string &transport, double total_ms)
     {
       if (!debug_enabled())
         return;
       std::cerr << "[deepdetect-debug][connector_tensor_pull] "
-                << "connector_batch_next"
-                << " batch_id=" << batch_id << " split=" << split
-                << " sample_count=" << sample_count
-                << " transport=" << transport
-                << " total_ms=" << total_ms
-                << " preprocessing_packing_ms="
-                << preprocessing_packing_ms
+                << "connector_batch_next" << " batch_id=" << batch_id
+                << " split=" << split << " sample_count=" << sample_count
+                << " transport=" << transport << " total_ms=" << total_ms
+                << " preprocessing_packing_ms=" << preprocessing_packing_ms
                 << " shared_memory_write_ms=" << shared_memory_write_ms
                 << " bytes_written=" << bytes_written << std::endl;
     }
@@ -892,8 +1053,11 @@ namespace dd
     std::filesystem::path _pull_shm_dir;
     std::map<std::string, std::vector<std::filesystem::path>>
         _pull_batch_files;
+    ImgRandAugCV _pull_img_rand_aug_cv;
+    std::string _pull_augmentation_policy = "none";
     int _pull_next_batch_id = 0;
     int _pull_epoch = 0;
+    bool _pull_augmentation_enabled = false;
     bool _pull_active = false;
   };
 }
