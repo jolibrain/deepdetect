@@ -124,8 +124,7 @@ namespace dd
 #endif
 #ifdef USE_TENSORRT
 #if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
-    || defined(USE_NCNN) || defined(USE_TORCH)                                \
-    || defined(USE_PYTORCH_WORKER)
+    || defined(USE_NCNN) || defined(USE_TORCH) || defined(USE_PYTORCH_WORKER)
       ,
 #endif
       MLService<TensorRTLib, ImgTensorRTInputFileConn, SupervisedOutput,
