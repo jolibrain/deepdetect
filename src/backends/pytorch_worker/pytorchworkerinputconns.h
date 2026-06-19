@@ -455,91 +455,16 @@ namespace dd
       if (!parameters.has("mllib"))
         return;
       APIData mllib = parameters.getobj("mllib");
-      const bool has_data_augmentation
-          = mllib.has("mirror") || mllib.has("rotate")
-            || mllib.has("crop_size") || mllib.has("cutout")
-            || mllib.has("geometry") || mllib.has("noise")
-            || mllib.has("distort");
-      if (!has_data_augmentation)
+      ImgRandAugCVConfig config
+          = parse_img_rand_aug_cv_config(mllib, _width, _height, _bw, _rgb);
+      if (!config.enabled)
         return;
 
-      bool has_mirror = mllib.has("mirror") && mllib.get("mirror").get<bool>();
-      bool has_rotate = mllib.has("rotate") && mllib.get("rotate").get<bool>();
-      if (_width != _height && has_rotate)
-        {
-          has_rotate = false;
-          _logger->warn(
-              "rotate augment was not applied. To enable rotate, select "
-              "img_width and img_height to be equal.");
-        }
-
-      CropParams crop_params;
-      if (mllib.has("crop_size"))
-        {
-          crop_params = CropParams(mllib.get("crop_size").get<int>());
-          if (mllib.has("test_crop_samples"))
-            crop_params._test_crop_samples
-                = mllib.get("test_crop_samples").get<int>();
-        }
-
-      CutoutParams cutout_params;
-      if (mllib.has("cutout"))
-        cutout_params = CutoutParams(mllib.get("cutout").get<double>());
-
-      GeometryParams geometry_params;
-      APIData geometry = mllib.getobj("geometry");
-      if (!geometry.empty())
-        {
-          geometry_params._prob = geometry.get("prob").get<double>();
-          if (geometry.has("persp_vertical"))
-            geometry_params._geometry_persp_vertical
-                = geometry.get("persp_vertical").get<bool>();
-          if (geometry.has("persp_horizontal"))
-            geometry_params._geometry_persp_horizontal
-                = geometry.get("persp_horizontal").get<bool>();
-          if (geometry.has("transl_vertical"))
-            geometry_params._geometry_transl_vertical
-                = geometry.get("transl_vertical").get<bool>();
-          if (geometry.has("transl_horizontal"))
-            geometry_params._geometry_transl_horizontal
-                = geometry.get("transl_horizontal").get<bool>();
-          if (geometry.has("zoom_out"))
-            geometry_params._geometry_zoom_out
-                = geometry.get("zoom_out").get<bool>();
-          if (geometry.has("zoom_in"))
-            geometry_params._geometry_zoom_in
-                = geometry.get("zoom_in").get<bool>();
-          if (geometry.has("persp_factor"))
-            geometry_params._geometry_persp_factor
-                = geometry.get("persp_factor").get<double>();
-          if (geometry.has("transl_factor"))
-            geometry_params._geometry_transl_factor
-                = geometry.get("transl_factor").get<double>();
-          if (geometry.has("zoom_factor"))
-            geometry_params._geometry_zoom_factor
-                = geometry.get("zoom_factor").get<double>();
-          if (geometry.has("pad_mode"))
-            geometry_params.set_pad_mode(
-                geometry.get("pad_mode").get<std::string>());
-        }
-
-      NoiseParams noise_params(_bw);
-      noise_params._rgb = _rgb;
-      APIData noise = mllib.getobj("noise");
-      if (!noise.empty())
-        noise_params._prob = noise.get("prob").get<double>();
-
-      DistortParams distort_params(_bw);
-      distort_params._rgb = _rgb;
-      APIData distort = mllib.getobj("distort");
-      if (!distort.empty())
-        distort_params._prob = distort.get("prob").get<double>();
-
-      _pull_img_rand_aug_cv
-          = ImgRandAugCV(has_mirror, has_rotate, crop_params, cutout_params,
-                         geometry_params, noise_params, distort_params);
-      if (_seed >= 0)
-        _pull_img_rand_aug_cv.seed_rnd_gen(static_cast<unsigned int>(_seed));
+      if (config.rotate_disabled_for_shape)
+        _logger->warn(
+            "rotate augment was not applied. To enable rotate, select "
+            "img_width and img_height to be equal.");
+      _pull_img_rand_aug_cv = make_img_rand_aug_cv(config, _seed);
       _pull_augmentation_enabled = true;
       _pull_augmentation_policy = "opencv";
     }
@@ -1027,8 +952,9 @@ namespace dd
       if (!debug_enabled())
         return;
       std::cerr << "[deepdetect-debug][connector_tensor_pull] "
-                << "connector_batch_next" << " batch_id=" << batch_id
-                << " split=" << split << " sample_count=" << sample_count
+                << "connector_batch_next"
+                << " batch_id=" << batch_id << " split=" << split
+                << " sample_count=" << sample_count
                 << " transport=" << transport << " total_ms=" << total_ms
                 << " preprocessing_packing_ms=" << preprocessing_packing_ms
                 << " shared_memory_write_ms=" << shared_memory_write_ms

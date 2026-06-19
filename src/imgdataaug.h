@@ -33,6 +33,8 @@
 
 namespace dd
 {
+  class APIData;
+
   class CropParams
   {
   public:
@@ -221,6 +223,31 @@ namespace dd
     bool _rgb = false;
   };
 
+  struct ImgRandAugCVConfig
+  {
+    bool enabled = false;
+    bool mirror = false;
+    bool rotate = false;
+    bool rotate_disabled_for_shape = false;
+    bool has_crop_size = false;
+    int crop_size = -1;
+    bool has_cutout = false;
+    float cutout = 0.0;
+    bool has_geometry = false;
+    bool has_noise = false;
+    bool has_distort = false;
+
+    CropParams crop_params;
+    CutoutParams cutout_params;
+    GeometryParams geometry_params;
+    NoiseParams noise_params;
+    DistortParams distort_params;
+  };
+
+  ImgRandAugCVConfig parse_img_rand_aug_cv_config(const APIData &mllib,
+                                                  int width, int height,
+                                                  bool bw, bool rgb);
+
   class ImgRandAugCV
   {
   public:
@@ -340,6 +367,9 @@ namespace dd
     std::bernoulli_distribution _bernouilli;
     std::uniform_int_distribution<int> _uniform_int_rotate;
   };
+
+  ImgRandAugCV make_img_rand_aug_cv(const ImgRandAugCVConfig &config,
+                                    int seed = -1);
 
   void write_image_with_bboxes(const cv::Mat &src,
                                const std::vector<std::vector<float>> &bboxes,

@@ -121,16 +121,25 @@ def select_wheel(wheel_dir: Path, distribution_name: str) -> Path:
     return wheels[-1]
 
 
+def torchvision_smoke_script() -> str:
+    return """
+import torch
+import torchvision
+from torchvision.ops import nms as _torchvision_nms
+
+print(f"torch={torch.__version__} torchvision={torchvision.__version__}")
+"""
+
+
 def smoke_script(expected_cuda: bool) -> str:
     return f"""
 import json
+import importlib.metadata
 import subprocess
 from pathlib import Path
 
 import deepdetect
 import torch
-import torchvision
-from torchvision.ops import nms as _torchvision_nms
 
 if {expected_cuda!r} and torch.cuda.device_count() <= 0:
     raise SystemExit("GPU wheel test expected at least one visible CUDA device")
@@ -160,7 +169,8 @@ if bool(build_info.get("cuda")) is not {expected_cuda!r}:
         f"Expected deepdetect cuda={expected_cuda!r}, got {{build_info.get('cuda')!r}}"
     )
 print(json.dumps(dd.info(), indent=2, sort_keys=True))
-print(f"torch={{torch.__version__}} torchvision={{torchvision.__version__}}")
+torchvision_version = importlib.metadata.version("torchvision")
+print(f"torch={{torch.__version__}} torchvision={{torchvision_version}}")
 """
 
 
@@ -292,6 +302,9 @@ def main() -> None:
         cwd=venv_dir,
         env=test_env,
     )
+    # Python torchvision and bundled native libtorchvision both register C++ ops.
+    # Keep their smoke checks in separate interpreters to avoid duplicate schemas.
+    run([python, "-c", torchvision_smoke_script()], cwd=venv_dir, env=test_env)
     run([python, "-c", smoke_script(args.expected_cuda)], cwd=venv_dir, env=test_env)
 
 

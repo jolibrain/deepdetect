@@ -156,14 +156,14 @@ so training and inference preprocessing can be audited.
 
 ### V1.1: C++ Connector-Produced CPU Tensors
 
-V1.1 moves actual sample reading and preprocessing into the C++ input
-connectors for selected connectors. The worker receives CPU tensor references
-or shared memory references instead of paths.
+V1.1 moves actual sample reading, preprocessing, optional OpenCV
+augmentation, and tensor packing into the C++ input connectors for selected
+connectors. The worker receives CPU tensor references instead of paths.
 
 Flow:
 
 ```text
-DeepDetect C++ input connector reads and transforms
+DeepDetect C++ input connector reads, preprocesses, and augments train samples
   -> C++ emits batch TensorRef objects
   -> Python worker converts TensorRef to torch.Tensor
   -> Python worker trains/evaluates
@@ -173,30 +173,32 @@ V1.1 must preserve the worker class contract. A worker that currently consumes
 path-backed samples should be able to consume tensor-backed samples through a
 dataset adapter without changing model, optimizer, metric, or checkpoint code.
 
-The first Phase 3 slice defines and validates the tensor-reference metadata
-only. It does not open shared memory, construct torch tensors from references,
-or change existing path-backed training. Python workers can import
-`deepdetect.pytorch_worker.tensors` for:
+Python workers can import `deepdetect.pytorch_worker.tensors` for:
 
 - `TensorRef`, `TensorStorageRef`, and `TensorBatchRef`;
 - `parse_tensor_ref(...)` for one tensor reference;
-- `parse_tensor_batch_ref(...)` for a future connector-produced batch.
+- `parse_tensor_batch_ref(...)` for a connector-produced batch;
+- `materialize_tensor_ref(...)` to construct a CPU `torch.Tensor` from a
+  supported connector tensor reference.
 
 Consumable tensor refs are CPU-only in this slice. GPU/CUDA refs remain
 reserved and are rejected by the parser until CUDA IPC ownership and stream
 semantics are implemented.
 
-The next Python-only slice adds executable test materialization for
-`storage.type: "inline_test_stub"`:
+Supported CPU tensor storage types:
 
-- `storage.values` contains flat unit-test values;
-- `materialize_inline_tensor_ref(ref, torch)` creates a CPU torch tensor;
-- `shared_memory` refs remain metadata-only and are rejected by materialization.
+- `shared_memory`: default connector-pull transport for real runs. The C++
+  connector writes a contiguous float32 tensor file and sends path, byte count,
+  shape, and lifetime metadata. The Python worker materializes the tensor and
+  calls `connector_batch_done` after the batch is consumed so C++ can clean up
+  the shared-memory file.
+- `inline_test_stub`: small test/development transport. `storage.values`
+  contains flat tensor values in the request payload.
 
 Object detection can use `DetectionTensorBatchDataset` to adapt parsed
 `TensorBatchRef` objects into the same `(image, target, meta)` tuples as
-`DetectionListDataset`. This is used only by tests until C++ connectors emit
-real tensor batches.
+`DetectionListDataset`. This is used by inline tensor tests and by
+`connector_tensor_pull` training/evaluation.
 
 The Python worker runtime can already accept tensor-backed training requests
 for this test/development path:
@@ -243,6 +245,73 @@ also accepts the equivalent C++-friendly test-set and detection-target shapes:
 }
 ```
 
+### Connector Pull For Detection
+
+Detection training can use the pull-mode CPU tensor boundary:
+
+```yaml
+mllib:
+  data_source: connector_tensor_pull
+```
+
+or:
+
+```shell
+--set mllib.data_source=connector_tensor_pull
+```
+
+In this mode the C++ image connector parses dataset list files once, then
+serves preprocessed CPU tensor batches on demand through the worker protocol.
+The Python worker owns the training loop and optimizer, requests
+`connector_dataset_info` at startup, calls `connector_batch_next` for training
+and evaluation batches, and acknowledges consumed batches with
+`connector_batch_done`.
+
+`shared_memory` is the default transport for pull batches. `inline` remains
+available through `mllib.connector_tensor_transport=inline` for small tests.
+Both transports preserve the same tensor batch schema, metrics, checkpoints,
+and repository contracts.
+
+### OpenCV Augmentation On Pull Batches
+
+For `connector_tensor_pull`, OpenCV image augmentation is applied on the C++
+input connector side when existing `mllib` augmentation keys are present:
+
+- `mirror`
+- `rotate`
+- `crop_size`
+- `cutout`
+- `geometry`
+- `noise`
+- `distort`
+
+These are the same keys used by the existing augmentation configuration. The
+CLI exposes them through a top-level `augmentation:` YAML mapping, which is
+deep-merged into training `parameters.mllib`.
+
+Augmentation behavior:
+
+- train batches are augmented before tensor packing;
+- test/evaluation batches are not augmented;
+- bboxes are transformed with the image and invalid or dummy boxes are filtered;
+- if augmentation removes every positive bbox, the connector emits an empty
+  detection target for that sample;
+- rotate is disabled when the configured input width and height are not equal.
+
+Batch metadata records whether augmentation was applied:
+
+```json
+{
+  "augmentation_applied": true,
+  "augmentation_seed": 12347,
+  "augmentation_policy": "opencv"
+}
+```
+
+When augmentation is disabled or the split is `test`, the metadata remains
+`augmentation_applied: false`, `augmentation_seed: null`, and
+`augmentation_policy: "none"`.
+
 ### Reserved V2: GPU Tensor References
 
 The protocol reserves a GPU tensor boundary for later work. V1 must not
@@ -278,8 +347,8 @@ Reserved `TensorRef` shape:
 
 For unit tests only, `storage.type: "inline_test_stub"` is accepted as metadata
 so parser behavior can be validated without allocating shared memory. Runtime
-training must continue to use the path-backed dataset flow until C++ connector
-tensor emission and Python tensor materialization are implemented.
+connector-pull training uses the production `shared_memory` transport described
+above; inline tensor values remain a test/development transport.
 
 An inline test tensor may include values:
 
@@ -889,18 +958,40 @@ DeepDetect, the CLI, and Python workers own separate repository files:
 - `exports/`: optional deployment artifacts.
 - `visual_results/` or existing DeepDetect visual result paths when requested.
 
-The initial V1 `connector_manifest.json` is path-backed for normal training. It
-records train and test list paths, sample counts, task, class count, input
-parameters, and output parameters. It intentionally does not expand every
-sample path, to keep large training repositories auditable without producing
-huge metadata files.
+For path-backed training, `connector_manifest.json` records train and test
+list paths, sample counts, task, class count, input parameters, and output
+parameters. It intentionally does not expand every sample path, to keep large
+training repositories auditable without producing huge metadata files.
 
-Tensor-backed Python test/development runs write `boundary: "tensor-backed"` and
-record train/test batch counts plus materialized sample counts. They do not
-persist inline tensor values or future shared-memory descriptors.
+Tensor-backed Python test/development runs write `boundary: "tensor-backed"`
+and record train/test batch counts plus materialized sample counts. They do
+not persist inline tensor values.
 
-For CLI smoke testing before shared-memory transport exists, managed PyTorch
-detection training can request C++ connector-produced inline tensors with:
+Connector-pull runs write `boundary: "connector-tensor-pull"` and include a
+stable connector summary:
+
+```json
+{
+  "connector": {
+    "transport": "shared_memory",
+    "input_width": 640,
+    "input_height": 640,
+    "train_shuffle": true,
+    "train_samples": 1024,
+    "test_samples": [128, 128],
+    "augmentation_enabled": true,
+    "augmentation_policy": "opencv",
+    "augmentation_train_only": true
+  }
+}
+```
+
+The manifest records the connector session contract and sample counts, not
+the transient shared-memory tensor descriptors. Per-batch tensor lifetime is
+tracked through the worker protocol and `connector_batch_done`.
+
+For CLI smoke testing, managed PyTorch detection training can request C++
+connector-produced inline tensors with:
 
 ```yaml
 mllib:
@@ -915,31 +1006,33 @@ or:
 
 This path is detection-only and intended for tiny local tests. It reads image
 and bbox list files through the C++ image connector, emits inline CPU tensor
-batches, and then uses the same Python worker train loop as the future
-production tensor path.
+batches in the protocol payload, and then uses the same Python worker train
+loop as connector pull.
 
-For larger local runs before shared-memory transport, detection training can
-use the pull-mode CPU tensor boundary:
+For normal detection runs on the managed PyTorch backend, prefer pull mode
+over inline mode. The default torchvision detector CLI config enables it:
+
+```shell
+python -m deepdetect.cli.main train torchvision-detector \
+  --config bindings/python/deepdetect/cli/torchvision-detector-default.yaml
+```
+
+The config includes:
 
 ```yaml
+augmentation:
+  mirror: true
+  rotate: true
+  cutout: 0.1
+  geometry:
+    prob: 0.1
+  noise:
+    prob: 0.01
+  distort:
+    prob: 0.01
 mllib:
   data_source: connector_tensor_pull
 ```
-
-or:
-
-```shell
---set mllib.data_source=connector_tensor_pull
-```
-
-In this mode the C++ connector parses dataset list files once, then serves
-preprocessed CPU tensor batches on demand through the worker protocol. The
-Python worker owns the training loop and optimizer, requests
-`connector_dataset_info` at startup, then calls `connector_batch_next` for
-training and evaluation batches. This avoids pre-serializing full datasets
-before model creation while preserving the same metrics, checkpoints, and
-repository contracts. It remains an interim inline-value transport; shared
-memory and GPU tensor references are deferred to later phases.
 
 ## Distributed Training
 
