@@ -177,7 +177,8 @@ namespace
 
   std::string detection_train_request(const std::string &service,
                                       const DetectionFixture &fixture,
-                                      int iterations)
+                                      int iterations,
+                                      const std::string &extra_mllib = "")
   {
     return "{\"service\":\"" + service
            + "\",\"async\":true,\"parameters\":{\"input\":{},"
@@ -186,7 +187,9 @@ namespace
            + std::to_string(iterations)
            + ","
              "\"base_lr\":0.001,\"test_interval\":1},\"net\":{\"batch_size\":"
-             "1}}},"
+             "1}"
+           + extra_mllib
+           + "}},"
              "\"data\":[\""
            + fixture.train_list + "\",\"" + fixture.test0_list + "\",\""
            + fixture.test1_list + "\"]}";
@@ -603,8 +606,7 @@ TEST(pytorchworkerapi, reference_detector_trains_connector_pull_tensors)
   ASSERT_STREQ("connector-tensor-pull", manifest["boundary"].GetString())
       << japi.jrender(manifest);
   ASSERT_TRUE(manifest.HasMember("connector")) << japi.jrender(manifest);
-  ASSERT_STREQ("shared_memory",
-               manifest["connector"]["transport"].GetString())
+  ASSERT_STREQ("shared_memory", manifest["connector"]["transport"].GetString())
       << japi.jrender(manifest);
   ASSERT_TRUE(manifest["connector"].HasMember("input_width"))
       << japi.jrender(manifest);
@@ -654,8 +656,8 @@ TEST(pytorchworkerapi,
                                               "\"data_source\":"
                                               "\"connector_tensor_pull\""))));
 
-  JDoc train
-      = japi.service_train(detection_train_request(service, fixture, 1));
+  JDoc train = japi.service_train(
+      detection_train_request(service, fixture, 1, ",\"mirror\":true"));
   ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
   ASSERT_TRUE(train.HasMember("head")) << japi.jrender(train);
   ASSERT_TRUE(train["head"].HasMember("job")) << japi.jrender(train);
@@ -669,6 +671,14 @@ TEST(pytorchworkerapi,
   JDoc manifest = read_json_file(repo_dir / "connector_manifest.json");
   ASSERT_FALSE(manifest.HasParseError());
   ASSERT_STREQ("connector-tensor-pull", manifest["boundary"].GetString())
+      << japi.jrender(manifest);
+  ASSERT_TRUE(manifest.HasMember("connector")) << japi.jrender(manifest);
+  ASSERT_TRUE(manifest["connector"]["augmentation_enabled"].GetBool())
+      << japi.jrender(manifest);
+  ASSERT_STREQ("opencv",
+               manifest["connector"]["augmentation_policy"].GetString())
+      << japi.jrender(manifest);
+  ASSERT_TRUE(manifest["connector"]["augmentation_train_only"].GetBool())
       << japi.jrender(manifest);
   ASSERT_EQ(2, manifest["train"]["samples"].GetInt())
       << japi.jrender(manifest);

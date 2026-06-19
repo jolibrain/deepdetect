@@ -55,6 +55,7 @@ Example default-style configs are provided next to this document:
 
 - `yolox-default.yaml`
 - `segformer-default.yaml`
+- `torchvision-detector-default.yaml`
 
 They include training keys plus inference-only keys that are ignored by
 training commands. Replace the dataset and model paths before use:
@@ -62,6 +63,7 @@ training commands. Replace the dataset and model paths before use:
 ```shell
 deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yaml
 deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-default.yaml
+deepdetect train torchvision-detector --config bindings/python/deepdetect/cli/torchvision-detector-default.yaml
 ```
 
 ## Training Commands

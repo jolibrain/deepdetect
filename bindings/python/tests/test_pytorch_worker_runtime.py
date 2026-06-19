@@ -495,6 +495,26 @@ def test_detection_tensor_batch_dataset_accepts_cxx_compatible_targets():
     assert meta["path"] == "tensor://sample43"
 
 
+def test_detection_tensor_batch_dataset_accepts_empty_cxx_targets():
+    torch = pytest.importorskip("torch")
+    payload = cxx_compatible_detection_tensor_batch_payload(sample_id=45)
+    payload["targets"]["samples"][0]["boxes"] = []
+    payload["targets"]["samples"][0]["labels"] = []
+    payload["meta"]["augmentation_applied"] = True
+    payload["meta"]["augmentation_policy"] = "opencv"
+
+    batch = parse_tensor_batch_ref(payload)
+    dataset = DetectionTensorBatchDataset([batch], nclasses=2, torch=torch)
+    _image, target, meta = dataset[0]
+
+    assert target["boxes"].shape == (0, 4)
+    assert target["labels"].tolist() == []
+    assert target["image_id"].tolist() == [45]
+    assert batch.meta["augmentation_applied"] is True
+    assert batch.meta["augmentation_policy"] == "opencv"
+    assert meta["path"] == "tensor://sample45"
+
+
 def test_detection_tensor_batch_dataset_accepts_pull_response_metadata(
     monkeypatch, capsys
 ):
@@ -966,7 +986,9 @@ def test_detection_repository_contract_writer_persists_connector_summary(tmp_pat
             "train_shuffle": True,
             "train_samples": 5,
             "test_samples": [2],
-            "augmentation_enabled": False,
+            "augmentation_enabled": True,
+            "augmentation_policy": "opencv",
+            "augmentation_train_only": True,
             "ignored": "value",
         },
     )
@@ -983,7 +1005,9 @@ def test_detection_repository_contract_writer_persists_connector_summary(tmp_pat
         "train_shuffle": True,
         "train_samples": 5,
         "test_samples": [2],
-        "augmentation_enabled": False,
+        "augmentation_enabled": True,
+        "augmentation_policy": "opencv",
+        "augmentation_train_only": True,
     }
 
 
