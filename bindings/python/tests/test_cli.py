@@ -20,8 +20,10 @@ from deepdetect.cli import training
 from deepdetect.cli.profiles import get_profile
 from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
-from deepdetect.cli.visualize import detection_overlay_image, segmentation_overlay_images
-
+from deepdetect.cli.visualize import (
+    detection_overlay_image,
+    segmentation_overlay_images,
+)
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
@@ -75,7 +77,11 @@ class FakeRuntime:
         self.calls.append(("status", json.loads(request)))
         status = self.statuses.pop(0)
         return response(
-            head={"job": 7, "status": status["status"], "time": status.get("time", 1.0)},
+            head={
+                "job": 7,
+                "status": status["status"],
+                "time": status.get("time", 1.0),
+            },
             body=status.get("body", {}),
         )
 
@@ -162,6 +168,7 @@ def test_default_example_configs_load():
     yolox = config.load_config(root / "yolox-default.yaml")
     segformer = config.load_config(root / "segformer-default.yaml")
     torchvision = config.load_config(root / "torchvision-detector-default.yaml")
+    external = config.load_config(root / "external-pytorch-detector-default.yaml")
 
     assert yolox["width"] == 640
     assert yolox["height"] == 640
@@ -188,6 +195,13 @@ def test_default_example_configs_load():
     assert torchvision["mllib"]["data_source"] == "connector_tensor_pull"
     assert torchvision["class_weights"] is None
     assert torchvision["dataset_check"] == "full"
+    assert external["weights"] is None
+    assert external["service_mllib"]["entrypoint"] == (
+        "extern/pytorch_workers/model_slug/worker.py"
+    )
+    assert external["service_mllib"]["class"] == "DeepDetectWorker"
+    assert external["mllib"]["data_source"] == "connector_tensor_pull"
+    assert external["dataset_check"] == "full"
 
 
 def test_generated_training_run_name_is_repository_name_only():
@@ -209,7 +223,9 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
             "body": {"measure": {"iteration": 2, "train_loss": 1.0, "map-50": 0.5}},
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
     run_root = tmp_path / "runs"
@@ -289,9 +305,14 @@ def test_train_torchvision_detector_uses_pytorch_backend_without_weights(
 ):
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     _weights, train, test = write_training_files(tmp_path)
 
@@ -340,6 +361,76 @@ def test_train_torchvision_detector_uses_pytorch_backend_without_weights(
     assert "run_finished" in {event["event"] for event in events}
 
 
+def test_train_external_pytorch_detector_passes_entrypoint_from_yaml(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    _weights, train, test = write_training_files(tmp_path)
+    entrypoint = tmp_path / "external_worker.py"
+    entrypoint.write_text("class DeepDetectWorker: pass\n", encoding="utf-8")
+    cfg = tmp_path / "external.yaml"
+    cfg.write_text(
+        "\n".join(
+            [
+                f"train_data: {train}",
+                "test_data:",
+                f"  - {test}",
+                f"repository: {tmp_path / 'repo'}",
+                "service_mllib:",
+                f"  entrypoint: {entrypoint}",
+                "  class: DeepDetectWorker",
+                "mllib:",
+                "  data_source: connector_tensor_pull",
+                "iterations: 1",
+                "dataset_check: none",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    code = cli.main(
+        [
+            "train",
+            "external-pytorch-detector",
+            "--config",
+            str(cfg),
+            "--job-dir",
+            str(tmp_path / "runs"),
+        ]
+    )
+
+    assert code == 0
+    create = next(call for call in runtime.calls if call[0] == "create")
+    service_mllib = create[2]["parameters"]["mllib"]
+    assert create[2]["mllib"] == "pytorch"
+    assert service_mllib["entrypoint"] == str(entrypoint)
+    assert service_mllib["class"] == "DeepDetectWorker"
+    assert service_mllib["task"] == "detection"
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert train_call[1]["parameters"]["mllib"]["data_source"] == (
+        "connector_tensor_pull"
+    )
+    saved_config = config.load_config(tmp_path / "repo" / "config.yaml")
+    assert saved_config["service_mllib"]["entrypoint"] == str(entrypoint)
+    assert "run_finished" in {
+        json.loads(line)["event"]
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    }
+
+
 def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [
@@ -356,7 +447,9 @@ def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
             },
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test0 = write_training_files(tmp_path)
     test1 = tmp_path / "test1.txt"
@@ -416,9 +509,14 @@ def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
 def test_train_config_accepts_test_data_list(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test0 = write_training_files(tmp_path)
     test1 = tmp_path / "test1.txt"
@@ -498,9 +596,14 @@ def test_segformer_training_parameters_accept_augmentation_overrides():
 def test_train_set_overrides_flat_cli_option(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
 
@@ -532,9 +635,14 @@ def test_train_set_overrides_flat_cli_option(monkeypatch, tmp_path, capsys):
 def test_train_defaults_job_dir_to_repository(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
     repository = tmp_path / "repo-default-job-dir"
@@ -568,12 +676,19 @@ def test_train_defaults_job_dir_to_repository(monkeypatch, tmp_path, capsys):
     assert events[0]["run_dir"] == str(repository.resolve())
 
 
-def test_train_resume_latest_uses_repository_state_without_weights(monkeypatch, tmp_path, capsys):
+def test_train_resume_latest_uses_repository_state_without_weights(
+    monkeypatch, tmp_path, capsys
+):
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 11, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 11, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     _weights, train, test = write_training_files(tmp_path)
     repository = write_resume_repository(tmp_path / "repo")
@@ -664,9 +779,13 @@ def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
             },
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
-    monkeypatch.setattr(training, "history_progress", lambda *, total: FakeProgress(total))
+    monkeypatch.setattr(
+        training, "history_progress", lambda *, total: FakeProgress(total)
+    )
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     _weights, train, test = write_training_files(tmp_path)
     repository = write_resume_repository(tmp_path / "repo", iteration=10)
@@ -718,8 +837,7 @@ def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
     assert train_call[1]["parameters"]["mllib"]["resume_from"] == "best"
     lines = FakeVisdom.instances[0].lines
     assert [
-        (line["name"], line["X"].tolist(), line["Y"].tolist())
-        for line in lines
+        (line["name"], line["X"].tolist(), line["Y"].tolist()) for line in lines
     ] == [
         ("train_loss", [5.0, 10.0], [2.0, 1.0]),
         ("map-50", [5.0, 10.0], [0.1, 0.2]),
@@ -748,7 +866,9 @@ def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
 
 def test_train_yolox_rejects_missing_bbox_file(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
     image = tmp_path / "image.jpg"
@@ -785,9 +905,14 @@ def test_train_yolox_rejects_missing_bbox_file(monkeypatch, tmp_path, capsys):
 def test_train_yolox_can_skip_dataset_validation(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
@@ -842,7 +967,9 @@ def test_train_yolox_can_skip_dataset_validation(monkeypatch, tmp_path, capsys):
 
 def test_train_rejects_gpuid_with_no_gpu(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     weights, train, test = write_training_files(tmp_path)
 
     code = cli.main(
@@ -877,25 +1004,33 @@ def test_train_emits_only_new_history_points(monkeypatch, tmp_path, capsys):
             "status": "running",
             "body": {
                 "measure": {"iteration": 9, "train_loss": 80.0},
-                "measure_hist": {"train_loss_hist": [float(index) for index in range(10)]},
+                "measure_hist": {
+                    "train_loss_hist": [float(index) for index in range(10)]
+                },
             },
         },
         {
             "status": "running",
             "body": {
                 "measure": {"iteration": 9, "train_loss": 80.0},
-                "measure_hist": {"train_loss_hist": [float(index) for index in range(10)]},
+                "measure_hist": {
+                    "train_loss_hist": [float(index) for index in range(10)]
+                },
             },
         },
         {
             "status": "finished",
             "body": {
                 "measure": {"iteration": 10, "train_loss": 10.0},
-                "measure_hist": {"train_loss_hist": [float(index) for index in range(11)]},
+                "measure_hist": {
+                    "train_loss_hist": [float(index) for index in range(11)]
+                },
             },
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
 
@@ -928,7 +1063,8 @@ def test_train_emits_only_new_history_points(monkeypatch, tmp_path, capsys):
         if line.strip()
     ]
     train_loss = [
-        event for event in events
+        event
+        for event in events
         if event["event"] == "metric" and event["name"] == "train_loss"
     ]
     assert [event["iteration"] for event in train_loss] == [
@@ -956,7 +1092,9 @@ def test_train_uses_iteration_history_for_eval_metrics(monkeypatch, tmp_path, ca
             },
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     weights, train, test = write_training_files(tmp_path)
 
@@ -985,10 +1123,7 @@ def test_train_uses_iteration_history_for_eval_metrics(monkeypatch, tmp_path, ca
         for line in capsys.readouterr().out.splitlines()
         if line.strip()
     ]
-    metrics = [
-        event for event in events
-        if event["event"] == "metric"
-    ]
+    metrics = [event for event in events if event["event"] == "metric"]
     assert "iteration" not in {event["name"] for event in metrics}
     assert [
         (event["iteration"], event["value"])
@@ -1000,10 +1135,11 @@ def test_train_uses_iteration_history_for_eval_metrics(monkeypatch, tmp_path, ca
         for event in metrics
         if event["name"] == "map-50_test0"
     ] == [(10.0, 0.2), (20.0, 0.4)]
-    assert [
-        event["iteration"] for event in metrics
-        if event["name"] == "num_fg"
-    ] == [0.0, 1.0, 2.0]
+    assert [event["iteration"] for event in metrics if event["name"] == "num_fg"] == [
+        0.0,
+        1.0,
+        2.0,
+    ]
 
 
 def test_train_live_terminal_falls_back_to_jsonl_when_not_tty(
@@ -1011,9 +1147,14 @@ def test_train_live_terminal_falls_back_to_jsonl_when_not_tty(
 ):
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setattr(training.sys.stdout, "isatty", lambda: False)
     weights, train, test = write_training_files(tmp_path)
@@ -1077,7 +1218,9 @@ def test_train_live_terminal_keeps_metric_sinks(monkeypatch, tmp_path, capsys):
             "body": {"measure": {"iteration": 2, "train_loss": 1.0, "map-50": 0.5}},
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setattr(training.sys.stdout, "isatty", lambda: True)
     monkeypatch.setattr(training, "LiveTrainingTerminalReporter", FakeLiveReporter)
@@ -1121,9 +1264,11 @@ def test_train_live_terminal_keeps_metric_sinks(monkeypatch, tmp_path, capsys):
     assert "training_status" in {
         event["event"] for event in FakeLiveReporter.instances[0].events
     }
-    metric_lines = (run_root / "live-run" / "metrics.jsonl").read_text(
-        encoding="utf-8"
-    ).splitlines()
+    metric_lines = (
+        (run_root / "live-run" / "metrics.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    )
     metrics = [json.loads(line) for line in metric_lines]
     assert {metric["name"] for metric in metrics} == {"train_loss", "map-50"}
     assert capsys.readouterr().out == ""
@@ -1167,9 +1312,15 @@ def test_live_training_terminal_reporter_renders_progress_losses_and_metrics():
     output = strip_ansi(stream.getvalue())
     lines = output.splitlines()
     gpu_line = next(index for index, line in enumerate(lines) if "gpu 1 util" in line)
-    train_line = next(index for index, line in enumerate(lines) if "train" in line and "4/10" in line)
-    loss_line = next(index for index, line in enumerate(lines) if "train_loss=1.25" in line)
-    metrics_line = next(index for index, line in enumerate(lines) if "map-50=0.75" in line)
+    train_line = next(
+        index for index, line in enumerate(lines) if "train" in line and "4/10" in line
+    )
+    loss_line = next(
+        index for index, line in enumerate(lines) if "train_loss=1.25" in line
+    )
+    metrics_line = next(
+        index for index, line in enumerate(lines) if "map-50=0.75" in line
+    )
     assert gpu_line < train_line
     assert any("─" in line for line in lines[loss_line + 1 : metrics_line])
     assert "1 util=88% mem=13.2/24.0GB (55%)" in output
@@ -1267,9 +1418,13 @@ def test_live_training_terminal_reporter_renders_sink_warning():
     assert "VisdomResultSink: transient prediction failure" in output
 
 
-def test_explicit_run_name_collision_fails_before_training(monkeypatch, tmp_path, capsys):
+def test_explicit_run_name_collision_fails_before_training(
+    monkeypatch, tmp_path, capsys
+):
     runtime = FakeRuntime()
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     weights, train, test = write_training_files(tmp_path)
     run_root = tmp_path / "runs"
     (run_root / "existing").mkdir(parents=True)
@@ -1341,7 +1496,9 @@ def test_train_visdom_sink_plots_losses_and_metrics(monkeypatch, tmp_path, capsy
             },
         }
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
@@ -1476,10 +1633,10 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
                                             "xmax": 3,
                                             "ymax": 3,
                                         },
-                                    }
+                                    },
                                 ],
                             }
-                        ]
+                        ],
                     }
                 },
             },
@@ -1495,7 +1652,9 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
             },
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
@@ -1589,7 +1748,9 @@ def test_train_visdom_results_can_be_disabled(monkeypatch, tmp_path, capsys):
             },
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
@@ -1677,7 +1838,7 @@ def test_train_visdom_results_waits_for_backend_prediction_payload(
                                     }
                                 ],
                             }
-                        ]
+                        ],
                     }
                 },
             },
@@ -1705,13 +1866,15 @@ def test_train_visdom_results_waits_for_backend_prediction_payload(
                                     }
                                 ],
                             }
-                        ]
+                        ],
                     }
                 },
             },
         },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
@@ -1961,7 +2124,9 @@ def test_train_visdom_unreachable_can_fail_fast(monkeypatch, tmp_path, capsys):
             return False
 
     runtime = FakeRuntime()
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
 
@@ -1999,9 +2164,14 @@ def test_train_visdom_unreachable_warns_and_continues(monkeypatch, tmp_path, cap
 
     runtime = FakeRuntime()
     runtime.statuses = [
-        {"status": "finished", "body": {"measure": {"iteration": 1, "train_loss": 1.0}}},
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
     ]
-    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
     monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=FakeVisdom))
     weights, train, test = write_training_files(tmp_path)
@@ -2066,7 +2236,9 @@ def test_train_reports_native_import_error(monkeypatch, tmp_path, capsys):
 
 def test_infer_yolox_batches_and_benchmark(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
-    monkeypatch.setattr(inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
     image1 = tmp_path / "one.png"
@@ -2131,7 +2303,9 @@ def test_infer_segformer_keeps_default_size(monkeypatch, tmp_path, capsys):
             }
         )
     )
-    monkeypatch.setattr(inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(
+        inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
     weights = tmp_path / "weights.pt"
     weights.write_bytes(b"model")
     image = tmp_path / "one.png"

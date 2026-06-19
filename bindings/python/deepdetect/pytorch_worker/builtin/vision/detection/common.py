@@ -71,6 +71,12 @@ class DetectionListDataset:
             "labels": labels,
             "image_id": self.torch.tensor([sample.index], dtype=self.torch.int64),
         }
+        enrich_detection_target(
+            target,
+            torch=self.torch,
+            width=size[0],
+            height=size[1],
+        )
         meta = {
             "index": sample.index,
             "path": str(sample.image),
@@ -289,9 +295,7 @@ def _tensor_detection_target(
             raise DatasetContractError("tensor detection boxes must be [x0,y0,x1,y1]")
         label = int(label)
         if label <= 0 or label >= nclasses:
-            raise DatasetContractError(
-                f"invalid class {label} for nclasses={nclasses}"
-            )
+            raise DatasetContractError(f"invalid class {label} for nclasses={nclasses}")
         xmin, ymin, xmax, ymax = (float(value) for value in box)
         xmin = clamp(xmin, 0.0, float(width))
         xmax = clamp(xmax, 0.0, float(width))
@@ -301,11 +305,40 @@ def _tensor_detection_target(
             raise DatasetContractError("invalid tensor detection bbox coordinates")
         parsed_boxes.append([xmin, ymin, xmax, ymax])
         parsed_labels.append(label)
-    return {
+    target = {
         "boxes": torch.tensor(parsed_boxes, dtype=torch.float32).reshape((-1, 4)),
         "labels": torch.tensor(parsed_labels, dtype=torch.int64),
         "image_id": torch.tensor([image_id], dtype=torch.int64),
     }
+    enrich_detection_target(target, torch=torch, width=width, height=height)
+    return target
+
+
+def enrich_detection_target(
+    target: dict[str, Any],
+    *,
+    torch: Any,
+    width: int,
+    height: int,
+) -> dict[str, Any]:
+    boxes = target.get("boxes")
+    if boxes is None:
+        boxes = torch.empty((0, 4), dtype=torch.float32)
+    if int(boxes.numel()) == 0:
+        area = torch.empty((0,), dtype=torch.float32)
+    else:
+        area = (boxes[:, 2] - boxes[:, 0]).clamp(min=0) * (
+            boxes[:, 3] - boxes[:, 1]
+        ).clamp(min=0)
+    target.setdefault("area", area.to(dtype=torch.float32))
+    target.setdefault(
+        "iscrowd",
+        torch.zeros((int(boxes.shape[0]),), dtype=torch.int64),
+    )
+    size = torch.tensor([int(height), int(width)], dtype=torch.int64)
+    target.setdefault("orig_size", size.clone())
+    target.setdefault("size", size.clone())
+    return target
 
 
 def resolve_dataset_path(base: Path, value: str, *, resolve: bool = True) -> Path:
@@ -316,7 +349,9 @@ def resolve_dataset_path(base: Path, value: str, *, resolve: bool = True) -> Pat
 
 
 def validate_bbox_file(path: Path, *, nclasses: int) -> None:
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), 1
+    ):
         if not line.strip():
             continue
         fields = line.split()
@@ -329,7 +364,9 @@ def validate_bbox_file(path: Path, *, nclasses: int) -> None:
             )
         xmin, ymin, xmax, ymax = (float(value) for value in fields[1:])
         if xmax <= xmin or ymax <= ymin:
-            raise DatasetContractError(f"{path}:{line_number}: invalid bbox coordinates")
+            raise DatasetContractError(
+                f"{path}:{line_number}: invalid bbox coordinates"
+            )
 
 
 def read_image_tensor(path: Path, torch: Any) -> tuple[Any, tuple[int, int]]:
@@ -352,7 +389,9 @@ def read_target_tensors(
     boxes = []
     labels = []
     width, height = image_size
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), 1
+    ):
         if not line.strip():
             continue
         fields = line.split()
@@ -369,7 +408,9 @@ def read_target_tensors(
         ymin = clamp(ymin, 0.0, float(height))
         ymax = clamp(ymax, 0.0, float(height))
         if xmax <= xmin or ymax <= ymin:
-            raise DatasetContractError(f"{path}:{line_number}: invalid bbox coordinates")
+            raise DatasetContractError(
+                f"{path}:{line_number}: invalid bbox coordinates"
+            )
         boxes.append([xmin, ymin, xmax, ymax])
         labels.append(label)
     return (
@@ -762,7 +803,9 @@ def select_device(torch: Any, mllib: Any) -> tuple[Any, bool]:
     if not requested_gpu:
         return torch.device("cpu"), False
     if not torch.cuda.is_available():
-        raise WorkerDependencyError("gpu=true was requested but torch.cuda is not available")
+        raise WorkerDependencyError(
+            "gpu=true was requested but torch.cuda is not available"
+        )
     gpuid = mllib.get("gpuid") if isinstance(mllib, dict) else None
     multi_gpu_requested = isinstance(gpuid, list) and len(gpuid) > 1
     if isinstance(gpuid, list):
@@ -775,7 +818,9 @@ def select_device(torch: Any, mllib: Any) -> tuple[Any, bool]:
     return torch.device(f"cuda:{gpu_index}"), multi_gpu_requested
 
 
-def checkpoint_path(mllib: dict[str, Any], context: WorkerContext | None) -> Path | None:
+def checkpoint_path(
+    mllib: dict[str, Any], context: WorkerContext | None
+) -> Path | None:
     raw = mllib.get("weights") or mllib.get("checkpoint")
     if raw:
         return Path(str(raw)).expanduser().resolve()
@@ -794,7 +839,9 @@ def latest_checkpoint(context: WorkerContext | None) -> Path | None:
     return checkpoints[-1] if checkpoints else None
 
 
-def maybe_load_checkpoint(model: Any, torch: Any, device: Any, path: Path | None) -> Path | None:
+def maybe_load_checkpoint(
+    model: Any, torch: Any, device: Any, path: Path | None
+) -> Path | None:
     if path is None or not path.is_file():
         return None
     payload = torch.load(path, map_location=device)
@@ -860,7 +907,9 @@ def parameters_dict(request: dict[str, Any]) -> dict[str, Any]:
     return parameters if isinstance(parameters, dict) else {}
 
 
-def merged_mllib(context: WorkerContext | None, request_params: dict[str, Any]) -> dict[str, Any]:
+def merged_mllib(
+    context: WorkerContext | None, request_params: dict[str, Any]
+) -> dict[str, Any]:
     result = dict(context.mllib if context is not None else {})
     request_mllib = request_params.get("mllib", {})
     if isinstance(request_mllib, dict):

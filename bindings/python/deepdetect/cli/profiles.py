@@ -312,6 +312,39 @@ PROFILES = {
         predict_input={"height": 640, "width": 640},
         predict_output={"bbox": True},
     ),
+    "external-pytorch-detector": ModelProfile(
+        name="external-pytorch-detector",
+        task="detection",
+        description="External PyTorch object detection worker",
+        backend="pytorch",
+        default_weights=None,
+        default_repository=Path("deepdetect-models/external-pytorch-detector"),
+        default_service_name="python-external-pytorch-detector-train",
+        default_nclasses=2,
+        requires_weights=False,
+        service_input={
+            "connector": "image",
+            "height": 640,
+            "width": 640,
+            "rgb": True,
+            "bbox": True,
+            "db": False,
+        },
+        service_mllib={
+            "task": "detection",
+            "class": "DeepDetectWorker",
+        },
+        train_input={"seed": 12347, "db": False, "shuffle": True},
+        train_mllib={
+            "solver": {"iter_size": 1, "solver_type": "ADAM"},
+            "net": {"batch_size": 1},
+            "resume": False,
+            "data_source": "connector_tensor_pull",
+        },
+        train_output={"measure": ["map-05", "map-50", "map-90"]},
+        predict_input={"height": 640, "width": 640},
+        predict_output={"bbox": True},
+    ),
 }
 
 

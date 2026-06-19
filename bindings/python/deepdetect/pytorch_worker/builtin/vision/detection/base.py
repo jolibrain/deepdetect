@@ -150,15 +150,21 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: creating model")
         self.model = self.create_model(self.nclasses, *backend).to(self.device)
         self.debug("train: model created")
-        checkpoint_manager = DetectionCheckpointManager(self.context, torch, self.device)
-        checkpoint_manager.load_model_for_training(
-            self.model, train_request.effective_mllib
+        checkpoint_manager = DetectionCheckpointManager(
+            self.context, torch, self.device
+        )
+        self.load_model_for_training(
+            checkpoint_manager, self.model, train_request.effective_mllib
         )
         self.debug("train: checkpoint load checked")
         self.model.train()
         self.debug("train: creating optimizer")
         optimizer = self.create_optimizer(torch, self.model, base_lr=options.base_lr)
-        checkpoint_manager.load_optimizer(optimizer, train_request.effective_mllib)
+        self.load_optimizer_for_training(
+            checkpoint_manager,
+            optimizer,
+            train_request.effective_mllib,
+        )
         optimizer.zero_grad(set_to_none=True)
         self.debug("train: entering training loop")
 
@@ -172,7 +178,12 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     iteration=optimizer_steps,
                     iterations=options.iterations,
                 )
-                checkpoint_manager.save(self.model, optimizer, optimizer_steps)
+                self.save_training_checkpoint(
+                    checkpoint_manager,
+                    self.model,
+                    optimizer,
+                    optimizer_steps,
+                )
                 return {"status": "cancelled", "iteration": optimizer_steps}
 
             try:
@@ -182,8 +193,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
             except StopIteration:
                 train_batches = iter(train_loader)
                 images, targets, _meta = next(train_batches)
-            images = [image.to(self.device) for image in images]
-            targets = [move_target(target, self.device) for target in targets]
+            images, targets = self.prepare_training_batch(images, targets, _meta)
             if optimizer_steps == 0 and accumulated == 0:
                 self.debug("train: running first forward/backward")
             loss_dict = self.training_losses(self.model, images, targets)
@@ -212,12 +222,9 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 losses=loss_values,
             )
 
-            should_test = (
-                test_datasets
-                and (
-                    optimizer_steps % options.test_interval == 0
-                    or optimizer_steps == options.iterations
-                )
+            should_test = test_datasets and (
+                optimizer_steps % options.test_interval == 0
+                or optimizer_steps == options.iterations
             )
             if should_test:
                 self.debug(f"train: evaluating at iteration {optimizer_steps}")
@@ -230,10 +237,20 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     cancellation=cancellation,
                 )
                 self.model.train()
-                checkpoint_manager.save(self.model, optimizer, optimizer_steps)
+                self.save_training_checkpoint(
+                    checkpoint_manager,
+                    self.model,
+                    optimizer,
+                    optimizer_steps,
+                )
                 self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
 
-        checkpoint_manager.save(self.model, optimizer, options.iterations)
+        self.save_training_checkpoint(
+            checkpoint_manager,
+            self.model,
+            optimizer,
+            options.iterations,
+        )
         self.debug("train: finished")
         progress.finished(iteration=options.iterations, iterations=options.iterations)
         return {
@@ -283,15 +300,21 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: creating model")
         self.model = self.create_model(self.nclasses, *backend).to(self.device)
         self.debug("train: model created")
-        checkpoint_manager = DetectionCheckpointManager(self.context, torch, self.device)
-        checkpoint_manager.load_model_for_training(
-            self.model, train_request.effective_mllib
+        checkpoint_manager = DetectionCheckpointManager(
+            self.context, torch, self.device
+        )
+        self.load_model_for_training(
+            checkpoint_manager, self.model, train_request.effective_mllib
         )
         self.debug("train: checkpoint load checked")
         self.model.train()
         self.debug("train: creating optimizer")
         optimizer = self.create_optimizer(torch, self.model, base_lr=options.base_lr)
-        checkpoint_manager.load_optimizer(optimizer, train_request.effective_mllib)
+        self.load_optimizer_for_training(
+            checkpoint_manager,
+            optimizer,
+            train_request.effective_mllib,
+        )
         optimizer.zero_grad(set_to_none=True)
         self.debug("train: entering connector pull training loop")
 
@@ -305,9 +328,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
             connector=connector,
             torch=torch,
             reset_epoch=True,
-            prefetch_batches=connector_prefetch_batches(
-                train_request.effective_mllib
-            ),
+            prefetch_batches=connector_prefetch_batches(train_request.effective_mllib),
         )
         while optimizer_steps < options.iterations:
             if cancellation.requested:
@@ -316,7 +337,12 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     iteration=optimizer_steps,
                     iterations=options.iterations,
                 )
-                checkpoint_manager.save(self.model, optimizer, optimizer_steps)
+                self.save_training_checkpoint(
+                    checkpoint_manager,
+                    self.model,
+                    optimizer,
+                    optimizer_steps,
+                )
                 return {"status": "cancelled", "iteration": optimizer_steps}
 
             batch = prefetcher.next()
@@ -334,8 +360,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 )
                 continue
             images, targets, _metas = batch
-            images = [image.to(self.device) for image in images]
-            targets = [move_target(target, self.device) for target in targets]
+            images, targets = self.prepare_training_batch(images, targets, _metas)
             if optimizer_steps == 0 and accumulated == 0:
                 self.debug("train: running first connector forward/backward")
             loss_dict = self.training_losses(self.model, images, targets)
@@ -364,15 +389,14 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 losses=loss_values,
             )
 
-            should_test = (
-                bool(test_samples)
-                and (
-                    optimizer_steps % options.test_interval == 0
-                    or optimizer_steps == options.iterations
-                )
+            should_test = bool(test_samples) and (
+                optimizer_steps % options.test_interval == 0
+                or optimizer_steps == options.iterations
             )
             if should_test:
-                self.debug(f"train: evaluating connector at iteration {optimizer_steps}")
+                self.debug(
+                    f"train: evaluating connector at iteration {optimizer_steps}"
+                )
                 self.evaluate_connector_pull(
                     test_samples,
                     connector=connector,
@@ -387,10 +411,20 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     ),
                 )
                 self.model.train()
-                checkpoint_manager.save(self.model, optimizer, optimizer_steps)
+                self.save_training_checkpoint(
+                    checkpoint_manager,
+                    self.model,
+                    optimizer,
+                    optimizer_steps,
+                )
                 self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
 
-        checkpoint_manager.save(self.model, optimizer, options.iterations)
+        self.save_training_checkpoint(
+            checkpoint_manager,
+            self.model,
+            optimizer,
+            options.iterations,
+        )
         prefetcher.close()
         self.debug("train: finished")
         progress.finished(iteration=options.iterations, iterations=options.iterations)
@@ -462,7 +496,11 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                             break
                         images, targets, metas = batch
                         images = [image.to(self.device) for image in images]
-                        outputs = self.predict_batch(self.model, images)
+                        outputs = self.predict_detection_batch(
+                            self.model,
+                            images,
+                            metas,
+                        )
                         for meta, target, output_item in zip(metas, targets, outputs):
                             processed += 1
                             eval_targets.extend(target_eval_boxes(meta, target))
@@ -631,7 +669,11 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     if cancellation.requested:
                         break
                     images = [image.to(self.device) for image in images]
-                    outputs = self.predict_batch(self.model, images)
+                    outputs = self.predict_detection_batch(
+                        self.model,
+                        images,
+                        metas,
+                    )
                     for meta, target, output in zip(metas, targets, outputs):
                         processed += 1
                         eval_targets.extend(target_eval_boxes(meta, target))
@@ -702,7 +744,10 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
             checkpoint_manager = DetectionCheckpointManager(
                 self.context, torch, self.device
             )
-            loaded = checkpoint_manager.load_model_for_prediction(self.model)
+            loaded = self.load_model_for_prediction(
+                checkpoint_manager,
+                self.model,
+            )
             if loaded is None:
                 self.model.eval()
         self.model.eval()
@@ -710,8 +755,19 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         with torch.no_grad():
             for image_path in data:
                 image_path = Path(str(image_path)).expanduser().resolve()
-                image, _size = read_image_tensor(image_path, torch)
-                output = self.predict_batch(self.model, [image.to(self.device)])[0]
+                image, size = read_image_tensor(image_path, torch)
+                output = self.predict_detection_batch(
+                    self.model,
+                    [image.to(self.device)],
+                    [
+                        {
+                            "index": len(results),
+                            "path": str(image_path),
+                            "width": int(size[0]),
+                            "height": int(size[1]),
+                        }
+                    ],
+                )[0]
                 results.append(
                     connector_prediction(
                         image_path,
@@ -733,7 +789,9 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
     ) -> tuple[Any, list[Any]]:
         if train_request.source == "path":
             if train_request.train_list is None:
-                raise DatasetContractError("path-backed train request has no train list")
+                raise DatasetContractError(
+                    "path-backed train request has no train list"
+                )
             return (
                 self.create_dataset(train_request.train_list, torch=torch),
                 [
@@ -775,6 +833,17 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
             lr=base_lr,
         )
 
+    def prepare_training_batch(
+        self,
+        images: list[Any],
+        targets: list[dict[str, Any]],
+        metas: list[dict[str, Any]],
+    ) -> tuple[list[Any], list[dict[str, Any]]]:
+        return (
+            [image.to(self.device) for image in images],
+            [move_target(target, self.device) for target in targets],
+        )
+
     def training_losses(
         self,
         model: Any,
@@ -785,6 +854,58 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
 
     def predict_batch(self, model: Any, images: list[Any]) -> list[dict[str, Any]]:
         return model(images)
+
+    def predict_detection_batch(
+        self,
+        model: Any,
+        images: list[Any],
+        metas: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return self.convert_prediction_outputs(
+            self.predict_batch(model, images),
+            images,
+            metas,
+        )
+
+    def convert_prediction_outputs(
+        self,
+        outputs: list[dict[str, Any]],
+        images: list[Any],
+        metas: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return outputs
+
+    def load_model_for_training(
+        self,
+        checkpoint_manager: DetectionCheckpointManager,
+        model: Any,
+        mllib: dict[str, Any],
+    ) -> Path | None:
+        return checkpoint_manager.load_model_for_training(model, mllib)
+
+    def load_model_for_prediction(
+        self,
+        checkpoint_manager: DetectionCheckpointManager,
+        model: Any,
+    ) -> Path | None:
+        return checkpoint_manager.load_model_for_prediction(model)
+
+    def load_optimizer_for_training(
+        self,
+        checkpoint_manager: DetectionCheckpointManager,
+        optimizer: Any,
+        mllib: dict[str, Any],
+    ) -> None:
+        checkpoint_manager.load_optimizer(optimizer, mllib)
+
+    def save_training_checkpoint(
+        self,
+        checkpoint_manager: DetectionCheckpointManager,
+        model: Any,
+        optimizer: Any,
+        iteration: int,
+    ) -> None:
+        checkpoint_manager.save(model, optimizer, iteration)
 
     def backend_versions(self, *backend: Any) -> dict[str, Any]:
         return {"torch_version": str(getattr(backend[0], "__version__", "unknown"))}
