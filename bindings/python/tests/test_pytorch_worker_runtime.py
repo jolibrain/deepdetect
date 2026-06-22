@@ -1578,6 +1578,39 @@ def test_torchvision_detection_metrics_are_reported_per_test_set():
     ]
 
 
+def test_torchvision_detection_metrics_warn_when_map_thresholds_are_non_monotonic():
+    events = []
+    reporter = WorkerReporter(lambda event, payload: events.append((event, payload)))
+
+    report_detection_metrics(
+        reporter,
+        {"map": 0.4, "map-50": 0.3, "map-90": 0.5},
+        iteration=7,
+        test_index=1,
+    )
+
+    assert events[0] == (
+        "log",
+        {
+            "level": "warning",
+            "message": "non-monotonic detection mAP metrics",
+            "iteration": 7,
+            "test_set_index": 1,
+            "lower_metric": "map-50",
+            "lower_threshold": 0.5,
+            "lower_value": 0.3,
+            "upper_metric": "map-90",
+            "upper_threshold": 0.9,
+            "upper_value": 0.5,
+        },
+    )
+    assert events[1:] == [
+        ("metric", {"name": "map_test1", "value": 0.4, "iteration": 7}),
+        ("metric", {"name": "map-50_test1", "value": 0.3, "iteration": 7}),
+        ("metric", {"name": "map-90_test1", "value": 0.5, "iteration": 7}),
+    ]
+
+
 def test_runtime_maps_non_finite_metric_to_contract_error():
     class BadMetricWorker(DeepDetectWorkerBase):
         def train(self, params, *, reporter, cancellation):
