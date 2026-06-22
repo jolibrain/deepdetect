@@ -647,9 +647,51 @@ def report_detection_metrics(
     iteration: int,
     test_index: int,
 ) -> None:
+    warn_non_monotonic_map_metrics(
+        reporter,
+        metrics,
+        iteration=iteration,
+        test_index=test_index,
+    )
     suffix = f"_test{test_index}"
     for name, value in metrics.items():
         reporter.metric(f"{name}{suffix}", float(value), iteration=iteration)
+
+
+def warn_non_monotonic_map_metrics(
+    reporter: WorkerReporter,
+    metrics: dict[str, float],
+    *,
+    iteration: int,
+    test_index: int,
+) -> None:
+    threshold_metrics = []
+    for name, value in metrics.items():
+        if not name.startswith("map-"):
+            continue
+        try:
+            threshold = int(name.split("-", 1)[1])
+        except ValueError:
+            continue
+        threshold_metrics.append((threshold, name, float(value)))
+    threshold_metrics.sort()
+    for index in range(1, len(threshold_metrics)):
+        lower_threshold, lower_name, lower_value = threshold_metrics[index - 1]
+        upper_threshold, upper_name, upper_value = threshold_metrics[index]
+        if lower_value + 1e-12 >= upper_value:
+            continue
+        reporter.log(
+            "warning",
+            "non-monotonic detection mAP metrics",
+            iteration=iteration,
+            test_set_index=test_index,
+            lower_metric=lower_name,
+            lower_threshold=lower_threshold / 100.0,
+            lower_value=lower_value,
+            upper_metric=upper_name,
+            upper_threshold=upper_threshold / 100.0,
+            upper_value=upper_value,
+        )
 
 
 def mean_ap_at_iou(
