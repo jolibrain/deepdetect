@@ -6,6 +6,7 @@ mkdir -p /tmp/lib
 
 copy_glob() {
     local pattern="$1"
+    local required="${2:-0}"
     local found=0
 
     for lib in $pattern; do
@@ -18,8 +19,13 @@ copy_glob() {
 
     if [ "$found" = 0 ]; then
         echo "$pattern is not found."
+        if [ "$required" = 1 ]; then
+            exit 1
+        fi
     fi
 }
+
+copy_glob "/opt/deepdetect/build/src/libdeepdetect.so*" 1
 
 libs=(
     "/usr/local/lib/libcurlpp.*"
