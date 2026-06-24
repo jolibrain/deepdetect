@@ -82,37 +82,68 @@ trigger manually on release tag
 
 # Release process
 
-## DeepDetect it self
+## DeepDetect itself
 
-On a clean master branch with all tags fetched:
+Run the integrated release process from a clean `master` branch:
 
 ```bash
 $ git fetch --tags
 $ git checkout master
 $ git reset --hard origin/master
-$ yarn
-$ ci/release.sh
+$ ci/release_all.sh patch --user <ssh-user>
 ```
 
-If the result is OK, publish the draft GitHub release and push the release
-commit on `master`:
+The script creates a temporary staging clone, generates the release commit and
+local tag there, builds and tests the release Docker images and CPU/GPU wheels,
+then asks for confirmation before publishing anything. After confirmation it:
 
-```
-$ git push origin master
-```
+* pushes `deepdetect_cpu`, `deepdetect_gpu`, and `deepdetect_gpu_tensorrt`
+  images to `docker.jolibrain.com` with `vX.Y.Z` and `latest` tags;
+* uploads CPU/GPU wheels and regenerates the pip simple indexes under
+  `https://www.deepdetect.com/download/wheels/`;
+* pushes the release commit and tag to GitHub;
+* creates a draft GitHub release with changelog notes plus Docker and wheel
+  install links.
 
-The script `ci/release.sh` updates CHANGELOG.md, commits it, creates a tag, and
-pushes that tag to `origin` before creating the draft GitHub release.
-
-To preview the next release without changing files, tags or GitHub state:
+To preview the process without publishing Docker images, wheels, git refs, or a
+GitHub release:
 
 ```bash
-$ ci/release.sh --dry-run
+$ ci/release_all.sh --dry-run patch --user <ssh-user>
 ```
+
+Use `--skip-docker` or `--skip-wheels` for targeted dry-run checks. Use `--yes`
+only for trusted automation where the final confirmation prompt is not wanted.
+
+The older `ci/release.sh` script is kept for source-only recovery work, but it
+pushes the tag before Docker images and wheels are proven, so the integrated
+release flow should be preferred for normal releases.
 
 ## Docker images
 
-On Jenkins in `deepdetect-docker-build` job, `Tags` tab, ran the released version
+Docker images can still be built independently. For a local release-style build
+and smoke test without pushing:
+
+```bash
+$ ci/build-docker-images.sh --tag v0.28.1 --release --no-push cpu gpu gpu_tensorrt
+```
+
+To push those already-built local images:
+
+```bash
+$ ci/build-docker-images.sh --tag v0.28.1 --push-only cpu gpu gpu_tensorrt
+```
+
+GPU image smoke tests run with `DOCKER_GPU_RUN_ARGS="--runtime nvidia"` by
+default. Override it if the local Docker setup uses a different NVIDIA
+interface, for example:
+
+```bash
+$ DOCKER_GPU_RUN_ARGS="--gpus all" ci/build-docker-images.sh --tag v0.28.1 --release --no-push gpu
+```
+
+The Jenkins `deepdetect-docker-build` job still uses the same helper script for
+scheduled and tag-triggered builds.
 
 ## Python wheels
 
@@ -128,7 +159,8 @@ Build, index, and upload CPU/GPU wheels with:
 $ ci/release_wheels.sh --user <ssh-user>
 ```
 
-The script builds `deepdetect-cpu` and `deepdetect-gpu`, stages wheels under
+The integrated release flow calls this script automatically. When used
+directly, the script builds `deepdetect-cpu` and `deepdetect-gpu`, stages wheels under
 `dist/python/wheelhouse`, generates pip simple indexes with `sha256` URL
 fragments, and uploads them to the web server. The default public install
 commands are:
