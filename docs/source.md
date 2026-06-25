@@ -130,13 +130,13 @@ export CMAKE_POLICY_VERSION_MINIMUM=3.5
 ## Torch CPU Build
 
 Install CPU PyTorch and torchvision. DeepDetect currently builds against
-PyTorch `2.12.0` and torchvision `0.27.0`.
+PyTorch `2.12.1` and torchvision `0.27.1`.
 
 ```bash
 . .venv/bin/activate
 python -m pip install \
-  torch==2.12.0 \
-  torchvision==0.27.0 \
+  torch==2.12.1 \
+  torchvision==0.27.1 \
   --index-url https://download.pytorch.org/whl/cpu
 ```
 
@@ -175,8 +175,8 @@ Install CUDA PyTorch and torchvision:
 ```bash
 . .venv/bin/activate
 python -m pip install \
-  torch==2.12.0 \
-  torchvision==0.27.0 \
+  torch==2.12.1 \
+  torchvision==0.27.1 \
   --index-url https://download.pytorch.org/whl/cu130
 ```
 
@@ -214,8 +214,8 @@ GPU variant and a CUDA 12.6 PyTorch wheel:
 . .venv/bin/activate
 python -m pip install \
   --force-reinstall \
-  torch==2.12.0 \
-  torchvision==0.27.0 \
+  torch==2.12.1 \
+  torchvision==0.27.1 \
   --index-url https://download.pytorch.org/whl/cu126
 
 rm -rf build

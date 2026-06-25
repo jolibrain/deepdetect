@@ -599,7 +599,7 @@ if (USE_TORCH)
       list(PREPEND CMAKE_PREFIX_PATH "${TORCH_LOCATION}")
     endif()
 
-    find_package(Torch 2.12.0 EXACT CONFIG REQUIRED)
+    find_package(Torch 2.12.1 EXACT CONFIG REQUIRED)
     get_filename_component(TORCH_LOCATION
       "${Torch_DIR}/../../.." ABSOLUTE)
 
@@ -746,7 +746,7 @@ if (USE_TORCH)
     set(TORCH_LIB_DIR ${TORCH_LOCATION}/lib)
     set(DEEPDETECT_TORCH_VERSION ${Torch_VERSION})
   else()
-    set(PYTORCH_COMMIT v2.12.0)
+    set(PYTORCH_COMMIT v2.12.1)
     set(PYTORCH_COMPLETE ${CMAKE_BINARY_DIR}/CMakeFiles/pytorch-complete)
 
     if (APPLE)
@@ -819,7 +819,7 @@ CONFIGURE_COMMAND ""
 
   # TORCH VISION
   message(STATUS "Configuring Pytorch Vision")
-  set(PYTORCH_VISION_COMMIT "v0.27.0")
+  set(PYTORCH_VISION_COMMIT "v0.27.1")
   set(PYTORCH_VISION_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/pytorch/vision)
   # set(PYTORCH_VISION_PATCHES
   #   ${PYTORCH_VISION_PATCHES_PATH}/xxx.patch # add patches here

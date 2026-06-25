@@ -223,7 +223,7 @@ def test_job_timeout(monkeypatch):
 def test_torch_runtime_accepts_pinned_patch_with_local_suffix(monkeypatch):
     monkeypatch.setattr(
         "deepdetect._torch_runtime.importlib.import_module",
-        lambda name: SimpleNamespace(__version__="2.12.0+cpu"),
+        lambda name: SimpleNamespace(__version__="2.12.1+cpu"),
     )
 
     ensure_torch_runtime()
@@ -232,8 +232,8 @@ def test_torch_runtime_accepts_pinned_patch_with_local_suffix(monkeypatch):
 def test_torch_runtime_rejects_newer_patch(monkeypatch):
     monkeypatch.setattr(
         "deepdetect._torch_runtime.importlib.import_module",
-        lambda name: SimpleNamespace(__version__="2.12.1+cpu"),
+        lambda name: SimpleNamespace(__version__="2.12.2+cpu"),
     )
 
-    with pytest.raises(ImportError, match="torch==2.12.0"):
+    with pytest.raises(ImportError, match="torch==2.12.1"):
         ensure_torch_runtime()

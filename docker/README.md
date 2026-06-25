@@ -68,7 +68,7 @@ Params usage: ./build.sh [options...]
 * DEEPDETECT_GPU_VARIANT : [`default`/**legacy61**] GPU-only arch preset. `default` targets CUDA 13 and compute capabilities `7.5;8.0;8.6;8.9;9.0;10.0;12.0`. `legacy61` targets CUDA 12.x and preserves older compute capabilities `6.1;6.2;7.0;7.2;7.5;8.0;8.6;8.9;9.0`.
 * DD_CUDA_VERSION / DD_CUDA_MAJOR_MINOR : Optional CUDA image overrides. The defaults are CUDA `13.0.2` / `13.0`; use CUDA `12.6.3` / `12.6` with `DEEPDETECT_GPU_VARIANT=legacy61`.
 
-Docker Torch builds install `torch==2.12.0` and `torchvision==0.27.0` in the
+Docker Torch builds install `torch==2.12.1` and `torchvision==0.27.1` in the
 build stage and configure DeepDetect with `USE_PREBUILT_TORCH=ON`. Runtime
 images copy the native Torch, torchvision, and NVIDIA wheel libraries needed by
 DeepDetect; the Python Torch package is not installed in the runtime stage.
