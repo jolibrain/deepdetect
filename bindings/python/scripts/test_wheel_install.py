@@ -11,6 +11,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+TORCH_DEPENDENCY = "torch==2.12.0"
 TORCH_FIXTURES = {
     "resnet50_training_torch241_small": (
         "https://www.deepdetect.com/dd/examples/torch/"
@@ -68,7 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wheel-dir", required=True)
     parser.add_argument("--distribution-name", required=True)
     parser.add_argument("--venv-dir", required=True)
-    parser.add_argument("--torch-dependency", default="torch==2.12.*")
+    parser.add_argument("--torch-dependency", default=TORCH_DEPENDENCY)
     parser.add_argument("--torch-index-url", default="")
     parser.add_argument("--expected-cuda", type=parse_bool, required=True)
     parser.add_argument("--pytest-tests", default="bindings/python/tests")
