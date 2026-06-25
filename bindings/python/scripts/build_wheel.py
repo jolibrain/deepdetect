@@ -12,6 +12,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PYTHON_PROJECT = REPO_ROOT / "bindings" / "python"
+TORCH_VERSION = "2.12.0"
+TORCH_DEPENDENCY = "torch==2.12.0"
 
 AUDITWHEEL_EXCLUDES = [
     "libc10.so",
@@ -50,20 +52,21 @@ def run(command: list[str], *, cwd: Path = REPO_ROOT, env: dict[str, str] | None
 def torch_cmake_prefix(torch_mode: str) -> str:
     torch = importlib.import_module("torch")
     version = str(getattr(torch, "__version__", ""))
-    if not version.startswith("2.12."):
+    public_version = version.split("+", 1)[0]
+    if public_version != TORCH_VERSION:
         raise SystemExit(
-            "This wheel build is pinned to torch==2.12.*. "
+            f"This wheel build is pinned to {TORCH_DEPENDENCY}. "
             f"The active interpreter has torch {version or 'with an unknown version'}."
         )
     torch_cuda = getattr(getattr(torch, "version", None), "cuda", None)
     if torch_mode == "cpu" and torch_cuda:
         raise SystemExit(
-            "CPU wheel builds require a CPU-only torch 2.12.* installation. "
+            "CPU wheel builds require a CPU-only torch 2.12.0 installation. "
             f"The active interpreter has CUDA torch {version}."
         )
     if torch_mode == "gpu" and not torch_cuda:
         raise SystemExit(
-            "GPU wheel builds require a CUDA-enabled torch 2.12.* installation. "
+            "GPU wheel builds require a CUDA-enabled torch 2.12.0 installation. "
             f"The active interpreter has torch {version}."
         )
     return str(torch.utils.cmake_prefix_path)
@@ -152,7 +155,7 @@ def nvidia_runtime_paths() -> tuple[Path | None, Path | None, Path | None, list[
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build a bundled DeepDetect Python wheel against torch==2.12.*"
+        description=f"Build a bundled DeepDetect Python wheel against {TORCH_DEPENDENCY}"
     )
     parser.add_argument("--build-dir", default="build/python-wheel")
     parser.add_argument("--sdk-prefix", default="build/python-wheel/install")
@@ -175,7 +178,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--torch-dependency",
-        default="torch==2.12.*",
+        default=TORCH_DEPENDENCY,
         help="dependency string written to generated wheel metadata",
     )
     parser.add_argument("--config", default="Release")
@@ -214,7 +217,7 @@ def project_for_wheel(
     if (
         distribution_name == "deepdetect"
         and not distribution_version
-        and torch_dependency == "torch==2.12.*"
+        and torch_dependency == TORCH_DEPENDENCY
     ):
         return PYTHON_PROJECT
 
@@ -241,7 +244,7 @@ def project_for_wheel(
             1,
         )
     contents = contents.replace(
-        '"torch==2.12.*"',
+        f'"{TORCH_DEPENDENCY}"',
         f'"{torch_dependency}"',
         1,
     )

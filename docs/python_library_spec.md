@@ -7,7 +7,7 @@ package. The existing `dd_client` package remains the supported HTTP client
 and is not renamed, wrapped, or otherwise changed.
 
 Version 0.1 supports Linux x86-64, CPython 3.10 through 3.13, and bundled
-DeepDetect wheels built against `torch==2.12.*`. The wheel contains
+DeepDetect wheels built against `torch==2.12.0`. The wheel contains
 `libdeepdetect.so`, the private `_native` extension, `libtorchvision.so`, and
 protobuf runtime libraries built with DeepDetect. LibTorch and NVIDIA CUDA
 runtime libraries are supplied by the PyTorch and NVIDIA Python wheels.
@@ -247,11 +247,11 @@ the installed package under `build3/install/lib/cmake/DeepDetect`.
 ### 3. Build the bundled Python wheel
 
 Use the Python interpreter matching the environment where the wheel will be
-installed. Install `torch==2.12.*`, `auditwheel`, and the Python build tools,
+installed. Install `torch==2.12.0`, `auditwheel`, and the Python build tools,
 then run the repository helper:
 
 ```shell
-python -m pip install "torch==2.12.*" "auditwheel>=6" scikit-build-core pybind11
+python -m pip install "torch==2.12.0" "auditwheel>=6" scikit-build-core pybind11
 python bindings/python/scripts/build_wheel.py
 ```
 
@@ -363,7 +363,7 @@ python -m pip install --force-reinstall \
 
 No `LD_LIBRARY_PATH` is required for the bundled DeepDetect libraries. The
 extension imports `torch` before loading `_native`, validates that the
-installed torch version is `2.12.*`, and relies on wheel RPATHs to find
+installed torch version is `2.12.0`, and relies on wheel RPATHs to find
 DeepDetect libraries beside `_native` and libtorch under `site-packages/torch`.
 Use `ldd` on the installed `deepdetect/_native*.so` to diagnose unusual host
 CUDA runtime configurations.
@@ -422,7 +422,7 @@ Version 0.1 is accepted when:
   deleted handles, polling, timeout, and cancellation using a fake runtime.
 - Native façade tests cover valid and malformed JSON, error responses, and
   exception containment.
-- The package builds bundled Linux wheels against `torch==2.12.*` on CPython
+- The package builds bundled Linux wheels against `torch==2.12.0` on CPython
   3.10 through 3.13.
 - CPU integration creates a Torch service, trains briefly, predicts, checks
   status, and deletes it.

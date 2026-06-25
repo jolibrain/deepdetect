@@ -2,12 +2,14 @@ import base64
 import io
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 from PIL import Image
 
 from deepdetect import CapabilityError, DeepDetect, DeepDetectError, TrainingJob
+from deepdetect._torch_runtime import ensure_torch_runtime
 
 
 def response(code=200, *, head=None, body=None, **status):
@@ -216,3 +218,22 @@ def test_job_timeout(monkeypatch):
     monkeypatch.setattr("deepdetect.client.time.sleep", lambda _: None)
     with pytest.raises(TimeoutError):
         job.wait(timeout=0.5, poll_interval=0.01)
+
+
+def test_torch_runtime_accepts_pinned_patch_with_local_suffix(monkeypatch):
+    monkeypatch.setattr(
+        "deepdetect._torch_runtime.importlib.import_module",
+        lambda name: SimpleNamespace(__version__="2.12.0+cpu"),
+    )
+
+    ensure_torch_runtime()
+
+
+def test_torch_runtime_rejects_newer_patch(monkeypatch):
+    monkeypatch.setattr(
+        "deepdetect._torch_runtime.importlib.import_module",
+        lambda name: SimpleNamespace(__version__="2.12.1+cpu"),
+    )
+
+    with pytest.raises(ImportError, match="torch==2.12.0"):
+        ensure_torch_runtime()

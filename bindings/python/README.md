@@ -3,16 +3,16 @@
 `deepdetect` embeds DeepDetect in the current Python process. The wheel
 contains the Python package, the private `_native` extension, `libdeepdetect`,
 `libtorchvision`, and protobuf runtime libraries built with DeepDetect.
-LibTorch and NVIDIA CUDA runtime libraries are provided by the `torch==2.12.*`
+LibTorch and NVIDIA CUDA runtime libraries are provided by the `torch==2.12.0`
 wheel and its dependencies.
 
 ## Build a bundled wheel
 
 Use the target Python interpreter from an environment that already contains
-`torch==2.12.*` and the Python build tools:
+`torch==2.12.0` and the Python build tools:
 
 ```shell
-python -m pip install "torch==2.12.*" "auditwheel>=6" scikit-build-core pybind11
+python -m pip install "torch==2.12.0" "auditwheel>=6" scikit-build-core pybind11
 python bindings/python/scripts/build_wheel.py
 ```
 
@@ -92,7 +92,7 @@ python bindings/python/scripts/build_release_wheels.py \
 ## Install and verify
 
 Install the generated Linux wheel into the target Python environment. The
-environment must provide the Python dependencies, especially `torch==2.12.*`,
+environment must provide the Python dependencies, especially `torch==2.12.0`,
 `numpy`, and `Pillow`.
 
 ```shell

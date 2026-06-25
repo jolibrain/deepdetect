@@ -12,6 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BUILD_WHEEL = REPO_ROOT / "bindings" / "python" / "scripts" / "build_wheel.py"
 BUILD_REQUIREMENTS = ["auditwheel>=6", "scikit-build-core", "pybind11", "numpy>=1.23"]
+TORCH_DEPENDENCY = "torch==2.12.0"
 
 
 def run(command: list[str]) -> None:
@@ -96,8 +97,8 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="wheel distribution version; defaults to pyproject.toml",
     )
-    parser.add_argument("--cpu-torch-dependency", default="torch==2.12.*")
-    parser.add_argument("--gpu-torch-dependency", default="torch==2.12.*")
+    parser.add_argument("--cpu-torch-dependency", default=TORCH_DEPENDENCY)
+    parser.add_argument("--gpu-torch-dependency", default=TORCH_DEPENDENCY)
     parser.add_argument(
         "--cpu-torch-index-url",
         default="https://download.pytorch.org/whl/cpu",
