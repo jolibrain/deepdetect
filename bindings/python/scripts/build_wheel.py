@@ -12,8 +12,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PYTHON_PROJECT = REPO_ROOT / "bindings" / "python"
-TORCH_VERSION = "2.12.0"
-TORCH_DEPENDENCY = "torch==2.12.0"
+TORCH_VERSION = "2.12.1"
+TORCH_DEPENDENCY = "torch==2.12.1"
 
 AUDITWHEEL_EXCLUDES = [
     "libc10.so",
@@ -61,12 +61,12 @@ def torch_cmake_prefix(torch_mode: str) -> str:
     torch_cuda = getattr(getattr(torch, "version", None), "cuda", None)
     if torch_mode == "cpu" and torch_cuda:
         raise SystemExit(
-            "CPU wheel builds require a CPU-only torch 2.12.0 installation. "
+            "CPU wheel builds require a CPU-only torch 2.12.1 installation. "
             f"The active interpreter has CUDA torch {version}."
         )
     if torch_mode == "gpu" and not torch_cuda:
         raise SystemExit(
-            "GPU wheel builds require a CUDA-enabled torch 2.12.0 installation. "
+            "GPU wheel builds require a CUDA-enabled torch 2.12.1 installation. "
             f"The active interpreter has torch {version}."
         )
     return str(torch.utils.cmake_prefix_path)

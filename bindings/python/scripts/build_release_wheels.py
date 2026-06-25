@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BUILD_WHEEL = REPO_ROOT / "bindings" / "python" / "scripts" / "build_wheel.py"
 BUILD_REQUIREMENTS = ["auditwheel>=6", "scikit-build-core", "pybind11", "numpy>=1.23"]
-TORCH_DEPENDENCY = "torch==2.12.0"
+TORCH_DEPENDENCY = "torch==2.12.1"
 
 
 def run(command: list[str]) -> None:

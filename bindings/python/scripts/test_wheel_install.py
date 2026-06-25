@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-TORCH_DEPENDENCY = "torch==2.12.0"
+TORCH_DEPENDENCY = "torch==2.12.1"
 TORCH_FIXTURES = {
     "resnet50_training_torch241_small": (
         "https://www.deepdetect.com/dd/examples/torch/"
