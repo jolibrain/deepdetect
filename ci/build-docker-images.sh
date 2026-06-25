@@ -21,7 +21,7 @@ Options:
   -h, --help         Show this help
 
 Environment:
-  DOCKER_GPU_RUN_ARGS  Extra docker run args for GPU images (default: --runtime nvidia)
+  DOCKER_GPU_RUN_ARGS  Extra docker run args for GPU images (default: --gpus all)
 EOF
     exit "$exit_code"
 }
@@ -137,7 +137,18 @@ push_image() {
 }
 
 docker_gpu_run_args() {
-    printf '%s\n' "${DOCKER_GPU_RUN_ARGS:---runtime nvidia}"
+    printf '%s\n' "${DOCKER_GPU_RUN_ARGS:---gpus all}"
+}
+
+target_needs_gpu_runtime() {
+    case "$1" in
+        gpu|gpu_tensorrt)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 for name in "${NAMES[@]}"; do
@@ -191,7 +202,7 @@ for name in "${NAMES[@]}"; do
             safe_tag=$(printf '%s' "$TMP_TAG" | tr -c '[:alnum:]_.-' '_')
             CONTAINER_NAME="ci_testing_deepdetect_${name}_${safe_tag}"
             docker_run_args=(-p 1025-65535:8080 -d --name "$CONTAINER_NAME")
-            if [ "$arch" = "gpu" ]; then
+            if target_needs_gpu_runtime "$arch"; then
                 gpu_run_args="$(docker_gpu_run_args)"
                 if [ -n "$gpu_run_args" ]; then
                     read -r -a gpu_run_args_array <<< "$gpu_run_args"
@@ -199,6 +210,7 @@ for name in "${NAMES[@]}"; do
                 fi
             fi
 
+            echo "+ docker run ${docker_run_args[*]} $image_url:$TMP_TAG"
             docker run "${docker_run_args[@]}" "$image_url:$TMP_TAG"
             log_and_cleanup () {
                 docker logs "$CONTAINER_NAME" || true

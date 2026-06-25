@@ -134,12 +134,12 @@ To push those already-built local images:
 $ ci/build-docker-images.sh --tag v0.28.1 --push-only cpu gpu gpu_tensorrt
 ```
 
-GPU image smoke tests run with `DOCKER_GPU_RUN_ARGS="--runtime nvidia"` by
-default. Override it if the local Docker setup uses a different NVIDIA
-interface, for example:
+GPU image smoke tests run with `DOCKER_GPU_RUN_ARGS="--gpus all"` by default.
+Override it if the local Docker setup uses a different NVIDIA interface, for
+example:
 
 ```bash
-$ DOCKER_GPU_RUN_ARGS="--gpus all" ci/build-docker-images.sh --tag v0.28.1 --release --no-push gpu
+$ DOCKER_GPU_RUN_ARGS="--runtime nvidia" ci/build-docker-images.sh --tag v0.28.1 --release --no-push gpu
 ```
 
 The Jenkins `deepdetect-docker-build` job still uses the same helper script for
