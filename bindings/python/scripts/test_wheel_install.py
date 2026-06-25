@@ -264,6 +264,15 @@ def main() -> None:
         copied_tests.mkdir()
         shutil.copy2(tests_path, copied_tests / tests_path.name)
 
+    source_scripts = REPO_ROOT / "bindings" / "python" / "scripts"
+    copied_scripts = venv_dir / "scripts"
+    if source_scripts.is_dir():
+        shutil.copytree(
+            source_scripts,
+            copied_scripts,
+            ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"),
+        )
+
     test_env = os.environ.copy()
     prepend_env_path(test_env, "LD_LIBRARY_PATH", native_package_dir)
     print(f"Using LD_LIBRARY_PATH={test_env['LD_LIBRARY_PATH']}", flush=True)

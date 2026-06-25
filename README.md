@@ -60,6 +60,43 @@ deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yam
 deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-default.yaml
 ```
 
+A minimal object-detection run can use the same tiny fixtures as the wheel
+tests. Start Visdom in a second terminal:
+
+```bash
+python -m pip install visdom
+python -m visdom.server -port 8097
+```
+
+Prepare the quickstart dataset and model repository:
+
+```bash
+python bindings/python/scripts/prepare_cli_yolox_quickstart.py \
+  --output /tmp/deepdetect-yolox-quickstart \
+  --force
+```
+
+Train a very small YOLOX run:
+
+```bash
+deepdetect train yolox \
+  --config /tmp/deepdetect-yolox-quickstart/yolox-quickstart.yaml \
+  --terminal live
+```
+
+Then run inference on the `Sample image:` path printed by the preparation
+script:
+
+```bash
+deepdetect infer yolox <sample-image> \
+  --config /tmp/deepdetect-yolox-quickstart/yolox-quickstart.yaml \
+  --visualize \
+  --output /tmp/deepdetect-yolox-quickstart/detections.png
+```
+
+Use the `deepdetect-gpu` wheel and add `--gpu` to the train and infer commands
+to run this example on CUDA.
+
 See the [CLI specification](bindings/python/deepdetect/cli/CLI_SPEC.md) for
 training, inference, monitoring, config precedence, and output formats.
 
