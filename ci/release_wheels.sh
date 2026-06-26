@@ -29,6 +29,7 @@ FORCE_VERSION=""
 UPLOAD_USER=""
 CPU_PYTHON=""
 GPU_PYTHON=""
+TORCHVISION_SOURCE_DIR=""
 
 usage() {
     cat >&2 <<EOF
@@ -55,6 +56,7 @@ Options:
   --cmake PATH                 CMake executable (default: ${CMAKE_COMMAND})
   --cpu-python PATH            Existing CPU build Python interpreter
   --gpu-python PATH            Existing GPU build Python interpreter
+  --torchvision-source-dir DIR Existing torchvision 0.27.1 source checkout
   --cuda-architectures LIST    CMake CUDA architectures (default: ${CUDA_ARCHITECTURES})
   --gpu-torch-index-url URL    PyTorch GPU wheel index (default: ${GPU_TORCH_INDEX_URL})
   -h, --help                   Show this help
@@ -294,6 +296,10 @@ while [ "$#" -gt 0 ]; do
             GPU_PYTHON="${2:-}"
             shift 2
             ;;
+        --torchvision-source-dir)
+            TORCHVISION_SOURCE_DIR="${2:-}"
+            shift 2
+            ;;
         --cuda-architectures)
             CUDA_ARCHITECTURES="${2:-}"
             shift 2
@@ -335,6 +341,9 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
     fi
     if [ -n "$GPU_PYTHON" ]; then
         build_args+=(--gpu-python "$GPU_PYTHON")
+    fi
+    if [ -n "$TORCHVISION_SOURCE_DIR" ]; then
+        build_args+=(--torchvision-source-dir "$TORCHVISION_SOURCE_DIR")
     fi
 
     python3 bindings/python/scripts/build_release_wheels.py \

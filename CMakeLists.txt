@@ -30,6 +30,8 @@ set(TORCH_LOCATION "" CACHE PATH
   "Deprecated LibTorch prefix; use Torch_DIR or CMAKE_PREFIX_PATH")
 set(TORCHVISION_SOURCE_DIR "" CACHE PATH
   "Optional existing torchvision source tree")
+option(TORCHVISION_UPDATE_DISCONNECTED
+  "Do not contact the torchvision git remote during ExternalProject updates" OFF)
 if (TORCH_LOCATION)
   set(USE_PREBUILT_TORCH ON CACHE BOOL
     "use an installed LibTorch package" FORCE)
@@ -844,7 +846,7 @@ CONFIGURE_COMMAND ""
       GIT_REPOSITORY https://github.com/pytorch/vision.git
       GIT_TAG ${PYTORCH_VISION_COMMIT}
       GIT_CONFIG advice.detachedHead=false
-      UPDATE_DISCONNECTED 1)
+      UPDATE_DISCONNECTED ${TORCHVISION_UPDATE_DISCONNECTED})
   endif()
 
   if (USE_PREBUILT_TORCH)
