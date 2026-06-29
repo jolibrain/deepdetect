@@ -56,12 +56,18 @@ extern/pytorch_workers/<model_slug>/
   worker.py
   config.yaml
   manifest.json
+  README.md
   notes.md        # optional
 ```
 
 The manifest should record upstream repository URL, local checkout path, commit
 or tag when known, license, dependencies, entrypoint, class name, expected config
 path, checkpoint compatibility, and generation notes.
+
+The README is required. It should include a quickstart with the concrete train
+and inference CLI commands for the adapter, required upstream checkout/config
+settings, checkpoint expectations, key environment variables, and any
+model-specific label or bbox conversion notes.
 
 Prefer subclassing the existing detection training base for object detectors.
 Implement only the target-specific pieces:

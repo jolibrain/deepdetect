@@ -8,4 +8,7 @@ models/
 tools/build-cpp-netlib/
 __pycache__
 extern/pytorch_workers/**
+!extern/pytorch_workers/
+!extern/pytorch_workers/*/
+!extern/pytorch_workers/*/README.md
 !extern/README.md

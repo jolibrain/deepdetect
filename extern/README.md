@@ -18,4 +18,7 @@ Each generated adapter should include:
 - `config.yaml`: a repeatable CLI config for the adapter;
 - `manifest.json`: upstream repository, checkout, license, dependencies,
   selected entrypoint, and generation notes;
+- `README.md`: quickstart train and inference commands, required upstream
+  paths, checkpoint expectations, environment variables, and model-specific
+  conversion notes;
 - optional notes for manual validation.

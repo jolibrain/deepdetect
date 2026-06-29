@@ -1,0 +1,19 @@
+{
+  "model_slug": "rtdetrv4",
+  "entrypoint": "extern/pytorch_workers/rtdetrv4/worker.py",
+  "class": "DeepDetectWorker",
+  "upstream_repo_url": null,
+  "upstream_checkout_path": "${RTDETRV4_REPO}",
+  "upstream_ref": null,
+  "license": "See upstream RT-DETRv4 repository",
+  "dependencies": [
+    "torch",
+    "upstream RT-DETRv4 checkout importable through rtdetrv4.repo_path or RTDETRV4_REPO"
+  ],
+  "generation_notes": [
+    "Local ignored adapter generated as an external PyTorch worker testbed.",
+    "DeepDetect class id 0 is background; upstream RT-DETRv4 labels are converted to zero-based foreground ids.",
+    "Set rtdetrv4.config_path in CLI/API mllib parameters.",
+    "Set weights or rtdetrv4.pretrained_model to a pretrained .pth/.pt/.ckpt file or a directory containing one."
+  ]
+}
