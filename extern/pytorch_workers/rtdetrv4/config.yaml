@@ -1,0 +1,73 @@
+# RT-DETRv4 external worker smoke-test config.
+train_data: train.txt
+test_data:
+  - test.txt
+weights: null
+repository: deepdetect-models/rtdetrv4
+service_name: python-rtdetrv4-train
+nclasses: 2
+width: 640
+height: 640
+iterations: 10
+batch_size: 1
+iter_size: 1
+augmentation:
+  mirror: true
+  rotate: true
+  crop_size: 0
+  test_crop_samples: 10
+  cutout: 0.1
+  geometry:
+    prob: 0.1
+    persp_horizontal: true
+    persp_vertical: true
+    zoom_in: true
+    zoom_out: true
+    pad_mode: constant
+  noise:
+    prob: 0.01
+  distort:
+    prob: 0.01
+service_mllib:
+  entrypoint: extern/pytorch_workers/rtdetrv4/worker.py
+  class: DeepDetectWorker
+  rtdetrv4:
+    repo_path: null
+    config_path: null
+    pretrained_model: null
+    disable_teacher: true
+    pretrained_backbone: false
+mllib:
+  data_source: connector_tensor_pull
+class_weights: null
+base_lr: 0.0001
+test_interval: 10
+gpu: false
+gpuid: null
+sync: false
+poll_interval: 0.5
+metric_history_points: 10000
+metric_history_overlap: 1.0
+timeout: null
+job_dir: null
+run_name: null
+resume: null
+output_format: jsonl
+terminal: verbose
+dataset_check: full
+skip_mask_validation: false
+visdom: false
+visdom_server: http://localhost
+visdom_port: 8097
+visdom_base_url: /
+visdom_offline_ok: true
+visdom_save: false
+visdom_results: true
+visdom_results_count: 10
+visdom_results_seed: 12345
+output: null
+visualize: false
+benchmark: false
+warmup: 0
+confidence_threshold: 0.25
+best_bbox: null
