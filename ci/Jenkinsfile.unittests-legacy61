@@ -32,21 +32,6 @@ pipeline {
         sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
       }
     }
-    stage('Installing prebuilt cache') {
-      when {
-       expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:full-build" }.size() == 0 }
-      }
-      steps {
-        script {
-          sh '''
-          prebuilt_version=$(awk '/^lastSuccessfulBuild/{print $2}' /var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds/permalinks)
-          # Create a copy on write filesystem instead of copying data
-          mkdir -p build-upper build-work build
-          sudo mount -t overlay overlay -o lowerdir=/var/lib/jenkins/jobs/deepdetect-prebuilt-cache/branches/master/builds/${prebuilt_version}/archive/build,upperdir=$(pwd)/build-upper,workdir=$(pwd)/build-work $(pwd)/build
-          '''
-        }
-      }
-    }
     stage('Configure && Build') {
       steps {
         sh '''mkdir -p build/tmp'''
@@ -65,6 +50,7 @@ export DD_CUDA_VERSION="${DD_CUDA_VERSION}"
 export DEEPDETECT_ARCH=gpu
 export DEEPDETECT_BUILD=default
 export DEEPDETECT_GPU_VARIANT="${DEEPDETECT_GPU_VARIANT}"
+export USE_PREBUILT_TORCH=ON
 export BUILD_TESTS=ON
 cd build
 schedtool -B -n 1 -e ionice -n 1 bash ../build.sh
@@ -124,9 +110,6 @@ ccache -s
     always {
       catchError {
         sh '''[ -f docker-image-name ] && docker image rm $(cat docker-image-name)'''
-      }
-      catchError {
-        sh '''sudo umount $(pwd)/build || true'''
       }
       cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenSuccess: true, cleanWhenUnstable: true, cleanupMatrixParent: true, deleteDirs: true)
     }
