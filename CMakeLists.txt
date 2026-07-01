@@ -729,7 +729,9 @@ if (USE_TORCH)
         TORCH_NCCL_HAS_COMM_RESUME)
       check_library_exists("${TORCH_NCCL_LIBRARY}" ncclAlltoAll ""
         TORCH_NCCL_HAS_ALLTOALL)
-      if (NOT TORCH_NCCL_HAS_COMM_RESUME OR NOT TORCH_NCCL_HAS_ALLTOALL)
+      if (NOT TORCH_NCCL_HAS_ALLTOALL
+          OR (CUDA_VERSION VERSION_GREATER_EQUAL 13
+              AND NOT TORCH_NCCL_HAS_COMM_RESUME))
         message(FATAL_ERROR
           "The selected NCCL library is incompatible with LibTorch "
           "${Torch_VERSION}: ${TORCH_NCCL_LIBRARY}. Install the NCCL runtime "
