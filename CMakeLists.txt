@@ -1125,17 +1125,15 @@ if (USE_TENSORRT)
     )
 endif()
 
-set(OATPP_VERSION "1.3.0")
-# 1.3 + allow to change api path
-set(OATPP_SWAGGER_VERSION "ed5251c580e2e98beb50d818bcea8ddc91419d8c")
-# 1.3 + memory leak patch
-set(OATPP_ZLIB_VERSION "e7318068ae1b24b7d690f374ffbcd9c8f691336b")
+set(OATPP_VERSION "1.3.1")
+set(OATPP_SWAGGER_VERSION "1.3.1")
+set(OATPP_ZLIB_VERSION "1.3.0-latest")
 ExternalProject_Add(
     oatpp
     PREFIX oatpp
     UPDATE_DISCONNECTED 1
     URL https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz
-    URL_HASH SHA256=e1f80fa8fd7a74da6737e7fee1a4db68b4d7085a3f40e7d550752d6ff5714583
+    URL_HASH SHA256=9dd31f005ab0b3e8895a478d750d7dbce99e42750a147a3c42a9daecbddedd64
     BUILD_IN_SOURCE true
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DOATPP_INSTALL=OFF -DOATPP_BUILD_TESTS=OFF
     INSTALL_COMMAND ""
@@ -1144,7 +1142,7 @@ ExternalProject_Add(
     oatpp-zlib
     PREFIX oatpp-zlib
     URL https://github.com/oatpp/oatpp-zlib/archive/${OATPP_ZLIB_VERSION}.tar.gz
-    URL_HASH SHA256=17d85ace758ac3b924802d10473a8ed4cf6ee2ffa125022d5a64debf564cf3c3
+    URL_HASH SHA256=54a3b40248e3be0a5a93b3015b614861adbc8894efb25458c7930a74eccf4a9e
     CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
@@ -1176,7 +1174,7 @@ if(USE_OATPP_SWAGGER)
         oatpp-swagger
         PREFIX oatpp-swagger
         URL https://github.com/oatpp/oatpp-swagger/archive/${OATPP_SWAGGER_VERSION}.tar.gz
-        URL_HASH SHA256=afe026d6ba10f5cf43e65578acb80bb82f189d311ed6a0d7c4b8f4bd2b07e55f
+        URL_HASH SHA256=c2ec7d07f4dedbd4a2fef5ee450a839000b59be73fadbe1fbe67857752482a9f
         BUILD_IN_SOURCE true
         INSTALL_COMMAND ""
         CMAKE_ARGS
