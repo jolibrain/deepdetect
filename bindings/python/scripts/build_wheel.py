@@ -118,11 +118,15 @@ def assert_bundled_runtime_libraries(wheel: Path) -> None:
 
     required = {
         "deepdetect/libdeepdetect.so.0",
-        "deepdetect/libprotobuf.so.3.11.4.0",
-        "deepdetect/libprotobuf-lite.so.3.11.4.0",
-        "deepdetect/libprotoc.so.3.11.4.0",
     }
     missing = sorted(required - names)
+    for pattern in (
+        "deepdetect/libprotobuf.so.",
+        "deepdetect/libprotobuf-lite.so.",
+        "deepdetect/libprotoc.so.",
+    ):
+        if not any(name.startswith(pattern) for name in names):
+            missing.append(f"{pattern}*")
     if missing:
         raise SystemExit(
             f"Wheel {wheel} is missing required bundled runtime libraries: "

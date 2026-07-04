@@ -191,14 +191,18 @@ endif()
 # PROTOBUF
 
 # use protobuf same version as pytorch one
+set(PROTOBUF_VERSION 3.20.3 CACHE STRING
+  "Protobuf version to build when BUILD_PROTOBUF=ON")
+set(PROTOBUF_URL_HASH
+  e51cc8fc496f893e2a48beb417730ab6cbcb251142ad8b2cd1951faa5c76fe3d
+  CACHE STRING "SHA256 hash for the bundled protobuf source archive")
 if (BUILD_PROTOBUF)
-    set(PROTOBUF_VERSION 3.11.4)
     ExternalProject_Add(
         protobuf
         PREFIX protobuf
         UPDATE_DISCONNECTED 1
         URL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
-        URL_HASH SHA256=ba4bbc3e6b58d2ccfe406e616576ef48710a2aae205f463618025fc691549cfe
+        URL_HASH SHA256=${PROTOBUF_URL_HASH}
         SOURCE_SUBDIR cmake
         CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
@@ -222,7 +226,7 @@ if (BUILD_PROTOBUF)
     include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIR})
 else()
     if (USE_TORCH)
-        find_package(Protobuf REQUIRED 3.11.4)
+        find_package(Protobuf REQUIRED ${PROTOBUF_VERSION})
     else()
         find_package(Protobuf REQUIRED)
     endif()

@@ -150,10 +150,11 @@ print(
     "deepdetect native files:",
     json.dumps(sorted(path.name for path in package_dir.glob("*.so*")), indent=2),
 )
+protobuf_libraries = sorted(package_dir.glob("libprotobuf.so*"))
 for path in [
     *sorted(package_dir.glob("_native*.so")),
     package_dir / "libdeepdetect.so.0",
-    package_dir / "libprotobuf.so.3.11.4.0",
+    *protobuf_libraries,
 ]:
     if path.exists():
         print(f"readelf -d {{path}}")
