@@ -197,6 +197,16 @@ set(PROTOBUF_URL_HASH
   e51cc8fc496f893e2a48beb417730ab6cbcb251142ad8b2cd1951faa5c76fe3d
   CACHE STRING "SHA256 hash for the bundled protobuf source archive")
 if (BUILD_PROTOBUF)
+    set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src)
+    set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf-build/)
+    set(PROTOBUF_PROTOC ${PROTOBUF_LIB_DIR}/protoc)
+
+    if (APPLE)
+      set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.dylib ${PROTOBUF_LIB_DIR}/libprotoc.dylib ${PROTOBUF_LIB_DIR}/libprotobuf-lite.dylib)
+    else()
+      set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.so ${PROTOBUF_LIB_DIR}/libprotoc.so ${PROTOBUF_LIB_DIR}/libprotobuf-lite.so)
+    endif()
+
     ExternalProject_Add(
         protobuf
         PREFIX protobuf
@@ -210,17 +220,9 @@ if (BUILD_PROTOBUF)
         -DBUILD_SHARED_LIBS:BOOL=ON
         -Dprotobuf_BUILD_TESTS:BOOL=OFF
         -Dprotobuf_BUILD_EXAMPLES:BOOL=OFF
+        BUILD_BYPRODUCTS ${PROTOBUF_PROTOC} ${PROTOBUF_LIB_DEPS}
         INSTALL_COMMAND ""
     )
-    set(PROTOBUF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf/src)
-    set(PROTOBUF_LIB_DIR ${CMAKE_BINARY_DIR}/protobuf/src/protobuf-build/)
-    set(PROTOBUF_PROTOC ${PROTOBUF_LIB_DIR}/protoc)
-
-    if (APPLE)
-      set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.dylib ${PROTOBUF_LIB_DIR}/libprotoc.dylib ${PROTOBUF_LIB_DIR}/libprotobuf-lite.dylib)
-    else()
-      set(PROTOBUF_LIB_DEPS ${PROTOBUF_LIB_DIR}/libprotobuf.so ${PROTOBUF_LIB_DIR}/libprotoc.so ${PROTOBUF_LIB_DIR}/libprotobuf-lite.so)
-    endif()
 
     link_directories(${PROTOBUF_LIB_DIR})
     include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIR})
@@ -248,21 +250,36 @@ else()
     endif()
 endif()
 
+set(PROTOBUF_GENERATED_VERSION "${PROTOBUF_VERSION}")
+if (NOT BUILD_PROTOBUF AND Protobuf_VERSION)
+  set(PROTOBUF_GENERATED_VERSION "${Protobuf_VERSION}")
+endif()
+string(REGEX REPLACE "[^A-Za-z0-9_]" "_"
+  PROTOBUF_GENERATED_VERSION_ID "${PROTOBUF_GENERATED_VERSION}")
+set(PROTOBUF_PROTOC_ENV)
+if (PROTOBUF_LIB_DIR)
+  set(PROTOBUF_PROTOC_ENV "LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR}")
+endif()
+
 file(
     DOWNLOAD https://raw.githubusercontent.com/jolibrain/caffe/master/src/caffe/proto/caffe.proto ${CMAKE_BINARY_DIR}/caffe.proto
     EXPECTED_HASH SHA256=e82a1d51635be93e964c6debcb4cd76514fada46348fa7b30355c14850767360
 )
+set(CAFFE_PROTOBUF_STAMP
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.protoc-${PROTOBUF_GENERATED_VERSION_ID}.stamp)
 add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
-    COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_PROTOC} --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
+    OUTPUT ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc ${CAFFE_PROTOBUF_STAMP}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src
+    COMMAND ${CMAKE_COMMAND} -E env ${PROTOBUF_PROTOC_ENV} ${PROTOBUF_PROTOC} --proto_path=${CMAKE_BINARY_DIR} --cpp_out=${CMAKE_BINARY_DIR}/src ${CMAKE_BINARY_DIR}/caffe.proto
+    COMMAND ${CMAKE_COMMAND} -E touch ${CAFFE_PROTOBUF_STAMP}
     MAIN_DEPENDENCY ${CMAKE_BINARY_DIR}/caffe.proto
     COMMENT Generating caffe.pb.h and caffe.pb.cc
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    DEPENDS protobuf
+    DEPENDS protobuf ${PROTOBUF_PROTOC}
 )
 add_custom_target(
     caffe_pb_h
-    DEPENDS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc
+    DEPENDS ${CMAKE_BINARY_DIR}/src/caffe.pb.h ${CMAKE_BINARY_DIR}/src/caffe.pb.cc ${CAFFE_PROTOBUF_STAMP}
 )
 
 # read documentation
@@ -1112,16 +1129,20 @@ if (USE_TENSORRT)
 
     # onnx.pb.h
     set(ONNX_PROTO ${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/parsers/onnx/third_party/onnx/onnx/onnx.proto)
+    set(ONNX_PROTOBUF_STAMP
+        ${CMAKE_BINARY_DIR}/src/onnx.pb.protoc-${PROTOBUF_GENERATED_VERSION_ID}.stamp)
     add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/src/onnx.pb.h ${CMAKE_BINARY_DIR}/src/onnx.pb.cc
-        COMMAND LD_LIBRARY_PATH=${PROTOBUF_LIB_DIR} ${PROTOBUF_PROTOC} --proto_path=${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/parsers/onnx/third_party/onnx/onnx/ --cpp_out=${CMAKE_BINARY_DIR}/src ${ONNX_PROTO}
+        OUTPUT ${CMAKE_BINARY_DIR}/src/onnx.pb.h ${CMAKE_BINARY_DIR}/src/onnx.pb.cc ${ONNX_PROTOBUF_STAMP}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src
+        COMMAND ${CMAKE_COMMAND} -E env ${PROTOBUF_PROTOC_ENV} ${PROTOBUF_PROTOC} --proto_path=${CMAKE_BINARY_DIR}/tensorrt-oss/src/tensorrt-oss/parsers/onnx/third_party/onnx/onnx/ --cpp_out=${CMAKE_BINARY_DIR}/src ${ONNX_PROTO}
+        COMMAND ${CMAKE_COMMAND} -E touch ${ONNX_PROTOBUF_STAMP}
         COMMENT Generating onnx.pb.h and onnx.pb.cc
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        DEPENDS protobuf tensorrt-oss
+        DEPENDS protobuf ${PROTOBUF_PROTOC} tensorrt-oss ${ONNX_PROTO}
     )
     add_custom_target(
         onnx_pb_h
-        DEPENDS ${CMAKE_BINARY_DIR}/src/onnx.pb.h ${CMAKE_BINARY_DIR}/src/onnx.pb.cc
+        DEPENDS ${CMAKE_BINARY_DIR}/src/onnx.pb.h ${CMAKE_BINARY_DIR}/src/onnx.pb.cc ${ONNX_PROTOBUF_STAMP}
     )
 endif()
 
