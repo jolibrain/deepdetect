@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -49,6 +50,22 @@ namespace dd
     int height() const
     {
       return _height;
+    }
+
+    APIData inline_tensor_batches(const APIData &ad, const APIData &mllib)
+    {
+      if (is_keypoint_task(tensor_task(mllib)))
+        return inline_keypoint_tensor_batches(ad, keypoint_count(mllib),
+                                              mllib);
+      return inline_detection_tensor_batches(ad);
+    }
+
+    void start_tensor_pull_session(const APIData &ad, const APIData &mllib)
+    {
+      if (is_keypoint_task(tensor_task(mllib)))
+        start_keypoint_pull_session(ad, keypoint_count(mllib), mllib);
+      else
+        start_inline_detection_pull_session(ad);
     }
 
     APIData inline_detection_tensor_batches(const APIData &ad)
@@ -116,6 +133,8 @@ namespace dd
       _pull_test_pos.assign(_pull_tests.size(), 0);
       _pull_epoch = 0;
       _pull_next_batch_id = 0;
+      _pull_task = "detection";
+      _pull_nkeypoints = 0;
       shuffle_pull_train();
       _pull_active = true;
     }
@@ -157,7 +176,9 @@ namespace dd
       for (const auto &test_set : _pull_tests)
         test_samples.push_back(static_cast<int>(test_set.size()));
       APIData info;
-      info.add("task", std::string("detection"));
+      info.add("task", _pull_task);
+      if (is_keypoint_task(_pull_task))
+        info.add("nkeypoints", _pull_nkeypoints);
       info.add("boundary", std::string("connector-tensor-pull"));
       info.add("train_samples", static_cast<int>(_pull_train.size()));
       info.add("test_samples", test_samples);
@@ -220,6 +241,15 @@ namespace dd
       double xmax;
       double ymax;
     };
+
+    struct Keypoint
+    {
+      double x = -1.0;
+      double y = -1.0;
+      bool valid = false;
+    };
+
+    using KeypointInstance = std::vector<Keypoint>;
 
     using DetectionPair
         = std::pair<std::filesystem::path, std::filesystem::path>;
@@ -320,6 +350,121 @@ namespace dd
       return batches;
     }
 
+    std::vector<APIData> inline_keypoint_batches(const std::string &list_path,
+                                                 int max_samples,
+                                                 int nkeypoints) const
+    {
+      std::vector<APIData> batches;
+      const std::filesystem::path list_file
+          = std::filesystem::absolute(std::filesystem::path(list_path));
+      std::ifstream input(list_file);
+      if (!input.is_open())
+        throw InputConnectorBadParamException("Could not open image list: "
+                                              + list_path);
+      std::string line;
+      int sample_index = 0;
+      while (std::getline(input, line))
+        {
+          if (line.empty())
+            continue;
+          if (max_samples > 0 && sample_index >= max_samples)
+            throw InputConnectorBadParamException(
+                "connector_tensor_inline is limited to "
+                + std::to_string(max_samples)
+                + " samples per dataset list; use tiny smoke-test lists or "
+                  "raise mllib.connector_tensor_inline_max_samples");
+          std::istringstream row(line);
+          std::string image_path;
+          std::string keypoints_path;
+          row >> image_path >> keypoints_path;
+          if (image_path.empty() || keypoints_path.empty())
+            throw InputConnectorBadParamException(
+                "connector_tensor_inline expects image and keypoints path in "
+                + list_path);
+          batches.push_back(inline_keypoint_batch(
+              resolve_dataset_path(list_file.parent_path(), image_path),
+              resolve_dataset_path(list_file.parent_path(), keypoints_path),
+              sample_index, nkeypoints));
+          ++sample_index;
+        }
+      if (batches.empty())
+        throw InputConnectorBadParamException(
+            "image list contains no samples: " + list_path);
+      return batches;
+    }
+
+    APIData inline_keypoint_tensor_batches(const APIData &ad, int nkeypoints,
+                                           const APIData &mllib)
+    {
+      APIData input_params;
+      if (ad.has("parameters") && ad.getobj("parameters").has("input"))
+        input_params = ad.getobj("parameters").getobj("input");
+      fillup_parameters(input_params);
+      validate_keypoint_connector_config(input_params, mllib,
+                                         "connector_tensor_inline");
+
+      if (!ad.has("data"))
+        throw InputConnectorBadParamException(
+            "connector_tensor_inline requires train data");
+      const std::vector<std::string> data
+          = ad.get("data").get<std::vector<std::string>>();
+      if (data.empty())
+        throw InputConnectorBadParamException(
+            "connector_tensor_inline requires a train list path");
+      const int max_samples = inline_tensor_max_samples(ad);
+
+      APIData tensor_batches;
+      tensor_batches.add(
+          "train", inline_keypoint_batches(data[0], max_samples, nkeypoints));
+      std::vector<APIData> tests;
+      for (size_t index = 1; index < data.size(); ++index)
+        {
+          APIData test_set;
+          test_set.add("batches", inline_keypoint_batches(
+                                      data[index], max_samples, nkeypoints));
+          tests.push_back(test_set);
+        }
+      tensor_batches.add("tests", tests);
+      return tensor_batches;
+    }
+
+    void start_keypoint_pull_session(const APIData &ad, int nkeypoints,
+                                     const APIData &mllib)
+    {
+      cleanup_inline_detection_pull_session();
+      APIData input_params;
+      if (ad.has("parameters") && ad.getobj("parameters").has("input"))
+        input_params = ad.getobj("parameters").getobj("input");
+      fillup_parameters(input_params);
+      validate_keypoint_connector_config(input_params, mllib,
+                                         "connector_tensor_pull");
+      configure_pull_transport(ad);
+
+      if (!ad.has("data"))
+        throw InputConnectorBadParamException(
+            "connector_tensor_pull requires train data");
+      const std::vector<std::string> data
+          = ad.get("data").get<std::vector<std::string>>();
+      if (data.empty())
+        throw InputConnectorBadParamException(
+            "connector_tensor_pull requires a train list path");
+
+      _pull_train = read_keypoint_pairs(data[0]);
+      _pull_tests.clear();
+      for (size_t index = 1; index < data.size(); ++index)
+        _pull_tests.push_back(read_keypoint_pairs(data[index]));
+      _pull_train_pos = 0;
+      _pull_test_pos.assign(_pull_tests.size(), 0);
+      _pull_epoch = 0;
+      _pull_next_batch_id = 0;
+      _pull_task = "keypoint";
+      _pull_nkeypoints = nkeypoints;
+      _pull_augmentation_enabled = false;
+      _pull_augmentation_policy = "none";
+      shuffle_pull_train();
+      _pull_active = true;
+    }
+
     static int inline_tensor_max_samples(const APIData &ad)
     {
       constexpr int default_max_samples = 128;
@@ -372,6 +517,39 @@ namespace dd
       return pairs;
     }
 
+    std::vector<DetectionPair>
+    read_keypoint_pairs(const std::string &list_path) const
+    {
+      std::vector<DetectionPair> pairs;
+      const std::filesystem::path list_file
+          = std::filesystem::absolute(std::filesystem::path(list_path));
+      std::ifstream input(list_file);
+      if (!input.is_open())
+        throw InputConnectorBadParamException("Could not open image list: "
+                                              + list_path);
+      std::string line;
+      while (std::getline(input, line))
+        {
+          if (line.empty())
+            continue;
+          std::istringstream row(line);
+          std::string image_path;
+          std::string keypoints_path;
+          row >> image_path >> keypoints_path;
+          if (image_path.empty() || keypoints_path.empty())
+            throw InputConnectorBadParamException(
+                "connector_tensor_pull expects image and keypoints path in "
+                + list_path);
+          pairs.emplace_back(
+              resolve_dataset_path(list_file.parent_path(), image_path),
+              resolve_dataset_path(list_file.parent_path(), keypoints_path));
+        }
+      if (pairs.empty())
+        throw InputConnectorBadParamException(
+            "image list contains no samples: " + list_path);
+      return pairs;
+    }
+
     void shuffle_pull_train()
     {
       if (!_shuffle || _pull_train.empty())
@@ -417,8 +595,12 @@ namespace dd
       const auto build_start = std::chrono::steady_clock::now();
       const bool apply_augmentation
           = split == "train" && _pull_augmentation_enabled;
-      PullBatchBuildResult built = inline_detection_batch(
-          pairs, cursor, count, batch_id, apply_augmentation);
+      PullBatchBuildResult built
+          = is_keypoint_task(_pull_task)
+                ? inline_keypoint_batch(pairs, cursor, count, batch_id,
+                                        _pull_nkeypoints)
+                : inline_detection_batch(pairs, cursor, count, batch_id,
+                                         apply_augmentation);
       const auto build_end = std::chrono::steady_clock::now();
       response.add("end", false);
       response.add("batch_id", batch_id);
@@ -547,6 +729,48 @@ namespace dd
       return batch;
     }
 
+    APIData inline_keypoint_batch(const std::filesystem::path &image_path,
+                                  const std::filesystem::path &keypoints_path,
+                                  int sample_index, int nkeypoints) const
+    {
+      DDImg dimg;
+      copy_parameters_to(dimg);
+      try
+        {
+          if (dimg.read_file(image_path.string(), -1))
+            throw InputConnectorBadParamException("Could not read image: "
+                                                  + image_path.string());
+        }
+      catch (const std::exception &error)
+        {
+          throw InputConnectorBadParamException("Could not read image: "
+                                                + image_path.string() + ": "
+                                                + error.what());
+        }
+      if (dimg._imgs.empty())
+        throw InputConnectorBadParamException("Could not read image: "
+                                              + image_path.string());
+      const cv::Mat &image = dimg._imgs[0];
+      const int orig_height
+          = dimg._imgs_size.empty() ? image.rows : dimg._imgs_size[0].first;
+      const int orig_width
+          = dimg._imgs_size.empty() ? image.cols : dimg._imgs_size[0].second;
+      std::vector<KeypointInstance> instances
+          = read_keypoints(keypoints_path, nkeypoints, orig_width, orig_height,
+                           image.cols, image.rows);
+
+      APIData batch;
+      batch.add("kind", std::string("tensor_batch"));
+      batch.add("inputs",
+                std::vector<APIData>{ inline_image_tensor_ref(image) });
+      batch.add("targets", keypoint_targets(instances));
+      batch.add("meta",
+                keypoint_meta(sample_index, image_path.string(),
+                              keypoints_path.string(), orig_width, orig_height,
+                              image.cols, image.rows, nkeypoints));
+      return batch;
+    }
+
     PullBatchBuildResult inline_detection_batch(
         const std::vector<DetectionPair> &pairs, size_t offset, size_t count,
         const std::string &batch_id, bool apply_augmentation = false)
@@ -639,6 +863,101 @@ namespace dd
                                original_widths, original_heights,
                                preprocessed_widths, preprocessed_heights,
                                widths, heights, apply_augmentation));
+      return PullBatchBuildResult{ batch, tensor_stats };
+    }
+
+    PullBatchBuildResult
+    inline_keypoint_batch(const std::vector<DetectionPair> &pairs,
+                          size_t offset, size_t count,
+                          const std::string &batch_id, int nkeypoints)
+    {
+      std::vector<double> values;
+      std::vector<std::vector<KeypointInstance>> targets;
+      std::vector<int> sample_ids;
+      std::vector<std::string> paths;
+      std::vector<std::string> target_paths;
+      std::vector<int> widths;
+      std::vector<int> heights;
+      std::vector<int> original_widths;
+      std::vector<int> original_heights;
+      std::vector<int> preprocessed_widths;
+      std::vector<int> preprocessed_heights;
+      int rows = 0;
+      int cols = 0;
+      int channels = 0;
+
+      for (size_t index = 0; index < count; ++index)
+        {
+          const DetectionPair &pair = pairs[offset + index];
+          DDImg dimg;
+          copy_parameters_to(dimg);
+          try
+            {
+              if (dimg.read_file(pair.first.string(), -1))
+                throw InputConnectorBadParamException("Could not read image: "
+                                                      + pair.first.string());
+            }
+          catch (const std::exception &error)
+            {
+              throw InputConnectorBadParamException("Could not read image: "
+                                                    + pair.first.string()
+                                                    + ": " + error.what());
+            }
+          if (dimg._imgs.empty())
+            throw InputConnectorBadParamException("Could not read image: "
+                                                  + pair.first.string());
+          cv::Mat image = dimg._imgs[0].clone();
+          const int orig_height = dimg._imgs_size.empty()
+                                      ? image.rows
+                                      : dimg._imgs_size[0].first;
+          const int orig_width = dimg._imgs_size.empty()
+                                     ? image.cols
+                                     : dimg._imgs_size[0].second;
+          const int preprocessed_width = image.cols;
+          const int preprocessed_height = image.rows;
+          std::vector<KeypointInstance> sample_targets
+              = read_keypoints(pair.second, nkeypoints, orig_width,
+                               orig_height, image.cols, image.rows);
+          if (index == 0)
+            {
+              rows = image.rows;
+              cols = image.cols;
+              channels = image.channels();
+            }
+          else if (rows != image.rows || cols != image.cols
+                   || channels != image.channels())
+            {
+              throw InputConnectorBadParamException(
+                  "connector_tensor_pull batch images must have matching "
+                  "preprocessed dimensions");
+            }
+          std::vector<double> image_values = image_values_chw(image);
+          values.insert(values.end(), image_values.begin(),
+                        image_values.end());
+          targets.push_back(sample_targets);
+          sample_ids.push_back(static_cast<int>(offset + index));
+          paths.push_back(pair.first.string());
+          target_paths.push_back(pair.second.string());
+          widths.push_back(image.cols);
+          heights.push_back(image.rows);
+          original_widths.push_back(orig_width);
+          original_heights.push_back(orig_height);
+          preprocessed_widths.push_back(preprocessed_width);
+          preprocessed_heights.push_back(preprocessed_height);
+        }
+
+      TensorWriteStats tensor_stats;
+      APIData batch;
+      batch.add("kind", std::string("tensor_batch"));
+      batch.add("inputs", std::vector<APIData>{ pull_image_tensor_ref(
+                              values, static_cast<int>(count), channels, rows,
+                              cols, batch_id, tensor_stats) });
+      batch.add("targets", keypoint_targets(targets));
+      batch.add("meta",
+                keypoint_meta(sample_ids, paths, target_paths, original_widths,
+                              original_heights, preprocessed_widths,
+                              preprocessed_heights, widths, heights,
+                              nkeypoints));
       return PullBatchBuildResult{ batch, tensor_stats };
     }
 
@@ -821,6 +1140,135 @@ namespace dd
       return bboxes;
     }
 
+    std::vector<KeypointInstance>
+    read_keypoints(const std::filesystem::path &keypoints_path, int nkeypoints,
+                   int orig_width, int orig_height, int width,
+                   int height) const
+    {
+      std::ifstream input(keypoints_path);
+      if (!input.is_open())
+        throw InputConnectorBadParamException("Could not open keypoints file: "
+                                              + keypoints_path.string());
+      if (nkeypoints <= 0)
+        throw InputConnectorBadParamException(
+            "mllib.nkeypoints must be positive for keypoint tensor input");
+      if (orig_width <= 0 || orig_height <= 0)
+        throw InputConnectorBadParamException(
+            "Could not determine original image size for keypoints file: "
+            + keypoints_path.string());
+      const double wfactor = width > 0 ? static_cast<double>(width)
+                                             / static_cast<double>(orig_width)
+                                       : 1.0;
+      const double hfactor = height > 0
+                                 ? static_cast<double>(height)
+                                       / static_cast<double>(orig_height)
+                                 : 1.0;
+      std::vector<KeypointInstance> instances;
+      std::string line;
+      int line_number = 0;
+      while (std::getline(input, line))
+        {
+          ++line_number;
+          if (line.empty())
+            continue;
+          std::istringstream row(line);
+          std::vector<double> values;
+          double value = 0.0;
+          while (row >> value)
+            values.push_back(value);
+          if (!row.eof())
+            throw InputConnectorBadParamException(
+                "Invalid numeric keypoint value in: "
+                + keypoints_path.string());
+          if (values.size() != static_cast<size_t>(2 * nkeypoints))
+            throw InputConnectorBadParamException(
+                "Invalid keypoints line in: " + keypoints_path.string()
+                + " line " + std::to_string(line_number) + ": expected "
+                + std::to_string(2 * nkeypoints) + " fields");
+          KeypointInstance instance;
+          instance.reserve(static_cast<size_t>(nkeypoints));
+          for (int index = 0; index < nkeypoints; ++index)
+            {
+              const double x = values[static_cast<size_t>(2 * index)];
+              const double y = values[static_cast<size_t>(2 * index + 1)];
+              if (!std::isfinite(x) || !std::isfinite(y))
+                throw InputConnectorBadParamException(
+                    "Invalid non-finite keypoint in: "
+                    + keypoints_path.string());
+              Keypoint keypoint;
+              if (x == -1.0 && y == -1.0)
+                {
+                  keypoint.valid = false;
+                }
+              else
+                {
+                  if (x < 0.0 || y < 0.0)
+                    throw InputConnectorBadParamException(
+                        "Invalid keypoint sentinel in: "
+                        + keypoints_path.string()
+                        + "; missing keypoints must be -1 -1");
+                  keypoint.x = x * wfactor;
+                  keypoint.y = y * hfactor;
+                  keypoint.valid = true;
+                }
+              instance.push_back(keypoint);
+            }
+          instances.push_back(instance);
+        }
+      return instances;
+    }
+
+    APIData
+    keypoint_targets(const std::vector<KeypointInstance> &instances) const
+    {
+      APIData sample;
+      sample.add("instances", keypoint_instances(instances));
+
+      APIData targets;
+      targets.add("samples", std::vector<APIData>{ sample });
+      return targets;
+    }
+
+    APIData keypoint_targets(
+        const std::vector<std::vector<KeypointInstance>> &items) const
+    {
+      std::vector<APIData> samples;
+      samples.reserve(items.size());
+      for (const auto &instances : items)
+        {
+          APIData sample;
+          sample.add("instances", keypoint_instances(instances));
+          samples.push_back(sample);
+        }
+      APIData targets;
+      targets.add("samples", samples);
+      return targets;
+    }
+
+    std::vector<APIData>
+    keypoint_instances(const std::vector<KeypointInstance> &instances) const
+    {
+      std::vector<APIData> out;
+      out.reserve(instances.size());
+      for (const KeypointInstance &instance : instances)
+        {
+          std::vector<APIData> keypoints;
+          keypoints.reserve(instance.size());
+          for (const Keypoint &keypoint : instance)
+            {
+              APIData item;
+              item.add("x", keypoint.valid ? keypoint.x : -1.0);
+              item.add("y", keypoint.valid ? keypoint.y : -1.0);
+              item.add("valid", keypoint.valid);
+              keypoints.push_back(item);
+            }
+          APIData entry;
+          entry.add("keypoints", keypoints);
+          out.push_back(entry);
+        }
+      return out;
+    }
+
     APIData detection_targets(const std::vector<DetectionBBox> &bboxes) const
     {
       APIData sample;
@@ -916,6 +1364,54 @@ namespace dd
       return meta;
     }
 
+    APIData keypoint_meta(int sample_index, const std::string &path,
+                          const std::string &target_path, int original_width,
+                          int original_height, int width, int height,
+                          int nkeypoints) const
+    {
+      APIData meta;
+      meta.add("task", std::string("keypoint"));
+      meta.add("nkeypoints", nkeypoints);
+      meta.add("sample_ids", std::vector<int>{ sample_index });
+      meta.add("paths", std::vector<std::string>{ path });
+      meta.add("target_paths", std::vector<std::string>{ target_path });
+      meta.add("widths", std::vector<int>{ width });
+      meta.add("heights", std::vector<int>{ height });
+      meta.add("original_widths", std::vector<int>{ original_width });
+      meta.add("original_heights", std::vector<int>{ original_height });
+      meta.add("preprocessed_widths", std::vector<int>{ width });
+      meta.add("preprocessed_heights", std::vector<int>{ height });
+      add_detection_augmentation_meta(meta, false);
+      return meta;
+    }
+
+    APIData keypoint_meta(const std::vector<int> &sample_ids,
+                          const std::vector<std::string> &paths,
+                          const std::vector<std::string> &target_paths,
+                          const std::vector<int> &original_widths,
+                          const std::vector<int> &original_heights,
+                          const std::vector<int> &preprocessed_widths,
+                          const std::vector<int> &preprocessed_heights,
+                          const std::vector<int> &widths,
+                          const std::vector<int> &heights,
+                          int nkeypoints) const
+    {
+      APIData meta;
+      meta.add("task", std::string("keypoint"));
+      meta.add("nkeypoints", nkeypoints);
+      meta.add("sample_ids", sample_ids);
+      meta.add("paths", paths);
+      meta.add("target_paths", target_paths);
+      meta.add("widths", widths);
+      meta.add("heights", heights);
+      meta.add("original_widths", original_widths);
+      meta.add("original_heights", original_heights);
+      meta.add("preprocessed_widths", preprocessed_widths);
+      meta.add("preprocessed_heights", preprocessed_heights);
+      add_detection_augmentation_meta(meta, false);
+      return meta;
+    }
+
     void add_detection_augmentation_meta(APIData &meta,
                                          bool augmentation_applied) const
     {
@@ -927,6 +1423,87 @@ namespace dd
       meta.add("augmentation_policy", augmentation_applied
                                           ? _pull_augmentation_policy
                                           : std::string("none"));
+    }
+
+    void validate_keypoint_connector_config(const APIData &input_params,
+                                            const APIData &mllib,
+                                            const std::string &mode) const
+    {
+      if (input_params.has("keypoints")
+          && !input_params.get("keypoints").get<bool>())
+        throw InputConnectorBadParamException(mode
+                                              + " requires input "
+                                                "keypoints=true");
+      if (_bw || _unchanged_data)
+        throw InputConnectorBadParamException(
+            mode + " keypoint input requires 3-channel image tensors");
+      if (_crop_width != 0 || _crop_height != 0 || _aspect_ratio_pad
+          || positive_int_param(input_params, "crop_width")
+          || positive_int_param(input_params, "crop_height"))
+        throw InputConnectorBadParamException(
+            mode
+            + " keypoint input does not support crop or aspect_ratio_pad yet");
+      if (keypoint_augmentation_requested(mllib))
+        throw InputConnectorBadParamException(
+            mode + " keypoint input does not support C++ augmentation yet");
+    }
+
+    static bool positive_int_param(const APIData &ad, const std::string &key)
+    {
+      return ad.has(key) && ad.get(key).get<int>() > 0;
+    }
+
+    static bool positive_double_param(const APIData &ad,
+                                      const std::string &key)
+    {
+      return ad.has(key) && ad.get(key).get<double>() > 0.0;
+    }
+
+    static bool true_bool_param(const APIData &ad, const std::string &key)
+    {
+      return ad.has(key) && ad.get(key).get<bool>();
+    }
+
+    static bool keypoint_augmentation_requested(const APIData &mllib)
+    {
+      if (true_bool_param(mllib, "mirror") || true_bool_param(mllib, "rotate")
+          || positive_int_param(mllib, "crop_size")
+          || positive_double_param(mllib, "cutout"))
+        return true;
+      APIData geometry = mllib.getobj("geometry");
+      if (!geometry.empty() && positive_double_param(geometry, "prob"))
+        return true;
+      APIData noise = mllib.getobj("noise");
+      if (!noise.empty() && positive_double_param(noise, "prob"))
+        return true;
+      APIData distort = mllib.getobj("distort");
+      if (!distort.empty() && positive_double_param(distort, "prob"))
+        return true;
+      return false;
+    }
+
+    static std::string tensor_task(const APIData &mllib)
+    {
+      if (mllib.has("task"))
+        return mllib.get("task").get<std::string>();
+      return "detection";
+    }
+
+    static bool is_keypoint_task(const std::string &task)
+    {
+      return task == "keypoint" || task == "keypoints" || task == "pose";
+    }
+
+    static int keypoint_count(const APIData &mllib)
+    {
+      if (!mllib.has("nkeypoints"))
+        throw InputConnectorBadParamException(
+            "mllib.nkeypoints is required for keypoint tensor input");
+      int nkeypoints = mllib.get("nkeypoints").get<int>();
+      if (nkeypoints <= 0)
+        throw InputConnectorBadParamException(
+            "mllib.nkeypoints must be positive for keypoint tensor input");
+      return nkeypoints;
     }
 
     static bool debug_enabled()
@@ -952,9 +1529,8 @@ namespace dd
       if (!debug_enabled())
         return;
       std::cerr << "[deepdetect-debug][connector_tensor_pull] "
-                << "connector_batch_next"
-                << " batch_id=" << batch_id << " split=" << split
-                << " sample_count=" << sample_count
+                << "connector_batch_next" << " batch_id=" << batch_id
+                << " split=" << split << " sample_count=" << sample_count
                 << " transport=" << transport << " total_ms=" << total_ms
                 << " preprocessing_packing_ms=" << preprocessing_packing_ms
                 << " shared_memory_write_ms=" << shared_memory_write_ms
@@ -981,6 +1557,8 @@ namespace dd
         _pull_batch_files;
     ImgRandAugCV _pull_img_rand_aug_cv;
     std::string _pull_augmentation_policy = "none";
+    std::string _pull_task = "detection";
+    int _pull_nkeypoints = 0;
     int _pull_next_batch_id = 0;
     int _pull_epoch = 0;
     bool _pull_augmentation_enabled = false;

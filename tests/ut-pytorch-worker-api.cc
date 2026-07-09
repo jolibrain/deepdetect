@@ -6,6 +6,7 @@
  */
 
 #include "jsonapi.h"
+#include "backends/pytorch_worker/pytorchworkerinputconns.h"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
@@ -114,6 +115,13 @@ namespace
     std::string test1_list;
   };
 
+  struct KeypointFixture
+  {
+    std::string root;
+    std::string train_list;
+    std::string test0_list;
+  };
+
   DetectionFixture prepare_detection_fixture(const std::string &name)
   {
     DetectionFixture fixture;
@@ -143,6 +151,29 @@ namespace
     fixture.train_list = train.string();
     fixture.test0_list = test0.string();
     fixture.test1_list = test1.string();
+    return fixture;
+  }
+
+  KeypointFixture prepare_keypoint_fixture(const std::string &name)
+  {
+    KeypointFixture fixture;
+    fixture.root = repo_path(name);
+    cleanup_repo(fixture.root);
+    std::filesystem::create_directories(fixture.root);
+
+    const std::filesystem::path root(fixture.root);
+    const auto image0 = root / "images" / "sample0.ppm";
+    const auto target0 = root / "keypoints" / "sample0.txt";
+    const auto train = root / "train.txt";
+    const auto test0 = root / "test0.txt";
+
+    write_ppm_image(image0, 16, 12, 255, 64, 32);
+    write_text_file(target0, "2 4 -1 -1 10 8\n4 2 12 10 -1 -1\n");
+    write_text_file(train, image0.string() + " " + target0.string() + "\n");
+    write_text_file(test0, image0.string() + " " + target0.string() + "\n");
+
+    fixture.train_list = train.string();
+    fixture.test0_list = test0.string();
     return fixture;
   }
 
@@ -314,6 +345,15 @@ namespace
     return doc;
   }
 
+  APIData parse_api_data(const std::string &json)
+  {
+    JDoc doc;
+    doc.Parse<rapidjson::kParseNanAndInfFlag>(json.c_str());
+    APIData ad;
+    ad.fromRapidJson(doc);
+    return ad;
+  }
+
   JDoc poll_until_terminal(JsonAPI &japi, const std::string &service, int job,
                            int max_attempts = 100,
                            bool test_predictions = false)
@@ -371,6 +411,137 @@ namespace
     return status;
   }
 
+}
+
+TEST(pytorchworkerapi, keypoint_connector_inline_tensor_batches_scale_and_mask)
+{
+  const KeypointFixture fixture
+      = prepare_keypoint_fixture("pytorchworker_keypoint_connector_fixture");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3}},\"data\":[\""
+      + fixture.train_list + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  APIData tensor_batches = inputc.inline_tensor_batches(ad, mllib);
+  JDoc doc;
+  doc.SetObject();
+  tensor_batches.toJDoc(doc);
+
+  ASSERT_TRUE(doc.HasMember("train")) << tensor_batches.toJSONString();
+  ASSERT_EQ(1U, doc["train"].Size()) << tensor_batches.toJSONString();
+  const auto &batch = doc["train"][0];
+  const auto &shape = batch["inputs"][0]["shape"];
+  ASSERT_EQ(4U, shape.Size()) << tensor_batches.toJSONString();
+  EXPECT_EQ(1, shape[0].GetInt());
+  EXPECT_EQ(3, shape[1].GetInt());
+  EXPECT_EQ(6, shape[2].GetInt());
+  EXPECT_EQ(8, shape[3].GetInt());
+
+  const auto &meta = batch["meta"];
+  ASSERT_STREQ("keypoint", meta["task"].GetString());
+  ASSERT_EQ(3, meta["nkeypoints"].GetInt());
+  ASSERT_EQ(16, meta["original_widths"][0].GetInt());
+  ASSERT_EQ(12, meta["original_heights"][0].GetInt());
+  ASSERT_EQ(8, meta["widths"][0].GetInt());
+  ASSERT_EQ(6, meta["heights"][0].GetInt());
+
+  const auto &instances = batch["targets"]["samples"][0]["instances"];
+  ASSERT_EQ(2U, instances.Size()) << tensor_batches.toJSONString();
+  const auto &first_keypoints = instances[0]["keypoints"];
+  ASSERT_EQ(3U, first_keypoints.Size()) << tensor_batches.toJSONString();
+  EXPECT_DOUBLE_EQ(1.0, first_keypoints[0]["x"].GetDouble());
+  EXPECT_DOUBLE_EQ(2.0, first_keypoints[0]["y"].GetDouble());
+  EXPECT_TRUE(first_keypoints[0]["valid"].GetBool());
+  EXPECT_DOUBLE_EQ(-1.0, first_keypoints[1]["x"].GetDouble());
+  EXPECT_DOUBLE_EQ(-1.0, first_keypoints[1]["y"].GetDouble());
+  EXPECT_FALSE(first_keypoints[1]["valid"].GetBool());
+  EXPECT_DOUBLE_EQ(5.0, first_keypoints[2]["x"].GetDouble());
+  EXPECT_DOUBLE_EQ(4.0, first_keypoints[2]["y"].GetDouble());
+  EXPECT_TRUE(first_keypoints[2]["valid"].GetBool());
+
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi, keypoint_connector_pull_reports_dataset_info)
+{
+  const KeypointFixture fixture
+      = prepare_keypoint_fixture("pytorchworker_keypoint_pull_fixture");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3,\"connector_tensor_transport\":\"inline\"}},"
+      "\"data\":[\""
+      + fixture.train_list + "\",\"" + fixture.test0_list + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  inputc.start_tensor_pull_session(ad, mllib);
+  APIData info = inputc.connector_dataset_info();
+  JDoc info_doc;
+  info_doc.SetObject();
+  info.toJDoc(info_doc);
+  ASSERT_STREQ("keypoint", info_doc["task"].GetString());
+  ASSERT_EQ(3, info_doc["nkeypoints"].GetInt());
+  ASSERT_STREQ("inline", info_doc["transport"].GetString());
+  ASSERT_FALSE(info_doc["augmentation_enabled"].GetBool());
+  ASSERT_EQ(1, info_doc["train_samples"].GetInt());
+  ASSERT_EQ(1, info_doc["test_samples"][0].GetInt());
+
+  APIData params;
+  params.add("split", std::string("train"));
+  params.add("batch_size", 1);
+  APIData next = inputc.connector_batch_next(params);
+  JDoc next_doc;
+  next_doc.SetObject();
+  next.toJDoc(next_doc);
+  ASSERT_FALSE(next_doc["end"].GetBool());
+  ASSERT_EQ(1, next_doc["sample_count"].GetInt());
+  ASSERT_TRUE(next_doc["batch"].HasMember("targets"));
+
+  inputc.cleanup_inline_detection_pull_session();
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi, keypoint_connector_rejects_bad_keypoint_rows)
+{
+  const KeypointFixture fixture
+      = prepare_keypoint_fixture("pytorchworker_keypoint_bad_fixture");
+  const std::filesystem::path target
+      = std::filesystem::path(fixture.root) / "keypoints" / "sample0.txt";
+  write_text_file(target, "2 4 -1 0 10 8\n");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3}},\"data\":[\""
+      + fixture.train_list + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  EXPECT_THROW(inputc.inline_tensor_batches(ad, mllib),
+               InputConnectorBadParamException);
+
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi, keypoint_connector_rejects_cpp_augmentation)
+{
+  const KeypointFixture fixture
+      = prepare_keypoint_fixture("pytorchworker_keypoint_aug_fixture");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3,\"mirror\":true}},\"data\":[\""
+      + fixture.train_list + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  EXPECT_THROW(inputc.inline_tensor_batches(ad, mllib),
+               InputConnectorBadParamException);
+
+  cleanup_repo(fixture.root);
 }
 
 TEST(pytorchworkerapi, reference_detector_trains_tiny_detection_fixture)

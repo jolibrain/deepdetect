@@ -52,6 +52,7 @@ namespace dd
     bool connector_tensor_pull_requested(const APIData &ad) const;
     bool connector_data_source_requested(const APIData &ad,
                                          const std::string &name) const;
+    APIData connector_effective_mllib(const APIData &ad) const;
 
     std::shared_ptr<PytorchWorkerSupervisor> _worker;
     APIData _mllib_params;

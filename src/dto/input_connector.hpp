@@ -106,6 +106,13 @@ namespace dd
       }
       DTO_FIELD(Boolean, bbox);
 
+      DTO_FIELD_INFO(keypoints)
+      {
+        info->description
+            = "[training] true if data contains a keypoint dataset";
+      }
+      DTO_FIELD(Boolean, keypoints);
+
       // Text input connector
       DTO_FIELD_INFO(count)
       {

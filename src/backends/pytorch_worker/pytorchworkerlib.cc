@@ -52,7 +52,7 @@ namespace dd
   PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                    TMLModel>::PytorchWorkerLib(const PytorchWorkerModel &model)
       : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>(
-          model)
+            model)
   {
     this->_libname = "pytorch";
   }
@@ -63,7 +63,7 @@ namespace dd
                    TMLModel>::PytorchWorkerLib(PytorchWorkerLib
                                                    &&other) noexcept
       : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>(
-          std::move(other)),
+            std::move(other)),
         _worker(std::move(other._worker)),
         _mllib_params(std::move(other._mllib_params)),
         _nclasses(other._nclasses)
@@ -151,8 +151,8 @@ namespace dd
     debug_log("train_request: building connector_tensor_inline batches");
     APIData request = ad;
     request.add("data", std::vector<std::string>());
-    request.add("tensor_batches",
-                this->_inputc.inline_detection_tensor_batches(ad));
+    request.add("tensor_batches", this->_inputc.inline_tensor_batches(
+                                      ad, connector_effective_mllib(ad)));
     return request;
   }
 
@@ -200,6 +200,26 @@ namespace dd
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
             class TMLModel>
+  APIData PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                           TMLModel>::connector_effective_mllib(const APIData
+                                                                    &ad) const
+  {
+    APIData mllib = _mllib_params;
+    if (ad.has("parameters"))
+      {
+        APIData parameters = ad.getobj("parameters");
+        if (parameters.has("mllib"))
+          {
+            APIData request_mllib = parameters.getobj("mllib");
+            for (const std::string &key : request_mllib.list_keys())
+              mllib.add(key, request_mllib.get(key));
+          }
+      }
+    return mllib;
+  }
+
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
   int PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                        TMLModel>::train(const APIData &ad, APIData &out)
   {
@@ -211,7 +231,8 @@ namespace dd
     if (pull_requested)
       {
         debug_log("train: starting connector_tensor_pull session");
-        this->_inputc.start_inline_detection_pull_session(ad);
+        this->_inputc.start_tensor_pull_session(ad,
+                                                connector_effective_mllib(ad));
       }
     try
       {
