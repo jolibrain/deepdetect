@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -58,6 +59,7 @@ def run_train(args: Any) -> int:
         job_dir=args.job_dir,
         run_name=args.run_name,
         resume=args.resume,
+        repository_override=args.repository_override,
         output_format=args.output_format,
         terminal=args.terminal,
         dataset_check=args.dataset_check,
@@ -107,8 +109,12 @@ def run_train(args: Any) -> int:
         raise ValueError("visdom_results_count must be non-negative")
     run_name = str(options.get("run_name") or repository_name(Path(options["repository"])))
     options["run_name"] = run_name
+    if options.get("repository_override") and resume:
+        raise ValueError("--repository-override cannot be used with --resume")
     if resume:
         validate_resume_repository(Path(options["repository"]), str(resume))
+    elif options.get("repository_override"):
+        clear_repository(Path(options["repository"]))
 
     writer = create_training_terminal_reporter(options)
     _debug(
@@ -364,6 +370,29 @@ def create_or_resume_run_manifest(
 
 def path_is_repository(job_dir: Path, repository: Path) -> bool:
     return job_dir.expanduser().resolve() == repository.expanduser().resolve()
+
+
+def clear_repository(repository: Path) -> None:
+    """Remove a repository's contents after explicit CLI confirmation."""
+    repository = repository.expanduser().resolve()
+    if repository == Path(repository.anchor):
+        raise ValueError("--repository-override refuses to clear a filesystem root")
+    if not repository.exists():
+        return
+    if not repository.is_dir():
+        raise ValueError(f"--repository must be a directory: {repository}")
+
+    entries = list(repository.iterdir())
+    if entries:
+        print(
+            f"warning: --repository-override removes all contents of {repository}",
+            file=sys.stderr,
+        )
+    for entry in entries:
+        if entry.is_symlink() or entry.is_file():
+            entry.unlink()
+        else:
+            shutil.rmtree(entry)
 
 
 def replay_resume_history(

@@ -63,6 +63,12 @@ def _add_train_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--test-data", nargs="+", type=Path)
     parser.add_argument("--weights", type=Path)
     parser.add_argument("--repository", type=Path)
+    parser.add_argument(
+        "--repository-override",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="remove existing --repository contents before starting training",
+    )
     parser.add_argument("--service-name")
     parser.add_argument("--nclasses", type=int)
     parser.add_argument("--nkeypoints", type=int)

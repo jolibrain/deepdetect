@@ -73,6 +73,7 @@ class ModelProfile:
             "job_dir": None,
             "run_name": None,
             "resume": None,
+            "repository_override": False,
             "output_format": "jsonl",
             "terminal": "verbose",
             "dataset_check": "full",

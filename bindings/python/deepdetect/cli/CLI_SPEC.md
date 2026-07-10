@@ -136,6 +136,9 @@ Shared training options:
   staging `--weights`. `latest` uses the newest checkpoint and solver state
   found in the repository. `best` reads `best_model.txt` and resumes the
   matching `checkpoint-N.*` and `solver-N.pt` files.
+- `--repository-override`: remove all existing contents of `--repository`
+  before starting a new run. The flag is explicit confirmation and writes a
+  warning to stderr. It cannot be combined with `--resume`.
 - `--iterations`, `--batch-size`, `--iter-size`, `--base-lr`,
   `--test-interval`: common solver controls. `--iter-size` controls gradient
   accumulation before each optimizer update.

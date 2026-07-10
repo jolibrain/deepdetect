@@ -714,6 +714,77 @@ def test_train_defaults_job_dir_to_repository(monkeypatch, tmp_path, capsys):
     assert events[0]["run_dir"] == str(repository.resolve())
 
 
+def test_train_repository_override_removes_existing_contents(
+    monkeypatch, tmp_path, capsys
+):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        },
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    weights, train, test = write_training_files(tmp_path)
+    repository = tmp_path / "repo-override"
+    stale_file = repository / "nested" / "stale.txt"
+    stale_file.parent.mkdir(parents=True)
+    stale_file.write_text("stale", encoding="utf-8")
+    (repository / "run.json").write_text("{}", encoding="utf-8")
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(repository),
+            "--repository-override",
+            "--dataset-check",
+            "none",
+        ]
+    )
+
+    assert code == 0
+    assert not stale_file.exists()
+    assert (repository / "run.json").is_file()
+    assert "--repository-override removes all contents" in capsys.readouterr().err
+
+
+def test_train_repository_override_rejects_resume(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: (_ for _ in ()).throw(AssertionError())
+    )
+    _weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--resume",
+            "latest",
+            "--repository-override",
+        ]
+    )
+
+    assert code != 0
+    assert "cannot be used with --resume" in capsys.readouterr().err
+
+
 def test_train_resume_latest_uses_repository_state_without_weights(
     monkeypatch, tmp_path, capsys
 ):
