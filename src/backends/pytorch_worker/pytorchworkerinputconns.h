@@ -2096,8 +2096,9 @@ namespace dd
       if (!debug_enabled())
         return;
       std::cerr << "[deepdetect-debug][connector_tensor_pull] "
-                << "connector_batch_next" << " batch_id=" << batch_id
-                << " split=" << split << " sample_count=" << sample_count
+                << "connector_batch_next"
+                << " batch_id=" << batch_id << " split=" << split
+                << " sample_count=" << sample_count
                 << " transport=" << transport << " total_ms=" << total_ms
                 << " preprocessing_packing_ms=" << preprocessing_packing_ms
                 << " shared_memory_write_ms=" << shared_memory_write_ms

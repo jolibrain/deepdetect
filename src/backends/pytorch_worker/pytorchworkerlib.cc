@@ -52,7 +52,7 @@ namespace dd
   PytorchWorkerLib<TInputConnectorStrategy, TOutputConnectorStrategy,
                    TMLModel>::PytorchWorkerLib(const PytorchWorkerModel &model)
       : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>(
-            model)
+          model)
   {
     this->_libname = "pytorch";
   }
@@ -63,7 +63,7 @@ namespace dd
                    TMLModel>::PytorchWorkerLib(PytorchWorkerLib
                                                    &&other) noexcept
       : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>(
-            std::move(other)),
+          std::move(other)),
         _worker(std::move(other._worker)),
         _mllib_params(std::move(other._mllib_params)),
         _nclasses(other._nclasses)
