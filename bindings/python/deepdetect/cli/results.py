@@ -10,7 +10,11 @@ from PIL import Image
 
 from .events import EventWriter
 from .sinks import VisdomMetricSink
-from .visualize import detection_overlay_image, segmentation_overlay_images
+from .visualize import (
+    detection_overlay_image,
+    keypoint_overlay_image,
+    segmentation_overlay_images,
+)
 
 VISDOM_RESULT_MAX_SIDE = 512
 VISDOM_RESULT_CONFIDENCE_THRESHOLD = 0.1
@@ -310,6 +314,12 @@ def result_image_array(
 ) -> np.ndarray:
     if task == "detection" or task == "yolox" or task == "torchvision-detector":
         image = detection_overlay_image(
+            image_path,
+            prediction,
+            coordinate_size=prediction_image_size(prediction) or image_size,
+        )
+    elif task == "keypoint":
+        image = keypoint_overlay_image(
             image_path,
             prediction,
             coordinate_size=prediction_image_size(prediction) or image_size,

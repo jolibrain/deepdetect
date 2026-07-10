@@ -458,6 +458,7 @@ namespace dd
     OutputConnectorConfig config;
     config._nclasses = static_cast<int>(_nclasses);
     config._has_bbox = output_params->bbox;
+    config._has_keypoints = output_params->keypoints;
     config._has_mask = output_params->image;
     config._regression = output_params->regression;
     return outputc.finalize(output_params, config,

@@ -1,0 +1,21 @@
+{
+  "name": "vitpose",
+  "entrypoint": "extern/pytorch_workers/vitpose/worker.py",
+  "class": "DeepDetectWorker",
+  "runtime_dependency": "self-contained",
+  "upstream_references": [
+    {
+      "path": "/data1/beniz/apps/ViTPose_pytorch",
+      "license": "Apache-2.0",
+      "notes": "Primary no-mmcv reference for ViT backbone and simple heatmap head."
+    },
+    {
+      "path": "/data1/beniz/apps/ViTPose",
+      "license": "Apache-2.0",
+      "notes": "Original ViTPose/MMPose reference for UDP target generation and layer decay defaults."
+    }
+  ],
+  "external_repositories_required": false,
+  "python_dependencies": ["torch", "numpy", "Pillow"],
+  "generation_notes": "Initial DeepDetect keypoint worker with fixed object slots and training-time Hungarian assignment."
+}

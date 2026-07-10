@@ -20,6 +20,7 @@ from .utils import chunks, configure_gpu_compatibility, stage_model
 from .visualize import (
     output_path_for,
     render_detections,
+    render_keypoints,
     render_segmentation,
 )
 
@@ -32,6 +33,8 @@ def run_infer(args: Any) -> int:
         repository=args.repository,
         service_name=args.service_name,
         nclasses=args.nclasses,
+        nkeypoints=args.nkeypoints,
+        max_objects=args.max_objects,
         width=args.width,
         height=args.height,
         batch_size=args.batch_size,
@@ -57,10 +60,11 @@ def run_infer(args: Any) -> int:
         validate_positive(numeric, int(options[numeric]))
     if int(options["warmup"]) < 0:
         raise ValueError("warmup must be non-negative")
-    if profile.task == "detection":
+    if profile.task in {"detection", "keypoint"}:
         threshold = float(options["confidence_threshold"])
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("confidence threshold must be between 0 and 1")
+    if profile.task == "detection":
         if options.get("best_bbox") is not None:
             validate_positive("best_bbox", int(options["best_bbox"]))
 
@@ -127,6 +131,10 @@ def write_visual_outputs(
             path = output_path_for(output, image, multiple=multiple, suffix="_detections")
             render_detections(image, prediction, path)
             writer.emit("artifact", kind="detections", image=str(image), path=str(path))
+        elif task == "keypoint":
+            path = output_path_for(output, image, multiple=multiple, suffix="_keypoints")
+            render_keypoints(image, prediction, path)
+            writer.emit("artifact", kind="keypoints", image=str(image), path=str(path))
         else:
             overlay = output_path_for(output, image, multiple=multiple, suffix="_overlay")
             mask = overlay.with_name(f"{overlay.stem}_mask.png")

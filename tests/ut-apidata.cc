@@ -21,6 +21,7 @@
 
 #include "apidata.h"
 #include "jsonapi.h"
+#include "supervisedoutputconnector.h"
 #include <gtest/gtest.h>
 #include <iostream>
 
@@ -126,4 +127,50 @@ TEST(apidata, to_from_json)
   ASSERT_TRUE(njd["classes"].IsArray());
   ASSERT_TRUE(njd["classes"][0]["cat"].GetString() == std::string("car"));
   ASSERT_EQ(prob1, njd["classes"][0]["prob"].GetDouble());
+}
+
+TEST(apidata, supervised_output_keypoints_to_dto)
+{
+  SupervisedOutput output;
+
+  APIData point0;
+  point0.add("x", 1.0);
+  point0.add("y", 2.0);
+  point0.add("prob", 0.8);
+  point0.add("valid", true);
+  APIData point1;
+  point1.add("x", -1.0);
+  point1.add("y", -1.0);
+  point1.add("prob", 0.0);
+  point1.add("valid", false);
+  std::vector<APIData> points = { point0, point1 };
+  APIData keypoints;
+  keypoints.add("points", points);
+
+  APIData result;
+  result.add("uri", std::string("image.jpg"));
+  result.add("loss", 0.0);
+  result.add("probs", std::vector<double>{ 0.9 });
+  result.add("cats", std::vector<std::string>{ "pose" });
+  result.add("keypoints", std::vector<APIData>{ keypoints });
+  output.add_results(std::vector<APIData>{ result });
+
+  auto output_params = DTO::OutputConnector::createShared();
+  output_params->keypoints = true;
+  OutputConnectorConfig config;
+  config._nclasses = 1;
+  config._has_keypoints = true;
+  auto dto = output.finalize(output_params, config, nullptr);
+
+  ASSERT_EQ(1U, dto->predictions->size());
+  ASSERT_EQ(1U, dto->predictions->at(0)->classes->size());
+  auto cls = dto->predictions->at(0)->classes->at(0);
+  ASSERT_EQ(std::string("pose"), cls->cat.getValue(""));
+  ASSERT_TRUE(cls->keypoints != nullptr);
+  ASSERT_EQ(2U, cls->keypoints->size());
+  EXPECT_DOUBLE_EQ(1.0, cls->keypoints->at(0)->get("x").get<double>());
+  EXPECT_DOUBLE_EQ(2.0, cls->keypoints->at(0)->get("y").get<double>());
+  EXPECT_TRUE(cls->keypoints->at(0)->get("valid").get<bool>());
+  EXPECT_DOUBLE_EQ(-1.0, cls->keypoints->at(1)->get("x").get<double>());
+  EXPECT_FALSE(cls->keypoints->at(1)->get("valid").get<bool>());
 }

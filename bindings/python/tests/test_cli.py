@@ -169,6 +169,7 @@ def test_default_example_configs_load():
     segformer = config.load_config(root / "segformer-default.yaml")
     torchvision = config.load_config(root / "torchvision-detector-default.yaml")
     external = config.load_config(root / "external-pytorch-detector-default.yaml")
+    vitpose = config.load_config(root / "vitpose-default.yaml")
 
     assert yolox["width"] == 640
     assert yolox["height"] == 640
@@ -202,6 +203,17 @@ def test_default_example_configs_load():
     assert external["service_mllib"]["class"] == "DeepDetectWorker"
     assert external["mllib"]["data_source"] == "connector_tensor_pull"
     assert external["dataset_check"] == "full"
+    assert vitpose["weights"] is None
+    assert vitpose["width"] == 192
+    assert vitpose["height"] == 256
+    assert vitpose["nkeypoints"] == 17
+    assert vitpose["max_objects"] == 1
+    assert vitpose["service_mllib"]["entrypoint"] == (
+        "extern/pytorch_workers/vitpose/worker.py"
+    )
+    assert vitpose["service_mllib"]["task"] == "keypoint"
+    assert vitpose["mllib"]["data_source"] == "connector_tensor_pull"
+    assert vitpose["dataset_check"] == "full"
 
 
 def test_generated_training_run_name_is_repository_name_only():
@@ -429,6 +441,28 @@ def test_train_external_pytorch_detector_passes_entrypoint_from_yaml(
         for line in capsys.readouterr().out.splitlines()
         if line.strip()
     }
+
+
+def test_vitpose_profile_passes_keypoint_worker_parameters():
+    profile = get_profile("vitpose")
+    options = profile.train_defaults()
+
+    service = profile.service_parameters(options)
+    train_params = profile.train_parameters(options)
+    predict_params = profile.predict_parameters(options)
+
+    service_mllib = service["mllib_parameters"]
+    assert service["mllib"] == "pytorch"
+    assert service["input_parameters"]["keypoints"] is True
+    assert service_mllib["entrypoint"] == "extern/pytorch_workers/vitpose/worker.py"
+    assert service_mllib["task"] == "keypoint"
+    assert service_mllib["nkeypoints"] == 17
+    assert service_mllib["max_objects"] == 1
+    assert train_params["mllib_parameters"]["data_source"] == "connector_tensor_pull"
+    assert train_params["mllib_parameters"]["nkeypoints"] == 17
+    assert train_params["mllib_parameters"]["max_objects"] == 1
+    assert predict_params["output_parameters"]["keypoints"] is True
+    assert predict_params["output_parameters"]["confidence_threshold"] == 0.25
 
 
 def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):

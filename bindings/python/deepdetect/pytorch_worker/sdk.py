@@ -249,6 +249,7 @@ def validate_prediction_result(result: Any) -> dict[str, Any]:
         if not isinstance(item, dict):
             raise PredictionContractError(f"prediction {index} must be an object")
         _validate_bboxes(item, index)
+        _validate_keypoints(item, index)
     return result
 
 
@@ -271,3 +272,38 @@ def _validate_bboxes(item: Mapping[str, Any], prediction_index: int) -> None:
                     f"prediction {prediction_index} bbox {bbox_index} missing {key}"
                 )
             finite_scalar(bbox[key], f"bbox {key}", PredictionContractError)
+
+
+def _validate_keypoints(item: Mapping[str, Any], prediction_index: int) -> None:
+    if "keypoints" not in item:
+        return
+    keypoints = item["keypoints"]
+    if not isinstance(keypoints, list):
+        raise PredictionContractError(
+            f"prediction {prediction_index} keypoints must be a list"
+        )
+    for object_index, keypoint_object in enumerate(keypoints):
+        if not isinstance(keypoint_object, Mapping):
+            raise PredictionContractError(
+                f"prediction {prediction_index} keypoints {object_index} must be an object"
+            )
+        points = keypoint_object.get("points")
+        if not isinstance(points, list):
+            raise PredictionContractError(
+                f"prediction {prediction_index} keypoints {object_index} points must be a list"
+            )
+        for point_index, point in enumerate(points):
+            if not isinstance(point, Mapping):
+                raise PredictionContractError(
+                    f"prediction {prediction_index} keypoints {object_index} point {point_index} must be an object"
+                )
+            for key in ("x", "y", "prob"):
+                if key not in point:
+                    raise PredictionContractError(
+                        f"prediction {prediction_index} keypoints {object_index} point {point_index} missing {key}"
+                    )
+                finite_scalar(point[key], f"keypoint {key}", PredictionContractError)
+            if "valid" in point and not isinstance(point["valid"], bool):
+                raise PredictionContractError(
+                    f"prediction {prediction_index} keypoints {object_index} point {point_index} valid must be a boolean"
+                )

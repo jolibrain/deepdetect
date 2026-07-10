@@ -41,6 +41,7 @@ namespace dd
 
       /* output supervised predict */
       DTO_FIELD(Boolean, bbox) = false;
+      DTO_FIELD(Boolean, keypoints) = false;
       DTO_FIELD(Boolean, ctc) = false;
       DTO_FIELD(Float32, confidence_threshold) = 0.0;
       DTO_FIELD(Int32, best);

@@ -1,0 +1,71 @@
+# ViTPose self-contained worker smoke-test config.
+train_data: train.txt
+test_data:
+  - test.txt
+weights: null
+repository: deepdetect-models/vitpose
+service_name: python-vitpose-train
+nclasses: 1
+nkeypoints: 17
+max_objects: 1
+width: 192
+height: 256
+iterations: 10
+batch_size: 1
+iter_size: 1
+service_mllib:
+  entrypoint: extern/pytorch_workers/vitpose/worker.py
+  class: DeepDetectWorker
+  task: keypoint
+  nkeypoints: 17
+  max_objects: 1
+  vitpose:
+    variant: base
+    image_size: [192, 256]
+    heatmap_size: [48, 64]
+    sigma: 2.0
+    max_objects: 1
+    objectness_threshold: 0.25
+    keypoint_threshold: 0.05
+    weight_decay: 0.1
+    layer_decay: 0.75
+    grad_clip: 1.0
+mllib:
+  data_source: connector_tensor_pull
+  nkeypoints: 17
+  max_objects: 1
+  vitpose:
+    variant: base
+    image_size: [192, 256]
+    heatmap_size: [48, 64]
+    sigma: 2.0
+    max_objects: 1
+base_lr: 0.0005
+test_interval: 10
+gpu: false
+gpuid: null
+sync: false
+poll_interval: 0.5
+timeout: null
+job_dir: null
+run_name: null
+resume: null
+output_format: jsonl
+terminal: verbose
+dataset_check: full
+skip_mask_validation: false
+visdom: false
+visdom_server: http://localhost
+visdom_port: 8097
+visdom_base_url: /
+visdom_offline_ok: true
+visdom_save: false
+visdom_results: true
+visdom_results_count: 10
+visdom_results_seed: 12345
+output: null
+visualize: false
+benchmark: false
+warmup: 0
+confidence_threshold: 0.25
+best_bbox: null

@@ -41,6 +41,8 @@ def run_train(args: Any) -> int:
         repository=args.repository,
         service_name=args.service_name,
         nclasses=args.nclasses,
+        nkeypoints=args.nkeypoints,
+        max_objects=args.max_objects,
         width=args.width,
         height=args.height,
         iterations=args.iterations,
@@ -96,6 +98,10 @@ def run_train(args: Any) -> int:
         validate_positive(numeric, options[numeric])
     if int(options["nclasses"]) <= 0:
         raise ValueError("nclasses must be positive")
+    if options.get("nkeypoints") is not None and int(options["nkeypoints"]) <= 0:
+        raise ValueError("nkeypoints must be positive")
+    if options.get("max_objects") is not None and int(options["max_objects"]) <= 0:
+        raise ValueError("max_objects must be positive")
     validate_positive("visdom_port", int(options["visdom_port"]))
     if int(options["visdom_results_count"]) < 0:
         raise ValueError("visdom_results_count must be non-negative")

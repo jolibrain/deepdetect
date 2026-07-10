@@ -43,6 +43,12 @@ class ModelProfile:
             "repository": self.default_repository,
             "service_name": self.default_service_name,
             "nclasses": self.default_nclasses,
+            "nkeypoints": self.service_mllib.get(
+                "nkeypoints", self.train_mllib.get("nkeypoints")
+            ),
+            "max_objects": self.service_mllib.get(
+                "max_objects", self.train_mllib.get("max_objects")
+            ),
             "width": self.default_width,
             "height": self.default_height,
             "iterations": 100,
@@ -55,7 +61,9 @@ class ModelProfile:
             "augmentation": _augmentation_defaults(self.train_mllib),
             "service_mllib": None,
             "class_weights": None,
-            "base_lr": 0.0001,
+            "base_lr": float(
+                self.train_mllib.get("solver", {}).get("base_lr", 0.0001)
+            ),
             "test_interval": 100,
             "gpu": False,
             "gpuid": None,
@@ -88,6 +96,12 @@ class ModelProfile:
             "repository": self.default_repository,
             "service_name": self.default_service_name.replace("train", "infer"),
             "nclasses": self.default_nclasses,
+            "nkeypoints": self.service_mllib.get(
+                "nkeypoints", self.train_mllib.get("nkeypoints")
+            ),
+            "max_objects": self.service_mllib.get(
+                "max_objects", self.train_mllib.get("max_objects")
+            ),
             "width": self.default_width,
             "height": self.default_height,
             "batch_size": 1,
@@ -109,10 +123,16 @@ class ModelProfile:
         if options.get("gpuid") is not None:
             mllib["gpuid"] = copy.deepcopy(options["gpuid"])
         mllib["nclasses"] = int(options["nclasses"])
+        if options.get("nkeypoints") is not None:
+            mllib["nkeypoints"] = int(options["nkeypoints"])
+        if options.get("max_objects") is not None:
+            mllib["max_objects"] = int(options["max_objects"])
         if self.backend == "pytorch":
             mllib.setdefault("python", sys.executable)
         if options.get("resume"):
             mllib["resume_from"] = str(options["resume"])
+        if self.task == "keypoint":
+            _sync_keypoint_model_size(mllib, options)
         input_parameters = copy.deepcopy(self.service_input)
         input_parameters["width"] = int(options["width"])
         input_parameters["height"] = int(options["height"])
@@ -139,6 +159,10 @@ class ModelProfile:
         mllib["solver"]["iter_size"] = int(options["iter_size"])
         mllib["solver"]["base_lr"] = float(options["base_lr"])
         mllib["solver"]["test_interval"] = int(options["test_interval"])
+        if options.get("nkeypoints") is not None:
+            mllib["nkeypoints"] = int(options["nkeypoints"])
+        if options.get("max_objects") is not None:
+            mllib["max_objects"] = int(options["max_objects"])
         if options.get("class_weights") is not None:
             mllib["class_weights"] = _float_list_option(
                 options["class_weights"], "class_weights"
@@ -152,6 +176,8 @@ class ModelProfile:
         mllib["net"]["batch_size"] = int(options["batch_size"])
         if self.task == "detection":
             mllib["net"]["test_batch_size"] = int(options["batch_size"])
+        if self.task == "keypoint":
+            _sync_keypoint_model_size(mllib, options)
         input_parameters = copy.deepcopy(self.train_input)
         if "width" in self.service_input:
             input_parameters["width"] = int(options["width"])
@@ -172,6 +198,8 @@ class ModelProfile:
             output["confidence_threshold"] = float(options["confidence_threshold"])
             if options.get("best_bbox") is not None:
                 output["best_bbox"] = int(options["best_bbox"])
+        if self.task == "keypoint":
+            output["confidence_threshold"] = float(options["confidence_threshold"])
         return {
             "input_parameters": input_parameters,
             "output_parameters": output,
@@ -345,6 +373,63 @@ PROFILES = {
         predict_input={"height": 640, "width": 640},
         predict_output={"bbox": True},
     ),
+    "vitpose": ModelProfile(
+        name="vitpose",
+        task="keypoint",
+        description="Self-contained ViTPose keypoint worker",
+        backend="pytorch",
+        default_weights=None,
+        default_repository=Path("deepdetect-models/vitpose"),
+        default_service_name="python-vitpose-train",
+        default_nclasses=1,
+        requires_weights=False,
+        service_input={
+            "connector": "image",
+            "height": 256,
+            "width": 192,
+            "rgb": True,
+            "keypoints": True,
+            "db": False,
+        },
+        service_mllib={
+            "task": "keypoint",
+            "entrypoint": "extern/pytorch_workers/vitpose/worker.py",
+            "class": "DeepDetectWorker",
+            "nkeypoints": 17,
+            "max_objects": 1,
+            "vitpose": {
+                "variant": "base",
+                "image_size": [192, 256],
+                "heatmap_size": [48, 64],
+                "sigma": 2.0,
+                "max_objects": 1,
+                "objectness_threshold": 0.25,
+                "keypoint_threshold": 0.05,
+                "weight_decay": 0.1,
+                "layer_decay": 0.75,
+                "grad_clip": 1.0,
+            },
+        },
+        train_input={"seed": 12347, "db": False, "shuffle": True},
+        train_mllib={
+            "solver": {"iter_size": 1, "solver_type": "ADAMW", "base_lr": 0.0005},
+            "net": {"batch_size": 1},
+            "resume": False,
+            "data_source": "connector_tensor_pull",
+            "nkeypoints": 17,
+            "max_objects": 1,
+            "vitpose": {
+                "variant": "base",
+                "image_size": [192, 256],
+                "heatmap_size": [48, 64],
+                "sigma": 2.0,
+                "max_objects": 1,
+            },
+        },
+        train_output={"measure": ["train_loss"]},
+        predict_input={"height": 256, "width": 192},
+        predict_output={"keypoints": True},
+    ),
 }
 
 
@@ -372,12 +457,28 @@ def _deep_merge(*values: Mapping[str, Any] | None) -> dict[str, Any]:
     return result
 
 
+def _sync_keypoint_model_size(mllib: dict[str, Any], options: dict[str, Any]) -> None:
+    width = int(options["width"])
+    height = int(options["height"])
+    vitpose = mllib.setdefault("vitpose", {})
+    if not isinstance(vitpose, dict):
+        return
+    vitpose["image_size"] = [width, height]
+    vitpose["heatmap_size"] = [max(1, width // 4), max(1, height // 4)]
+    if options.get("max_objects") is not None:
+        vitpose["max_objects"] = int(options["max_objects"])
+
+
 def _augmentation_defaults(mllib: Mapping[str, Any]) -> dict[str, Any]:
     non_augmentation_keys = {
         "solver",
         "net",
         "resume",
         "resume_from",
+        "data_source",
+        "nkeypoints",
+        "max_objects",
+        "vitpose",
         "gpu",
         "gpuid",
         "weights",

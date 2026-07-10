@@ -86,6 +86,7 @@ namespace dd
     bool _regression = false;
     bool _autoencoder = false;
     bool _has_bbox = false;
+    bool _has_keypoints = false;
     bool _has_roi = false;
     bool _has_mask = false;
     bool _multibox_rois = false;

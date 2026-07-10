@@ -25,6 +25,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <limits>
 
 #include "dto/output_connector.hpp"
 #include "dto/predict_out.hpp"
@@ -92,6 +93,11 @@ namespace dd
         _masks.insert(std::pair<double, APIData>(prob, mask));
       }
 
+      inline void add_keypoints(const double &prob, const APIData &keypoints)
+      {
+        _keypoints.insert(std::pair<double, APIData>(prob, keypoints));
+      }
+
       inline void add_val(const double &prob, const APIData &ad)
       {
         _vals.insert(std::pair<double, APIData>(prob, ad));
@@ -129,6 +135,8 @@ namespace dd
           _series; /** <extra data for timeseries */
       std::multimap<double, APIData, std::greater<double>>
           _masks; /**< masks information */
+      std::multimap<double, APIData, std::greater<double>>
+          _keypoints; /**< keypoint information */
 #ifdef USE_SIMSEARCH
       bool _indexed = false;
       std::multimap<double, URIData> _nns; /**< nearest neigbors. */
@@ -196,8 +204,11 @@ namespace dd
           std::vector<APIData> bboxes;
           std::vector<APIData> rois;
           std::vector<APIData> masks;
+          std::vector<APIData> keypoints;
           if (ad.has("bboxes"))
             bboxes = ad.getv("bboxes");
+          if (ad.has("keypoints"))
+            keypoints = ad.getv("keypoints");
           if (ad.has("vals"))
             {
               rois = ad.getv("vals");
@@ -237,6 +248,9 @@ namespace dd
                   if (!masks.empty())
                     _vvcats.at((*hit).second)
                         .add_mask(probs.at(i), masks.at(i));
+                  if (!keypoints.empty())
+                    _vvcats.at((*hit).second)
+                        .add_keypoints(probs.at(i), keypoints.at(i));
                 }
             }
         }
@@ -249,12 +263,13 @@ namespace dd
      */
     void best_cats(SupervisedOutput &bcats, const int &output_param_best,
                    const int &nclasses, const bool &has_bbox,
-                   const bool &has_roi, const bool &has_mask) const
+                   const bool &has_roi, const bool &has_mask,
+                   const bool &has_keypoints) const
     {
       int best = output_param_best;
       if (best == -1)
         best = nclasses;
-      if (!has_bbox && !has_roi && !has_mask)
+      if (!has_bbox && !has_roi && !has_mask && !has_keypoints)
         {
           for (size_t i = 0; i < _vvcats.size(); i++)
             {
@@ -283,6 +298,30 @@ namespace dd
                     std::min(best, static_cast<int>(sresult._masks.size())),
                     std::inserter(bsresult._masks, bsresult._masks.end()));
 
+              bcats._vcats.insert(std::pair<std::string, int>(
+                  sresult._label, bcats._vvcats.size()));
+              bcats._vvcats.push_back(bsresult);
+            }
+        }
+      else if (has_keypoints && !has_bbox && !has_roi && !has_mask)
+        {
+          for (size_t i = 0; i < _vvcats.size(); i++)
+            {
+              sup_result sresult = _vvcats.at(i);
+              sup_result bsresult(sresult._label, sresult._loss);
+#ifdef USE_SIMSEARCH
+              bsresult._index_uri = sresult._index_uri;
+#endif
+              int nbest = std::min(best, static_cast<int>(sresult._cats.size()));
+              std::copy_n(sresult._cats.begin(), nbest,
+                          std::inserter(bsresult._cats,
+                                        bsresult._cats.end()));
+              if (!sresult._keypoints.empty())
+                std::copy_n(sresult._keypoints.begin(),
+                            std::min(nbest, static_cast<int>(
+                                                 sresult._keypoints.size())),
+                            std::inserter(bsresult._keypoints,
+                                          bsresult._keypoints.end()));
               bcats._vcats.insert(std::pair<std::string, int>(
                   sresult._label, bcats._vvcats.size()));
               bcats._vvcats.push_back(bsresult);
@@ -430,17 +469,21 @@ namespace dd
         _best = 1;
 
       bool has_bbox = config._has_bbox;
+      bool has_keypoints = config._has_keypoints;
       bool has_roi = config._has_roi;
       bool has_mask = config._has_mask;
       bool has_multibox_rois = config._has_roi && config._multibox_rois;
       bool timeseries = config._timeseries;
 
-      if (output_params->best == nullptr)
+      bool default_best = output_params->best == nullptr;
+      if (default_best)
         output_params->best = _best;
+      if (has_keypoints && default_best)
+        output_params->best = std::numeric_limits<int>::max();
 
       if (!timeseries)
         best_cats(bcats, output_params->best, nclasses, has_bbox, has_roi,
-                  has_mask);
+                  has_mask, has_keypoints);
 
       std::unordered_set<std::string> indexed_uris;
 #ifdef USE_SIMSEARCH
@@ -701,10 +744,10 @@ namespace dd
         has_roi = false;
       if (!timeseries)
         bcats.to_dto(out_dto, regression, autoencoder, has_bbox, has_roi,
-                     has_mask, timeseries, indexed_uris);
+                     has_mask, has_keypoints, timeseries, indexed_uris);
       else
         to_dto(out_dto, regression, autoencoder, has_bbox, has_roi, has_mask,
-               timeseries, indexed_uris);
+               has_keypoints, timeseries, indexed_uris);
 
       return out_dto;
     }
@@ -2980,6 +3023,7 @@ namespace dd
     void to_dto(oatpp::Object<DTO::PredictBody> out, const bool &regression,
                 const bool &autoencoder, const bool &has_bbox,
                 const bool &has_roi, const bool &has_mask,
+                const bool &has_keypoints,
                 const bool &timeseries,
                 const std::unordered_set<std::string> &indexed_uris) const
     {
@@ -2997,6 +3041,7 @@ namespace dd
           auto vit = _vvcats.at(i)._vals.begin();
           auto mit = _vvcats.at(i)._cats.begin();
           auto maskit = _vvcats.at(i)._masks.begin();
+          auto keypointit = _vvcats.at(i)._keypoints.begin();
           while (mit != _vvcats.at(i)._cats.end())
             {
               auto cls_dto = DTO::PredictClass::createShared();
@@ -3029,6 +3074,20 @@ namespace dd
                 {
                   cls_dto->mask = (*maskit).second;
                   ++maskit;
+                }
+              if (has_keypoints)
+                {
+                  cls_dto->keypoints
+                      = oatpp::Vector<DTO::DTOApiData>::createShared();
+                  if (keypointit != _vvcats.at(i)._keypoints.end())
+                    {
+                      std::vector<APIData> points
+                          = (*keypointit).second.getv("points");
+                      for (const APIData &point : points)
+                        cls_dto->keypoints->push_back(
+                            DTO::DTOApiData{ point });
+                      ++keypointit;
+                    }
                 }
               ++mit;
               if (mit == _vvcats.at(i)._cats.end())

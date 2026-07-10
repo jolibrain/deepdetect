@@ -78,6 +78,12 @@ namespace dd
       }
       DTO_FIELD(Object<BBox>, bbox);
 
+      DTO_FIELD_INFO(keypoints)
+      {
+        info->description = "Predicted keypoints for this object";
+      }
+      DTO_FIELD(Vector<DTOApiData>, keypoints);
+
       DTO_FIELD_INFO(prob)
       {
         info->description = "Confidence / score for this class";

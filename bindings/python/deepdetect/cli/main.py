@@ -65,6 +65,8 @@ def _add_train_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--repository", type=Path)
     parser.add_argument("--service-name")
     parser.add_argument("--nclasses", type=int)
+    parser.add_argument("--nkeypoints", type=int)
+    parser.add_argument("--max-objects", type=int)
     parser.add_argument("--width", type=int)
     parser.add_argument("--height", type=int)
     parser.add_argument("--iterations", type=int)
@@ -138,6 +140,8 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
     parser.add_argument("--repository", type=Path)
     parser.add_argument("--service-name")
     parser.add_argument("--nclasses", type=int)
+    parser.add_argument("--nkeypoints", type=int)
+    parser.add_argument("--max-objects", type=int)
     parser.add_argument("--width", type=int)
     parser.add_argument("--height", type=int)
     parser.add_argument("--batch-size", type=int)
@@ -151,8 +155,9 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
     parser.add_argument("--visualize", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--benchmark", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--warmup", type=int)
-    if PROFILES[model].task == "detection":
+    if PROFILES[model].task in {"detection", "keypoint"}:
         parser.add_argument("--confidence-threshold", type=float)
+    if PROFILES[model].task == "detection":
         parser.add_argument("--best-bbox", type=int)
     parser.set_defaults(func=run_infer)
 

@@ -11,4 +11,8 @@ extern/pytorch_workers/**
 !extern/pytorch_workers/
 !extern/pytorch_workers/*/
 !extern/pytorch_workers/*/README.md
+!extern/pytorch_workers/vitpose/
+!extern/pytorch_workers/vitpose/**
+extern/pytorch_workers/vitpose/**/__pycache__/
+extern/pytorch_workers/vitpose/**/*.pyc
 !extern/README.md

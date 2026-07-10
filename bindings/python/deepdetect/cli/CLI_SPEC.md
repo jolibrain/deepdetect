@@ -11,6 +11,8 @@ to focused model profiles:
 - `torchvision-detector`: managed PyTorch Faster R-CNN detection.
 - `external-pytorch-detector`: an external Python worker selected through
   YAML/API `mllib.entrypoint`.
+- `vitpose`: a self-contained PyTorch keypoint worker selected through an
+  in-tree `extern/pytorch_workers/vitpose/worker.py` entrypoint.
 
 The canonical command shape is task first:
 
@@ -19,8 +21,10 @@ deepdetect train yolox ...
 deepdetect train segformer ...
 deepdetect train torchvision-detector ...
 deepdetect train external-pytorch-detector ...
+deepdetect train vitpose ...
 deepdetect infer yolox ...
 deepdetect infer segformer ...
+deepdetect infer vitpose ...
 deepdetect job status RUN_DIR
 deepdetect inspect models
 ```
@@ -62,6 +66,7 @@ Example default-style configs are provided next to this document:
 - `segformer-default.yaml`
 - `torchvision-detector-default.yaml`
 - `external-pytorch-detector-default.yaml`
+- `vitpose-default.yaml`
 
 They include training keys plus inference-only keys that are ignored by
 training commands. Replace the dataset and model paths before use:
@@ -71,6 +76,7 @@ deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yam
 deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-default.yaml
 deepdetect train torchvision-detector --config bindings/python/deepdetect/cli/torchvision-detector-default.yaml
 deepdetect train external-pytorch-detector --config bindings/python/deepdetect/cli/external-pytorch-detector-default.yaml
+deepdetect train vitpose --config bindings/python/deepdetect/cli/vitpose-default.yaml
 ```
 
 `external-pytorch-detector` uses the `pytorch` backend and normal DeepDetect

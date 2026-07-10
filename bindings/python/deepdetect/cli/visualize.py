@@ -43,6 +43,53 @@ def render_detections(
     image.save(output_path)
 
 
+def render_keypoints(
+    image_path: Path, prediction: dict[str, Any], output_path: Path
+) -> None:
+    image = keypoint_overlay_image(image_path, prediction)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path)
+
+
+def keypoint_overlay_image(
+    image_path: Path,
+    prediction: dict[str, Any],
+    *,
+    size: tuple[int, int] | None = None,
+    coordinate_size: tuple[int, int] | None = None,
+) -> Image.Image:
+    image = Image.open(image_path).convert("RGB")
+    if size is not None:
+        image = image.resize(size)
+    x_scale = 1.0
+    y_scale = 1.0
+    if coordinate_size is not None:
+        coordinate_width, coordinate_height = coordinate_size
+        if coordinate_width > 0 and coordinate_height > 0:
+            x_scale = image.width / coordinate_width
+            y_scale = image.height / coordinate_height
+    draw = ImageDraw.Draw(image)
+    colors = ("#00e5ff", "#ffca28", "#66bb6a", "#ef5350")
+    for pose_index, detected_class in enumerate(prediction.get("classes", [])):
+        color = colors[pose_index % len(colors)]
+        for point in detected_class.get("keypoints", []):
+            if not bool(point.get("valid", True)):
+                continue
+            x = float(point.get("x", -1.0))
+            y = float(point.get("y", -1.0))
+            if x < 0.0 or y < 0.0:
+                continue
+            x *= x_scale
+            y *= y_scale
+            radius = 3
+            draw.ellipse(
+                (x - radius, y - radius, x + radius, y + radius),
+                fill=color,
+                outline=color,
+            )
+    return image
+
+
 def detection_overlay_image(
     image_path: Path,
     prediction: dict[str, Any],

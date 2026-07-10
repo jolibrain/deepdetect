@@ -145,6 +145,76 @@ def validate_detection_lists(list_paths: list[Path], nclasses: int) -> dict[str,
     }
 
 
+def validate_keypoint_lists(list_paths: list[Path], nkeypoints: int) -> dict[str, Any]:
+    if nkeypoints <= 0:
+        raise ValueError("number of keypoints must be positive")
+    checked_images = 0
+    checked_keypoint_files = 0
+    instances = 0
+    list_summaries = [
+        (list_path, check_dataset_list(list_path, expected_fields=2))
+        for list_path in list_paths
+    ]
+    total_samples = sum(summary["samples"] for _, summary in list_summaries)
+    progress = _progress(
+        total=total_samples,
+        desc="checking keypoint dataset",
+        unit="sample",
+    )
+    try:
+        for list_path, _summary in list_summaries:
+            list_path = list_path.expanduser().resolve()
+            for line_number, line in enumerate(
+                list_path.read_text(encoding="utf-8").splitlines(),
+                1,
+            ):
+                if not line.strip():
+                    continue
+                image_raw, keypoints_raw = line.split()
+                image_path = _resolve_dataset_entry_path(list_path.parent, image_raw)
+                keypoints_path = _resolve_dataset_entry_path(
+                    list_path.parent,
+                    keypoints_raw,
+                )
+                if not image_path.is_file():
+                    raise FileNotFoundError(
+                        f"{list_path}:{line_number}: image not found: {image_path}"
+                    )
+                if not keypoints_path.is_file():
+                    raise FileNotFoundError(
+                        f"{list_path}:{line_number}: keypoint file not found: {keypoints_path}"
+                    )
+                checked_images += 1
+                checked_keypoint_files += 1
+                for keypoint_line_number, keypoint_line in enumerate(
+                    keypoints_path.read_text(encoding="utf-8").splitlines(),
+                    1,
+                ):
+                    if not keypoint_line.strip():
+                        continue
+                    fields = keypoint_line.split()
+                    expected = nkeypoints * 2
+                    if len(fields) != expected:
+                        raise ValueError(
+                            f"{keypoints_path}:{keypoint_line_number}: "
+                            f"expected {expected} coordinate fields"
+                        )
+                    for value in fields:
+                        float(value)
+                    instances += 1
+                progress.update(1)
+    finally:
+        progress.close()
+    if checked_images == 0:
+        raise ValueError("keypoint dataset lists contain no samples")
+    return {
+        "checked_images": checked_images,
+        "checked_keypoint_files": checked_keypoint_files,
+        "instances": instances,
+        "nkeypoints": nkeypoints,
+    }
+
+
 def _resolve_dataset_entry_path(base: Path, value: str) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
@@ -213,6 +283,15 @@ def run_training_checks(task: str, options: dict[str, Any]) -> list[dict[str, An
                 "name": "detection_bboxes",
                 **validate_detection_lists(
                     [train_data, *test_data], int(options["nclasses"])
+                ),
+            }
+        )
+    if task == "keypoint":
+        checks.append(
+            {
+                "name": "keypoint_targets",
+                **validate_keypoint_lists(
+                    [train_data, *test_data], int(options["nkeypoints"])
                 ),
             }
         )
