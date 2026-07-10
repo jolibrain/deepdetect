@@ -67,6 +67,16 @@ class PoseTensorBatchDataset:
                         "original_height": int(
                             _meta_value(meta, "original_heights", sample_index, height)
                         ),
+                        "instance_id": int(
+                            _meta_value(meta, "instance_ids", sample_index, 0)
+                        ),
+                        "label": int(_meta_value(meta, "labels", sample_index, 1)),
+                        "bbox": _meta_value(meta, "bboxes", sample_index, None),
+                        "inverse_affine": _affine_values(
+                            _meta_value(meta, "inverse_affines", sample_index, None)
+                        ),
+                        "source_paths": meta.get("source_paths", []),
+                        "source_count": int(meta.get("source_count", 0)),
                     }
                     target = tensor_pose_target(
                         _sample_instances(targets, sample_index),
@@ -227,3 +237,11 @@ def _meta_value(meta: dict[str, Any], key: str, index: int, default: Any) -> Any
     if isinstance(values, list) and index < len(values):
         return values[index]
     return default
+
+
+def _affine_values(value: Any) -> list[float] | None:
+    if isinstance(value, dict):
+        value = value.get("values")
+    if not isinstance(value, list) or len(value) != 6:
+        return None
+    return [float(item) for item in value]

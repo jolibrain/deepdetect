@@ -46,6 +46,15 @@ def load_model_checkpoint(
     payload = torch.load(path, map_location=device)
     state = _state_dict(payload)
     state = _strip_prefixes(state)
+    if _is_bare_vit_backbone(state):
+        return _load_backbone_checkpoint(torch, model, state, path)
+    checkpoint_head = _checkpoint_head(payload, state)
+    model_head = str(getattr(model, "head", "topdown"))
+    if checkpoint_head is not None and checkpoint_head != model_head:
+        raise WorkerDependencyError(
+            f"ViTPose checkpoint head {checkpoint_head!r} is incompatible with "
+            f"configured head {model_head!r}"
+        )
     _interpolate_pos_embed(state, model, torch)
     model.load_state_dict(state, strict=False)
     return path
@@ -86,6 +95,7 @@ def save_checkpoint(
         "iteration": int(iteration),
         "nkeypoints": int(getattr(model, "nkeypoints", 0)),
         "max_objects": int(getattr(model, "max_objects", 0)),
+        "head": str(getattr(model, "head", "topdown")),
         "model_state": model.state_dict(),
     }
     solver_payload = {
@@ -106,6 +116,65 @@ def _state_dict(payload: Any) -> dict[str, Any]:
         if isinstance(value, dict):
             return value
     return payload
+
+
+def _checkpoint_head(payload: Any, state: dict[str, Any]) -> str | None:
+    if isinstance(payload, dict) and payload.get("head") in {"topdown", "slots"}:
+        return str(payload["head"])
+    if any(str(key).startswith("objectness_head.") for key in state):
+        return "slots"
+    if any(str(key).startswith("keypoint_head.") for key in state):
+        return "topdown"
+    return None
+
+
+def _is_bare_vit_backbone(state: dict[str, Any]) -> bool:
+    """Recognize MAE/timm-style ViT state dicts without a model prefix."""
+    if any(str(key).startswith("backbone.") for key in state):
+        return False
+    return "patch_embed.proj.weight" in state and any(
+        str(key).startswith("blocks.") for key in state
+    )
+
+
+def _load_backbone_checkpoint(
+    torch: Any,
+    model: Any,
+    state: dict[str, Any],
+    path: Path,
+) -> Path:
+    if not hasattr(model, "backbone"):
+        raise WorkerDependencyError(
+            "ViTPose backbone checkpoint requires a model with a backbone"
+        )
+
+    expected = model.backbone.state_dict()
+    compatible: dict[str, Any] = {}
+    for name, value in state.items():
+        target_name = (
+            "last_norm." + name[len("norm.") :]
+            if name.startswith("norm.")
+            else name
+        )
+        target = expected.get(target_name)
+        if target is None or not hasattr(value, "shape"):
+            continue
+        if tuple(value.shape) != tuple(target.shape) and target_name != "pos_embed":
+            continue
+        compatible[f"backbone.{target_name}"] = value
+
+    _interpolate_pos_embed(compatible, model, torch)
+    backbone_state = {
+        name[len("backbone.") :]: value
+        for name, value in compatible.items()
+        if name.startswith("backbone.")
+    }
+    if not backbone_state:
+        raise WorkerDependencyError(
+            f"ViTPose backbone checkpoint has no compatible ViT tensors: {path}"
+        )
+    model.backbone.load_state_dict(backbone_state, strict=False)
+    return path
 
 
 def _strip_prefixes(state: dict[str, Any]) -> dict[str, Any]:

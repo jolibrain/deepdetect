@@ -5,9 +5,19 @@ training. It lives under `extern/pytorch_workers` because PyTorch workers are
 loaded through entrypoint files, but it does not require an externally cloned
 ViTPose repository at runtime.
 
-The worker consumes DeepDetect keypoint tensor batches, predicts a fixed number
-of object slots, and trains with Hungarian assignment between slots and
-ground-truth objects.
+The default `topdown` head consumes one DeepDetect-generated affine crop per
+annotated object and predicts one heatmap per keypoint. The optional `slots`
+head keeps the full-image fixed-slot model with Hungarian assignment.
+
+Top-down target rows use DeepDetect bbox order:
+
+```text
+cls xmin ymin xmax ymax x1 y1 x2 y2 ...
+```
+
+Set both `service_mllib.vitpose.head` and `mllib.vitpose.head` to `slots` to use
+legacy rows containing keypoint coordinates only. Missing keypoints are
+represented as `-1 -1` in both modes.
 
 ## Train
 
@@ -25,19 +35,37 @@ PYTHONPATH=bindings/python python3 -m deepdetect.cli.main train vitpose \
   --output-format jsonl
 ```
 
-Set `mllib.vitpose.max_objects` and `service_mllib.vitpose.max_objects` to the
-same value when training multi-object slot models.
+`mllib.vitpose.bbox_scale_factor` controls how much context is retained around
+each top-down box and defaults to `1.25`. Set `mllib.vitpose.max_objects` and
+`service_mllib.vitpose.max_objects` to the same value for slot models.
+
+## MAE Backbone Initialization
+
+`--weights` accepts a regular DeepDetect/ViTPose checkpoint or a MAE-style ViT
+checkpoint. Bare MAE weights are detected automatically and initialize only
+the ViT backbone; the pose heatmap head remains newly initialized.
+
+```shell
+PYTHONPATH=bindings/python python3 -m deepdetect.cli.main train vitpose \
+  --config extern/pytorch_workers/vitpose/config.yaml \
+  --weights /data1/beniz/models/mae/mae_pretrain_vit_base.pth \
+  --train-data /path/to/train.txt \
+  --repository runs/vitpose-mae
+```
 
 ## Inference
 
 ```shell
 PYTHONPATH=bindings/python python3 -m deepdetect.cli.main infer vitpose \
   /path/to/image.jpg \
+  --bbox-files /path/to/image-bboxes.txt \
   --config extern/pytorch_workers/vitpose/config.yaml \
   --repository runs/vitpose \
   --gpu --gpuid 0 \
   --confidence-threshold 0.25
 ```
 
-Predictions are returned as `classes[]`, one entry per kept object slot. Each
-class entry contains `prob`, `cat`, and `keypoints[]`.
+Top-down bbox sidecars contain one `cls xmin ymin xmax ymax` row per object and
+are required one-for-one with input images. Predictions are returned as
+`classes[]`; top-down entries contain the source bbox, class id, and keypoints.
+Slot entries contain the retained objectness score and keypoints.

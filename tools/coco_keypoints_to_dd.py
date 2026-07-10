@@ -39,6 +39,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="COCO category id to export",
     )
     parser.add_argument(
+        "--format",
+        choices=("topdown", "slots"),
+        default="topdown",
+        dest="output_format",
+        help="DeepDetect keypoint target format",
+    )
+    parser.add_argument(
         "--relative-paths",
         action="store_true",
         help="Write paths relative to output_dir instead of absolute paths",
@@ -62,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
         category_id=args.category_id,
         relative_paths=args.relative_paths,
         skip_missing_images=not args.fail_on_missing_images,
+        output_format=args.output_format,
     )
     return 0
 
@@ -76,6 +84,7 @@ def convert_coco_keypoints(
     category_id: int,
     relative_paths: bool,
     skip_missing_images: bool = True,
+    output_format: str = "topdown",
 ) -> Path:
     annotations = annotations.expanduser().resolve()
     image_root = image_root.expanduser().resolve()
@@ -87,6 +96,8 @@ def convert_coco_keypoints(
 
     data = json.loads(annotations.read_text(encoding="utf-8"))
     nkeypoints = detect_nkeypoints(data, category_id, nkeypoints)
+    if output_format not in {"topdown", "slots"}:
+        raise ValueError("output_format must be topdown or slots")
     images = {
         int(image["id"]): image
         for image in data.get("images", [])
@@ -129,13 +140,26 @@ def convert_coco_keypoints(
             skipped_missing_images += 1
             continue
         target_path = keypoint_dir / f"{image_id:012d}.txt"
-        lines = [
-            format_deepdetect_keypoint_line(item["keypoints"], nkeypoints)
-            for item in sorted(
-                annotations_by_image[image_id],
-                key=lambda value: int(value.get("id", 0)),
+        lines = []
+        for item in sorted(
+            annotations_by_image[image_id],
+            key=lambda value: int(value.get("id", 0)),
+        ):
+            keypoint_line = format_deepdetect_keypoint_line(
+                item["keypoints"], nkeypoints
             )
-        ]
+            if output_format == "topdown":
+                lines.append(
+                    format_deepdetect_topdown_line(
+                        item,
+                        keypoint_line=keypoint_line,
+                        category_id=category_id,
+                        image_width=int(image["width"]),
+                        image_height=int(image["height"]),
+                    )
+                )
+            else:
+                lines.append(keypoint_line)
         target_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         rows.append(
             "%s %s"
@@ -222,6 +246,38 @@ def format_deepdetect_keypoint_line(keypoints: list[Any], nkeypoints: int) -> st
         else:
             fields.extend([format_number(x), format_number(y)])
     return " ".join(fields)
+
+
+def format_deepdetect_topdown_line(
+    annotation: dict[str, Any],
+    *,
+    keypoint_line: str,
+    category_id: int,
+    image_width: int,
+    image_height: int,
+) -> str:
+    bbox = annotation.get("bbox")
+    if not isinstance(bbox, list) or len(bbox) != 4:
+        raise ValueError(
+            f"annotation {annotation.get('id', '<unknown>')}: expected COCO bbox"
+        )
+    x, y, width, height = (float(value) for value in bbox)
+    xmin = max(0.0, min(float(image_width), x))
+    ymin = max(0.0, min(float(image_height), y))
+    xmax = max(0.0, min(float(image_width), x + width))
+    ymax = max(0.0, min(float(image_height), y + height))
+    if xmax <= xmin or ymax <= ymin:
+        raise ValueError(
+            f"annotation {annotation.get('id', '<unknown>')}: invalid COCO bbox"
+        )
+    fields = [
+        str(int(category_id)),
+        format_number(xmin),
+        format_number(ymin),
+        format_number(xmax),
+        format_number(ymax),
+    ]
+    return " ".join([*fields, keypoint_line])
 
 
 def output_path(path: Path, base: Path, relative: bool) -> str:

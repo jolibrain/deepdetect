@@ -444,8 +444,46 @@ namespace dd
       throw MLLibInternalException("pytorch worker is not configured");
 
     std::lock_guard<std::mutex> lock(_worker_mutex);
-    APIData params = request_params(ad_in);
-    APIData response = _worker->request("predict", params);
+    APIData request = ad_in;
+    APIData prepared = this->_inputc.keypoint_prediction_tensor_batch(
+        ad_in, connector_effective_mllib(ad_in));
+    std::string prediction_batch_id;
+    if (!prepared.empty())
+      {
+        request.add(
+            "pose_sources",
+            prepared.get("source_paths").get<std::vector<std::string>>());
+        if (!prepared.get("empty").get<bool>())
+          {
+            prediction_batch_id = prepared.get("batch_id").get<std::string>();
+            request.add("tensor_batch", prepared.getobj("batch"));
+          }
+      }
+    APIData response;
+    try
+      {
+        response = _worker->request("predict", request_params(request));
+      }
+    catch (...)
+      {
+        if (!prediction_batch_id.empty())
+          {
+            APIData done;
+            done.add("batch_id", prediction_batch_id);
+            this->_inputc.connector_batch_done(done);
+          }
+        if (!prepared.empty())
+          this->_inputc.cleanup_inline_detection_pull_session();
+        throw;
+      }
+    if (!prediction_batch_id.empty())
+      {
+        APIData done;
+        done.add("batch_id", prediction_batch_id);
+        this->_inputc.connector_batch_done(done);
+      }
+    if (!prepared.empty())
+      this->_inputc.cleanup_inline_detection_pull_session();
     APIData result = response.getobj("result");
     std::vector<APIData> results = result.getv("results");
 

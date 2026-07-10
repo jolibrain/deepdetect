@@ -420,7 +420,7 @@ TEST(pytorchworkerapi, keypoint_connector_inline_tensor_batches_scale_and_mask)
   APIData ad = parse_api_data(
       "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
       "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
-      "\"nkeypoints\":3}},\"data\":[\""
+      "\"nkeypoints\":3,\"vitpose\":{\"head\":\"slots\"}}},\"data\":[\""
       + fixture.train_list + "\"]}");
   APIData mllib = ad.getobj("parameters").getobj("mllib");
 
@@ -472,7 +472,8 @@ TEST(pytorchworkerapi, keypoint_connector_pull_reports_dataset_info)
   APIData ad = parse_api_data(
       "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
       "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
-      "\"nkeypoints\":3,\"connector_tensor_transport\":\"inline\"}},"
+      "\"nkeypoints\":3,\"connector_tensor_transport\":\"inline\","
+      "\"vitpose\":{\"head\":\"slots\"}}},"
       "\"data\":[\""
       + fixture.train_list + "\",\"" + fixture.test0_list + "\"]}");
   APIData mllib = ad.getobj("parameters").getobj("mllib");
@@ -505,6 +506,43 @@ TEST(pytorchworkerapi, keypoint_connector_pull_reports_dataset_info)
   cleanup_repo(fixture.root);
 }
 
+TEST(pytorchworkerapi, keypoint_connector_topdown_emits_object_crop_metadata)
+{
+  const KeypointFixture fixture
+      = prepare_keypoint_fixture("pytorchworker_keypoint_topdown_fixture");
+  const std::filesystem::path target
+      = std::filesystem::path(fixture.root) / "keypoints" / "sample0.txt";
+  write_text_file(target, "1 2 2 14 10 4 4 -1 -1 10 8\n");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3,\"vitpose\":{\"head\":\"topdown\","
+      "\"bbox_scale_factor\":1.25}}},\"data\":[\""
+      + fixture.train_list + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  APIData tensor_batches = inputc.inline_tensor_batches(ad, mllib);
+  JDoc doc;
+  doc.SetObject();
+  tensor_batches.toJDoc(doc);
+
+  ASSERT_EQ(1U, doc["train"].Size()) << tensor_batches.toJSONString();
+  const auto &batch = doc["train"][0];
+  EXPECT_EQ(1, batch["inputs"][0]["shape"][0].GetInt());
+  EXPECT_EQ(6, batch["inputs"][0]["shape"][2].GetInt());
+  EXPECT_EQ(8, batch["inputs"][0]["shape"][3].GetInt());
+  ASSERT_STREQ("topdown", batch["meta"]["keypoint_head"].GetString());
+  EXPECT_EQ(1, batch["meta"]["labels"][0].GetInt());
+  ASSERT_EQ(6U, batch["meta"]["inverse_affines"][0]["values"].Size());
+  const auto &instance = batch["targets"]["samples"][0]["instances"][0];
+  EXPECT_EQ(1, instance["label"].GetInt());
+  EXPECT_TRUE(instance["keypoints"][0]["valid"].GetBool());
+  EXPECT_FALSE(instance["keypoints"][1]["valid"].GetBool());
+
+  cleanup_repo(fixture.root);
+}
+
 TEST(pytorchworkerapi, keypoint_connector_rejects_bad_keypoint_rows)
 {
   const KeypointFixture fixture
@@ -515,7 +553,7 @@ TEST(pytorchworkerapi, keypoint_connector_rejects_bad_keypoint_rows)
   APIData ad = parse_api_data(
       "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
       "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
-      "\"nkeypoints\":3}},\"data\":[\""
+      "\"nkeypoints\":3,\"vitpose\":{\"head\":\"slots\"}}},\"data\":[\""
       + fixture.train_list + "\"]}");
   APIData mllib = ad.getobj("parameters").getobj("mllib");
 
@@ -526,6 +564,42 @@ TEST(pytorchworkerapi, keypoint_connector_rejects_bad_keypoint_rows)
   cleanup_repo(fixture.root);
 }
 
+TEST(pytorchworkerapi, keypoint_connector_topdown_prediction_uses_bbox_sidecar)
+{
+  const KeypointFixture fixture
+      = prepare_keypoint_fixture("pytorchworker_keypoint_predict_fixture");
+  const std::filesystem::path image
+      = std::filesystem::path(fixture.root) / "images" / "sample0.ppm";
+  const std::filesystem::path boxes
+      = std::filesystem::path(fixture.root) / "predict-boxes.txt";
+  write_text_file(boxes, "1 2 2 14 10\n");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true,\"bbox_files\":[\""
+      + boxes.string()
+      + "\"]},\"mllib\":{\"task\":\"keypoint\",\"nkeypoints\":3,"
+        "\"vitpose\":{\"head\":\"topdown\"}}},\"data\":[\""
+      + image.string() + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  APIData prepared = inputc.keypoint_prediction_tensor_batch(ad, mllib);
+  JDoc doc;
+  doc.SetObject();
+  prepared.toJDoc(doc);
+  ASSERT_FALSE(doc["empty"].GetBool());
+  ASSERT_EQ(1, doc["source_count"].GetInt());
+  EXPECT_EQ(1, doc["batch"]["inputs"][0]["shape"][0].GetInt());
+  EXPECT_EQ(1, doc["batch"]["meta"]["labels"][0].GetInt());
+  EXPECT_EQ(0, doc["batch"]["meta"]["sample_ids"][0].GetInt());
+
+  APIData done;
+  done.add("batch_id", prepared.get("batch_id").get<std::string>());
+  inputc.connector_batch_done(done);
+  inputc.cleanup_inline_detection_pull_session();
+  cleanup_repo(fixture.root);
+}
+
 TEST(pytorchworkerapi, keypoint_connector_rejects_cpp_augmentation)
 {
   const KeypointFixture fixture
@@ -533,7 +607,8 @@ TEST(pytorchworkerapi, keypoint_connector_rejects_cpp_augmentation)
   APIData ad = parse_api_data(
       "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
       "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
-      "\"nkeypoints\":3,\"mirror\":true}},\"data\":[\""
+      "\"nkeypoints\":3,\"mirror\":true,"
+      "\"vitpose\":{\"head\":\"slots\"}}},\"data\":[\""
       + fixture.train_list + "\"]}");
   APIData mllib = ad.getobj("parameters").getobj("mllib");
 

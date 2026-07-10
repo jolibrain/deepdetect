@@ -312,14 +312,14 @@ namespace dd
 #ifdef USE_SIMSEARCH
               bsresult._index_uri = sresult._index_uri;
 #endif
-              int nbest = std::min(best, static_cast<int>(sresult._cats.size()));
+              int nbest
+                  = std::min(best, static_cast<int>(sresult._cats.size()));
               std::copy_n(sresult._cats.begin(), nbest,
-                          std::inserter(bsresult._cats,
-                                        bsresult._cats.end()));
+                          std::inserter(bsresult._cats, bsresult._cats.end()));
               if (!sresult._keypoints.empty())
                 std::copy_n(sresult._keypoints.begin(),
                             std::min(nbest, static_cast<int>(
-                                                 sresult._keypoints.size())),
+                                                sresult._keypoints.size())),
                             std::inserter(bsresult._keypoints,
                                           bsresult._keypoints.end()));
               bcats._vcats.insert(std::pair<std::string, int>(
@@ -350,6 +350,13 @@ namespace dd
                                                     sresult._bboxes.size())),
                                 std::inserter(bsresult._bboxes,
                                               bsresult._bboxes.end()));
+                  if (has_keypoints && !sresult._keypoints.empty())
+                    std::copy_n(
+                        sresult._keypoints.begin(),
+                        std::min(nbest,
+                                 static_cast<int>(sresult._keypoints.size())),
+                        std::inserter(bsresult._keypoints,
+                                      bsresult._keypoints.end()));
                 }
               else
                 {
@@ -359,6 +366,7 @@ namespace dd
                   auto mitx = sresult._bboxes.begin();
                   auto mity = sresult._vals.begin();
                   auto mitmask = sresult._masks.begin();
+                  auto mitkeypoints = sresult._keypoints.begin();
                   while (mitx != sresult._bboxes.end())
                     {
                       APIData bbad = (*mitx).second;
@@ -368,6 +376,10 @@ namespace dd
                       APIData maskad;
                       if (has_mask)
                         maskad = (*mitmask).second;
+                      APIData keypointsad;
+                      if (has_keypoints
+                          && mitkeypoints != sresult._keypoints.end())
+                        keypointsad = (*mitkeypoints).second;
                       std::string bbkey
                           = std::to_string(bbad.get("xmin").get<double>())
                             + "-"
@@ -395,6 +407,10 @@ namespace dd
                                 bsresult._masks.insert(
                                     std::pair<double, APIData>(
                                         (*mitmask).first, maskad));
+                              if (has_keypoints && !keypointsad.empty())
+                                bsresult._keypoints.insert(
+                                    std::pair<double, APIData>(
+                                        (*mitkeypoints).first, keypointsad));
                             }
                         }
                       else
@@ -410,6 +426,10 @@ namespace dd
                           if (has_mask)
                             bsresult._masks.insert(std::pair<double, APIData>(
                                 (*mitmask).first, maskad));
+                          if (has_keypoints && !keypointsad.empty())
+                            bsresult._keypoints.insert(
+                                std::pair<double, APIData>(
+                                    (*mitkeypoints).first, keypointsad));
                         }
                       ++mitx;
                       ++mit;
@@ -417,6 +437,9 @@ namespace dd
                         ++mity;
                       if (has_mask)
                         ++mitmask;
+                      if (has_keypoints
+                          && mitkeypoints != sresult._keypoints.end())
+                        ++mitkeypoints;
                     }
                 }
               bcats._vcats.insert(std::pair<std::string, int>(
@@ -3023,8 +3046,7 @@ namespace dd
     void to_dto(oatpp::Object<DTO::PredictBody> out, const bool &regression,
                 const bool &autoencoder, const bool &has_bbox,
                 const bool &has_roi, const bool &has_mask,
-                const bool &has_keypoints,
-                const bool &timeseries,
+                const bool &has_keypoints, const bool &timeseries,
                 const std::unordered_set<std::string> &indexed_uris) const
     {
 #ifndef USE_SIMSEARCH

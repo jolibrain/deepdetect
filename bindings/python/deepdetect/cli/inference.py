@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import time
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ from .options import (
 )
 from .profiles import get_profile
 from .runs import summarize_timings
-from .utils import chunks, configure_gpu_compatibility, stage_model
+from .utils import configure_gpu_compatibility, stage_model
 from .visualize import (
     output_path_for,
     render_detections,
@@ -46,6 +47,8 @@ def run_infer(args: Any) -> int:
         warmup=args.warmup,
         output_format=args.output_format,
         confidence_threshold=getattr(args, "confidence_threshold", None),
+        keypoint_threshold=getattr(args, "keypoint_threshold", None),
+        bbox_files=getattr(args, "bbox_files", None),
         best_bbox=getattr(args, "best_bbox", None),
     )
     options = resolve_options(profile.infer_defaults(), args, cli_values)
@@ -64,6 +67,10 @@ def run_infer(args: Any) -> int:
         threshold = float(options["confidence_threshold"])
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("confidence threshold must be between 0 and 1")
+    if profile.task == "keypoint":
+        keypoint_threshold = float(options["keypoint_threshold"])
+        if not 0.0 <= keypoint_threshold <= 1.0:
+            raise ValueError("keypoint threshold must be between 0 and 1")
     if profile.task == "detection":
         if options.get("best_bbox") is not None:
             validate_positive("best_bbox", int(options["best_bbox"]))
@@ -75,16 +82,47 @@ def run_infer(args: Any) -> int:
     configure_gpu_compatibility(dd.build_info, requested=bool(options["gpu"]))
     service_parameters = profile.service_parameters(options)
     predict_parameters = profile.predict_parameters(options)
+    bbox_files: list[Path] = []
+    if profile.task == "keypoint":
+        vitpose = service_parameters["mllib_parameters"].get("vitpose", {})
+        head = (
+            str(vitpose.get("head", "topdown"))
+            if isinstance(vitpose, dict)
+            else "topdown"
+        )
+        bbox_files = [
+            Path(path).expanduser().resolve()
+            for path in options.get("bbox_files") or []
+        ]
+        if head == "topdown":
+            if len(bbox_files) != len(images):
+                raise ValueError(
+                    "top-down ViTPose requires one --bbox-files entry per image"
+                )
+            for bbox_file in bbox_files:
+                if not bbox_file.is_file():
+                    raise FileNotFoundError(f"bbox file not found: {bbox_file}")
+        elif bbox_files:
+            raise ValueError("--bbox-files is only valid for top-down ViTPose")
     batch_times: list[float] = []
     all_predictions: list[dict[str, Any]] = []
 
     with dd.create_service(options["service_name"], **service_parameters) as service:
-        first_batch = next(chunks([image.resolve() for image in images], int(options["batch_size"])))
+        resolved_images = [image.resolve() for image in images]
+        batch_size = int(options["batch_size"])
+        first_batch = resolved_images[:batch_size]
+        first_parameters = _prediction_batch_parameters(
+            predict_parameters, bbox_files[:batch_size]
+        )
         for _ in range(int(options["warmup"])):
-            service.predict(first_batch, **predict_parameters)
-        for batch in chunks([image.resolve() for image in images], int(options["batch_size"])):
+            service.predict(first_batch, **first_parameters)
+        for start in range(0, len(resolved_images), batch_size):
+            batch = resolved_images[start : start + batch_size]
+            batch_parameters = _prediction_batch_parameters(
+                predict_parameters, bbox_files[start : start + batch_size]
+            )
             started = time.perf_counter()
-            result = service.predict(batch, **predict_parameters)
+            result = service.predict(batch, **batch_parameters)
             elapsed = time.perf_counter() - started
             batch_times.append(elapsed)
             predictions = result.get("predictions", [])
@@ -116,6 +154,17 @@ def run_infer(args: Any) -> int:
             **summarize_timings(batch_times, len(images)),
         )
     return 0
+
+
+def _prediction_batch_parameters(
+    parameters: dict[str, Any], bbox_files: list[Path]
+) -> dict[str, Any]:
+    result = copy.deepcopy(parameters)
+    if bbox_files:
+        result["input_parameters"]["bbox_files"] = [
+            str(path) for path in bbox_files
+        ]
+    return result
 
 
 def write_visual_outputs(

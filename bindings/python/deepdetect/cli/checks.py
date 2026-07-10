@@ -145,7 +145,9 @@ def validate_detection_lists(list_paths: list[Path], nclasses: int) -> dict[str,
     }
 
 
-def validate_keypoint_lists(list_paths: list[Path], nkeypoints: int) -> dict[str, Any]:
+def validate_keypoint_lists(
+    list_paths: list[Path], nkeypoints: int, *, head: str
+) -> dict[str, Any]:
     if nkeypoints <= 0:
         raise ValueError("number of keypoints must be positive")
     checked_images = 0
@@ -193,14 +195,34 @@ def validate_keypoint_lists(list_paths: list[Path], nkeypoints: int) -> dict[str
                     if not keypoint_line.strip():
                         continue
                     fields = keypoint_line.split()
-                    expected = nkeypoints * 2
+                    expected = nkeypoints * 2 + (5 if head == "topdown" else 0)
                     if len(fields) != expected:
                         raise ValueError(
                             f"{keypoints_path}:{keypoint_line_number}: "
                             f"expected {expected} coordinate fields"
                         )
-                    for value in fields:
-                        float(value)
+                    offset = 0
+                    if head == "topdown":
+                        cls = int(fields[0])
+                        if cls <= 0 or str(cls) != fields[0]:
+                            raise ValueError(
+                                f"{keypoints_path}:{keypoint_line_number}: "
+                                "class must be a positive integer"
+                            )
+                        xmin, ymin, xmax, ymax = (float(value) for value in fields[1:5])
+                        if xmax <= xmin or ymax <= ymin:
+                            raise ValueError(
+                                f"{keypoints_path}:{keypoint_line_number}: invalid bbox"
+                            )
+                        offset = 5
+                    coordinates = [float(value) for value in fields[offset:]]
+                    for index in range(0, len(coordinates), 2):
+                        x, y = coordinates[index : index + 2]
+                        if (x == -1.0) != (y == -1.0) or x < -1.0 or y < -1.0:
+                            raise ValueError(
+                                f"{keypoints_path}:{keypoint_line_number}: "
+                                "missing keypoints must be -1 -1"
+                            )
                     instances += 1
                 progress.update(1)
     finally:
@@ -212,6 +234,7 @@ def validate_keypoint_lists(list_paths: list[Path], nkeypoints: int) -> dict[str
         "checked_keypoint_files": checked_keypoint_files,
         "instances": instances,
         "nkeypoints": nkeypoints,
+        "head": head,
     }
 
 
@@ -291,11 +314,27 @@ def run_training_checks(task: str, options: dict[str, Any]) -> list[dict[str, An
             {
                 "name": "keypoint_targets",
                 **validate_keypoint_lists(
-                    [train_data, *test_data], int(options["nkeypoints"])
+                    [train_data, *test_data],
+                    int(options["nkeypoints"]),
+                    head=_keypoint_head(options),
                 ),
             }
         )
     return checks
+
+
+def _keypoint_head(options: dict[str, Any]) -> str:
+    head = "topdown"
+    for section_name in ("service_mllib", "mllib"):
+        section = options.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        vitpose = section.get("vitpose")
+        if isinstance(vitpose, dict) and "head" in vitpose:
+            head = str(vitpose["head"])
+    if head not in {"topdown", "slots"}:
+        raise ValueError("vitpose.head must be topdown or slots")
+    return head
 
 
 def _test_data_paths(value: Any) -> list[Path]:

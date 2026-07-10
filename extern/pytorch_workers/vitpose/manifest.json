@@ -17,5 +17,5 @@
   ],
   "external_repositories_required": false,
   "python_dependencies": ["torch", "numpy", "Pillow"],
-  "generation_notes": "Initial DeepDetect keypoint worker with fixed object slots and training-time Hungarian assignment."
+  "generation_notes": "Self-contained ViTPose worker with default bbox-driven top-down heatmaps and optional Hungarian-assigned full-image slots."
 }

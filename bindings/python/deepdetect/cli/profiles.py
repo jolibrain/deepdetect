@@ -114,6 +114,8 @@ class ModelProfile:
             "output_format": "json",
             "confidence_threshold": 0.25,
             "best_bbox": None,
+            "bbox_files": None,
+            "keypoint_threshold": 0.05,
         }
 
     def service_parameters(self, options: dict[str, Any]) -> dict[str, Any]:
@@ -200,6 +202,9 @@ class ModelProfile:
                 output["best_bbox"] = int(options["best_bbox"])
         if self.task == "keypoint":
             output["confidence_threshold"] = float(options["confidence_threshold"])
+            output["keypoint_threshold"] = float(
+                options.get("keypoint_threshold", 0.05)
+            )
         return {
             "input_parameters": input_parameters,
             "output_parameters": output,
@@ -398,10 +403,12 @@ PROFILES = {
             "nkeypoints": 17,
             "max_objects": 1,
             "vitpose": {
+                "head": "topdown",
                 "variant": "base",
                 "image_size": [192, 256],
                 "heatmap_size": [48, 64],
                 "sigma": 2.0,
+                "bbox_scale_factor": 1.25,
                 "max_objects": 1,
                 "objectness_threshold": 0.25,
                 "keypoint_threshold": 0.05,
@@ -419,16 +426,18 @@ PROFILES = {
             "nkeypoints": 17,
             "max_objects": 1,
             "vitpose": {
+                "head": "topdown",
                 "variant": "base",
                 "image_size": [192, 256],
                 "heatmap_size": [48, 64],
                 "sigma": 2.0,
+                "bbox_scale_factor": 1.25,
                 "max_objects": 1,
             },
         },
         train_output={"measure": ["train_loss"]},
         predict_input={"height": 256, "width": 192},
-        predict_output={"keypoints": True},
+        predict_output={"bbox": True, "keypoints": True},
     ),
 }
 

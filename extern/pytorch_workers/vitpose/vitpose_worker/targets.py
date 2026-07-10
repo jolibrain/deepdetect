@@ -117,6 +117,55 @@ def build_batch_targets(
     )
 
 
+def build_topdown_batch_targets(
+    targets: list[dict[str, Any]],
+    *,
+    config: PoseTargetConfig,
+    torch_module: Any,
+    device: Any,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    heatmaps = []
+    weights = []
+    for target in targets:
+        sample_heatmaps = torch_module.zeros(
+            (
+                config.nkeypoints,
+                config.heatmap_size[1],
+                config.heatmap_size[0],
+            ),
+            dtype=torch_module.float32,
+            device=device,
+        )
+        sample_weights = torch_module.zeros(
+            (config.nkeypoints, 1),
+            dtype=torch_module.float32,
+            device=device,
+        )
+        keypoints = target["keypoints"].to(device)
+        visible = target["visible"].to(device)
+        if int(keypoints.shape[0]) > 1:
+            raise ValueError("top-down pose samples must contain at most one instance")
+        if int(keypoints.shape[0]) == 1:
+            for joint_index in range(config.nkeypoints):
+                if float(visible[0, joint_index].item()) <= 0.0:
+                    continue
+                x = float(keypoints[0, joint_index, 0].item())
+                y = float(keypoints[0, joint_index, 1].item())
+                if not math.isfinite(x) or not math.isfinite(y) or x < 0.0 or y < 0.0:
+                    continue
+                if _draw_udp_gaussian(
+                    sample_heatmaps[joint_index],
+                    x,
+                    y,
+                    image_size=config.image_size,
+                    sigma=config.sigma,
+                ):
+                    sample_weights[joint_index, 0] = 1.0
+        heatmaps.append(sample_heatmaps)
+        weights.append(sample_weights)
+    return torch_module.stack(heatmaps, dim=0), torch_module.stack(weights, dim=0)
+
+
 def _draw_udp_gaussian(
     heatmap: torch.Tensor,
     x: float,

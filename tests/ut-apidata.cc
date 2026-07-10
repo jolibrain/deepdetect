@@ -146,20 +146,28 @@ TEST(apidata, supervised_output_keypoints_to_dto)
   std::vector<APIData> points = { point0, point1 };
   APIData keypoints;
   keypoints.add("points", points);
+  APIData bbox;
+  bbox.add("xmin", 10.0);
+  bbox.add("ymin", 20.0);
+  bbox.add("xmax", 30.0);
+  bbox.add("ymax", 40.0);
 
   APIData result;
   result.add("uri", std::string("image.jpg"));
   result.add("loss", 0.0);
   result.add("probs", std::vector<double>{ 0.9 });
   result.add("cats", std::vector<std::string>{ "pose" });
+  result.add("bboxes", std::vector<APIData>{ bbox });
   result.add("keypoints", std::vector<APIData>{ keypoints });
   output.add_results(std::vector<APIData>{ result });
 
   auto output_params = DTO::OutputConnector::createShared();
   output_params->keypoints = true;
+  output_params->bbox = true;
   OutputConnectorConfig config;
   config._nclasses = 1;
   config._has_keypoints = true;
+  config._has_bbox = true;
   auto dto = output.finalize(output_params, config, nullptr);
 
   ASSERT_EQ(1U, dto->predictions->size());
@@ -167,6 +175,8 @@ TEST(apidata, supervised_output_keypoints_to_dto)
   auto cls = dto->predictions->at(0)->classes->at(0);
   ASSERT_EQ(std::string("pose"), cls->cat.getValue(""));
   ASSERT_TRUE(cls->keypoints != nullptr);
+  ASSERT_TRUE(cls->bbox != nullptr);
+  EXPECT_DOUBLE_EQ(10.0, cls->bbox->xmin);
   ASSERT_EQ(2U, cls->keypoints->size());
   EXPECT_DOUBLE_EQ(1.0, cls->keypoints->at(0)->get("x").get<double>());
   EXPECT_DOUBLE_EQ(2.0, cls->keypoints->at(0)->get("y").get<double>());

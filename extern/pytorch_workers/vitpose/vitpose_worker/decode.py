@@ -50,6 +50,46 @@ def decode_pose_outputs(
     return decoded
 
 
+def decode_topdown_outputs(
+    outputs: dict[str, torch.Tensor],
+    *,
+    metas: list[dict[str, Any]],
+    keypoint_threshold: float,
+) -> list[dict[str, Any]]:
+    heatmaps = outputs["heatmaps"].detach()
+    decoded: list[dict[str, Any]] = []
+    for batch_index, meta in enumerate(metas):
+        inverse = meta.get("inverse_affine")
+        if not isinstance(inverse, list) or len(inverse) != 6:
+            raise ValueError("top-down prediction metadata requires inverse_affine")
+        points = []
+        confidences = []
+        for joint_index in range(int(heatmaps.shape[1])):
+            x, y, confidence, valid = decode_keypoint(
+                heatmaps[batch_index, joint_index],
+                image_size=(int(meta["width"]), int(meta["height"])),
+                threshold=keypoint_threshold,
+            )
+            if valid:
+                x, y = (
+                    inverse[0] * x + inverse[1] * y + inverse[2],
+                    inverse[3] * x + inverse[4] * y + inverse[5],
+                )
+                confidences.append(confidence)
+            points.append({"x": x, "y": y, "prob": confidence, "valid": valid})
+        decoded.append(
+            {
+                "cat": str(int(meta.get("label", 1))),
+                "prob": 1.0,
+                "bbox": meta.get("bbox"),
+                "keypoints": points,
+                "source_index": int(meta["index"]),
+                "instance_id": int(meta.get("instance_id", 0)),
+            }
+        )
+    return decoded
+
+
 def decode_keypoint(
     heatmap: torch.Tensor,
     *,
@@ -84,15 +124,16 @@ def connector_predictions(
 ) -> list[dict[str, Any]]:
     results = []
     for image_path, poses in zip(image_paths, decoded):
-        results.append(
-            {
-                "uri": str(image_path),
-                "loss": 0.0,
-                "probs": [float(pose["prob"]) for pose in poses],
-                "cats": [str(pose.get("cat", "pose")) for pose in poses],
-                "keypoints": [{"points": pose["keypoints"]} for pose in poses],
-            }
-        )
+        result = {
+            "uri": str(image_path),
+            "loss": 0.0,
+            "probs": [float(pose["prob"]) for pose in poses],
+            "cats": [str(pose.get("cat", "pose")) for pose in poses],
+            "keypoints": [{"points": pose["keypoints"]} for pose in poses],
+        }
+        if poses and all(pose.get("bbox") is not None for pose in poses):
+            result["bboxes"] = [pose["bbox"] for pose in poses]
+        results.append(result)
     return results
 
 

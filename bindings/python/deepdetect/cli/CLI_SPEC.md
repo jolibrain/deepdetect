@@ -12,7 +12,9 @@ to focused model profiles:
 - `external-pytorch-detector`: an external Python worker selected through
   YAML/API `mllib.entrypoint`.
 - `vitpose`: a self-contained PyTorch keypoint worker selected through an
-  in-tree `extern/pytorch_workers/vitpose/worker.py` entrypoint.
+  in-tree `extern/pytorch_workers/vitpose/worker.py` entrypoint. It uses
+  bbox-driven top-down pose by default; `vitpose.head: slots` retains the
+  full-image Hungarian slot model.
 
 The canonical command shape is task first:
 

@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 
 from .assignment import hungarian_assign
-from .targets import PoseTargetConfig, build_batch_targets
+from .targets import PoseTargetConfig, build_batch_targets, build_topdown_batch_targets
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,29 @@ class PoseLossConfig:
     target: PoseTargetConfig
     heatmap_weight: float = 1.0
     objectness_weight: float = 1.0
+
+
+def topdown_pose_losses(
+    outputs: dict[str, torch.Tensor],
+    targets: list[dict[str, Any]],
+    *,
+    config: PoseLossConfig,
+    torch_module: Any,
+    device: Any,
+) -> tuple[dict[str, torch.Tensor], dict[str, float]]:
+    target_heatmaps, target_weights = build_topdown_batch_targets(
+        targets,
+        config=config.target,
+        torch_module=torch_module,
+        device=device,
+    )
+    heatmap_loss = masked_heatmap_mse(
+        outputs["heatmaps"], target_heatmaps, target_weights
+    )
+    return (
+        {"loss": float(config.heatmap_weight) * heatmap_loss, "heatmap_loss": heatmap_loss},
+        {"assigned_objects": float(len(targets)), "dropped_objects": 0.0},
+    )
 
 
 def slot_pose_losses(

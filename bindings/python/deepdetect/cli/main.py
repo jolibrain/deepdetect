@@ -142,6 +142,9 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
     parser.add_argument("--nclasses", type=int)
     parser.add_argument("--nkeypoints", type=int)
     parser.add_argument("--max-objects", type=int)
+    if PROFILES[model].task == "keypoint":
+        parser.add_argument("--bbox-files", nargs="+", type=Path)
+        parser.add_argument("--keypoint-threshold", type=float)
     parser.add_argument("--width", type=int)
     parser.add_argument("--height", type=int)
     parser.add_argument("--batch-size", type=int)

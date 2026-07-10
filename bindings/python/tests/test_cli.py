@@ -212,6 +212,7 @@ def test_default_example_configs_load():
         "extern/pytorch_workers/vitpose/worker.py"
     )
     assert vitpose["service_mllib"]["task"] == "keypoint"
+    assert vitpose["service_mllib"]["vitpose"]["head"] == "topdown"
     assert vitpose["mllib"]["data_source"] == "connector_tensor_pull"
     assert vitpose["dataset_check"] == "full"
 
@@ -458,11 +459,14 @@ def test_vitpose_profile_passes_keypoint_worker_parameters():
     assert service_mllib["task"] == "keypoint"
     assert service_mllib["nkeypoints"] == 17
     assert service_mllib["max_objects"] == 1
+    assert service_mllib["vitpose"]["head"] == "topdown"
     assert train_params["mllib_parameters"]["data_source"] == "connector_tensor_pull"
     assert train_params["mllib_parameters"]["nkeypoints"] == 17
     assert train_params["mllib_parameters"]["max_objects"] == 1
     assert predict_params["output_parameters"]["keypoints"] is True
+    assert predict_params["output_parameters"]["bbox"] is True
     assert predict_params["output_parameters"]["confidence_threshold"] == 0.25
+    assert predict_params["output_parameters"]["keypoint_threshold"] == 0.05
 
 
 def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
@@ -2048,6 +2052,32 @@ def test_visdom_result_images_are_resized_to_max_side():
     assert resized[0].shape == (3, 256, 512)
 
 
+def test_visdom_keypoint_results_render_points_on_source_image(tmp_path):
+    image_path = tmp_path / "pose.jpg"
+    Image.new("RGB", (20, 20), color="white").save(image_path)
+    prediction = {
+        "index": 0,
+        "imgsize": {"width": 20, "height": 20},
+        "classes": [
+            {
+                "cat": "1",
+                "prob": 1.0,
+                "keypoints": [
+                    {"x": 10.0, "y": 10.0, "prob": 0.9, "valid": True},
+                    {"x": -1.0, "y": -1.0, "prob": 0.0, "valid": False},
+                ],
+            }
+        ],
+    }
+
+    rendered = results.result_image_array(
+        "keypoint", image_path, prediction, image_size=(20, 20)
+    )
+
+    assert rendered.shape == (3, 20, 20)
+    assert not np.all(rendered[:, 10, 10] == 255)
+
+
 def test_visdom_result_images_are_padded_without_distorting_aspect_ratio():
     wide = np.full((3, 600, 1200), 32, dtype=np.uint8)
     tall = np.full((3, 1200, 600), 64, dtype=np.uint8)
@@ -2320,6 +2350,46 @@ def test_infer_yolox_batches_and_benchmark(monkeypatch, tmp_path, capsys):
     ]
     assert [event["event"] for event in events].count("prediction") == 2
     assert events[-1]["event"] == "benchmark"
+
+
+def test_infer_vitpose_aligns_bbox_files_with_image_batches(
+    monkeypatch, tmp_path, capsys
+):
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    images = []
+    boxes = []
+    for index in range(2):
+        image = tmp_path / f"pose-{index}.png"
+        bbox = tmp_path / f"pose-{index}.txt"
+        Image.new("RGB", (8, 8), "white").save(image)
+        bbox.write_text("1 1 1 7 7\n", encoding="utf-8")
+        images.append(image)
+        boxes.append(bbox)
+
+    code = cli.main(
+        [
+            "infer",
+            "vitpose",
+            *(str(path) for path in images),
+            "--bbox-files",
+            *(str(path) for path in boxes),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--batch-size",
+            "1",
+        ]
+    )
+
+    assert code == 0
+    predict_calls = [call for call in runtime.calls if call[0] == "predict"]
+    assert len(predict_calls) == 2
+    for index, call in enumerate(predict_calls):
+        assert call[1]["parameters"]["input"]["bbox_files"] == [
+            str(boxes[index].resolve())
+        ]
 
 
 def test_infer_segformer_keeps_default_size(monkeypatch, tmp_path, capsys):

@@ -113,6 +113,14 @@ namespace dd
       }
       DTO_FIELD(Boolean, keypoints);
 
+      DTO_FIELD_INFO(bbox_files)
+      {
+        info->description
+            = "[keypoint prediction] bounding-box sidecar files aligned with "
+              "the input images";
+      }
+      DTO_FIELD(Vector<String>, bbox_files);
+
       // Text input connector
       DTO_FIELD_INFO(count)
       {

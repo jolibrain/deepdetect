@@ -12,6 +12,7 @@ from .targets import PoseTargetConfig
 
 @dataclass(frozen=True)
 class ViTPoseWorkerConfig:
+    head: str
     model: ViTPoseModelConfig
     target: PoseTargetConfig
     loss: PoseLossConfig
@@ -19,6 +20,7 @@ class ViTPoseWorkerConfig:
     std: tuple[float, float, float]
     objectness_threshold: float
     keypoint_threshold: float
+    bbox_scale_factor: float
     weight_decay: float
     adamw_betas: tuple[float, float]
     layer_decay: float
@@ -29,6 +31,9 @@ class ViTPoseWorkerConfig:
 def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
     options = mllib.get("vitpose", {})
     options = options if isinstance(options, dict) else {}
+    head = str(options.get("head", "topdown"))
+    if head not in {"topdown", "slots"}:
+        raise DatasetContractError("vitpose.head must be topdown or slots")
     variant = str(options.get("variant", mllib.get("variant", "base")))
     if variant not in VARIANT_DEFAULTS:
         raise DatasetContractError(
@@ -47,6 +52,7 @@ def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
         "heatmap_size",
     )
     model_config = ViTPoseModelConfig(
+        head=head,
         image_size=image_size,
         heatmap_size=heatmap_size,
         nkeypoints=nkeypoints,
@@ -78,6 +84,7 @@ def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
         objectness_weight=float(options.get("objectness_loss_weight", 1.0)),
     )
     return ViTPoseWorkerConfig(
+        head=head,
         model=model_config,
         target=target_config,
         loss=loss_config,
@@ -85,6 +92,9 @@ def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
         std=float_tuple(options.get("std", [0.229, 0.224, 0.225]), "std", length=3),
         objectness_threshold=float(options.get("objectness_threshold", 0.25)),
         keypoint_threshold=float(options.get("keypoint_threshold", 0.05)),
+        bbox_scale_factor=positive_float(
+            options.get("bbox_scale_factor", 1.25), "bbox_scale_factor"
+        ),
         weight_decay=float(options.get("weight_decay", 0.1)),
         adamw_betas=float_tuple(options.get("betas", [0.9, 0.999]), "betas", length=2),
         layer_decay=float(options.get("layer_decay", variant_layer_decay(variant))),
@@ -109,6 +119,13 @@ def variant_layer_decay(variant: str) -> float:
 def positive_int(value: Any, name: str) -> int:
     result = int(value)
     if result <= 0:
+        raise DatasetContractError(f"{name} must be positive")
+    return result
+
+
+def positive_float(value: Any, name: str) -> float:
+    result = float(value)
+    if result <= 0.0:
         raise DatasetContractError(f"{name} must be positive")
     return result
 

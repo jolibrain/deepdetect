@@ -68,6 +68,79 @@ namespace dd
         start_inline_detection_pull_session(ad);
     }
 
+    APIData keypoint_prediction_tensor_batch(const APIData &ad,
+                                             const APIData &mllib)
+    {
+      if (!is_keypoint_task(tensor_task(mllib))
+          || keypoint_head(mllib) != "topdown")
+        return APIData();
+      cleanup_inline_detection_pull_session();
+      APIData input_params;
+      if (ad.has("parameters") && ad.getobj("parameters").has("input"))
+        input_params = ad.getobj("parameters").getobj("input");
+      fillup_parameters(input_params);
+      validate_keypoint_connector_config(input_params, mllib,
+                                         "keypoint prediction");
+      _pull_keypoint_head = "topdown";
+      _pull_bbox_scale_factor = bbox_scale_factor(mllib);
+      configure_pull_transport(ad);
+      if (!ad.has("data"))
+        throw InputConnectorBadParamException(
+            "top-down keypoint prediction requires image data");
+      const std::vector<std::string> data
+          = ad.get("data").get<std::vector<std::string>>();
+      if (!input_params.has("bbox_files"))
+        throw InputConnectorBadParamException(
+            "top-down keypoint prediction requires input.bbox_files");
+      const std::vector<std::string> bbox_files
+          = input_params.get("bbox_files").get<std::vector<std::string>>();
+      if (bbox_files.size() != data.size())
+        throw InputConnectorBadParamException(
+            "input.bbox_files must contain one file per input image");
+
+      std::vector<PoseRecord> records;
+      std::vector<std::string> source_paths;
+      source_paths.reserve(data.size());
+      for (size_t source_index = 0; source_index < data.size(); ++source_index)
+        {
+          const auto image_path = std::filesystem::absolute(
+              std::filesystem::path(data[source_index]));
+          const auto bbox_path = std::filesystem::absolute(
+              std::filesystem::path(bbox_files[source_index]));
+          source_paths.push_back(image_path.string());
+          const auto boxes = read_prediction_boxes(bbox_path);
+          for (size_t instance_index = 0; instance_index < boxes.size();
+               ++instance_index)
+            {
+              PoseRecord record;
+              record.image_path = image_path;
+              record.target_path = bbox_path;
+              record.source_index = static_cast<int>(source_index);
+              record.instance_index = static_cast<int>(instance_index);
+              record.instance.label = boxes[instance_index].label;
+              record.instance.bbox = boxes[instance_index];
+              records.push_back(record);
+            }
+        }
+
+      APIData result;
+      result.add("source_paths", source_paths);
+      result.add("source_count", static_cast<int>(source_paths.size()));
+      if (records.empty())
+        {
+          result.add("empty", true);
+          return result;
+        }
+      const std::string batch_id = "predict-" + next_pull_batch_id();
+      PullBatchBuildResult built
+          = topdown_keypoint_batch(records, 0, records.size(), batch_id,
+                                   keypoint_count(mllib), false, source_paths);
+      result.add("empty", false);
+      result.add("batch_id", batch_id);
+      result.add("batch", built.batch);
+      return result;
+    }
+
     APIData inline_detection_tensor_batches(const APIData &ad)
     {
       APIData input_params;
@@ -172,17 +245,34 @@ namespace dd
         throw InputConnectorBadParamException(
             "connector_tensor_pull session is not active");
       std::vector<int> test_samples;
-      test_samples.reserve(_pull_tests.size());
-      for (const auto &test_set : _pull_tests)
-        test_samples.push_back(static_cast<int>(test_set.size()));
+      if (is_keypoint_task(_pull_task) && _pull_keypoint_head == "topdown")
+        {
+          test_samples.reserve(_pull_pose_tests.size());
+          for (const auto &test_set : _pull_pose_tests)
+            test_samples.push_back(static_cast<int>(test_set.size()));
+        }
+      else
+        {
+          test_samples.reserve(_pull_tests.size());
+          for (const auto &test_set : _pull_tests)
+            test_samples.push_back(static_cast<int>(test_set.size()));
+        }
       APIData info;
       info.add("task", _pull_task);
       if (is_keypoint_task(_pull_task))
-        info.add("nkeypoints", _pull_nkeypoints);
+        {
+          info.add("nkeypoints", _pull_nkeypoints);
+          info.add("keypoint_head", _pull_keypoint_head);
+          info.add("bbox_scale_factor", _pull_bbox_scale_factor);
+        }
       info.add("boundary", std::string("connector-tensor-pull"));
-      info.add("train_samples", static_cast<int>(_pull_train.size()));
+      info.add("train_samples",
+               static_cast<int>(is_keypoint_task(_pull_task)
+                                        && _pull_keypoint_head == "topdown"
+                                    ? _pull_pose_train.size()
+                                    : _pull_train.size()));
       info.add("test_samples", test_samples);
-      info.add("test_sets_total", static_cast<int>(_pull_tests.size()));
+      info.add("test_sets_total", static_cast<int>(test_samples.size()));
       info.add("transport", _pull_transport);
       info.add("input_width", _width);
       info.add("input_height", _height);
@@ -214,18 +304,33 @@ namespace dd
         reset_epoch = params.get("reset_epoch").get<bool>();
 
       if (split == "train")
-        return connector_batch_next_from(_pull_train, _pull_train_pos,
-                                         batch_size, reset_epoch, true, split,
-                                         APINull());
+        {
+          if (is_keypoint_task(_pull_task) && _pull_keypoint_head == "topdown")
+            return connector_topdown_batch_next_from(
+                _pull_pose_train, _pull_train_pos, batch_size, reset_epoch,
+                true, split, APINull());
+          return connector_batch_next_from(_pull_train, _pull_train_pos,
+                                           batch_size, reset_epoch, true,
+                                           split, APINull());
+        }
       if (split != "test")
         throw InputConnectorBadParamException(
             "connector_tensor_pull split must be train or test");
       int test_index = 0;
       if (params.has("test_index"))
         test_index = params.get("test_index").get<int>();
-      if (test_index < 0 || test_index >= static_cast<int>(_pull_tests.size()))
+      const size_t test_count
+          = is_keypoint_task(_pull_task) && _pull_keypoint_head == "topdown"
+                ? _pull_pose_tests.size()
+                : _pull_tests.size();
+      if (test_index < 0 || test_index >= static_cast<int>(test_count))
         throw InputConnectorBadParamException(
             "connector_tensor_pull test_index out of range");
+      if (is_keypoint_task(_pull_task) && _pull_keypoint_head == "topdown")
+        return connector_topdown_batch_next_from(
+            _pull_pose_tests[static_cast<size_t>(test_index)],
+            _pull_test_pos[static_cast<size_t>(test_index)], batch_size,
+            reset_epoch, false, split, test_index);
       return connector_batch_next_from(
           _pull_tests[static_cast<size_t>(test_index)],
           _pull_test_pos[static_cast<size_t>(test_index)], batch_size,
@@ -250,6 +355,22 @@ namespace dd
     };
 
     using KeypointInstance = std::vector<Keypoint>;
+
+    struct PoseInstance
+    {
+      int label = 0;
+      DetectionBBox bbox;
+      KeypointInstance keypoints;
+    };
+
+    struct PoseRecord
+    {
+      std::filesystem::path image_path;
+      std::filesystem::path target_path;
+      int source_index = 0;
+      int instance_index = 0;
+      PoseInstance instance;
+    };
 
     using DetectionPair
         = std::pair<std::filesystem::path, std::filesystem::path>;
@@ -352,8 +473,28 @@ namespace dd
 
     std::vector<APIData> inline_keypoint_batches(const std::string &list_path,
                                                  int max_samples,
-                                                 int nkeypoints) const
+                                                 int nkeypoints,
+                                                 const std::string &head)
     {
+      if (head == "topdown")
+        {
+          const std::vector<PoseRecord> records
+              = read_topdown_records(list_path, nkeypoints);
+          if (max_samples > 0
+              && records.size() > static_cast<size_t>(max_samples))
+            throw InputConnectorBadParamException(
+                "connector_tensor_inline exceeds configured object limit");
+          std::vector<APIData> batches;
+          batches.reserve(records.size());
+          _pull_transport = "inline";
+          for (size_t index = 0; index < records.size(); ++index)
+            batches.push_back(
+                topdown_keypoint_batch(records, index, 1,
+                                       "inline-" + std::to_string(index),
+                                       nkeypoints, true, {})
+                    .batch);
+          return batches;
+        }
       std::vector<APIData> batches;
       const std::filesystem::path list_file
           = std::filesystem::absolute(std::filesystem::path(list_path));
@@ -412,16 +553,20 @@ namespace dd
         throw InputConnectorBadParamException(
             "connector_tensor_inline requires a train list path");
       const int max_samples = inline_tensor_max_samples(ad);
+      const std::string head = keypoint_head(mllib);
+      _pull_keypoint_head = head;
+      _pull_bbox_scale_factor = bbox_scale_factor(mllib);
 
       APIData tensor_batches;
-      tensor_batches.add(
-          "train", inline_keypoint_batches(data[0], max_samples, nkeypoints));
+      tensor_batches.add("train", inline_keypoint_batches(data[0], max_samples,
+                                                          nkeypoints, head));
       std::vector<APIData> tests;
       for (size_t index = 1; index < data.size(); ++index)
         {
           APIData test_set;
-          test_set.add("batches", inline_keypoint_batches(
-                                      data[index], max_samples, nkeypoints));
+          test_set.add("batches",
+                       inline_keypoint_batches(data[index], max_samples,
+                                               nkeypoints, head));
           tests.push_back(test_set);
         }
       tensor_batches.add("tests", tests);
@@ -449,12 +594,30 @@ namespace dd
         throw InputConnectorBadParamException(
             "connector_tensor_pull requires a train list path");
 
-      _pull_train = read_keypoint_pairs(data[0]);
+      _pull_keypoint_head = keypoint_head(mllib);
+      _pull_bbox_scale_factor = bbox_scale_factor(mllib);
+      _pull_train.clear();
       _pull_tests.clear();
-      for (size_t index = 1; index < data.size(); ++index)
-        _pull_tests.push_back(read_keypoint_pairs(data[index]));
+      _pull_pose_train.clear();
+      _pull_pose_tests.clear();
+      if (_pull_keypoint_head == "topdown")
+        {
+          _pull_pose_train = read_topdown_records(data[0], nkeypoints);
+          for (size_t index = 1; index < data.size(); ++index)
+            _pull_pose_tests.push_back(
+                read_topdown_records(data[index], nkeypoints));
+        }
+      else
+        {
+          _pull_train = read_keypoint_pairs(data[0]);
+          for (size_t index = 1; index < data.size(); ++index)
+            _pull_tests.push_back(read_keypoint_pairs(data[index]));
+        }
       _pull_train_pos = 0;
-      _pull_test_pos.assign(_pull_tests.size(), 0);
+      _pull_test_pos.assign(_pull_keypoint_head == "topdown"
+                                ? _pull_pose_tests.size()
+                                : _pull_tests.size(),
+                            0);
       _pull_epoch = 0;
       _pull_next_batch_id = 0;
       _pull_task = "keypoint";
@@ -550,12 +713,164 @@ namespace dd
       return pairs;
     }
 
+    std::vector<PoseRecord> read_topdown_records(const std::string &list_path,
+                                                 int nkeypoints) const
+    {
+      std::vector<PoseRecord> records;
+      const std::filesystem::path list_file
+          = std::filesystem::absolute(std::filesystem::path(list_path));
+      std::ifstream input(list_file);
+      if (!input.is_open())
+        throw InputConnectorBadParamException("Could not open image list: "
+                                              + list_path);
+      std::string line;
+      int source_index = 0;
+      while (std::getline(input, line))
+        {
+          if (line.empty())
+            continue;
+          std::istringstream row(line);
+          std::string image_value;
+          std::string target_value;
+          std::string extra;
+          row >> image_value >> target_value;
+          row >> extra;
+          if (image_value.empty() || target_value.empty() || !extra.empty())
+            throw InputConnectorBadParamException(
+                "top-down keypoint input expects image and keypoints path in "
+                + list_path);
+          const auto image_path
+              = resolve_dataset_path(list_file.parent_path(), image_value);
+          const auto target_path
+              = resolve_dataset_path(list_file.parent_path(), target_value);
+          const auto instances
+              = read_topdown_instances(target_path, nkeypoints);
+          for (size_t instance_index = 0; instance_index < instances.size();
+               ++instance_index)
+            records.push_back(PoseRecord{
+                image_path, target_path, source_index,
+                static_cast<int>(instance_index), instances[instance_index] });
+          ++source_index;
+        }
+      if (records.empty())
+        throw InputConnectorBadParamException(
+            "top-down keypoint list contains no object instances: "
+            + list_path);
+      return records;
+    }
+
+    std::vector<PoseInstance>
+    read_topdown_instances(const std::filesystem::path &target_path,
+                           int nkeypoints) const
+    {
+      std::ifstream input(target_path);
+      if (!input.is_open())
+        throw InputConnectorBadParamException("Could not open keypoints file: "
+                                              + target_path.string());
+      std::vector<PoseInstance> instances;
+      std::string line;
+      int line_number = 0;
+      while (std::getline(input, line))
+        {
+          ++line_number;
+          if (line.empty())
+            continue;
+          std::istringstream row(line);
+          std::vector<double> values;
+          double value = 0.0;
+          while (row >> value)
+            values.push_back(value);
+          if (!row.eof())
+            throw InputConnectorBadParamException(
+                "Invalid numeric keypoint value in: " + target_path.string());
+          const size_t expected = static_cast<size_t>(5 + 2 * nkeypoints);
+          if (values.size() != expected)
+            throw InputConnectorBadParamException(
+                "Invalid top-down keypoints line in: " + target_path.string()
+                + " line " + std::to_string(line_number) + ": expected "
+                + std::to_string(expected) + " fields");
+          for (double item : values)
+            if (!std::isfinite(item))
+              throw InputConnectorBadParamException(
+                  "Invalid non-finite value in: " + target_path.string());
+          PoseInstance instance;
+          instance.label = static_cast<int>(values[0]);
+          if (static_cast<double>(instance.label) != values[0]
+              || instance.label <= 0)
+            throw InputConnectorBadParamException(
+                "Top-down keypoint class must be a positive integer in: "
+                + target_path.string());
+          instance.bbox = DetectionBBox{ instance.label, values[1], values[2],
+                                         values[3], values[4] };
+          if (instance.bbox.xmax <= instance.bbox.xmin
+              || instance.bbox.ymax <= instance.bbox.ymin)
+            throw InputConnectorBadParamException(
+                "Invalid top-down keypoint bbox in: " + target_path.string());
+          instance.keypoints.reserve(static_cast<size_t>(nkeypoints));
+          for (int index = 0; index < nkeypoints; ++index)
+            {
+              const double x = values[static_cast<size_t>(5 + 2 * index)];
+              const double y = values[static_cast<size_t>(6 + 2 * index)];
+              Keypoint keypoint;
+              if (x == -1.0 && y == -1.0)
+                keypoint.valid = false;
+              else
+                {
+                  if (x < 0.0 || y < 0.0)
+                    throw InputConnectorBadParamException(
+                        "Invalid keypoint sentinel in: " + target_path.string()
+                        + "; missing keypoints must be -1 -1");
+                  keypoint = Keypoint{ x, y, true };
+                }
+              instance.keypoints.push_back(keypoint);
+            }
+          instances.push_back(instance);
+        }
+      return instances;
+    }
+
+    std::vector<DetectionBBox>
+    read_prediction_boxes(const std::filesystem::path &bbox_path) const
+    {
+      std::ifstream input(bbox_path);
+      if (!input.is_open())
+        throw InputConnectorBadParamException("Could not open bbox file: "
+                                              + bbox_path.string());
+      std::vector<DetectionBBox> boxes;
+      std::string line;
+      int line_number = 0;
+      while (std::getline(input, line))
+        {
+          ++line_number;
+          if (line.empty())
+            continue;
+          std::istringstream row(line);
+          DetectionBBox bbox{};
+          std::string extra;
+          row >> bbox.label >> bbox.xmin >> bbox.ymin >> bbox.xmax
+              >> bbox.ymax;
+          row >> extra;
+          if (!row.eof() || !extra.empty() || bbox.label <= 0
+              || !std::isfinite(bbox.xmin) || !std::isfinite(bbox.ymin)
+              || !std::isfinite(bbox.xmax) || !std::isfinite(bbox.ymax)
+              || bbox.xmax <= bbox.xmin || bbox.ymax <= bbox.ymin)
+            throw InputConnectorBadParamException(
+                "Invalid bbox line in: " + bbox_path.string() + " line "
+                + std::to_string(line_number));
+          boxes.push_back(bbox);
+        }
+      return boxes;
+    }
+
     void shuffle_pull_train()
     {
-      if (!_shuffle || _pull_train.empty())
+      if (!_shuffle)
         return;
       std::mt19937 rng(static_cast<unsigned int>(_seed + _pull_epoch));
-      std::shuffle(_pull_train.begin(), _pull_train.end(), rng);
+      if (is_keypoint_task(_pull_task) && _pull_keypoint_head == "topdown")
+        std::shuffle(_pull_pose_train.begin(), _pull_pose_train.end(), rng);
+      else
+        std::shuffle(_pull_train.begin(), _pull_train.end(), rng);
       ++_pull_epoch;
     }
 
@@ -616,6 +931,48 @@ namespace dd
                                 std::max(0.0, build_ms - shm_ms), shm_ms,
                                 built.tensor.nbytes, _pull_transport,
                                 elapsed_ms(total_start, total_end));
+      return response;
+    }
+
+    APIData connector_topdown_batch_next_from(
+        const std::vector<PoseRecord> &records, size_t &cursor, int batch_size,
+        bool reset_epoch, bool shuffle_on_reset, const std::string &split,
+        const ad_variant_type &test_index)
+    {
+      if (reset_epoch)
+        {
+          cursor = 0;
+          if (shuffle_on_reset)
+            shuffle_pull_train();
+        }
+      APIData response;
+      response.add("status", std::string("ok"));
+      response.add("split", split);
+      response.add("test_index", test_index);
+      response.add("epoch", split == "train" ? _pull_epoch : 0);
+      response.add("cursor_start", static_cast<int>(cursor));
+      response.add("requested_batch_size", batch_size);
+      response.add("transport", _pull_transport);
+      if (cursor >= records.size())
+        {
+          response.add("end", true);
+          response.add("cursor_end", static_cast<int>(cursor));
+          response.add("sample_count", 0);
+          response.add("tensor_nbytes", static_cast<long long int>(0));
+          return response;
+        }
+      const size_t count
+          = std::min(static_cast<size_t>(batch_size), records.size() - cursor);
+      const std::string batch_id = next_pull_batch_id();
+      PullBatchBuildResult built = topdown_keypoint_batch(
+          records, cursor, count, batch_id, _pull_nkeypoints, true, {});
+      response.add("end", false);
+      response.add("batch_id", batch_id);
+      response.add("cursor_end", static_cast<int>(cursor + count));
+      response.add("sample_count", static_cast<int>(count));
+      response.add("tensor_nbytes", built.tensor.nbytes);
+      response.add("batch", built.batch);
+      cursor += count;
       return response;
     }
 
@@ -961,6 +1318,172 @@ namespace dd
       return PullBatchBuildResult{ batch, tensor_stats };
     }
 
+    PullBatchBuildResult topdown_keypoint_batch(
+        const std::vector<PoseRecord> &records, size_t offset, size_t count,
+        const std::string &batch_id, int nkeypoints, bool with_targets,
+        const std::vector<std::string> &source_paths)
+    {
+      std::vector<double> values;
+      std::vector<APIData> target_samples;
+      std::vector<int> sample_ids;
+      std::vector<int> instance_ids;
+      std::vector<int> labels;
+      std::vector<std::string> paths;
+      std::vector<std::string> target_paths;
+      std::vector<int> widths;
+      std::vector<int> heights;
+      std::vector<int> original_widths;
+      std::vector<int> original_heights;
+      std::vector<APIData> boxes;
+      std::vector<APIData> inverse_affines;
+      values.reserve(count * 3U * static_cast<size_t>(_height)
+                     * static_cast<size_t>(_width));
+
+      for (size_t index = 0; index < count; ++index)
+        {
+          const PoseRecord &record = records[offset + index];
+          cv::Mat image
+              = cv::imread(record.image_path.string(), cv::IMREAD_COLOR);
+          if (image.empty())
+            throw InputConnectorBadParamException(
+                "Could not read image: " + record.image_path.string());
+          if (_rgb)
+            cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+          const int original_width = image.cols;
+          const int original_height = image.rows;
+          DetectionBBox bbox = record.instance.bbox;
+          bbox.xmin = std::max(
+              0.0, std::min(static_cast<double>(image.cols), bbox.xmin));
+          bbox.ymin = std::max(
+              0.0, std::min(static_cast<double>(image.rows), bbox.ymin));
+          bbox.xmax = std::max(
+              0.0, std::min(static_cast<double>(image.cols), bbox.xmax));
+          bbox.ymax = std::max(
+              0.0, std::min(static_cast<double>(image.rows), bbox.ymax));
+          if (bbox.xmax <= bbox.xmin || bbox.ymax <= bbox.ymin)
+            throw InputConnectorBadParamException(
+                "Top-down keypoint bbox does not overlap image: "
+                + record.target_path.string());
+
+          const double center_x = 0.5 * (bbox.xmin + bbox.xmax);
+          const double center_y = 0.5 * (bbox.ymin + bbox.ymax);
+          double roi_width = bbox.xmax - bbox.xmin;
+          double roi_height = bbox.ymax - bbox.ymin;
+          const double aspect
+              = static_cast<double>(_width) / static_cast<double>(_height);
+          if (roi_width > aspect * roi_height)
+            roi_height = roi_width / aspect;
+          else
+            roi_width = roi_height * aspect;
+          roi_width *= _pull_bbox_scale_factor;
+          roi_height *= _pull_bbox_scale_factor;
+
+          const double scale_x = static_cast<double>(_width - 1) / roi_width;
+          const double scale_y = static_cast<double>(_height - 1) / roi_height;
+          cv::Mat affine = (cv::Mat_<double>(2, 3) << scale_x, 0.0,
+                            scale_x * (-center_x + 0.5 * roi_width), 0.0,
+                            scale_y, scale_y * (-center_y + 0.5 * roi_height));
+          cv::Mat inverse;
+          cv::invertAffineTransform(affine, inverse);
+          cv::Mat crop;
+          cv::warpAffine(image, crop, affine, cv::Size(_width, _height),
+                         cv::INTER_LINEAR, cv::BORDER_CONSTANT,
+                         cv::Scalar(0, 0, 0));
+          const std::vector<double> crop_values = image_values_chw(crop);
+          values.insert(values.end(), crop_values.begin(), crop_values.end());
+
+          KeypointInstance transformed;
+          transformed.reserve(record.instance.keypoints.size());
+          for (const Keypoint &keypoint : record.instance.keypoints)
+            {
+              if (!keypoint.valid)
+                {
+                  transformed.push_back(Keypoint{});
+                  continue;
+                }
+              transformed.push_back(
+                  Keypoint{ affine.at<double>(0, 0) * keypoint.x
+                                + affine.at<double>(0, 1) * keypoint.y
+                                + affine.at<double>(0, 2),
+                            affine.at<double>(1, 0) * keypoint.x
+                                + affine.at<double>(1, 1) * keypoint.y
+                                + affine.at<double>(1, 2),
+                            true });
+            }
+
+          APIData box;
+          box.add("xmin", bbox.xmin);
+          box.add("ymin", bbox.ymin);
+          box.add("xmax", bbox.xmax);
+          box.add("ymax", bbox.ymax);
+          boxes.push_back(box);
+          if (with_targets)
+            {
+              APIData instance;
+              instance.add("label", record.instance.label);
+              instance.add("bbox", box);
+              instance.add("keypoints",
+                           keypoint_values(transformed, nkeypoints));
+              APIData sample;
+              sample.add("instances", std::vector<APIData>{ instance });
+              target_samples.push_back(sample);
+            }
+          sample_ids.push_back(record.source_index);
+          instance_ids.push_back(record.instance_index);
+          labels.push_back(record.instance.label);
+          paths.push_back(record.image_path.string());
+          target_paths.push_back(record.target_path.string());
+          widths.push_back(_width);
+          heights.push_back(_height);
+          original_widths.push_back(original_width);
+          original_heights.push_back(original_height);
+          APIData inverse_affine;
+          inverse_affine.add(
+              "values",
+              std::vector<double>{
+                  inverse.at<double>(0, 0), inverse.at<double>(0, 1),
+                  inverse.at<double>(0, 2), inverse.at<double>(1, 0),
+                  inverse.at<double>(1, 1), inverse.at<double>(1, 2) });
+          inverse_affines.push_back(inverse_affine);
+        }
+
+      TensorWriteStats tensor_stats;
+      APIData batch;
+      batch.add("kind", std::string("tensor_batch"));
+      batch.add("inputs", std::vector<APIData>{ pull_image_tensor_ref(
+                              values, static_cast<int>(count), 3, _height,
+                              _width, batch_id, tensor_stats) });
+      if (with_targets)
+        {
+          APIData targets;
+          targets.add("samples", target_samples);
+          batch.add("targets", targets);
+        }
+      APIData meta;
+      meta.add("task", std::string("keypoint"));
+      meta.add("keypoint_head", std::string("topdown"));
+      meta.add("nkeypoints", nkeypoints);
+      meta.add("sample_ids", sample_ids);
+      meta.add("instance_ids", instance_ids);
+      meta.add("labels", labels);
+      meta.add("paths", paths);
+      meta.add("target_paths", target_paths);
+      meta.add("widths", widths);
+      meta.add("heights", heights);
+      meta.add("original_widths", original_widths);
+      meta.add("original_heights", original_heights);
+      meta.add("bboxes", boxes);
+      meta.add("inverse_affines", inverse_affines);
+      meta.add("bbox_scale_factor", _pull_bbox_scale_factor);
+      if (!source_paths.empty())
+        {
+          meta.add("source_paths", source_paths);
+          meta.add("source_count", static_cast<int>(source_paths.size()));
+        }
+      batch.add("meta", meta);
+      return PullBatchBuildResult{ batch, tensor_stats };
+    }
+
     APIData inline_image_tensor_ref(const cv::Mat &image) const
     {
       return inline_image_tensor_ref(image_values_chw(image), 1,
@@ -1252,21 +1775,32 @@ namespace dd
       out.reserve(instances.size());
       for (const KeypointInstance &instance : instances)
         {
-          std::vector<APIData> keypoints;
-          keypoints.reserve(instance.size());
-          for (const Keypoint &keypoint : instance)
-            {
-              APIData item;
-              item.add("x", keypoint.valid ? keypoint.x : -1.0);
-              item.add("y", keypoint.valid ? keypoint.y : -1.0);
-              item.add("valid", keypoint.valid);
-              keypoints.push_back(item);
-            }
           APIData entry;
-          entry.add("keypoints", keypoints);
+          entry.add(
+              "keypoints",
+              keypoint_values(instance, static_cast<int>(instance.size())));
           out.push_back(entry);
         }
       return out;
+    }
+
+    std::vector<APIData> keypoint_values(const KeypointInstance &instance,
+                                         int nkeypoints) const
+    {
+      if (static_cast<int>(instance.size()) != nkeypoints)
+        throw InputConnectorBadParamException(
+            "keypoint instance does not match configured nkeypoints");
+      std::vector<APIData> keypoints;
+      keypoints.reserve(instance.size());
+      for (const Keypoint &keypoint : instance)
+        {
+          APIData item;
+          item.add("x", keypoint.valid ? keypoint.x : -1.0);
+          item.add("y", keypoint.valid ? keypoint.y : -1.0);
+          item.add("valid", keypoint.valid);
+          keypoints.push_back(item);
+        }
+      return keypoints;
     }
 
     APIData detection_targets(const std::vector<DetectionBBox> &bboxes) const
@@ -1437,6 +1971,9 @@ namespace dd
       if (_bw || _unchanged_data)
         throw InputConnectorBadParamException(
             mode + " keypoint input requires 3-channel image tensors");
+      if (keypoint_head(mllib) == "topdown" && (_width <= 1 || _height <= 1))
+        throw InputConnectorBadParamException(
+            mode + " top-down keypoint input requires width and height > 1");
       if (_crop_width != 0 || _crop_height != 0 || _aspect_ratio_pad
           || positive_int_param(input_params, "crop_width")
           || positive_int_param(input_params, "crop_height"))
@@ -1506,6 +2043,36 @@ namespace dd
       return nkeypoints;
     }
 
+    static std::string keypoint_head(const APIData &mllib)
+    {
+      std::string head = "topdown";
+      if (mllib.has("vitpose"))
+        {
+          APIData vitpose = mllib.getobj("vitpose");
+          if (vitpose.has("head"))
+            head = vitpose.get("head").get<std::string>();
+        }
+      if (head != "topdown" && head != "slots")
+        throw InputConnectorBadParamException(
+            "mllib.vitpose.head must be topdown or slots");
+      return head;
+    }
+
+    static double bbox_scale_factor(const APIData &mllib)
+    {
+      double value = 1.25;
+      if (mllib.has("vitpose"))
+        {
+          APIData vitpose = mllib.getobj("vitpose");
+          if (vitpose.has("bbox_scale_factor"))
+            value = vitpose.get("bbox_scale_factor").get<double>();
+        }
+      if (!std::isfinite(value) || value <= 0.0)
+        throw InputConnectorBadParamException(
+            "mllib.vitpose.bbox_scale_factor must be positive");
+      return value;
+    }
+
     static bool debug_enabled()
     {
       const char *debug = std::getenv("DEEPDETECT_DEBUG");
@@ -1549,6 +2116,8 @@ namespace dd
 
     std::vector<DetectionPair> _pull_train;
     std::vector<std::vector<DetectionPair>> _pull_tests;
+    std::vector<PoseRecord> _pull_pose_train;
+    std::vector<std::vector<PoseRecord>> _pull_pose_tests;
     size_t _pull_train_pos = 0;
     std::vector<size_t> _pull_test_pos;
     std::string _pull_transport = "inline";
@@ -1558,6 +2127,8 @@ namespace dd
     ImgRandAugCV _pull_img_rand_aug_cv;
     std::string _pull_augmentation_policy = "none";
     std::string _pull_task = "detection";
+    std::string _pull_keypoint_head = "topdown";
+    double _pull_bbox_scale_factor = 1.25;
     int _pull_nkeypoints = 0;
     int _pull_next_batch_id = 0;
     int _pull_epoch = 0;

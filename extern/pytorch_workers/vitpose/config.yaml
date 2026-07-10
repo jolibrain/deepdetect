@@ -20,10 +20,12 @@ service_mllib:
   nkeypoints: 17
   max_objects: 1
   vitpose:
+    head: topdown
     variant: base
     image_size: [192, 256]
     heatmap_size: [48, 64]
     sigma: 2.0
+    bbox_scale_factor: 1.25
     max_objects: 1
     objectness_threshold: 0.25
     keypoint_threshold: 0.05
@@ -35,10 +37,12 @@ mllib:
   nkeypoints: 17
   max_objects: 1
   vitpose:
+    head: topdown
     variant: base
     image_size: [192, 256]
     heatmap_size: [48, 64]
     sigma: 2.0
+    bbox_scale_factor: 1.25
     max_objects: 1
 base_lr: 0.0005
 test_interval: 10
@@ -68,4 +72,6 @@ visualize: false
 benchmark: false
 warmup: 0
 confidence_threshold: 0.25
+keypoint_threshold: 0.05
+bbox_files: null
 best_bbox: null

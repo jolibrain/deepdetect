@@ -394,8 +394,17 @@ class HeatmapHead(nn.Module):
         return self.final_layer(x)
 
 
+class TopDownHeatmapHead(HeatmapHead):
+    """One independent keypoint heatmap set for each bbox crop."""
+
+
+class SlotHeatmapHead(HeatmapHead):
+    """Multiple full-image keypoint heatmap sets for Hungarian slots."""
+
+
 @dataclass(frozen=True)
 class ViTPoseModelConfig:
+    head: str
     image_size: tuple[int, int]
     heatmap_size: tuple[int, int]
     nkeypoints: int
@@ -427,6 +436,7 @@ VARIANT_DEFAULTS: dict[str, dict[str, Any]] = {
 class ViTPoseSlots(nn.Module):
     def __init__(self, config: ViTPoseModelConfig) -> None:
         super().__init__()
+        self.head = "slots"
         self.nkeypoints = int(config.nkeypoints)
         self.max_objects = int(config.max_objects)
         self.image_size = tuple(config.image_size)
@@ -441,7 +451,7 @@ class ViTPoseSlots(nn.Module):
             qkv_bias=config.qkv_bias,
             drop_path_rate=config.drop_path_rate,
         )
-        self.keypoint_head = HeatmapHead(
+        self.keypoint_head = SlotHeatmapHead(
             in_channels=config.embed_dim,
             out_channels=config.max_objects * config.nkeypoints,
             upsample=config.upsample,
@@ -468,3 +478,35 @@ class ViTPoseSlots(nn.Module):
         pooled = features.mean(dim=(2, 3))
         objectness = self.objectness_head(pooled)
         return {"heatmaps": heatmaps, "objectness": objectness}
+
+
+class ViTPoseTopDown(nn.Module):
+    def __init__(self, config: ViTPoseModelConfig) -> None:
+        super().__init__()
+        self.head = "topdown"
+        self.nkeypoints = int(config.nkeypoints)
+        self.max_objects = 1
+        self.image_size = tuple(config.image_size)
+        self.heatmap_size = tuple(config.heatmap_size)
+        self.backbone = ViT(
+            img_size=(config.image_size[1], config.image_size[0]),
+            patch_size=config.patch_size,
+            embed_dim=config.embed_dim,
+            depth=config.depth,
+            num_heads=config.num_heads,
+            mlp_ratio=config.mlp_ratio,
+            qkv_bias=config.qkv_bias,
+            drop_path_rate=config.drop_path_rate,
+        )
+        self.keypoint_head = TopDownHeatmapHead(
+            in_channels=config.embed_dim,
+            out_channels=config.nkeypoints,
+            upsample=config.upsample,
+            final_conv_kernel=config.final_conv_kernel,
+            num_deconv_layers=config.num_deconv_layers,
+            num_deconv_filters=config.num_deconv_filters,
+            num_deconv_kernels=config.num_deconv_kernels,
+        )
+
+    def forward(self, images: torch.Tensor) -> dict[str, torch.Tensor]:
+        return {"heatmaps": self.keypoint_head(self.backbone(images))}

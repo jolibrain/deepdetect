@@ -45,9 +45,14 @@ from .data import (
     normalize_batch,
     read_image_tensor,
 )
-from .decode import connector_predictions, decode_pose_outputs, prediction_sample
-from .losses import slot_pose_losses
-from .model import ViTPoseSlots
+from .decode import (
+    connector_predictions,
+    decode_pose_outputs,
+    decode_topdown_outputs,
+    prediction_sample,
+)
+from .losses import slot_pose_losses, topdown_pose_losses
+from .model import ViTPoseSlots, ViTPoseTopDown
 from .optim import create_layer_decay_adamw
 
 
@@ -180,6 +185,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             "task": self.task_name,
             "nkeypoints": self.nkeypoints,
             "max_objects": self.max_objects,
+            "head": self.config.head,
             "device": str(self.device),
             "torch_version": str(getattr(torch, "__version__", "unknown")),
         }
@@ -351,7 +357,12 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             images, targets, _metas = batch
             images, targets = self.prepare_training_batch(torch, images, targets)
             outputs = self.model(images)
-            loss_dict, stats = slot_pose_losses(
+            loss_fn = (
+                topdown_pose_losses
+                if self.config.head == "topdown"
+                else slot_pose_losses
+            )
+            loss_dict, stats = loss_fn(
                 outputs,
                 targets,
                 config=self.config.loss,
@@ -440,6 +451,8 @@ class DeepDetectWorker(DeepDetectWorkerBase):
     def create_model(self, torch: Any) -> Any:
         if self.config is None:
             raise DatasetContractError("ViTPose worker is not configured")
+        if self.config.head == "topdown":
+            return ViTPoseTopDown(self.config.model)
         return ViTPoseSlots(self.config.model)
 
     def create_optimizer(self, torch: Any, model: Any, *, base_lr: float) -> Any:
@@ -494,6 +507,12 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         if not isinstance(data, list):
             raise PredictionContractError("predict data must be a list")
         self.ensure_prediction_model(torch)
+        if self.config.head == "topdown":
+            return self.predict_topdown_request(
+                request,
+                torch=torch,
+                keypoint_threshold=keypoint_threshold,
+            )
         image_paths = [Path(str(path)).expanduser().resolve() for path in data]
         images = []
         image_sizes = []
@@ -523,6 +542,51 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                 keypoint_threshold=keypoint_threshold,
             )
         return {"results": connector_predictions(image_paths, decoded)}
+
+    def predict_topdown_request(
+        self,
+        request: dict[str, Any],
+        *,
+        torch: Any,
+        keypoint_threshold: float,
+    ) -> dict[str, Any]:
+        raw_sources = request.get("pose_sources", request.get("data", []))
+        if not isinstance(raw_sources, list):
+            raise PredictionContractError("top-down pose sources must be a list")
+        source_paths = [Path(str(path)) for path in raw_sources]
+        grouped: list[list[dict[str, Any]]] = [[] for _ in source_paths]
+        raw_batch = request.get("tensor_batch")
+        if raw_batch is None:
+            return {"results": connector_predictions(source_paths, grouped)}
+        tensor_batch = parse_tensor_batch_ref(raw_batch)
+        dataset = PoseTensorBatchDataset(
+            [tensor_batch], nkeypoints=self.nkeypoints, torch=torch
+        )
+        loader = make_loader(dataset, batch_size=len(dataset), shuffle=False, torch=torch)
+        images, _targets, metas = next(iter(loader))
+        with torch.no_grad():
+            batch = normalize_batch(
+                images,
+                torch=torch,
+                device=self.device,
+                mean=self.config.mean,
+                std=self.config.std,
+            )
+            poses = decode_topdown_outputs(
+                self.model(batch),
+                metas=metas,
+                keypoint_threshold=keypoint_threshold,
+            )
+        for pose in poses:
+            source_index = int(pose.pop("source_index"))
+            if source_index < 0 or source_index >= len(grouped):
+                raise PredictionContractError("top-down source index is out of range")
+            grouped[source_index].append(pose)
+        for sample in grouped:
+            sample.sort(key=lambda pose: int(pose.get("instance_id", 0)))
+            for pose in sample:
+                pose.pop("instance_id", None)
+        return {"results": connector_predictions(source_paths, grouped)}
 
     def ensure_prediction_model(self, torch: Any) -> None:
         if self.config is None:
@@ -555,6 +619,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         with torch.no_grad():
             for test_index, dataset in enumerate(test_datasets):
                 samples = []
+                sample_lookup: dict[int, dict[str, Any]] = {}
                 processed = 0
                 loader = make_loader(dataset, batch_size=1, shuffle=False, torch=torch)
                 reporter.status(
@@ -572,8 +637,9 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                     poses = self.predict_pose_batch(torch, images, metas)
                     processed += len(images)
                     for meta, sample_poses in zip(metas, poses):
-                        if len(samples) < 10:
-                            samples.append(prediction_sample(meta, sample_poses))
+                        self.record_test_prediction(
+                            samples, sample_lookup, meta, sample_poses
+                        )
                     reporter.status(
                         phase="test",
                         iteration=iteration,
@@ -617,6 +683,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         with torch.no_grad():
             for test_index, total_samples in enumerate(test_samples):
                 samples = []
+                sample_lookup: dict[int, dict[str, Any]] = {}
                 processed = 0
                 prefetcher = self.connector_batch_prefetcher(
                     split="test",
@@ -645,8 +712,9 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                         poses = self.predict_pose_batch(torch, images, metas)
                         processed += len(images)
                         for meta, sample_poses in zip(metas, poses):
-                            if len(samples) < 10:
-                                samples.append(prediction_sample(meta, sample_poses))
+                            self.record_test_prediction(
+                                samples, sample_lookup, meta, sample_poses
+                            )
                         reporter.status(
                             phase="test",
                             iteration=iteration,
@@ -688,6 +756,15 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             std=self.config.std,
         )
         outputs = self.model(batch)
+        if self.config.head == "topdown":
+            return [
+                [pose]
+                for pose in decode_topdown_outputs(
+                    outputs,
+                    metas=metas,
+                    keypoint_threshold=self.config.keypoint_threshold,
+                )
+            ]
         image_sizes = [(int(meta["width"]), int(meta["height"])) for meta in metas]
         return decode_pose_outputs(
             outputs,
@@ -695,6 +772,38 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             objectness_threshold=self.config.objectness_threshold,
             keypoint_threshold=self.config.keypoint_threshold,
         )
+
+    def record_test_prediction(
+        self,
+        samples: list[dict[str, Any]],
+        sample_lookup: dict[int, dict[str, Any]],
+        meta: dict[str, Any],
+        poses: list[dict[str, Any]],
+    ) -> None:
+        if self.config.head != "topdown":
+            if len(samples) < 10:
+                samples.append(prediction_sample(meta, poses))
+            return
+        source_index = int(meta["index"])
+        sample = sample_lookup.get(source_index)
+        if sample is None:
+            if len(samples) >= 10:
+                return
+            sample = {
+                "index": source_index,
+                "imgsize": {
+                    "width": int(meta["original_width"]),
+                    "height": int(meta["original_height"]),
+                },
+                "classes": [],
+            }
+            sample_lookup[source_index] = sample
+            samples.append(sample)
+        for pose in poses:
+            cleaned = dict(pose)
+            cleaned.pop("source_index", None)
+            cleaned.pop("instance_id", None)
+            sample["classes"].append(cleaned)
 
     def pull_pose_batch(
         self,
@@ -781,6 +890,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             "task": self.task_name,
             "nkeypoints": self.nkeypoints,
             "max_objects": self.max_objects,
+            "head": self.config.head if self.config is not None else "topdown",
             "repository": self.context.repository,
             "train": {"samples": len(train_dataset)},
             "tests": [
@@ -816,16 +926,25 @@ class ConnectorBatchPrefetcher:
 
     def _run(self) -> None:
         reset_epoch = self.reset_epoch
-        while not self.closed.is_set():
-            try:
+        try:
+            while not self.closed.is_set():
                 batch = self.pull(reset_epoch=reset_epoch)
                 reset_epoch = False
-                self.queue.put(batch, timeout=0.1)
+                if not self._put(batch):
+                    return
                 if batch is None:
                     return
-            except Exception as error:
-                self.queue.put(error, timeout=0.1)
-                return
+        except BaseException as error:
+            self._put(error)
+
+    def _put(self, item: Any) -> bool:
+        while not self.closed.is_set():
+            try:
+                self.queue.put(item, timeout=0.1)
+                return True
+            except queue.Full:
+                continue
+        return False
 
     def next(self) -> Any:
         item = self.queue.get()
