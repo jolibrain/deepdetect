@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import queue
 import threading
 import time
@@ -47,13 +48,15 @@ from .data import (
 )
 from .decode import (
     connector_predictions,
+    decode_keypoint,
     decode_pose_outputs,
     decode_topdown_outputs,
     prediction_sample,
 )
-from .losses import slot_pose_losses, topdown_pose_losses
+from .losses import PoseLossReduction, slot_pose_losses, topdown_pose_losses
 from .model import ViTPoseSlots, ViTPoseTopDown
 from .optim import create_layer_decay_adamw
+from .targets import select_instances
 
 
 @dataclass(frozen=True)
@@ -148,6 +151,58 @@ class PoseDatasetSummary:
 
     def __len__(self) -> int:
         return self.samples
+
+
+@dataclass
+class PoseEvaluationLosses:
+    heatmap_numerator: float = 0.0
+    heatmap_denominator: float = 0.0
+    objectness_numerator: float = 0.0
+    objectness_denominator: int = 0
+    keypoint_error_sum: float = 0.0
+    keypoint_error_count: int = 0
+
+    def update(self, reduction: PoseLossReduction) -> None:
+        self.heatmap_numerator += float(
+            reduction.heatmap_numerator.detach().cpu().item()
+        )
+        self.heatmap_denominator += float(
+            reduction.heatmap_denominator.detach().cpu().item()
+        )
+        if reduction.objectness_numerator is not None:
+            self.objectness_numerator += float(
+                reduction.objectness_numerator.detach().cpu().item()
+            )
+            self.objectness_denominator += reduction.objectness_denominator
+
+    def add_keypoint_error(self, x_error: float, y_error: float) -> None:
+        self.keypoint_error_sum += math.hypot(x_error, y_error)
+        self.keypoint_error_count += 1
+
+    def metrics(self, config: ViTPoseWorkerConfig) -> dict[str, float]:
+        heatmap_loss = (
+            self.heatmap_numerator / self.heatmap_denominator
+            if self.heatmap_denominator > 0.0
+            else 0.0
+        )
+        heatmap_area = config.target.heatmap_size[0] * config.target.heatmap_size[1]
+        metrics = {
+            "heatmap_loss": heatmap_loss,
+            "loss": float(config.loss.heatmap_weight) * heatmap_loss,
+            "visible_keypoints": self.heatmap_denominator / float(heatmap_area),
+            "mean_keypoint_error_px": (
+                self.keypoint_error_sum / float(self.keypoint_error_count)
+                if self.keypoint_error_count > 0
+                else 0.0
+            ),
+        }
+        if self.objectness_denominator > 0:
+            objectness_loss = self.objectness_numerator / float(
+                self.objectness_denominator
+            )
+            metrics["objectness_loss"] = objectness_loss
+            metrics["loss"] += float(config.loss.objectness_weight) * objectness_loss
+        return metrics
 
 
 class DeepDetectWorker(DeepDetectWorkerBase):
@@ -621,6 +676,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                 samples = []
                 sample_lookup: dict[int, dict[str, Any]] = {}
                 processed = 0
+                evaluation_losses = PoseEvaluationLosses()
                 loader = make_loader(dataset, batch_size=1, shuffle=False, torch=torch)
                 reporter.status(
                     phase="test",
@@ -631,10 +687,16 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                     test_processed=0,
                     test_total=len(dataset),
                 )
-                for images, _targets, metas in loader:
+                for images, targets, metas in loader:
                     if cancellation.requested:
                         break
-                    poses = self.predict_pose_batch(torch, images, metas)
+                    poses = self.evaluate_pose_batch(
+                        torch,
+                        images,
+                        targets,
+                        metas,
+                        evaluation_losses,
+                    )
                     processed += len(images)
                     for meta, sample_poses in zip(metas, poses):
                         self.record_test_prediction(
@@ -653,6 +715,13 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                     "iteration": iteration,
                     "samples": samples,
                 }
+                if not cancellation.requested:
+                    self.report_evaluation_metrics(
+                        reporter,
+                        iteration=iteration,
+                        test_index=test_index,
+                        losses=evaluation_losses,
+                    )
                 reporter.metric(f"pose_samples_test{test_index}", processed, iteration=iteration)
         reporter.status(
             phase="train",
@@ -685,6 +754,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                 samples = []
                 sample_lookup: dict[int, dict[str, Any]] = {}
                 processed = 0
+                evaluation_losses = PoseEvaluationLosses()
                 prefetcher = self.connector_batch_prefetcher(
                     split="test",
                     batch_size=batch_size,
@@ -708,8 +778,14 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                         batch = prefetcher.next()
                         if batch is None:
                             break
-                        images, _targets, metas = batch
-                        poses = self.predict_pose_batch(torch, images, metas)
+                        images, targets, metas = batch
+                        poses = self.evaluate_pose_batch(
+                            torch,
+                            images,
+                            targets,
+                            metas,
+                            evaluation_losses,
+                        )
                         processed += len(images)
                         for meta, sample_poses in zip(metas, poses):
                             self.record_test_prediction(
@@ -730,6 +806,13 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                     "iteration": iteration,
                     "samples": samples,
                 }
+                if not cancellation.requested:
+                    self.report_evaluation_metrics(
+                        reporter,
+                        iteration=iteration,
+                        test_index=test_index,
+                        losses=evaluation_losses,
+                    )
                 reporter.metric(f"pose_samples_test{test_index}", processed, iteration=iteration)
         reporter.status(
             phase="train",
@@ -756,6 +839,171 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             std=self.config.std,
         )
         outputs = self.model(batch)
+        return self.decode_pose_batch(outputs, metas)
+
+    def evaluate_pose_batch(
+        self,
+        torch: Any,
+        images: list[Any],
+        targets: list[dict[str, Any]],
+        metas: list[dict[str, Any]],
+        evaluation_losses: PoseEvaluationLosses,
+    ) -> list[list[dict[str, Any]]]:
+        if self.config is None:
+            raise DatasetContractError("ViTPose worker is not configured")
+        batch, targets = self.prepare_training_batch(torch, images, targets)
+        outputs = self.model(batch)
+        loss_fn = (
+            topdown_pose_losses if self.config.head == "topdown" else slot_pose_losses
+        )
+        _losses, _stats, reduction = loss_fn(
+            outputs,
+            targets,
+            config=self.config.loss,
+            torch_module=torch,
+            device=self.device,
+            return_reduction=True,
+        )
+        evaluation_losses.update(reduction)
+        self.record_keypoint_errors(
+            evaluation_losses,
+            outputs=outputs,
+            targets=targets,
+            metas=metas,
+            reduction=reduction,
+        )
+        return self.decode_pose_batch(outputs, metas)
+
+    def record_keypoint_errors(
+        self,
+        evaluation_losses: PoseEvaluationLosses,
+        *,
+        outputs: dict[str, Any],
+        targets: list[dict[str, Any]],
+        metas: list[dict[str, Any]],
+        reduction: PoseLossReduction,
+    ) -> None:
+        if self.config is None:
+            raise DatasetContractError("ViTPose worker is not configured")
+        heatmaps = outputs["heatmaps"]
+        if self.config.head == "topdown":
+            for batch_index, (target, meta) in enumerate(zip(targets, metas)):
+                if int(target["keypoints"].shape[0]) != 1:
+                    continue
+                self.record_instance_keypoint_errors(
+                    evaluation_losses,
+                    heatmaps=heatmaps[batch_index],
+                    keypoints=target["keypoints"][0],
+                    visible=target["visible"][0],
+                    meta=meta,
+                    topdown=True,
+                )
+            return
+
+        selected_targets = []
+        for target in targets:
+            selected_targets.append(
+                select_instances(
+                    target["keypoints"],
+                    target["visible"],
+                    max_objects=self.config.target.max_objects,
+                )
+            )
+        for batch_index, slot_index, object_index in reduction.assignments:
+            if batch_index >= len(selected_targets) or batch_index >= len(metas):
+                continue
+            keypoints, visible, _dropped = selected_targets[batch_index]
+            if object_index >= int(keypoints.shape[0]):
+                continue
+            self.record_instance_keypoint_errors(
+                evaluation_losses,
+                heatmaps=heatmaps[batch_index, slot_index],
+                keypoints=keypoints[object_index],
+                visible=visible[object_index],
+                meta=metas[batch_index],
+                topdown=False,
+            )
+
+    def record_instance_keypoint_errors(
+        self,
+        evaluation_losses: PoseEvaluationLosses,
+        *,
+        heatmaps: Any,
+        keypoints: Any,
+        visible: Any,
+        meta: dict[str, Any],
+        topdown: bool,
+    ) -> None:
+        for joint_index in range(int(heatmaps.shape[0])):
+            if joint_index >= int(keypoints.shape[0]):
+                break
+            if float(visible[joint_index].item()) <= 0.0:
+                continue
+            target_x = float(keypoints[joint_index, 0].item())
+            target_y = float(keypoints[joint_index, 1].item())
+            if (
+                not math.isfinite(target_x)
+                or not math.isfinite(target_y)
+                or target_x < 0.0
+                or target_y < 0.0
+            ):
+                continue
+            predicted_x, predicted_y, _confidence, _valid = decode_keypoint(
+                heatmaps[joint_index],
+                image_size=(int(meta["width"]), int(meta["height"])),
+                threshold=float("-inf"),
+            )
+            predicted_x, predicted_y = self.source_keypoint_coordinates(
+                predicted_x,
+                predicted_y,
+                meta=meta,
+                topdown=topdown,
+            )
+            target_x, target_y = self.source_keypoint_coordinates(
+                target_x,
+                target_y,
+                meta=meta,
+                topdown=topdown,
+            )
+            evaluation_losses.add_keypoint_error(
+                predicted_x - target_x,
+                predicted_y - target_y,
+            )
+
+    @staticmethod
+    def source_keypoint_coordinates(
+        x: float,
+        y: float,
+        *,
+        meta: dict[str, Any],
+        topdown: bool,
+    ) -> tuple[float, float]:
+        if topdown:
+            inverse = meta.get("inverse_affine")
+            if not isinstance(inverse, list) or len(inverse) != 6:
+                raise DatasetContractError(
+                    "top-down keypoint evaluation requires inverse_affine metadata"
+                )
+            return (
+                inverse[0] * x + inverse[1] * y + inverse[2],
+                inverse[3] * x + inverse[4] * y + inverse[5],
+            )
+        width = int(meta["width"])
+        height = int(meta["height"])
+        original_width = int(meta.get("original_width", width))
+        original_height = int(meta.get("original_height", height))
+        return (
+            x * float(original_width) / float(width),
+            y * float(original_height) / float(height),
+        )
+
+    def decode_pose_batch(
+        self,
+        outputs: dict[str, Any],
+        metas: list[dict[str, Any]],
+    ) -> list[list[dict[str, Any]]]:
+        if self.config is None:
+            raise DatasetContractError("ViTPose worker is not configured")
         if self.config.head == "topdown":
             return [
                 [pose]
@@ -772,6 +1020,19 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             objectness_threshold=self.config.objectness_threshold,
             keypoint_threshold=self.config.keypoint_threshold,
         )
+
+    def report_evaluation_metrics(
+        self,
+        reporter: WorkerReporter,
+        *,
+        iteration: int,
+        test_index: int,
+        losses: PoseEvaluationLosses,
+    ) -> None:
+        if self.config is None:
+            raise DatasetContractError("ViTPose worker is not configured")
+        for name, value in sorted(losses.metrics(self.config).items()):
+            reporter.metric(f"{name}_test{test_index}", value, iteration=iteration)
 
     def record_test_prediction(
         self,

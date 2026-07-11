@@ -39,6 +39,16 @@ PYTHONPATH=bindings/python python3 -m deepdetect.cli.main train vitpose \
 each top-down box and defaults to `1.25`. Set `mllib.vitpose.max_objects` and
 `service_mllib.vitpose.max_objects` to the same value for slot models.
 
+## Evaluation Metrics
+
+Each completed test set reports `loss_testN`, `heatmap_loss_testN`,
+`mean_keypoint_error_px_testN`, `visible_keypoints_testN`, and
+`pose_samples_testN`, where `N` is the test set index. Slot models also report
+`objectness_loss_testN`. Losses are reduced over the whole test set, with
+heatmap MSE weighted by the count of visible keypoints. Mean keypoint error is
+the Euclidean distance between raw heatmap peaks and visible targets in source
+image pixels; slot predictions use their Hungarian loss assignment.
+
 ## MAE Backbone Initialization
 
 `--weights` accepts a regular DeepDetect/ViTPose checkpoint or a MAE-style ViT

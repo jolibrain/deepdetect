@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import sys
 import threading
 import time
@@ -17,7 +18,12 @@ if str(TOOLS_ROOT) not in sys.path:
 
 torch = pytest.importorskip("torch")
 
-from deepdetect.pytorch_worker.sdk import WorkerContext, validate_prediction_result
+from deepdetect.pytorch_worker.sdk import (
+    Cancellation,
+    WorkerContext,
+    WorkerReporter,
+    validate_prediction_result,
+)
 from coco_keypoints_to_dd import (
     format_deepdetect_keypoint_line,
     format_deepdetect_topdown_line,
@@ -374,3 +380,170 @@ def test_topdown_worker_predicts_connector_tensor_batch(tmp_path):
     assert result["results"][0]["cats"] == ["3"]
     assert result["results"][0]["bboxes"][0]["xmin"] == 4.0
     assert len(result["results"][0]["keypoints"][0]["points"]) == 2
+
+
+def test_topdown_evaluation_reports_globally_reduced_losses(tmp_path):
+    class ZeroTopDown(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def forward(self, images):
+            self.calls += 1
+            return {"heatmaps": images.new_zeros((len(images), 2, 8, 8))}
+
+    worker = _configured_evaluation_worker(tmp_path, head="topdown")
+    model = ZeroTopDown()
+    worker.model = model
+    targets = [
+        {
+            "keypoints": torch.tensor([[[8.0, 8.0], [-1.0, -1.0]]]),
+            "visible": torch.tensor([[1.0, 0.0]]),
+        },
+        {
+            "keypoints": torch.tensor([[[12.0, 12.0], [20.0, 20.0]]]),
+            "visible": torch.tensor([[1.0, 1.0]]),
+        },
+    ]
+    dataset = [
+        (
+            torch.zeros((3, 32, 32)),
+            targets[0],
+            _evaluation_meta(
+                0,
+                inverse_affine=[2.0, 0.0, 10.0, 0.0, 3.0, 20.0],
+            ),
+        ),
+        (torch.zeros((3, 32, 32)), targets[1], _evaluation_meta(1)),
+    ]
+    events = []
+
+    worker.evaluate_tensor(
+        [dataset],
+        reporter=WorkerReporter(lambda event, payload: events.append((event, payload))),
+        iteration=7,
+        torch=torch,
+        cancellation=Cancellation(),
+    )
+
+    expected, _stats = topdown_pose_losses(
+        {"heatmaps": torch.zeros((2, 2, 8, 8))},
+        targets,
+        config=worker.config.loss,
+        torch_module=torch,
+        device=torch.device("cpu"),
+    )
+    metrics = _metric_values(events)
+    assert model.calls == 2
+    assert metrics["loss_test0"] == pytest.approx(float(expected["loss"].item()))
+    assert metrics["heatmap_loss_test0"] == pytest.approx(
+        float(expected["heatmap_loss"].item())
+    )
+    assert metrics["visible_keypoints_test0"] == 3.0
+    assert metrics["mean_keypoint_error_px_test0"] == pytest.approx(
+        (
+            math.hypot(16.0, 24.0)
+            + math.hypot(12.0, 12.0)
+            + math.hypot(20.0, 20.0)
+        )
+        / 3.0
+    )
+    assert metrics["pose_samples_test0"] == 2.0
+    assert "objectness_loss_test0" not in metrics
+
+
+def test_slot_evaluation_reports_objectness_loss(tmp_path):
+    class ZeroSlots(torch.nn.Module):
+        def forward(self, images):
+            return {
+                "heatmaps": images.new_zeros((len(images), 2, 2, 8, 8)),
+                "objectness": images.new_zeros((len(images), 2)),
+            }
+
+    worker = _configured_evaluation_worker(tmp_path, head="slots")
+    worker.model = ZeroSlots()
+    target = {
+        "keypoints": torch.tensor([[[8.0, 8.0], [-1.0, -1.0]]]),
+        "visible": torch.tensor([[1.0, 0.0]]),
+    }
+    events = []
+
+    worker.evaluate_tensor(
+        [[(torch.zeros((3, 32, 32)), target, _evaluation_meta(0))]],
+        reporter=WorkerReporter(lambda event, payload: events.append((event, payload))),
+        iteration=7,
+        torch=torch,
+        cancellation=Cancellation(),
+    )
+
+    expected, _stats = slot_pose_losses(
+        {
+            "heatmaps": torch.zeros((1, 2, 2, 8, 8)),
+            "objectness": torch.zeros((1, 2)),
+        },
+        [target],
+        config=worker.config.loss,
+        torch_module=torch,
+        device=torch.device("cpu"),
+    )
+    metrics = _metric_values(events)
+    assert metrics["loss_test0"] == pytest.approx(float(expected["loss"].item()))
+    assert metrics["heatmap_loss_test0"] == pytest.approx(
+        float(expected["heatmap_loss"].item())
+    )
+    assert metrics["objectness_loss_test0"] == pytest.approx(
+        float(expected["objectness_loss"].item())
+    )
+    assert metrics["visible_keypoints_test0"] == 1.0
+    assert metrics["mean_keypoint_error_px_test0"] == pytest.approx(
+        math.hypot(8.0, 8.0)
+    )
+
+
+def _configured_evaluation_worker(tmp_path, *, head):
+    worker = DeepDetectWorker()
+    worker.configure(
+        WorkerContext(
+            repository=str(tmp_path),
+            mllib={
+                "gpu": False,
+                "nkeypoints": 2,
+                "max_objects": 2,
+                "vitpose": {
+                    "head": head,
+                    "variant": "tiny",
+                    "image_size": [32, 32],
+                    "heatmap_size": [8, 8],
+                    "patch_size": 16,
+                    "embed_dim": 32,
+                    "depth": 1,
+                    "num_heads": 4,
+                    "drop_path_rate": 0.0,
+                    "max_objects": 2,
+                },
+            },
+            raw={},
+        )
+    )
+    return worker
+
+
+def _evaluation_meta(index, *, inverse_affine=None):
+    return {
+        "index": index,
+        "width": 32,
+        "height": 32,
+        "original_width": 32,
+        "original_height": 32,
+        "label": 1,
+        "bbox": {"xmin": 0.0, "ymin": 0.0, "xmax": 31.0, "ymax": 31.0},
+        "inverse_affine": inverse_affine or [1.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+    }
+
+
+def _metric_values(events):
+    return {
+        payload["name"]: payload["value"]
+        for event, payload in events
+        if event == "metric"
+    }
