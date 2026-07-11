@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 from PIL import Image
 
 
 def load_converter():
-    root = Path(__file__).resolve().parents[3]
+    source_root = os.environ.get("DEEPDETECT_WHEEL_TEST_SOURCE_ROOT")
+    root = (
+        Path(source_root).resolve()
+        if source_root
+        else Path(__file__).resolve().parents[3]
+    )
     path = root / "tools" / "coco_keypoints_to_dd.py"
     spec = importlib.util.spec_from_file_location("coco_keypoints_to_dd", path)
     assert spec is not None
@@ -48,6 +54,7 @@ def test_coco_keypoints_converter_writes_dd_format(tmp_path, capsys):
                         "category_id": 1,
                         "iscrowd": 0,
                         "num_keypoints": 2,
+                        "bbox": [1, 2, 4, 3],
                         "keypoints": [1, 2, 2, 0, 0, 0, 5, 6, 1],
                     },
                     {
@@ -93,7 +100,7 @@ def test_coco_keypoints_converter_writes_dd_format(tmp_path, capsys):
     assert rows == ["../images/sample.jpg keypoints/000000000010.txt"]
     target = list_path.parent / "keypoints" / "000000000010.txt"
     assert target.read_text(encoding="utf-8").splitlines() == [
-        "1 2 -1 -1 5 6"
+        "1 1 2 5 5 1 2 -1 -1 5 6"
     ]
     captured = capsys.readouterr()
     assert "Skipped 1 image(s)" in captured.err

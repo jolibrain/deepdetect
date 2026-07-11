@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 import sys
 import threading
 import time
@@ -8,7 +9,12 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
+WHEEL_TEST_SOURCE_ROOT = os.environ.get("DEEPDETECT_WHEEL_TEST_SOURCE_ROOT")
+ROOT = (
+    Path(WHEEL_TEST_SOURCE_ROOT).resolve()
+    if WHEEL_TEST_SOURCE_ROOT
+    else Path(__file__).resolve().parents[3]
+)
 VITPOSE_ROOT = ROOT / "extern" / "pytorch_workers" / "vitpose"
 if str(VITPOSE_ROOT) not in sys.path:
     sys.path.insert(0, str(VITPOSE_ROOT))

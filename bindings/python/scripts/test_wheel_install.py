@@ -297,6 +297,9 @@ def main() -> None:
             download_torch_fixtures(fixtures_dir)
         test_env["DEEPDETECT_TORCH_FIXTURES"] = str(fixtures_dir)
     test_env["DEEPDETECT_EXPECTED_CUDA"] = "true" if args.expected_cuda else "false"
+    # Some tests exercise repository-owned worker and conversion-tool sources
+    # that are deliberately not installed in the Python wheel.
+    test_env["DEEPDETECT_WHEEL_TEST_SOURCE_ROOT"] = str(REPO_ROOT)
 
     run(
         [python, "-m", "pytest", "--import-mode=importlib", str(copied_tests)],
