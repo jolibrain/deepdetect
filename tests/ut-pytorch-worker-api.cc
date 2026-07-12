@@ -506,6 +506,78 @@ TEST(pytorchworkerapi, keypoint_connector_pull_reports_dataset_info)
   cleanup_repo(fixture.root);
 }
 
+TEST(pytorchworkerapi,
+     keypoint_connector_pull_applies_photometric_augmentation_to_slots_train)
+{
+  const KeypointFixture fixture
+      = prepare_keypoint_fixture("pytorchworker_keypoint_photo_slots_fixture");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3,\"connector_tensor_transport\":\"inline\","
+      "\"noise\":{\"prob\":1.0},\"distort\":{\"prob\":0.1},"
+      "\"vitpose\":{\"head\":\"slots\"}}},\"data\":[\""
+      + fixture.train_list + "\",\"" + fixture.test0_list + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  inputc.start_tensor_pull_session(ad, mllib);
+  APIData info = inputc.connector_dataset_info();
+  JDoc info_doc;
+  info_doc.SetObject();
+  info.toJDoc(info_doc);
+  ASSERT_TRUE(info_doc["augmentation_enabled"].GetBool());
+  ASSERT_STREQ("opencv", info_doc["augmentation_policy"].GetString());
+  ASSERT_TRUE(info_doc["augmentation_train_only"].GetBool());
+
+  APIData train_params;
+  train_params.add("split", std::string("train"));
+  train_params.add("batch_size", 1);
+  APIData train = inputc.connector_batch_next(train_params);
+  JDoc train_doc;
+  train_doc.SetObject();
+  train.toJDoc(train_doc);
+
+  APIData test_params;
+  test_params.add("split", std::string("test"));
+  test_params.add("test_index", 0);
+  test_params.add("batch_size", 1);
+  APIData test = inputc.connector_batch_next(test_params);
+  JDoc test_doc;
+  test_doc.SetObject();
+  test.toJDoc(test_doc);
+
+  ASSERT_TRUE(train_doc["batch"]["meta"]["augmentation_applied"].GetBool());
+  ASSERT_STREQ("opencv",
+               train_doc["batch"]["meta"]["augmentation_policy"].GetString());
+  ASSERT_FALSE(test_doc["batch"]["meta"]["augmentation_applied"].GetBool());
+  ASSERT_STREQ("none",
+               test_doc["batch"]["meta"]["augmentation_policy"].GetString());
+  EXPECT_DOUBLE_EQ(train_doc["batch"]["targets"]["samples"][0]["instances"][0]
+                            ["keypoints"][0]["x"]
+                                .GetDouble(),
+                   test_doc["batch"]["targets"]["samples"][0]["instances"][0]
+                           ["keypoints"][0]["x"]
+                               .GetDouble());
+
+  const auto &train_values
+      = train_doc["batch"]["inputs"][0]["storage"]["values"];
+  const auto &test_values
+      = test_doc["batch"]["inputs"][0]["storage"]["values"];
+  ASSERT_EQ(train_values.Size(), test_values.Size());
+  bool pixels_differ = false;
+  for (rapidjson::SizeType index = 0; index < train_values.Size(); ++index)
+    if (train_values[index].GetDouble() != test_values[index].GetDouble())
+      {
+        pixels_differ = true;
+        break;
+      }
+  EXPECT_TRUE(pixels_differ);
+
+  inputc.cleanup_inline_detection_pull_session();
+  cleanup_repo(fixture.root);
+}
+
 TEST(pytorchworkerapi, keypoint_connector_topdown_emits_object_crop_metadata)
 {
   const KeypointFixture fixture
@@ -540,6 +612,75 @@ TEST(pytorchworkerapi, keypoint_connector_topdown_emits_object_crop_metadata)
   EXPECT_TRUE(instance["keypoints"][0]["valid"].GetBool());
   EXPECT_FALSE(instance["keypoints"][1]["valid"].GetBool());
 
+  cleanup_repo(fixture.root);
+}
+
+TEST(pytorchworkerapi,
+     keypoint_connector_pull_applies_photometric_augmentation_to_topdown_train)
+{
+  const KeypointFixture fixture = prepare_keypoint_fixture(
+      "pytorchworker_keypoint_photo_topdown_fixture");
+  const std::filesystem::path target
+      = std::filesystem::path(fixture.root) / "keypoints" / "sample0.txt";
+  write_text_file(target, "1 2 2 14 10 4 4 -1 -1 10 8\n");
+  APIData ad = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3,\"connector_tensor_transport\":\"inline\","
+      "\"noise\":{\"prob\":1.0},\"distort\":{\"prob\":0.1},"
+      "\"vitpose\":{\"head\":\"topdown\"}}},\"data\":[\""
+      + fixture.train_list + "\",\"" + fixture.test0_list + "\"]}");
+  APIData mllib = ad.getobj("parameters").getobj("mllib");
+
+  ImgPytorchInputFileConn inputc;
+  inputc.start_tensor_pull_session(ad, mllib);
+
+  APIData train_params;
+  train_params.add("split", std::string("train"));
+  train_params.add("batch_size", 1);
+  APIData train = inputc.connector_batch_next(train_params);
+  JDoc train_doc;
+  train_doc.SetObject();
+  train.toJDoc(train_doc);
+
+  APIData test_params;
+  test_params.add("split", std::string("test"));
+  test_params.add("test_index", 0);
+  test_params.add("batch_size", 1);
+  APIData test = inputc.connector_batch_next(test_params);
+  JDoc test_doc;
+  test_doc.SetObject();
+  test.toJDoc(test_doc);
+
+  ASSERT_TRUE(train_doc["batch"]["meta"]["augmentation_applied"].GetBool());
+  ASSERT_FALSE(test_doc["batch"]["meta"]["augmentation_applied"].GetBool());
+  EXPECT_DOUBLE_EQ(train_doc["batch"]["targets"]["samples"][0]["instances"][0]
+                            ["keypoints"][0]["x"]
+                                .GetDouble(),
+                   test_doc["batch"]["targets"]["samples"][0]["instances"][0]
+                           ["keypoints"][0]["x"]
+                               .GetDouble());
+  EXPECT_DOUBLE_EQ(
+      train_doc["batch"]["meta"]["inverse_affines"][0]["values"][0]
+          .GetDouble(),
+      test_doc["batch"]["meta"]["inverse_affines"][0]["values"][0]
+          .GetDouble());
+
+  const auto &train_values
+      = train_doc["batch"]["inputs"][0]["storage"]["values"];
+  const auto &test_values
+      = test_doc["batch"]["inputs"][0]["storage"]["values"];
+  ASSERT_EQ(train_values.Size(), test_values.Size());
+  bool pixels_differ = false;
+  for (rapidjson::SizeType index = 0; index < train_values.Size(); ++index)
+    if (train_values[index].GetDouble() != test_values[index].GetDouble())
+      {
+        pixels_differ = true;
+        break;
+      }
+  EXPECT_TRUE(pixels_differ);
+
+  inputc.cleanup_inline_detection_pull_session();
   cleanup_repo(fixture.root);
 }
 
@@ -600,7 +741,7 @@ TEST(pytorchworkerapi, keypoint_connector_topdown_prediction_uses_bbox_sidecar)
   cleanup_repo(fixture.root);
 }
 
-TEST(pytorchworkerapi, keypoint_connector_rejects_cpp_augmentation)
+TEST(pytorchworkerapi, keypoint_connector_rejects_unsupported_augmentation)
 {
   const KeypointFixture fixture
       = prepare_keypoint_fixture("pytorchworker_keypoint_aug_fixture");
@@ -615,6 +756,17 @@ TEST(pytorchworkerapi, keypoint_connector_rejects_cpp_augmentation)
   ImgPytorchInputFileConn inputc;
   EXPECT_THROW(inputc.inline_tensor_batches(ad, mllib),
                InputConnectorBadParamException);
+
+  APIData photometric = parse_api_data(
+      "{\"parameters\":{\"input\":{\"height\":6,\"width\":8,"
+      "\"rgb\":true,\"keypoints\":true},\"mllib\":{\"task\":\"keypoint\","
+      "\"nkeypoints\":3,\"noise\":{\"prob\":0.1},"
+      "\"vitpose\":{\"head\":\"slots\"}}},\"data\":[\""
+      + fixture.train_list + "\"]}");
+  EXPECT_THROW(
+      inputc.inline_tensor_batches(
+          photometric, photometric.getobj("parameters").getobj("mllib")),
+      InputConnectorBadParamException);
 
   cleanup_repo(fixture.root);
 }

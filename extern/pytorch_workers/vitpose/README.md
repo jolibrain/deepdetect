@@ -49,6 +49,24 @@ heatmap MSE weighted by the count of visible keypoints. Mean keypoint error is
 the Euclidean distance between raw heatmap peaks and visible targets in source
 image pixels; slot predictions use their Hungarian loss assignment.
 
+## Photometric Augmentation
+
+Photometric augmentation is supported for `connector_tensor_pull` training
+batches only. It leaves keypoint targets and top-down crop metadata unchanged;
+test batches are never augmented.
+
+```yaml
+augmentation:
+  noise:
+    prob: 0.01
+  distort:
+    prob: 0.01
+```
+
+These options retain the shared C++ augmentation behavior. `noise.prob` is
+sampled independently for each legacy noise effect. Any nonzero `distort.prob`
+enables its complete legacy distortion chain for each training crop.
+
 ## MAE Backbone Initialization
 
 `--weights` accepts a regular DeepDetect/ViTPose checkpoint or a MAE-style ViT

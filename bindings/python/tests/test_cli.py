@@ -469,6 +469,22 @@ def test_vitpose_profile_passes_keypoint_worker_parameters():
     assert predict_params["output_parameters"]["keypoint_threshold"] == 0.05
 
 
+def test_vitpose_training_parameters_accept_photometric_augmentation():
+    profile = get_profile("vitpose")
+    options = profile.train_defaults()
+    options["augmentation"] = {
+        "noise": {"prob": 0.1},
+        "distort": {"prob": 0.2},
+    }
+
+    parameters = profile.train_parameters(options)
+    mllib = parameters["mllib_parameters"]
+
+    assert mllib["data_source"] == "connector_tensor_pull"
+    assert mllib["noise"]["prob"] == 0.1
+    assert mllib["distort"]["prob"] == 0.2
+
+
 def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [

@@ -622,8 +622,7 @@ namespace dd
       _pull_next_batch_id = 0;
       _pull_task = "keypoint";
       _pull_nkeypoints = nkeypoints;
-      _pull_augmentation_enabled = false;
-      _pull_augmentation_policy = "none";
+      configure_pull_augmentation(ad);
       shuffle_pull_train();
       _pull_active = true;
     }
@@ -913,7 +912,7 @@ namespace dd
       PullBatchBuildResult built
           = is_keypoint_task(_pull_task)
                 ? inline_keypoint_batch(pairs, cursor, count, batch_id,
-                                        _pull_nkeypoints)
+                                        _pull_nkeypoints, apply_augmentation)
                 : inline_detection_batch(pairs, cursor, count, batch_id,
                                          apply_augmentation);
       const auto build_end = std::chrono::steady_clock::now();
@@ -964,8 +963,11 @@ namespace dd
       const size_t count
           = std::min(static_cast<size_t>(batch_size), records.size() - cursor);
       const std::string batch_id = next_pull_batch_id();
+      const bool apply_augmentation
+          = split == "train" && _pull_augmentation_enabled;
       PullBatchBuildResult built = topdown_keypoint_batch(
-          records, cursor, count, batch_id, _pull_nkeypoints, true, {});
+          records, cursor, count, batch_id, _pull_nkeypoints, true, {},
+          apply_augmentation);
       response.add("end", false);
       response.add("batch_id", batch_id);
       response.add("cursor_end", static_cast<int>(cursor + count));
@@ -1226,7 +1228,8 @@ namespace dd
     PullBatchBuildResult
     inline_keypoint_batch(const std::vector<DetectionPair> &pairs,
                           size_t offset, size_t count,
-                          const std::string &batch_id, int nkeypoints)
+                          const std::string &batch_id, int nkeypoints,
+                          bool apply_augmentation = false)
     {
       std::vector<double> values;
       std::vector<std::vector<KeypointInstance>> targets;
@@ -1275,6 +1278,8 @@ namespace dd
           std::vector<KeypointInstance> sample_targets
               = read_keypoints(pair.second, nkeypoints, orig_width,
                                orig_height, image.cols, image.rows);
+          if (apply_augmentation)
+            _pull_img_rand_aug_cv.augment(image);
           if (index == 0)
             {
               rows = image.rows;
@@ -1314,14 +1319,15 @@ namespace dd
                 keypoint_meta(sample_ids, paths, target_paths, original_widths,
                               original_heights, preprocessed_widths,
                               preprocessed_heights, widths, heights,
-                              nkeypoints));
+                              nkeypoints, apply_augmentation));
       return PullBatchBuildResult{ batch, tensor_stats };
     }
 
     PullBatchBuildResult topdown_keypoint_batch(
         const std::vector<PoseRecord> &records, size_t offset, size_t count,
         const std::string &batch_id, int nkeypoints, bool with_targets,
-        const std::vector<std::string> &source_paths)
+        const std::vector<std::string> &source_paths,
+        bool apply_augmentation = false)
     {
       std::vector<double> values;
       std::vector<APIData> target_samples;
@@ -1389,6 +1395,8 @@ namespace dd
           cv::warpAffine(image, crop, affine, cv::Size(_width, _height),
                          cv::INTER_LINEAR, cv::BORDER_CONSTANT,
                          cv::Scalar(0, 0, 0));
+          if (apply_augmentation)
+            _pull_img_rand_aug_cv.augment(crop);
           const std::vector<double> crop_values = image_values_chw(crop);
           values.insert(values.end(), crop_values.begin(), crop_values.end());
 
@@ -1475,6 +1483,7 @@ namespace dd
       meta.add("bboxes", boxes);
       meta.add("inverse_affines", inverse_affines);
       meta.add("bbox_scale_factor", _pull_bbox_scale_factor);
+      add_detection_augmentation_meta(meta, apply_augmentation);
       if (!source_paths.empty())
         {
           meta.add("source_paths", source_paths);
@@ -1927,8 +1936,8 @@ namespace dd
                           const std::vector<int> &preprocessed_widths,
                           const std::vector<int> &preprocessed_heights,
                           const std::vector<int> &widths,
-                          const std::vector<int> &heights,
-                          int nkeypoints) const
+                          const std::vector<int> &heights, int nkeypoints,
+                          bool augmentation_applied = false) const
     {
       APIData meta;
       meta.add("task", std::string("keypoint"));
@@ -1942,7 +1951,7 @@ namespace dd
       meta.add("original_heights", original_heights);
       meta.add("preprocessed_widths", preprocessed_widths);
       meta.add("preprocessed_heights", preprocessed_heights);
-      add_detection_augmentation_meta(meta, false);
+      add_detection_augmentation_meta(meta, augmentation_applied);
       return meta;
     }
 
@@ -1980,9 +1989,15 @@ namespace dd
         throw InputConnectorBadParamException(
             mode
             + " keypoint input does not support crop or aspect_ratio_pad yet");
-      if (keypoint_augmentation_requested(mllib))
+      if (keypoint_geometric_augmentation_requested(mllib))
         throw InputConnectorBadParamException(
             mode + " keypoint input does not support C++ augmentation yet");
+      if (mode == "connector_tensor_inline"
+          && keypoint_photometric_augmentation_requested(mllib))
+        throw InputConnectorBadParamException(
+            mode
+            + " keypoint input only supports photometric augmentation "
+              "with connector_tensor_pull");
     }
 
     static bool positive_int_param(const APIData &ad, const std::string &key)
@@ -2001,7 +2016,7 @@ namespace dd
       return ad.has(key) && ad.get(key).get<bool>();
     }
 
-    static bool keypoint_augmentation_requested(const APIData &mllib)
+    static bool keypoint_geometric_augmentation_requested(const APIData &mllib)
     {
       if (true_bool_param(mllib, "mirror") || true_bool_param(mllib, "rotate")
           || positive_int_param(mllib, "crop_size")
@@ -2010,6 +2025,12 @@ namespace dd
       APIData geometry = mllib.getobj("geometry");
       if (!geometry.empty() && positive_double_param(geometry, "prob"))
         return true;
+      return false;
+    }
+
+    static bool
+    keypoint_photometric_augmentation_requested(const APIData &mllib)
+    {
       APIData noise = mllib.getobj("noise");
       if (!noise.empty() && positive_double_param(noise, "prob"))
         return true;
