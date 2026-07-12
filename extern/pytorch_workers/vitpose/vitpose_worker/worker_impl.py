@@ -4,7 +4,7 @@ import math
 import queue
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -145,6 +145,18 @@ class PoseTrainRequest:
         )
 
 
+def merge_training_mllib(
+    service_mllib: dict[str, Any], train_mllib: dict[str, Any]
+) -> dict[str, Any]:
+    merged = dict(service_mllib)
+    merged.update(train_mllib)
+    service_vitpose = service_mllib.get("vitpose", {})
+    train_vitpose = train_mllib.get("vitpose", {})
+    if isinstance(service_vitpose, dict) and isinstance(train_vitpose, dict):
+        merged["vitpose"] = {**service_vitpose, **train_vitpose}
+    return merged
+
+
 @dataclass(frozen=True)
 class PoseDatasetSummary:
     samples: int
@@ -255,8 +267,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         backend = self.import_backend()
         torch = backend[0]
         train_request = PoseTrainRequest.from_params(self.context, params)
-        if self.config is None:
-            self.config = worker_config_from_mllib(train_request.effective_mllib)
+        train_request = self.configure_training_request(train_request)
         if self.multi_gpu_requested:
             reporter.log(
                 "warning",
@@ -275,6 +286,20 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             cancellation=cancellation,
             torch=torch,
         )
+
+    def configure_training_request(self, train_request: PoseTrainRequest) -> PoseTrainRequest:
+        mllib = merge_training_mllib(
+            self.context.mllib if self.context is not None else {},
+            train_request.effective_mllib,
+        )
+        pretrained = checkpoint_path(
+            mllib,
+            self.context.repository_path if self.context is not None else None,
+        ) is not None
+        self.config = worker_config_from_mllib(mllib, pretrained=pretrained)
+        self.nkeypoints = int(self.config.model.nkeypoints)
+        self.max_objects = int(self.config.model.max_objects)
+        return replace(train_request, effective_mllib=mllib)
 
     def train_tensor(
         self,

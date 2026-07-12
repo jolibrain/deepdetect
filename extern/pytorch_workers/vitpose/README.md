@@ -67,6 +67,14 @@ These options retain the shared C++ augmentation behavior. `noise.prob` is
 sampled independently for each legacy noise effect. Any nonzero `distort.prob`
 enables its complete legacy distortion chain for each training crop.
 
+## Layer-Wise Learning Rate Decay
+
+When `vitpose.layer_decay` is not set, fresh training starts with `1.0` so all
+backbone layers use the base learning rate. Training with `--weights`,
+`vitpose.pretrained_model`, or an existing resume checkpoint selects the
+variant's ViTPose fine-tuning value instead. Set `service_mllib.vitpose.layer_decay`
+explicitly to override this policy.
+
 ## MAE Backbone Initialization
 
 `--weights` accepts a regular DeepDetect/ViTPose checkpoint or a MAE-style ViT

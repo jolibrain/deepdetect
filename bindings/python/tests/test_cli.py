@@ -485,6 +485,15 @@ def test_vitpose_training_parameters_accept_photometric_augmentation():
     assert mllib["distort"]["prob"] == 0.2
 
 
+def test_vitpose_profile_leaves_layer_decay_for_worker_auto_selection():
+    profile = get_profile("vitpose")
+    options = profile.train_defaults()
+
+    parameters = profile.service_parameters(options)
+
+    assert "layer_decay" not in parameters["mllib_parameters"]["vitpose"]
+
+
 def test_train_accepts_multiple_test_data_paths(monkeypatch, tmp_path, capsys):
     runtime = FakeRuntime()
     runtime.statuses = [

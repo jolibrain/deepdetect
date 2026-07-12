@@ -414,7 +414,6 @@ PROFILES = {
                 "objectness_threshold": 0.25,
                 "keypoint_threshold": 0.05,
                 "weight_decay": 0.1,
-                "layer_decay": 0.75,
                 "grad_clip": 1.0,
             },
         },

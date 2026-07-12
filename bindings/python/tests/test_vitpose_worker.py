@@ -36,16 +36,85 @@ from coco_keypoints_to_dd import (
 )
 from vitpose_worker.assignment import hungarian_assign
 from vitpose_worker.checkpoint import load_model_checkpoint
+from vitpose_worker.config import worker_config_from_mllib
 from vitpose_worker.decode import decode_topdown_outputs
 from vitpose_worker.losses import PoseLossConfig, slot_pose_losses, topdown_pose_losses
 from vitpose_worker.model import ViTPoseModelConfig, ViTPoseSlots, ViTPoseTopDown
 from vitpose_worker.targets import PoseTargetConfig, build_batch_targets
-from vitpose_worker.worker_impl import DeepDetectWorker
-from vitpose_worker.worker_impl import ConnectorBatchPrefetcher
+from vitpose_worker.worker_impl import ConnectorBatchPrefetcher, DeepDetectWorker
+from vitpose_worker.worker_impl import PoseTrainOptions, PoseTrainRequest
 
 
 def test_hungarian_assignment_is_permutation_invariant():
     assert hungarian_assign([[4.0, 1.0], [1.0, 4.0]]) == [(1, 0), (0, 1)]
+
+
+def test_layer_decay_defaults_to_uniform_for_fresh_training():
+    mllib = {
+        "nkeypoints": 2,
+        "vitpose": {
+            "head": "topdown",
+            "variant": "base",
+            "image_size": [32, 32],
+            "heatmap_size": [8, 8],
+        },
+    }
+
+    assert worker_config_from_mllib(mllib).layer_decay == 1.0
+    assert worker_config_from_mllib({**mllib, "weights": "mae.pth"}).layer_decay == 0.75
+
+
+def test_layer_decay_explicit_value_overrides_pretraining_policy():
+    mllib = {
+        "weights": "mae.pth",
+        "vitpose": {
+            "head": "topdown",
+            "variant": "base",
+            "image_size": [32, 32],
+            "heatmap_size": [8, 8],
+            "layer_decay": 0.6,
+        },
+    }
+
+    assert worker_config_from_mllib(mllib).layer_decay == 0.6
+
+
+def test_worker_selects_layer_decay_for_existing_resume_checkpoint(tmp_path):
+    service_mllib = {
+        "gpu": False,
+        "nkeypoints": 2,
+        "vitpose": {
+            "head": "topdown",
+            "variant": "tiny",
+            "image_size": [32, 32],
+            "heatmap_size": [8, 8],
+        },
+    }
+    (tmp_path / "checkpoint-1.pt").touch()
+    worker = DeepDetectWorker()
+    worker.configure(WorkerContext(repository=str(tmp_path), mllib=service_mllib, raw={}))
+    request = PoseTrainRequest(
+        request={},
+        request_params={},
+        effective_mllib={"resume": True, "vitpose": {"head": "topdown"}},
+        source="tensor",
+        train_list=None,
+        test_lists=[],
+        train_tensor_batches=[],
+        test_tensor_batches=[],
+        options=PoseTrainOptions(
+            iterations=1,
+            test_interval=1,
+            batch_size=1,
+            iter_size=1,
+            base_lr=0.001,
+        ),
+    )
+
+    worker.configure_training_request(request)
+
+    assert worker.config is not None
+    assert worker.config.layer_decay == 0.9
 
 
 def test_connector_prefetcher_waits_for_full_queue_instead_of_stopping():

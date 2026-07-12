@@ -28,7 +28,11 @@ class ViTPoseWorkerConfig:
     connector_prefetch_batches: int
 
 
-def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
+def worker_config_from_mllib(
+    mllib: dict[str, Any],
+    *,
+    pretrained: bool | None = None,
+) -> ViTPoseWorkerConfig:
     options = mllib.get("vitpose", {})
     options = options if isinstance(options, dict) else {}
     head = str(options.get("head", "topdown"))
@@ -83,6 +87,12 @@ def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
         heatmap_weight=float(options.get("heatmap_loss_weight", 1.0)),
         objectness_weight=float(options.get("objectness_loss_weight", 1.0)),
     )
+    if pretrained is None:
+        pretrained = has_configured_pretrained_weights(mllib)
+    layer_decay = options.get("layer_decay")
+    if layer_decay is None:
+        layer_decay = variant_layer_decay(variant) if pretrained else 1.0
+
     return ViTPoseWorkerConfig(
         head=head,
         model=model_config,
@@ -97,7 +107,7 @@ def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
         ),
         weight_decay=float(options.get("weight_decay", 0.1)),
         adamw_betas=float_tuple(options.get("betas", [0.9, 0.999]), "betas", length=2),
-        layer_decay=float(options.get("layer_decay", variant_layer_decay(variant))),
+        layer_decay=float(layer_decay),
         grad_clip=optional_float(options.get("grad_clip", 1.0), "grad_clip"),
         connector_prefetch_batches=positive_int(
             mllib.get("connector_prefetch_batches", options.get("connector_prefetch_batches", 2)),
@@ -109,11 +119,20 @@ def worker_config_from_mllib(mllib: dict[str, Any]) -> ViTPoseWorkerConfig:
 def variant_layer_decay(variant: str) -> float:
     return {
         "tiny": 0.9,
-        "small": 0.75,
+        "small": 0.8,
         "base": 0.75,
         "large": 0.8,
         "huge": 0.85,
     }[variant]
+
+
+def has_configured_pretrained_weights(mllib: dict[str, Any]) -> bool:
+    if mllib.get("weights") or mllib.get("checkpoint"):
+        return True
+    vitpose = mllib.get("vitpose", {})
+    return isinstance(vitpose, dict) and bool(
+        vitpose.get("pretrained_model") or vitpose.get("pretrained")
+    )
 
 
 def positive_int(value: Any, name: str) -> int:
