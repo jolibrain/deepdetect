@@ -8,14 +8,22 @@ from typing import Any, TextIO
 
 
 class EventWriter:
-    def __init__(self, *, output_format: str = "jsonl", stream: TextIO | None = None):
+    def __init__(
+        self,
+        *,
+        output_format: str = "jsonl",
+        stream: TextIO | None = None,
+        collect_events: bool = True,
+    ):
         self.output_format = output_format
         self.stream = stream or sys.stdout
+        self.collect_events = collect_events
         self.events: list[dict[str, Any]] = []
 
     def emit(self, event: str, **payload: Any) -> dict[str, Any]:
         record = {"event": event, "timestamp": time.time(), **payload}
-        self.events.append(record)
+        if self.collect_events:
+            self.events.append(record)
         if self.output_format == "json":
             print(json.dumps(record, sort_keys=True), file=self.stream)
         elif self.output_format == "jsonl":

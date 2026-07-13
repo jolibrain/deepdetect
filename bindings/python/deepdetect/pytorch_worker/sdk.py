@@ -273,9 +273,35 @@ def validate_prediction_result(result: Any) -> dict[str, Any]:
     for index, item in enumerate(results):
         if not isinstance(item, dict):
             raise PredictionContractError(f"prediction {index} must be an object")
+        _validate_prediction_objects(item, index)
         _validate_bboxes(item, index)
+        _validate_masks(item, index)
         _validate_keypoints(item, index)
     return result
+
+
+def _validate_prediction_objects(item: Mapping[str, Any], prediction_index: int) -> None:
+    probs = item.get("probs")
+    if not isinstance(probs, list):
+        raise PredictionContractError(f"prediction {prediction_index} probs must be a list")
+    for object_index, prob in enumerate(probs):
+        finite_scalar(
+            prob,
+            f"prediction {prediction_index} probability {object_index}",
+            PredictionContractError,
+        )
+    for key in ("cats", "bboxes", "masks", "keypoints", "vals", "series"):
+        if key not in item:
+            continue
+        value = item[key]
+        if not isinstance(value, list):
+            raise PredictionContractError(
+                f"prediction {prediction_index} {key} must be a list"
+            )
+        if len(value) != len(probs):
+            raise PredictionContractError(
+                f"prediction {prediction_index} {key} must have one entry per probability"
+            )
 
 
 def _validate_bboxes(item: Mapping[str, Any], prediction_index: int) -> None:
@@ -332,3 +358,18 @@ def _validate_keypoints(item: Mapping[str, Any], prediction_index: int) -> None:
                 raise PredictionContractError(
                     f"prediction {prediction_index} keypoints {object_index} point {point_index} valid must be a boolean"
                 )
+
+
+def _validate_masks(item: Mapping[str, Any], prediction_index: int) -> None:
+    if "masks" not in item:
+        return
+    masks = item["masks"]
+    if not isinstance(masks, list):
+        raise PredictionContractError(
+            f"prediction {prediction_index} masks must be a list"
+        )
+    for mask_index, mask in enumerate(masks):
+        if not isinstance(mask, Mapping):
+            raise PredictionContractError(
+                f"prediction {prediction_index} mask {mask_index} must be an object"
+            )

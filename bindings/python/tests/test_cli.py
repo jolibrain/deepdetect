@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 
 from deepdetect import DeepDetect
@@ -21,7 +22,10 @@ from deepdetect.cli.profiles import get_profile
 from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
 from deepdetect.cli.visualize import (
+    decode_coco_rle_mask,
     detection_overlay_image,
+    output_path_for,
+    render_instance_masks,
     segmentation_overlay_images,
 )
 
@@ -170,6 +174,7 @@ def test_default_example_configs_load():
     torchvision = config.load_config(root / "torchvision-detector-default.yaml")
     external = config.load_config(root / "external-pytorch-detector-default.yaml")
     vitpose = config.load_config(root / "vitpose-default.yaml")
+    sam2 = config.load_config(root / "sam2-default.yaml")
 
     assert yolox["width"] == 640
     assert yolox["height"] == 640
@@ -213,6 +218,8 @@ def test_default_example_configs_load():
     )
     assert vitpose["service_mllib"]["task"] == "keypoint"
     assert vitpose["service_mllib"]["vitpose"]["head"] == "topdown"
+    assert sam2["service_mllib"]["sam2"]["variant"] == "tiny"
+    assert sam2["service_mllib"]["sam2"]["automatic"]["max_masks"] == 0
     assert vitpose["mllib"]["data_source"] == "connector_tensor_pull"
     assert vitpose["dataset_check"] == "full"
 
@@ -2486,6 +2493,272 @@ def test_infer_vitpose_aligns_bbox_files_with_image_batches(
         assert call[1]["parameters"]["input"]["bbox_files"] == [
             str(boxes[index].resolve())
         ]
+
+
+def test_infer_sam2_stages_weights_and_aligns_optional_bbox_files(
+    monkeypatch, tmp_path, capsys
+):
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    weights = tmp_path / "sam2.1_hiera_tiny.pt"
+    weights.write_bytes(b"model")
+    images = []
+    boxes = []
+    for index in range(2):
+        image = tmp_path / f"sam2-{index}.png"
+        bbox = tmp_path / f"sam2-{index}.txt"
+        Image.new("RGB", (8, 8), "white").save(image)
+        bbox.write_text("7 1 1 7 7\n", encoding="utf-8")
+        images.append(image)
+        boxes.append(bbox)
+
+    code = cli.main(
+        [
+            "infer",
+            "sam2",
+            *(str(path) for path in images),
+            "--weights",
+            str(weights),
+            "--bbox-files",
+            *(str(path) for path in boxes),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--batch-size",
+            "1",
+        ]
+    )
+
+    assert code == 0
+    create = next(call for call in runtime.calls if call[0] == "create")
+    assert create[2]["parameters"]["mllib"]["weights"] == str(
+        (tmp_path / "repo" / weights.name).resolve()
+    )
+    predict_calls = [call for call in runtime.calls if call[0] == "predict"]
+    assert len(predict_calls) == 2
+    for index, call in enumerate(predict_calls):
+        assert call[1]["parameters"]["output"]["best"] == 2147483647
+        assert call[1]["parameters"]["input"]["bbox_files"] == [
+            str(boxes[index].resolve())
+        ]
+
+
+def test_infer_sam2_reads_aligned_image_and_bbox_lists(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    weights = tmp_path / "sam2.1_hiera_tiny.pt"
+    weights.write_bytes(b"model")
+    images = tmp_path / "images"
+    boxes = tmp_path / "boxes"
+    lists = tmp_path / "lists"
+    images.mkdir()
+    boxes.mkdir()
+    lists.mkdir()
+    expected_images = []
+    expected_boxes = []
+    for index in range(2):
+        image = images / f"sam2-{index}.png"
+        bbox = boxes / f"sam2-{index}.txt"
+        Image.new("RGB", (8, 8), "white").save(image)
+        bbox.write_text("7 1 1 7 7\n", encoding="utf-8")
+        expected_images.append(image.resolve())
+        expected_boxes.append(bbox.resolve())
+    image_list = lists / "images.txt"
+    bbox_list = lists / "bbox-files.txt"
+    image_list.write_text("../images/sam2-0.png\n../images/sam2-1.png\n", encoding="utf-8")
+    bbox_list.write_text("../boxes/sam2-0.txt\n../boxes/sam2-1.txt\n", encoding="utf-8")
+
+    code = cli.main(
+        [
+            "infer",
+            "sam2",
+            "--images-file",
+            str(image_list),
+            "--bbox-files-file",
+            str(bbox_list),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--batch-size",
+            "2",
+        ]
+    )
+
+    assert code == 0
+    predict_calls = [call for call in runtime.calls if call[0] == "predict"]
+    assert len(predict_calls) == 1
+    assert predict_calls[0][1]["data"] == [str(path) for path in expected_images]
+    assert predict_calls[0][1]["parameters"]["input"]["bbox_files"] == [
+        str(path) for path in expected_boxes
+    ]
+    capsys.readouterr()
+
+
+def test_infer_streams_visual_artifacts_per_prediction(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    ordering = []
+
+    def predict(request):
+        request = json.loads(request)
+        runtime.calls.append(("predict", request))
+        ordering.append("predict")
+        return response(
+            body={
+                "predictions": [
+                    {"uri": str(image), "classes": []} for image in request["data"]
+                ]
+            }
+        )
+
+    runtime.predict = predict
+    monkeypatch.setattr(
+        inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    monkeypatch.setattr(
+        inference,
+        "render_detections",
+        lambda image, prediction, output: ordering.append(f"render:{image.name}"),
+    )
+    weights = tmp_path / "weights.pt"
+    weights.write_bytes(b"model")
+    images = []
+    for index in range(2):
+        image = tmp_path / f"image-{index}.png"
+        Image.new("RGB", (8, 8), "white").save(image)
+        images.append(image)
+
+    code = cli.main(
+        [
+            "infer",
+            "yolox",
+            *(str(image) for image in images),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--batch-size",
+            "1",
+            "--output",
+            str(tmp_path / "results"),
+        ]
+    )
+
+    assert code == 0
+    assert ordering == [
+        "predict",
+        "render:image-0.png",
+        "predict",
+        "render:image-1.png",
+    ]
+    capsys.readouterr()
+
+
+def test_output_path_uses_existing_directory_with_a_suffix(tmp_path):
+    output = tmp_path / "sam2.results"
+    output.mkdir()
+
+    path = output_path_for(
+        output,
+        tmp_path / "input.png",
+        multiple=False,
+        suffix="_sam2_overlay",
+    )
+
+    assert path == output / "input_sam2_overlay.png"
+
+
+def test_infer_sam2_requires_weights(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        inference.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    image = tmp_path / "sam2.png"
+    Image.new("RGB", (8, 8), "white").save(image)
+
+    code = cli.main(["infer", "sam2", str(image)])
+
+    assert code == 1
+    assert "weights is required" in capsys.readouterr().err
+    assert not runtime.calls
+
+
+def test_train_sam2_is_not_a_cli_model():
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["train", "sam2"])
+
+
+def test_instance_mask_rendering_preserves_binary_values(tmp_path):
+    image = tmp_path / "source.png"
+    Image.new("RGB", (3, 2), "white").save(image)
+    prediction = {
+        "classes": [
+            {
+                "mask": {
+                    "encoding": "coco_rle",
+                    "size": [2, 3],
+                    "counts": [1, 3, 2],
+                }
+            }
+        ]
+    }
+
+    overlay = tmp_path / "result_sam2_overlay.jpg"
+    paths = render_instance_masks(image, prediction, overlay)
+
+    assert overlay.is_file()
+    assert Image.open(overlay).format == "JPEG"
+    assert paths == [tmp_path / "result_sam2_mask_0001.png"]
+    assert list(Image.open(paths[0]).get_flattened_data()) == [0, 1, 0, 1, 1, 0]
+    assert list(
+        decode_coco_rle_mask(prediction["classes"][0]["mask"]).get_flattened_data()
+    ) == [
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+    ]
+
+
+def test_sam2_visual_outputs_use_jpeg_overlay(tmp_path):
+    image = tmp_path / "source.png"
+    output = tmp_path / "results"
+    Image.new("RGB", (3, 2), "white").save(image)
+    prediction = {
+        "classes": [
+            {
+                "mask": {
+                    "encoding": "coco_rle",
+                    "size": [2, 3],
+                    "counts": [1, 3, 2],
+                }
+            }
+        ]
+    }
+    events = []
+    writer = SimpleNamespace(
+        emit=lambda event, **payload: events.append((event, payload))
+    )
+
+    inference.write_visual_outputs(
+        "instance-segmentation",
+        [image],
+        [prediction],
+        output,
+        writer,
+        multiple=True,
+    )
+
+    overlay = output / "source_sam2_overlay.jpg"
+    assert overlay.is_file()
+    assert Image.open(overlay).format == "JPEG"
+    assert events[-1][1]["kind"] == "overlay"
+    assert events[-1][1]["path"] == str(overlay)
 
 
 def test_infer_segformer_keeps_default_size(monkeypatch, tmp_path, capsys):

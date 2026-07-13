@@ -30,7 +30,7 @@ SEGMENTATION_CLASS_COLORS = (
 def output_path_for(
     requested: Path, image_path: Path, *, multiple: bool, suffix: str
 ) -> Path:
-    if multiple or requested.suffix == "":
+    if multiple or requested.suffix == "" or requested.is_dir():
         return requested / f"{image_path.stem}{suffix}.png"
     return requested
 
@@ -49,6 +49,88 @@ def render_keypoints(
     image = keypoint_overlay_image(image_path, prediction)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path)
+
+
+def render_instance_masks(
+    image_path: Path, prediction: dict[str, Any], overlay_path: Path
+) -> list[Path]:
+    image = Image.open(image_path).convert("RGBA")
+    masks = instance_mask_images(prediction, image.size)
+    overlay = image
+    for index, mask in enumerate(masks, 1):
+        color = _segmentation_class_color(index)
+        layer = Image.new("RGBA", image.size, (*color, 0))
+        layer.putalpha(mask.point(lambda value: 120 if value else 0))
+        overlay = Image.alpha_composite(overlay, layer)
+
+    overlay_path.parent.mkdir(parents=True, exist_ok=True)
+    mask_paths: list[Path] = []
+    base = overlay_path.stem.removesuffix("_overlay")
+    for index, mask in enumerate(masks, 1):
+        mask_path = overlay_path.with_name(f"{base}_mask_{index:04d}.png")
+        mask.save(mask_path)
+        mask_paths.append(mask_path)
+    overlay = overlay.convert("RGB")
+    if overlay_path.suffix.lower() in {".jpg", ".jpeg"}:
+        overlay.save(overlay_path, format="JPEG", quality=95)
+    else:
+        overlay.save(overlay_path)
+    return mask_paths
+
+
+def instance_mask_images(
+    prediction: dict[str, Any], image_size: tuple[int, int]
+) -> list[Image.Image]:
+    masks: list[Image.Image] = []
+    for index, detected_class in enumerate(prediction.get("classes", [])):
+        raw_mask = detected_class.get("mask")
+        if not isinstance(raw_mask, dict):
+            raise ValueError(f"instance mask {index} must be an object")
+        mask = decode_coco_rle_mask(raw_mask)
+        if mask.size != image_size:
+            raise ValueError(
+                f"instance mask {index} is {mask.width}x{mask.height}, "
+                f"expected {image_size[0]}x{image_size[1]}"
+            )
+        masks.append(mask)
+    return masks
+
+
+def decode_coco_rle_mask(payload: dict[str, Any]) -> Image.Image:
+    encoding = payload.get("encoding", "coco_rle")
+    if encoding != "coco_rle":
+        raise ValueError(f"unsupported instance mask encoding: {encoding!r}")
+    size = payload.get("size")
+    counts = payload.get("counts")
+    if (
+        not isinstance(size, (list, tuple))
+        or len(size) != 2
+        or not all(isinstance(value, int) and value > 0 for value in size)
+    ):
+        raise ValueError("COCO RLE mask size must be [height, width]")
+    if not isinstance(counts, list):
+        raise ValueError("COCO RLE mask counts must be a list")
+    height, width = int(size[0]), int(size[1])
+    expected = height * width
+    values = bytearray(expected)
+    offset = 0
+    bit = 0
+    for count in counts:
+        if not isinstance(count, int) or count < 0:
+            raise ValueError("COCO RLE mask counts must be non-negative integers")
+        end = offset + count
+        if end > expected:
+            raise ValueError("COCO RLE mask counts exceed its declared size")
+        if bit:
+            values[offset:end] = b"\x01" * count
+        offset = end
+        bit = 1 - bit
+    if offset != expected:
+        raise ValueError("COCO RLE mask counts do not match its declared size")
+    # COCO RLE traverses each column before moving to the next one.
+    return Image.frombytes("L", (height, width), bytes(values)).transpose(
+        Image.Transpose.TRANSPOSE
+    )
 
 
 def keypoint_overlay_image(

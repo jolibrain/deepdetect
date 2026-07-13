@@ -1,0 +1,30 @@
+# SAM2 inference-only worker defaults.
+weights: null
+repository: deepdetect-models/sam2
+service_name: python-sam2-infer
+nclasses: 1
+width: 1024
+height: 1024
+batch_size: 1
+gpu: false
+gpuid: null
+output: null
+visualize: false
+benchmark: false
+warmup: 0
+output_format: json
+bbox_files: null
+service_mllib:
+  entrypoint: extern/pytorch_workers/sam2/worker.py
+  class: DeepDetectWorker
+  task: instance-segmentation
+  sam2:
+    variant: tiny
+    automatic:
+      points_per_side: 32
+      points_per_batch: 64
+      pred_iou_thresh: 0.8
+      stability_score_thresh: 0.95
+      box_nms_thresh: 0.7
+      crop_n_layers: 0
+      max_masks: 0

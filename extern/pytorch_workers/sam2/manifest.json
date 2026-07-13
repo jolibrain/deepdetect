@@ -1,0 +1,22 @@
+{
+  "name": "sam2",
+  "entrypoint": "extern/pytorch_workers/sam2/worker.py",
+  "class": "DeepDetectWorker",
+  "runtime_dependency": "external-pypi-package",
+  "external_repositories_required": false,
+  "python_dependencies": [
+    "sam2==1.1.0",
+    "torch",
+    "torchvision",
+    "numpy",
+    "Pillow"
+  ],
+  "upstream_references": [
+    {
+      "url": "https://github.com/facebookresearch/sam2",
+      "license": "Apache-2.0",
+      "notes": "SAM2 image predictor and automatic mask generator APIs."
+    }
+  ],
+  "generation_notes": "Inference-only static-image worker. The operator-selected PyPI sam2==1.1.0 runtime is not bundled in DeepDetect wheels; SAM2 checkpoints are supplied with --weights."
+}

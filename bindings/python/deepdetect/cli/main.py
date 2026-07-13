@@ -18,8 +18,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     train = subcommands.add_parser("train", help="train a model")
     train_models = train.add_subparsers(dest="model", required=True)
-    for model in PROFILES:
-        _add_train_parser(train_models.add_parser(model, help=f"train {model}"))
+    for model, profile in PROFILES.items():
+        if profile.supports_training:
+            _add_train_parser(train_models.add_parser(model, help=f"train {model}"))
 
     infer = subcommands.add_parser("infer", help="run inference")
     infer_models = infer.add_subparsers(dest="model", required=True)
@@ -142,14 +143,25 @@ def _add_train_parser(parser: argparse.ArgumentParser) -> None:
 def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
     _add_common_config(parser)
     parser.add_argument("images", nargs="*", type=Path)
+    parser.add_argument(
+        "--images-file",
+        type=Path,
+        help="text file with one image path per non-empty line",
+    )
     parser.add_argument("--weights", type=Path)
     parser.add_argument("--repository", type=Path)
     parser.add_argument("--service-name")
     parser.add_argument("--nclasses", type=int)
     parser.add_argument("--nkeypoints", type=int)
     parser.add_argument("--max-objects", type=int)
-    if PROFILES[model].task == "keypoint":
+    if PROFILES[model].task in {"keypoint", "instance-segmentation"}:
         parser.add_argument("--bbox-files", nargs="+", type=Path)
+        parser.add_argument(
+            "--bbox-files-file",
+            type=Path,
+            help="text file with one bbox-sidecar path per non-empty line",
+        )
+    if PROFILES[model].task == "keypoint":
         parser.add_argument("--keypoint-threshold", type=float)
     parser.add_argument("--width", type=int)
     parser.add_argument("--height", type=int)

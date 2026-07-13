@@ -15,6 +15,9 @@ to focused model profiles:
   in-tree `extern/pytorch_workers/vitpose/worker.py` entrypoint. It uses
   bbox-driven top-down pose by default; `vitpose.head: slots` retains the
   full-image Hungarian slot model.
+- `sam2`: an inference-only external PyTorch worker for SAM2 static-image
+  automatic masks or bbox-prompted masks. Its `sam2==1.1.0` runtime and
+  checkpoint are installed/provided separately.
 
 The canonical command shape is task first:
 
@@ -35,6 +38,12 @@ All commands are discoverable through `--help`. Long-running training emits
 structured events that are easy for humans to watch and easy for agents to
 parse. YAML config files are supported, and explicit CLI flags override config
 values.
+
+Inference accepts positional image paths or `--images-file`, a text file with
+one image path on each non-empty line. Relative entries resolve from the list
+file directory. Top-down ViTPose and SAM2 also accept `--bbox-files-file` for
+an aligned list of sidecar paths; it cannot be combined with positional images
+or `--bbox-files`, respectively.
 
 ## Configuration
 
@@ -69,9 +78,10 @@ Example default-style configs are provided next to this document:
 - `torchvision-detector-default.yaml`
 - `external-pytorch-detector-default.yaml`
 - `vitpose-default.yaml`
+- `sam2-default.yaml`
 
-They include training keys plus inference-only keys that are ignored by
-training commands. Replace the dataset and model paths before use:
+The trainable model configs include both training and inference keys; the SAM2
+config is inference-only. Replace the dataset and model paths before use:
 
 ```shell
 deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yaml
@@ -79,6 +89,7 @@ deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-d
 deepdetect train torchvision-detector --config bindings/python/deepdetect/cli/torchvision-detector-default.yaml
 deepdetect train external-pytorch-detector --config bindings/python/deepdetect/cli/external-pytorch-detector-default.yaml
 deepdetect train vitpose --config bindings/python/deepdetect/cli/vitpose-default.yaml
+deepdetect infer sam2 image.jpg --config bindings/python/deepdetect/cli/sam2-default.yaml
 ```
 
 `external-pytorch-detector` uses the `pytorch` backend and normal DeepDetect

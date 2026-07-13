@@ -28,6 +28,7 @@ class ModelProfile:
     train_output: dict[str, Any]
     predict_input: dict[str, Any]
     predict_output: dict[str, Any]
+    supports_training: bool = True
 
     @property
     def default_width(self) -> int:
@@ -116,6 +117,8 @@ class ModelProfile:
             "confidence_threshold": 0.25,
             "best_bbox": None,
             "bbox_files": None,
+            "images_file": None,
+            "bbox_files_file": None,
             "keypoint_threshold": 0.05,
         }
 
@@ -132,6 +135,8 @@ class ModelProfile:
             mllib["max_objects"] = int(options["max_objects"])
         if self.backend == "pytorch":
             mllib.setdefault("python", sys.executable)
+        if options.get("weights") is not None:
+            mllib["weights"] = str(Path(options["weights"]).expanduser().resolve())
         if options.get("resume"):
             mllib["resume_from"] = str(options["resume"])
         if self.task == "keypoint":
@@ -438,6 +443,47 @@ PROFILES = {
         train_output={"measure": ["train_loss"]},
         predict_input={"height": 256, "width": 192},
         predict_output={"bbox": True, "keypoints": True},
+    ),
+    "sam2": ModelProfile(
+        name="sam2",
+        task="instance-segmentation",
+        description="SAM2 prompted image instance segmentation worker",
+        backend="pytorch",
+        default_weights=None,
+        default_repository=Path("deepdetect-models/sam2"),
+        default_service_name="python-sam2-infer",
+        default_nclasses=1,
+        requires_weights=True,
+        service_input={
+            "connector": "image",
+            "height": 1024,
+            "width": 1024,
+            "rgb": True,
+            "db": False,
+        },
+        service_mllib={
+            "task": "instance-segmentation",
+            "entrypoint": "extern/pytorch_workers/sam2/worker.py",
+            "class": "DeepDetectWorker",
+            "sam2": {
+                "variant": "tiny",
+                "automatic": {
+                    "points_per_side": 32,
+                    "points_per_batch": 64,
+                    "pred_iou_thresh": 0.8,
+                    "stability_score_thresh": 0.95,
+                    "box_nms_thresh": 0.7,
+                    "crop_n_layers": 0,
+                    "max_masks": 0,
+                },
+            },
+        },
+        train_input={},
+        train_mllib={},
+        train_output={},
+        predict_input={"height": 1024, "width": 1024},
+        predict_output={"bbox": True, "image": True, "best": 2147483647},
+        supports_training=False,
     ),
 }
 
