@@ -1,0 +1,4 @@
+interface:
+  display_name: "Training Observability"
+  short_description: "Inspect ML run metrics and results"
+  default_prompt: "Use $training-observability to inspect this training run and assess its metrics and visual results."

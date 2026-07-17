@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Protocol
 
 import numpy as np
+from training_observability.plots import metric_plot_key
 
 
 class MetricSink(Protocol):
@@ -129,20 +130,20 @@ class VisdomMetricSink:
         if x_value is None:
             self._fallback_step += 1
             x_value = float(self._fallback_step)
-        base_name, trace_name = self._trace_for(name)
-        window = self._window_for(base_name)
+        plot = metric_plot_key(name)
+        window = plot.plot_id
         update = "append" if window in self._window_traces else None
-        legend = self._register_trace(window, trace_name)
+        legend = self._register_trace(window, plot.trace)
         self.client.line(
             X=np.array([x_value]),
             Y=np.array([value]),
             win=window,
-            name=trace_name,
+            name=plot.trace,
             update=update,
             opts={
-                "title": f"{self.env} {self._window_title(window)}",
+                "title": f"{self.env} {plot.title}",
                 "xlabel": "iteration",
-                "ylabel": self._window_ylabel(window, base_name),
+                "ylabel": plot.ylabel,
                 "legend": legend,
             },
         )
@@ -153,7 +154,7 @@ class VisdomMetricSink:
         *,
         progress_callback: Callable[[int], None] | None = None,
     ) -> int:
-        traces: dict[tuple[str, str, str], list[tuple[float, float]]] = {}
+        traces: dict[tuple[str, str, str, str], list[tuple[float, float]]] = {}
         skipped = 0
         for event in events:
             name = str(event.get("name", "metric"))
@@ -174,20 +175,19 @@ class VisdomMetricSink:
             if x_value is None:
                 self._fallback_step += 1
                 x_value = float(self._fallback_step)
-            base_name, trace_name = self._trace_for(name)
-            window = self._window_for(base_name)
-            traces.setdefault((window, trace_name, base_name), []).append(
-                (x_value, value)
-            )
+            plot = metric_plot_key(name)
+            traces.setdefault(
+                (plot.plot_id, plot.trace, plot.title, plot.ylabel), []
+            ).append((x_value, value))
 
         written = 0
         if progress_callback is not None and skipped:
             progress_callback(skipped)
         windows_seen_before = set(self._window_traces)
-        for window, trace_name, _base_name in traces:
+        for window, trace_name, _title, _ylabel in traces:
             self._register_trace(window, trace_name)
         windows_written: set[str] = set()
-        for (window, trace_name, base_name), points in traces.items():
+        for (window, trace_name, title, ylabel), points in traces.items():
             update = (
                 "append"
                 if window in windows_seen_before or window in windows_written
@@ -200,9 +200,9 @@ class VisdomMetricSink:
                 name=trace_name,
                 update=update,
                 opts={
-                    "title": f"{self.env} {self._window_title(window)}",
+                    "title": f"{self.env} {title}",
                     "xlabel": "iteration",
-                    "ylabel": self._window_ylabel(window, base_name),
+                    "ylabel": ylabel,
                     "legend": self._window_traces[window],
                 },
             )
@@ -267,69 +267,3 @@ class VisdomMetricSink:
         except (TypeError, ValueError):
             return False
         return not math.isfinite(result)
-
-    @staticmethod
-    def _window_name(value: str) -> str:
-        cleaned = "".join(char if char.isalnum() else "-" for char in value.strip())
-        cleaned = "-".join(part for part in cleaned.split("-") if part)
-        return cleaned or "loss"
-
-    @staticmethod
-    def _trace_for(name: str) -> tuple[str, str]:
-        base, separator, suffix = name.rpartition("_test")
-        if separator and suffix.isdigit() and base:
-            return base, f"test{suffix}"
-        return name, name
-
-    @classmethod
-    def _window_for(cls, name: str) -> str:
-        normalized = name.lower()
-        if "loss" in normalized:
-            return f"loss-{cls._window_name(name)}"
-        if normalized.startswith("map"):
-            return f"metric-{cls._window_name(name)}"
-        if normalized.startswith("fp"):
-            return "metric-fp"
-        if normalized in {"num_fg", "run_fg"}:
-            return "metric-num-fg"
-        if normalized in {"learning_rate", "lr"}:
-            return "metric-learning-rate"
-        if "time" in normalized or "duration" in normalized:
-            return "metric-time"
-        return f"metric-{cls._window_name(name)}"
-
-    @staticmethod
-    def _window_title(window: str) -> str:
-        if window.startswith("loss-"):
-            return window[5:].replace("-", " ")
-        if window == "metric-map":
-            return "mAP metrics"
-        if window.startswith("metric-map-"):
-            return window[7:].replace("-", " ")
-        if window == "metric-fp":
-            return "false positive metrics"
-        if window == "metric-num-fg":
-            return "foreground count"
-        if window == "metric-learning-rate":
-            return "learning rate"
-        if window == "metric-time":
-            return "timing metrics"
-        if window.startswith("metric-"):
-            return window[7:].replace("-", " ")
-        return window.replace("-", " ")
-
-    @staticmethod
-    def _window_ylabel(window: str, name: str) -> str:
-        if window.startswith("loss-"):
-            return name
-        if window == "metric-map" or window.startswith("metric-map-"):
-            return "mAP"
-        if window == "metric-fp":
-            return "false positives"
-        if window == "metric-num-fg":
-            return "num_fg"
-        if window == "metric-learning-rate":
-            return "learning rate"
-        if window == "metric-time":
-            return "time"
-        return name
