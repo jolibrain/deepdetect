@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 from PIL import Image
+from training_observability import append_artifact
 
 from .events import EventWriter
 from .sinks import VisdomMetricSink
@@ -32,6 +33,7 @@ class TrainingResultVisualizer:
         image_size: tuple[int, int],
         best_bbox: int | None,
         artifact_dir: Path,
+        artifact_index_root: Path,
         visdom_sink: VisdomMetricSink,
         warning_callback: Any,
         disable_failed: bool,
@@ -44,6 +46,7 @@ class TrainingResultVisualizer:
         self.image_size = image_size
         self.best_bbox = best_bbox
         self.artifact_dir = artifact_dir
+        self.artifact_index_root = artifact_index_root
         self.visdom_sink = visdom_sink
         self.warning_callback = warning_callback
         self.disable_failed = disable_failed
@@ -198,6 +201,19 @@ class TrainingResultVisualizer:
                 ),
                 encoding="utf-8",
             )
+            append_artifact(
+                self.artifact_index_root,
+                kind="prediction-overlay",
+                path=image_out,
+                metadata_path=prediction_out,
+                step=iteration,
+                split=f"test{test_index}",
+                extra={
+                    "model": self.model,
+                    "task": self.task,
+                    "sample_index": sample_index,
+                },
+            )
 
 
 def create_training_result_visualizer(
@@ -248,6 +264,7 @@ def create_training_result_visualizer(
         ),
         artifact_dir=Path(options["repository"]).expanduser().resolve()
         / "visdom-results",
+        artifact_index_root=Path(options["repository"]).expanduser().resolve(),
         visdom_sink=visdom_sink,
         warning_callback=warn,
         disable_failed=bool(options["visdom_offline_ok"]),

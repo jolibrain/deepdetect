@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import deepdetect
+from training_observability import write_run_manifest
 
 from .checks import run_training_checks
 from .config import cli_options, save_config
@@ -131,6 +132,7 @@ def run_train(args: Any) -> int:
         run_name,
         job_dir_is_run_dir=path_is_repository(options["job_dir"], options["repository"]),
     )
+    write_training_observability_manifests(manifest, options)
     writer.emit(
         "run_started",
         run_id=manifest.data["run_id"],
@@ -370,6 +372,27 @@ def create_or_resume_run_manifest(
 
 def path_is_repository(job_dir: Path, repository: Path) -> bool:
     return job_dir.expanduser().resolve() == repository.expanduser().resolve()
+
+
+def write_training_observability_manifests(manifest: Any, options: dict[str, Any]) -> None:
+    """Expose the durable run layout without making Visdom a data source."""
+    run_id = str(manifest.data["run_id"])
+    write_run_manifest(
+        manifest.run_dir,
+        run_id=run_id,
+        metric_format="deepdetect-metric-v1",
+    )
+    repository = Path(options["repository"]).expanduser().resolve()
+    if repository != manifest.run_dir:
+        # DeepDetect historically writes prediction overlays under --repository,
+        # while --job-dir can place manifests and scalar streams elsewhere.
+        # Publish a companion artifact-root manifest instead of recording a path
+        # outside the explicitly inspected root.
+        write_run_manifest(
+            repository,
+            run_id=run_id,
+            metric_format="deepdetect-metric-v1",
+        )
 
 
 def clear_repository(repository: Path) -> None:

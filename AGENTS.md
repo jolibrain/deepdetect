@@ -130,6 +130,25 @@ fast startup is more important than early data errors.
 - Treat `elapsed_time_ms`, `test_active`, `test_processed`, and similar
   progress fields as status/progress signals, not model quality metrics.
 
+### Agent Training Observation
+
+- Use the packaged observer for durable, read-only review of a local or mounted
+  run. It reads `metrics.jsonl` directly, so it works during training without
+  depending on Visdom environment persistence:
+
+  ```shell
+  training-observe summary REPOSITORY
+  training-observe plots REPOSITORY
+  training-observe render REPOSITORY --plot loss-train-loss --output /tmp/train-loss.png
+  training-observe artifacts REPOSITORY --step latest
+  ```
+
+- Rendered plots are written only to the explicit output path. Inspect the raw
+  metric series before making claims about trends, then inspect matching saved
+  result image/JSON pairs for prediction quality.
+- The observer is read-only with respect to the run. Do not use it to start,
+  stop, cancel, resume, delete, or reconfigure training.
+
 ### Visdom Monitoring
 
 - Enable Visdom with `--visdom`. Result images are enabled by default when
@@ -164,6 +183,8 @@ fast startup is more important than early data errors.
 
   Each rendered sample has an image file and a JSON file containing the source
   image path, sample index, and raw prediction payload.
+- New runs also append these pairs to `artifacts.jsonl`, allowing
+  `training-observe artifacts` to list them without walking the directory.
 - When metrics are high but rendered results look wrong, inspect the saved
   image/JSON pairs before changing model settings. Check test-set ordering,
   sample indices, coordinate sizes, class ids, confidence thresholds, and

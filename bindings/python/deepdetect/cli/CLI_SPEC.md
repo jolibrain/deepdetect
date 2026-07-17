@@ -198,6 +198,10 @@ Training creates a run directory containing:
 - `run.json`: run ID, command, model, service name, config snapshot, job ID when
   available, status, and latest status body.
 - `metrics.jsonl`: metric events extracted from DeepDetect status payloads.
+- `training-observability.json`: versioned, framework-neutral index describing
+  the metadata, metric stream, and visual-artifact index.
+- `artifacts.jsonl`: append-only index of saved prediction overlays when visual
+  results are enabled.
 
 Training also writes `config.yaml` at the root of `--repository`. This file is
 the effective training configuration after profile defaults, YAML config,
@@ -217,6 +221,38 @@ bbox line format, class ranges, and numeric bbox values; SegFormer validates
 mask values unless `--skip-mask-validation` is passed. With
 `--dataset-check none`, the CLI emits a skipped dataset-check event and leaves
 dataset validation to the DeepDetect backend.
+
+### Agent Observation CLI
+
+The optional `training-observability` package is installed with the wheel and
+adds a JSON-first, read-only CLI. Install `deepdetect[observability]` when PNG
+rendering is needed:
+
+```shell
+training-observe summary REPOSITORY
+training-observe metrics REPOSITORY --name train_loss
+training-observe plots REPOSITORY
+training-observe render REPOSITORY --plot loss-train-loss --output /tmp/train-loss.png
+training-observe artifacts REPOSITORY --step latest
+```
+
+Metric reads use the flushed `metrics.jsonl` stream, not a live Visdom server.
+`render` only writes its requested output file and never changes the run. The
+generic `training_observability.RunWriter` can emit the same manifest, metrics,
+and artifact index from diffusion, reinforcement-learning, or other trainers.
+Existing DeepDetect runs without `training-observability.json` remain readable
+through the legacy `run.json` / `metrics.jsonl` / `visdom-results` layout.
+
+Other trainers need only create their own run root and emit scalars/artifacts
+through the standalone package:
+
+```python
+from training_observability import RunWriter
+
+run = RunWriter("runs/diffusion-001", run_id="diffusion-001")
+run.metric("train/loss", 0.081, step=12000)
+run.artifact(kind="sample-grid", path="samples/12000.png", step=12000)
+```
 
 For PyTorch workers, `measure.flops` and service `model_stats.flops` are
 estimated from the first real model forward pass using the native PyTorch

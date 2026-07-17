@@ -735,6 +735,14 @@ def test_train_defaults_job_dir_to_repository(monkeypatch, tmp_path, capsys):
     assert code == 0
     assert (repository / "run.json").is_file()
     assert (repository / "metrics.jsonl").is_file()
+    observability = json.loads(
+        (repository / "training-observability.json").read_text(encoding="utf-8")
+    )
+    assert observability["schema_version"] == "training-observability/v1"
+    assert observability["metrics"] == {
+        "format": "deepdetect-metric-v1",
+        "path": "metrics.jsonl",
+    }
     manifest = json.loads((repository / "run.json").read_text(encoding="utf-8"))
     assert manifest["run_name"] == "repo-default-job-dir"
     assert manifest["options"]["job_dir"] == str(repository)
@@ -1847,6 +1855,29 @@ def test_train_visdom_uploads_detection_results_on_eval_metric(
     assert artifact["sample_index"] == 1
     assert artifact["image"] == str(image2.resolve())
     assert len(artifact["prediction"]["classes"]) == 2
+    artifact_index = [
+        json.loads(line)
+        for line in (tmp_path / "repo" / "artifacts.jsonl").read_text(
+            encoding="utf-8"
+        ).splitlines()
+        if line.strip()
+    ]
+    assert artifact_index == [
+        {
+            "event": "artifact",
+            "kind": "prediction-overlay",
+            "metadata": {
+                "model": "yolox",
+                "sample_index": 1,
+                "task": "detection",
+            },
+            "metadata_path": "visdom-results/iteration-000100/test0/sample-000001.json",
+            "path": "visdom-results/iteration-000100/test0/sample-000001.png",
+            "split": "test0",
+            "step": 100.0,
+            "timestamp": pytest.approx(artifact_index[0]["timestamp"]),
+        }
+    ]
     tensor, kwargs = image_grids[0]
     assert tensor.shape == (1, 3, 8, 8)
     assert kwargs["win"] == "results-detection-test0"
