@@ -10,14 +10,23 @@ def decode_pose_outputs(
     outputs: dict[str, torch.Tensor],
     *,
     image_sizes: list[tuple[int, int]],
+    source_image_sizes: list[tuple[int, int]] | None = None,
     objectness_threshold: float,
     keypoint_threshold: float,
 ) -> list[list[dict[str, Any]]]:
     heatmaps = outputs["heatmaps"].detach()
     objectness = outputs["objectness"].detach().sigmoid()
+    if source_image_sizes is not None and len(source_image_sizes) != len(image_sizes):
+        raise ValueError("source_image_sizes must match image_sizes")
     decoded: list[list[dict[str, Any]]] = []
     for batch_index in range(int(heatmaps.shape[0])):
         image_width, image_height = image_sizes[batch_index]
+        if source_image_sizes is None:
+            source_width, source_height = image_width, image_height
+        else:
+            source_width, source_height = source_image_sizes[batch_index]
+        x_scale = float(source_width) / float(image_width)
+        y_scale = float(source_height) / float(image_height)
         sample: list[dict[str, Any]] = []
         for slot_index in range(int(heatmaps.shape[1])):
             object_score = float(objectness[batch_index, slot_index].cpu().item())
@@ -30,6 +39,9 @@ def decode_pose_outputs(
                     image_size=(image_width, image_height),
                     threshold=keypoint_threshold,
                 )
+                if valid:
+                    x *= x_scale
+                    y *= y_scale
                 points.append(
                     {
                         "x": x,
