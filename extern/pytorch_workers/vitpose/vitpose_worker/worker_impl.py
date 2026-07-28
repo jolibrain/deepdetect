@@ -596,6 +596,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         image_paths = [Path(str(path)).expanduser().resolve() for path in data]
         images = []
         image_sizes = []
+        source_image_sizes = []
         for image_path in image_paths:
             if not image_path.is_file():
                 raise PredictionContractError(f"input image not found: {image_path}")
@@ -606,6 +607,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             )
             images.append(image)
             image_sizes.append(self.config.model.image_size)
+            source_image_sizes.append(original_size)
         with torch.no_grad():
             batch = normalize_batch(
                 images,
@@ -618,6 +620,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
             decoded = decode_pose_outputs(
                 outputs,
                 image_sizes=image_sizes,
+                source_image_sizes=source_image_sizes,
                 objectness_threshold=objectness_threshold,
                 keypoint_threshold=keypoint_threshold,
             )

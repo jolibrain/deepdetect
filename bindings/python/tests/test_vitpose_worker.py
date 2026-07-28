@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 WHEEL_TEST_SOURCE_ROOT = os.environ.get("DEEPDETECT_WHEEL_TEST_SOURCE_ROOT")
 ROOT = (
@@ -455,6 +456,63 @@ def test_topdown_worker_predicts_connector_tensor_batch(tmp_path):
     assert result["results"][0]["cats"] == ["3"]
     assert result["results"][0]["bboxes"][0]["xmin"] == 4.0
     assert len(result["results"][0]["keypoints"][0]["points"]) == 2
+
+
+def test_slot_worker_prediction_uses_source_image_coordinates(tmp_path):
+    class FixedSlots(torch.nn.Module):
+        def forward(self, images):
+            heatmaps = images.new_zeros((len(images), 1, 1, 8, 8))
+            heatmaps[:, 0, 0, 4, 2] = 1.0
+            return {
+                "heatmaps": heatmaps,
+                "objectness": images.new_full((len(images), 1), 10.0),
+            }
+
+    image_path = tmp_path / "source.png"
+    Image.new("RGB", (64, 96)).save(image_path)
+    worker = DeepDetectWorker()
+    worker.configure(
+        WorkerContext(
+            repository=str(tmp_path),
+            mllib={
+                "gpu": False,
+                "nkeypoints": 1,
+                "max_objects": 1,
+                "vitpose": {
+                    "head": "slots",
+                    "variant": "tiny",
+                    "image_size": [32, 32],
+                    "heatmap_size": [8, 8],
+                    "patch_size": 16,
+                    "embed_dim": 32,
+                    "depth": 1,
+                    "num_heads": 4,
+                    "drop_path_rate": 0.0,
+                    "max_objects": 1,
+                },
+            },
+            raw={},
+        )
+    )
+    worker.model = FixedSlots()
+
+    result = worker.predict(
+        {
+            "request": {
+                "data": [str(image_path)],
+                "parameters": {
+                    "output": {
+                        "confidence_threshold": 0.0,
+                        "keypoint_threshold": 0.0,
+                    }
+                },
+            }
+        }
+    )
+
+    point = result["results"][0]["keypoints"][0]["points"][0]
+    assert point["x"] == pytest.approx((2.0 * 31.0 / 7.0) * (64.0 / 32.0))
+    assert point["y"] == pytest.approx((4.0 * 31.0 / 7.0) * (96.0 / 32.0))
 
 
 def test_topdown_evaluation_reports_globally_reduced_losses(tmp_path):
