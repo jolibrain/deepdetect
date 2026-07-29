@@ -34,6 +34,14 @@
 
 namespace dd
 {
+  enum class TrainingJobResult : int
+  {
+    finished = 0,
+    error = 1,
+    cancelled = 2,
+    terminated = 3
+  };
+
   /**
    * \brief ML library bad parameter exception
    */
@@ -87,7 +95,8 @@ namespace dd
     /**
      * \brief constructor from model
      */
-    MLLib(const TMLModel &mlmodel) : _mlmodel(mlmodel), _tjob_running(false)
+    MLLib(const TMLModel &mlmodel)
+        : _mlmodel(mlmodel), _tjob_running(false), _tjob_force_stop(false)
     {
     }
 
@@ -99,7 +108,8 @@ namespace dd
           _mlmodel(mll._mlmodel), _meas(mll._meas),
           _meas_per_iter(mll._meas_per_iter),
           _status_payloads(mll._status_payloads), _stats(mll._stats),
-          _tjob_running(mll._tjob_running.load()), _logger(mll._logger),
+          _tjob_running(mll._tjob_running.load()),
+          _tjob_force_stop(mll._tjob_force_stop.load()), _logger(mll._logger),
           _model_gflops(mll._model_gflops), _model_params(mll._model_params),
           _mem_used_train(mll._mem_used_train),
           _mem_used_test(mll._mem_used_test)
@@ -420,6 +430,9 @@ namespace dd
     std::atomic<bool> _tjob_running = {
       false
     }; /**< whether a training job is running with this lib instance. */
+    std::atomic<bool> _tjob_force_stop = {
+      false
+    }; /**< whether the training thread must terminate an external worker. */
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 

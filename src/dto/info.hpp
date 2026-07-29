@@ -83,8 +83,9 @@ namespace dd
 
       DTO_FIELD_INFO(status)
       {
-        info->description = "status of the job, one of: \"not started\", "
-                            "\"running\", \"finished\"";
+        info->description
+            = "status of the job, one of: \"running\", \"cancelling\", "
+              "\"terminating\", \"finished\"";
       }
       DTO_FIELD(String, status);
     };

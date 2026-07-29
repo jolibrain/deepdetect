@@ -79,17 +79,55 @@ namespace dd
   /**
    * \brief training job
    */
+  enum class TrainingJobState
+  {
+    running,
+    cancelling,
+    terminating
+  };
+
+  inline const char *training_job_state_name(TrainingJobState state)
+  {
+    switch (state)
+      {
+      case TrainingJobState::cancelling:
+        return "cancelling";
+      case TrainingJobState::terminating:
+        return "terminating";
+      case TrainingJobState::running:
+      default:
+        return "running";
+      }
+  }
+
+  inline const char *training_job_result_name(int result)
+  {
+    switch (static_cast<TrainingJobResult>(result))
+      {
+      case TrainingJobResult::finished:
+        return "finished";
+      case TrainingJobResult::cancelled:
+        return "cancelled";
+      case TrainingJobResult::terminated:
+        return "terminated";
+      case TrainingJobResult::error:
+      default:
+        return "error";
+      }
+  }
+
   class tjob
   {
   public:
     tjob(std::future<int> &&ft,
          const std::chrono::time_point<std::chrono::system_clock> &tstart)
-        : _ft(std::move(ft)), _tstart(tstart), _status(1)
+        : _ft(std::move(ft)), _tstart(tstart),
+          _state(TrainingJobState::running)
     {
     }
     tjob(tjob &&tj)
         : _ft(std::move(tj._ft)), _tstart(std::move(tj._tstart)),
-          _status(std::move(tj._status))
+          _state(tj._state)
     {
     }
     ~tjob()
@@ -98,9 +136,8 @@ namespace dd
 
     std::future<int> _ft; /**< training job output status upon termination. */
     std::chrono::time_point<std::chrono::system_clock>
-        _tstart; /**< date at which the training job has started*/
-    int _status
-        = 0; /**< 0: not started, 1: running, 2: finished or terminated */
+        _tstart;             /**< date at which the training job has started*/
+    TrainingJobState _state; /**< running, cancelling, or terminating. */
   };
 
   /**
@@ -186,10 +223,10 @@ namespace dd
         {
           std::future_status status
               = (*hit).second._ft.wait_for(std::chrono::seconds(0));
-          if (status == std::future_status::timeout
-              && (*hit).second._status
-                     == 1) // process is running, terminate it
+          if (status == std::future_status::timeout)
             {
+              (*hit).second._state = TrainingJobState::terminating;
+              this->_tjob_force_stop.store(true);
               this->_tjob_running.store(false);
               (*hit).second._ft.wait();
               auto ohit = _training_out.find((*hit).first);
@@ -261,26 +298,21 @@ namespace dd
             {
               APIData jad;
               jad.add("job", (*hit).first);
-              int jstatus = (*hit).second._status;
-              if (jstatus == 0)
-                jad.add("status", std::string("not started"));
-              else if (jstatus == 1)
+              std::future_status future_status
+                  = (*hit).second._ft.wait_for(std::chrono::seconds(0));
+              if (future_status == std::future_status::timeout)
                 {
-                  jad.add("status", std::string("running"));
-                  std::future_status status
-                      = (*hit).second._ft.wait_for(std::chrono::seconds(0));
-                  if (status == std::future_status::timeout)
-                    {
-                      this->collect_measures(jad);
-                      std::chrono::time_point<std::chrono::system_clock> trun
-                          = std::chrono::system_clock::now();
-                      jad.add("time",
-                              std::chrono::duration_cast<std::chrono::seconds>(
-                                  trun - (*hit).second._tstart)
-                                  .count());
-                    }
+                  jad.add("status", std::string(training_job_state_name(
+                                        (*hit).second._state)));
+                  this->collect_measures(jad);
+                  std::chrono::time_point<std::chrono::system_clock> trun
+                      = std::chrono::system_clock::now();
+                  jad.add("time",
+                          std::chrono::duration_cast<std::chrono::seconds>(
+                              trun - (*hit).second._tstart)
+                              .count());
                 }
-              else if (jstatus == 2)
+              else
                 jad.add("status", std::string("finished"));
               serv_dto->jobs->push_back(jad);
               ++hit;
@@ -329,6 +361,8 @@ namespace dd
           ++_tjobs_counter;
           int local_tcounter = _tjobs_counter;
           this->_has_predict = false;
+          this->_tjob_force_stop.store(false);
+          this->_tjob_running.store(true);
           _training_jobs.emplace(
               local_tcounter,
               std::move(tjob(
@@ -350,6 +384,8 @@ namespace dd
         }
       else
         {
+          this->_tjob_force_stop.store(false);
+          this->_tjob_running.store(true);
           boost::unique_lock<boost::shared_mutex> lock(
               _train_or_predict_mutex);
           this->_has_predict = false;
@@ -385,7 +421,8 @@ namespace dd
               = (*hit).second._ft.wait_for(std::chrono::seconds(secs));
           if (status == std::future_status::timeout)
             {
-              out.add("status", std::string("running"));
+              out.add("status", std::string(training_job_state_name(
+                                    (*hit).second._state)));
               APIData jmrepo;
               jmrepo.add("repository", this->_mlmodel._repo);
               out.add("model", jmrepo);
@@ -430,13 +467,12 @@ namespace dd
                       (*ohit).second); // get async process output object
                   _training_out.erase(ohit);
                 }
-              if (st == 0)
+              const std::string result_status = training_job_result_name(st);
+              out.add("status", result_status);
+              if (st == static_cast<int>(TrainingJobResult::finished))
                 {
-                  out.add("status", std::string("finished"));
                   this->_has_predict = true;
                 }
-              else
-                out.add("status", std::string("unknown error"));
               // this->collect_measures(out); // XXX: beware if there was a
               // queue, since the job has finished, there might be a new one
               // running.
@@ -478,33 +514,39 @@ namespace dd
     int training_job_delete(const APIData &ad, APIData &out)
     {
       int j = ad.get("job").get<int>();
+      const bool wait = !ad.has("wait") || ad.get("wait").get<bool>();
+      const bool force = ad.has("force") && ad.get("force").get<bool>();
       std::lock_guard<std::mutex> lock(_tjobs_mutex);
       std::unordered_map<int, tjob>::iterator hit;
       if ((hit = _training_jobs.find(j)) != _training_jobs.end())
         {
           std::future_status status
               = (*hit).second._ft.wait_for(std::chrono::seconds(0));
-          if (status == std::future_status::timeout
-              && (*hit).second._status
-                     == 1) // process is running, terminate it
+          if (status == std::future_status::timeout)
             {
-              this->_tjob_running.store(false); // signals the process
-              (*hit).second._ft.wait(); // XXX: default timeout in case the
-                                        // process does not return ?
-              out.add("status", std::string("terminated"));
+              (*hit).second._state = force ? TrainingJobState::terminating
+                                           : TrainingJobState::cancelling;
+              if (force)
+                this->_tjob_force_stop.store(true);
+              this->_tjob_running.store(false);
+              out.add("status", std::string(training_job_state_name(
+                                    (*hit).second._state)));
+              if (!wait)
+                return 0;
+
+              (*hit).second._ft.wait();
+              const int result = (*hit).second._ft.get();
+              out.add("status", std::string(training_job_result_name(result)));
               std::chrono::time_point<std::chrono::system_clock> trun
                   = std::chrono::system_clock::now();
               out.add("time", std::chrono::duration_cast<std::chrono::seconds>(
                                   trun - (*hit).second._tstart)
                                   .count());
-              _training_jobs.erase(hit);
-              auto ohit = _training_out.find((*hit).first);
+              const int job_id = (*hit).first;
+              auto ohit = _training_out.find(job_id);
               if (ohit != _training_out.end())
                 _training_out.erase(ohit);
-            }
-          else if ((*hit).second._status == 0)
-            {
-              out.add("status", std::string("not started"));
+              _training_jobs.erase(hit);
             }
           return 0;
         }

@@ -84,7 +84,11 @@ class LiveTrainingTerminalReporter:
             if isinstance(measure, dict):
                 self._measure = measure
                 self._update_latest_metrics(measure)
-            if self._live is None and not self._ready_to_render():
+            if (
+                self._live is None
+                and self._status not in {"cancelling", "terminating"}
+                and not self._ready_to_render()
+            ):
                 return record
             self._start_or_refresh()
         elif event == "metric":
@@ -153,7 +157,18 @@ class LiveTrainingTerminalReporter:
                 )
             )
         )
-        table.add_row(f"[bold]loss[/] {_format_values(self._loss_values(), empty='pending')}")
+        table.add_row(
+            f"[bold]loss[/] {_format_values(self._loss_values(), empty='pending')}"
+        )
+        if self._status == "cancelling":
+            table.add_row(
+                "[bold yellow]cancel[/] saving a final checkpoint; "
+                "press Ctrl-C again to force termination"
+            )
+        elif self._status == "terminating":
+            table.add_row(
+                "[bold red]cancel[/] forcing worker process-group termination"
+            )
         table.add_row(Rule(style="dim"))
         if self._has_test_progress():
             table.add_row(self._test_progress(Progress, SpinnerColumn, TextColumn, BarColumn))

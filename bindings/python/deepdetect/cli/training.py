@@ -56,6 +56,7 @@ def run_train(args: Any) -> int:
         gpuid=parse_gpu_ids(args.gpuid),
         sync=args.sync,
         timeout=args.timeout,
+        cancel_timeout=args.cancel_timeout,
         poll_interval=args.poll_interval,
         job_dir=args.job_dir,
         run_name=args.run_name,
@@ -106,6 +107,7 @@ def run_train(args: Any) -> int:
     if options.get("max_objects") is not None and int(options["max_objects"]) <= 0:
         raise ValueError("max_objects must be positive")
     validate_positive("visdom_port", int(options["visdom_port"]))
+    validate_positive("cancel_timeout", float(options["cancel_timeout"]))
     if int(options["visdom_results_count"]) < 0:
         raise ValueError("visdom_results_count must be non-negative")
     run_name = str(options.get("run_name") or repository_name(Path(options["repository"])))
@@ -216,7 +218,9 @@ def run_train(args: Any) -> int:
                     result_visualizer=result_visualizer,
                     extractor=extractor,
                     timeout=options["timeout"],
+                    cancel_timeout=float(options["cancel_timeout"]),
                     poll_interval=float(options["poll_interval"]),
+                    staged_cancellation=profile.backend == "pytorch",
                 )
             else:
                 _debug("run_train: processing synchronous training result")
@@ -235,16 +239,29 @@ def run_train(args: Any) -> int:
                 )
                 if result_visualizer is not None:
                     result_visualizer.maybe_write({"status": "finished", **result}, events)
+        final_state = final_status.get("status", "finished")
+        final_metadata = {
+            key: final_status[key]
+            for key in (
+                "cancellation_requested_at",
+                "cancellation_reason",
+                "force_requested_at",
+                "force_reason",
+            )
+            if key in final_status
+        }
         writer.emit(
             "run_finished",
             run_id=manifest.data["run_id"],
-            status=final_status.get("status", "finished"),
+            status=final_state,
+            **final_metadata,
         )
         manifest.update(
-            status=final_status.get("status", "finished"),
+            status=final_state,
             last_status=final_status,
+            **final_metadata,
         )
-        return 0
+        return 130 if final_state in {"cancelled", "terminated"} else 0
     finally:
         _debug("run_train: closing sinks and terminal")
         metric_sink.close()
@@ -525,31 +542,30 @@ def monitor_training(
     metric_sink: CompositeMetricSink,
     result_visualizer: TrainingResultVisualizer | None = None,
     timeout: float | None = None,
+    cancel_timeout: float = 30.0,
     poll_interval: float = 0.5,
     extractor: MetricEventExtractor | None = None,
+    staged_cancellation: bool = False,
 ) -> dict[str, Any]:
     started = time.monotonic()
     extractor = extractor or MetricEventExtractor()
     manifest.update(job=job.job, status="running")
-    while True:
-        _debug(f"monitor_training: polling job {job.job}")
-        output_parameters: dict[str, Any] = {
-            "measure_hist": True,
-            "max_hist_points": 10000,
-        }
-        if result_visualizer is not None:
-            output_parameters["test_predictions"] = True
-        status = job.status(output_parameters=output_parameters)
-        state = str(status.get("status", "")).lower()
-        measure = status.get("measure") if isinstance(status.get("measure"), dict) else {}
-        _debug(
-            "monitor_training: status=%s iteration=%s train_loss=%s"
-            % (
-                state,
-                measure.get("iteration"),
-                measure.get("train_loss"),
-            )
-        )
+    latest_status: dict[str, Any] = {}
+    cancellation_started: float | None = None
+    cancellation_requested_at: float | None = None
+    cancellation_reason: str | None = None
+    force_requested_at: float | None = None
+    force_reason: str | None = None
+
+    def cancellation_status(state: str) -> dict[str, Any]:
+        status = dict(latest_status)
+        status["status"] = state
+        status["job"] = job.job
+        status.setdefault("measure", {})
+        return status
+
+    def emit_cancellation_state(state: str, message: str) -> None:
+        status = cancellation_status(state)
         writer.emit(
             "training_status",
             run_id=manifest.data["run_id"],
@@ -558,23 +574,128 @@ def monitor_training(
             time=status.get("time"),
             measure=status.get("measure", {}),
             measures=status.get("measures"),
+            message=message,
+            cancellation_reason=cancellation_reason,
+            force_reason=force_reason,
         )
-        events = write_metric_events(
-            status,
-            writer=writer,
-            manifest=manifest,
-            metric_sink=metric_sink,
-            extractor=extractor,
+        manifest.update(
+            status=state,
+            last_status=status,
+            cancellation_requested_at=cancellation_requested_at,
+            cancellation_reason=cancellation_reason,
+            **(
+                {
+                    "force_requested_at": force_requested_at,
+                    "force_reason": force_reason,
+                }
+                if force_reason is not None
+                else {}
+            ),
         )
-        if result_visualizer is not None:
-            result_visualizer.maybe_write(status, events)
-        manifest.update(status=state or "running", last_status=status)
-        if state in deepdetect.TrainingJob._TERMINAL:
-            if state != "finished":
-                raise RuntimeError(f"training ended with status {state!r}")
-            return status
-        if timeout is not None and time.monotonic() - started >= timeout:
-            job.cancel()
-            manifest.update(status="cancelled")
-            raise TimeoutError(f"training job {job.job} timed out and was cancelled")
-        time.sleep(poll_interval)
+
+    def request_cooperative_cancellation(reason: str) -> None:
+        nonlocal cancellation_started
+        nonlocal cancellation_requested_at
+        nonlocal cancellation_reason
+        cancellation_started = time.monotonic()
+        cancellation_requested_at = time.time()
+        cancellation_reason = reason
+        job.cancel(wait=False)
+        emit_cancellation_state(
+            "cancelling",
+            "cooperative cancellation requested; press Ctrl-C again to force termination",
+        )
+
+    def request_forced_cancellation(reason: str) -> None:
+        nonlocal force_requested_at
+        nonlocal force_reason
+        force_requested_at = time.time()
+        force_reason = reason
+        emit_cancellation_state(
+            "terminating",
+            "forcing PyTorch worker process-group termination",
+        )
+        job.cancel(wait=False, force=True)
+
+    while True:
+        try:
+            if (
+                cancellation_started is not None
+                and force_reason is None
+                and time.monotonic() - cancellation_started >= cancel_timeout
+            ):
+                request_forced_cancellation("cancel_timeout")
+
+            _debug(f"monitor_training: polling job {job.job}")
+            output_parameters: dict[str, Any] = {
+                "measure_hist": True,
+                "max_hist_points": 10000,
+            }
+            if result_visualizer is not None:
+                output_parameters["test_predictions"] = True
+            status = job.status(output_parameters=output_parameters)
+            latest_status = status
+            state = str(status.get("status", "")).lower()
+            measure = (
+                status.get("measure") if isinstance(status.get("measure"), dict) else {}
+            )
+            _debug(
+                "monitor_training: status=%s iteration=%s train_loss=%s"
+                % (
+                    state,
+                    measure.get("iteration"),
+                    measure.get("train_loss"),
+                )
+            )
+            writer.emit(
+                "training_status",
+                run_id=manifest.data["run_id"],
+                job=job.job,
+                status=state,
+                time=status.get("time"),
+                measure=status.get("measure", {}),
+                measures=status.get("measures"),
+            )
+            events = write_metric_events(
+                status,
+                writer=writer,
+                manifest=manifest,
+                metric_sink=metric_sink,
+                extractor=extractor,
+            )
+            if result_visualizer is not None:
+                result_visualizer.maybe_write(status, events)
+            manifest.update(status=state or "running", last_status=status)
+            if state in deepdetect.TrainingJob._TERMINAL:
+                if state not in {"finished", "cancelled", "terminated"}:
+                    raise RuntimeError(f"training ended with status {state!r}")
+                if cancellation_reason is not None:
+                    status["cancellation_requested_at"] = cancellation_requested_at
+                    status["cancellation_reason"] = cancellation_reason
+                if force_reason is not None:
+                    status["force_requested_at"] = force_requested_at
+                    status["force_reason"] = force_reason
+                return status
+            if (
+                timeout is not None
+                and cancellation_started is None
+                and time.monotonic() - started >= timeout
+            ):
+                if not staged_cancellation:
+                    job.cancel()
+                    manifest.update(status="cancelled")
+                    raise TimeoutError(
+                        f"training job {job.job} timed out and was cancelled"
+                    )
+                request_cooperative_cancellation("training_timeout")
+            time.sleep(poll_interval)
+        except KeyboardInterrupt:
+            if not staged_cancellation:
+                raise
+            if cancellation_started is None:
+                try:
+                    request_cooperative_cancellation("keyboard_interrupt")
+                except KeyboardInterrupt:
+                    request_forced_cancellation("second_keyboard_interrupt")
+            elif force_reason is None:
+                request_forced_cancellation("second_keyboard_interrupt")

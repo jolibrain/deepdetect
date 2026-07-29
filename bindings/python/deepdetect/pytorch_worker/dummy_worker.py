@@ -38,9 +38,10 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         iterations = int(solver.get("iterations", 5))
         iterations = max(1, min(iterations, 1000000))
         learning_rate = float(solver.get("base_lr", 0.001))
+        ignore_cancellation = bool(mllib.get("ignore_cancellation", False))
 
         for iteration in range(1, iterations + 1):
-            if cancellation.requested:
+            if cancellation.requested and not ignore_cancellation:
                 reporter.status(
                     phase="cancelled",
                     iteration=iteration - 1,

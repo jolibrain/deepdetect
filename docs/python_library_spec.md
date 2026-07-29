@@ -93,7 +93,11 @@ Blocking training returns the API `body`. Asynchronous training returns a
 the API `head` with fields from the API `body`. `wait()` returns on
 `finished`, `error`, `terminated`, or `cancelled`, and raises `TimeoutError`
 when its deadline expires. Cancellation is administrative and returns
-`None`.
+`None`. `job.cancel()` keeps its blocking cooperative behavior. Use
+`job.cancel(wait=False)` to request cancellation while continuing to poll
+`cancelling` status, and `job.cancel(wait=False, force=True)` to request
+bounded PyTorch worker process-group termination. Forced jobs finish as
+`terminated`; cooperative workers finish as `cancelled`.
 
 ## Inputs
 

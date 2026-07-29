@@ -71,6 +71,7 @@ class ModelProfile:
             "sync": False,
             "poll_interval": 0.5,
             "timeout": None,
+            "cancel_timeout": 30.0,
             "job_dir": None,
             "run_name": None,
             "resume": None,

@@ -26,6 +26,7 @@ gpuid: null
 sync: false
 poll_interval: 0.5
 timeout: null
+cancel_timeout: 30
 job_dir: null
 run_name: null
 resume: null

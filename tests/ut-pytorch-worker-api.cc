@@ -11,10 +11,12 @@
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 
+#include <cerrno>
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <filesystem>
+#include <set>
 #include <sstream>
 #include <string>
 #include <sys/wait.h>
@@ -70,6 +72,18 @@ namespace
   {
     cleanup_repo(repo);
     std::filesystem::create_directories(repo);
+  }
+
+  std::set<std::string> worker_socket_dirs()
+  {
+    std::set<std::string> paths;
+    for (const auto &entry : std::filesystem::directory_iterator("/tmp"))
+      {
+        const std::string name = entry.path().filename().string();
+        if (name.rfind("dd-pytorch-worker-", 0) == 0)
+          paths.insert(entry.path().string());
+      }
+    return paths;
   }
 
   bool python_has_torchvision()
@@ -377,7 +391,8 @@ namespace
           return status;
         const std::string train_status = status["head"]["status"].GetString();
         if (train_status == "finished" || train_status == "unknown error"
-            || train_status == "error")
+            || train_status == "error" || train_status == "cancelled"
+            || train_status == "terminated")
           return status;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
@@ -1391,8 +1406,95 @@ TEST(pytorchworkerapi, async_train_can_be_cancelled)
   ASSERT_TRUE(cancelled.HasMember("head")) << japi.jrender(cancelled);
   ASSERT_TRUE(cancelled["head"].HasMember("status"))
       << japi.jrender(cancelled);
-  ASSERT_STREQ("terminated", cancelled["head"]["status"].GetString())
+  ASSERT_STREQ("cancelled", cancelled["head"]["status"].GetString())
       << japi.jrender(cancelled);
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+}
+
+TEST(pytorchworkerapi, async_train_nonblocking_cancel_can_be_polled)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::string service = "pytorchworker_nonblocking_cancel";
+  const std::string repo = repo_path(service);
+  prepare_repo(repo);
+
+  ASSERT_EQ(created_str,
+            japi.jrender(japi.service_create(service, create_request(repo))));
+
+  JDoc train = japi.service_train(train_request(service, 1000000, true));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+  poll_until_running(japi, service, job);
+
+  const auto started = std::chrono::steady_clock::now();
+  const std::string delete_request = "{\"service\":\"" + service
+                                     + "\",\"job\":" + std::to_string(job)
+                                     + ",\"wait\":false}";
+  JDoc cancelling = japi.service_train_delete(delete_request);
+  const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - started);
+  ASSERT_EQ(200, status_code(cancelling)) << japi.jrender(cancelling);
+  ASSERT_STREQ("cancelling", cancelling["head"]["status"].GetString())
+      << japi.jrender(cancelling);
+  ASSERT_LT(elapsed.count(), 500);
+
+  JDoc cancelled = poll_until_terminal(japi, service, job);
+  ASSERT_STREQ("cancelled", cancelled["head"]["status"].GetString())
+      << japi.jrender(cancelled);
+
+  ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+  cleanup_repo(repo);
+}
+
+TEST(pytorchworkerapi, async_train_force_terminates_uncooperative_worker)
+{
+  configure_pythonpath();
+  JsonAPI japi;
+  const std::set<std::string> socket_dirs_before = worker_socket_dirs();
+  const std::string service = "pytorchworker_force_cancel";
+  const std::string repo = repo_path(service);
+  prepare_repo(repo);
+
+  ASSERT_EQ(
+      created_str,
+      japi.jrender(japi.service_create(
+          service, create_request(repo, ",\"ignore_cancellation\":true"))));
+
+  JDoc train = japi.service_train(train_request(service, 1000000, true));
+  ASSERT_EQ(201, status_code(train)) << japi.jrender(train);
+  const int job = train["head"]["job"].GetInt();
+  poll_until_running(japi, service, job);
+
+  const std::string cancel_request = "{\"service\":\"" + service
+                                     + "\",\"job\":" + std::to_string(job)
+                                     + ",\"wait\":false}";
+  JDoc cancelling = japi.service_train_delete(cancel_request);
+  ASSERT_EQ(200, status_code(cancelling)) << japi.jrender(cancelling);
+  ASSERT_STREQ("cancelling", cancelling["head"]["status"].GetString())
+      << japi.jrender(cancelling);
+
+  const auto started = std::chrono::steady_clock::now();
+  const std::string force_request = "{\"service\":\"" + service
+                                    + "\",\"job\":" + std::to_string(job)
+                                    + ",\"wait\":false,\"force\":true}";
+  JDoc terminating = japi.service_train_delete(force_request);
+  ASSERT_EQ(200, status_code(terminating)) << japi.jrender(terminating);
+  ASSERT_STREQ("terminating", terminating["head"]["status"].GetString())
+      << japi.jrender(terminating);
+
+  JDoc terminated = poll_until_terminal(japi, service, job);
+  const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - started);
+  ASSERT_STREQ("terminated", terminated["head"]["status"].GetString())
+      << japi.jrender(terminated);
+  ASSERT_LT(elapsed.count(), 3000);
+  ASSERT_EQ(socket_dirs_before, worker_socket_dirs());
+  errno = 0;
+  ASSERT_EQ(-1, ::waitpid(-1, nullptr, WNOHANG));
+  ASSERT_EQ(ECHILD, errno);
 
   ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
   cleanup_repo(repo);

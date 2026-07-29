@@ -1,7 +1,15 @@
+import errno
 import io
 import json
+import os
+import pty
 import re
+import signal
+import subprocess
 import sys
+import textwrap
+import threading
+import time
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -88,6 +96,10 @@ class FakeRuntime:
             },
             body=status.get("body", {}),
         )
+
+    def cancel_training(self, request):
+        self.calls.append(("cancel", json.loads(request)))
+        return response()
 
     def predict(self, request):
         request = json.loads(request)
@@ -221,6 +233,7 @@ def test_default_example_configs_load():
     assert sam2["service_mllib"]["sam2"]["variant"] == "tiny"
     assert sam2["service_mllib"]["sam2"]["automatic"]["max_masks"] == 0
     assert vitpose["mllib"]["data_source"] == "connector_tensor_pull"
+    assert vitpose["cancel_timeout"] == 30
     assert vitpose["dataset_check"] == "full"
 
 
@@ -379,6 +392,635 @@ def test_train_torchvision_detector_uses_pytorch_backend_without_weights(
         if line.strip()
     ]
     assert "run_finished" in {event["event"] for event in events}
+
+
+@pytest.mark.parametrize(
+    ("terminal", "live"),
+    [("verbose", False), ("live", True)],
+)
+def test_pytorch_train_first_ctrl_c_cancels_cooperatively(
+    monkeypatch, tmp_path, capsys, terminal, live
+):
+    class FakeLiveReporter:
+        instances = []
+
+        def __init__(self, *, total_iterations, gpu_ids=None):
+            self.events = []
+            self.closed = False
+            FakeLiveReporter.instances.append(self)
+
+        def emit(self, event, **payload):
+            record = {"event": event, "timestamp": 1.0, **payload}
+            self.events.append(record)
+            return record
+
+        def close(self):
+            self.closed = True
+
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "running",
+            "body": {"measure": {"iteration": 4, "train_loss": 1.25}},
+        },
+        {
+            "status": "cancelled",
+            "body": {"measure": {"iteration": 4, "train_loss": 1.25}},
+        },
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    sleep_calls = 0
+
+    def interrupt_once(_interval):
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls == 1:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(training.time, "sleep", interrupt_once)
+    monkeypatch.setattr(training.sys.stdout, "isatty", lambda: live)
+    if live:
+        monkeypatch.setattr(training, "LiveTrainingTerminalReporter", FakeLiveReporter)
+    _weights, train, test = write_training_files(tmp_path)
+    run_root = tmp_path / "runs"
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(run_root),
+            "--run-name",
+            f"cancel-{terminal}",
+            "--iterations",
+            "100",
+            "--dataset-check",
+            "none",
+            "--terminal",
+            terminal,
+        ]
+    )
+
+    assert code == 130
+    assert (
+        "cancel",
+        {"service": "python-torchvision-detector-train", "job": 7, "wait": False},
+    ) in runtime.calls
+    manifest = json.loads(
+        (run_root / f"cancel-{terminal}" / "run.json").read_text(encoding="utf-8")
+    )
+    assert manifest["status"] == "cancelled"
+    assert manifest["cancellation_reason"] == "keyboard_interrupt"
+    assert manifest["last_status"]["measure"]["train_loss"] == 1.25
+    if live:
+        events = FakeLiveReporter.instances[0].events
+        assert FakeLiveReporter.instances[0].closed is True
+    else:
+        events = [
+            json.loads(line)
+            for line in capsys.readouterr().out.splitlines()
+            if line.strip()
+        ]
+    cancelling = [
+        event
+        for event in events
+        if event["event"] == "training_status" and event.get("status") == "cancelling"
+    ]
+    assert cancelling
+    assert cancelling[0]["measure"]["train_loss"] == 1.25
+    assert "press Ctrl-C again" in cancelling[0]["message"]
+    assert events[-1]["event"] == "run_finished"
+    assert events[-1]["status"] == "cancelled"
+
+
+def test_live_pytorch_subprocess_sigint_exits_130_with_valid_checkpoint(tmp_path):
+    script = tmp_path / "run_training.py"
+    script.write_text(
+        textwrap.dedent(
+            """
+            import json
+            import signal
+            import sys
+            from pathlib import Path
+
+            from deepdetect import DeepDetect
+            from deepdetect.cli import main as cli
+            from deepdetect.cli import training
+            from deepdetect.pytorch_worker.builtin.vision.detection.common import (
+                _atomic_torch_save,
+            )
+
+
+            def response(code=200, *, head=None, body=None):
+                value = {"status": {"code": code, "msg": "OK"}}
+                if head is not None:
+                    value["head"] = head
+                if body is not None:
+                    value["body"] = body
+                return json.dumps(value)
+
+
+            class Runtime:
+                def __init__(self):
+                    self.cancelled = False
+                    self.repository = None
+
+                def build_info(self):
+                    return json.dumps({"version": "test", "cuda": False})
+
+                def create_service(self, _name, request):
+                    self.repository = Path(json.loads(request)["model"]["repository"])
+                    return response(201)
+
+                def set_log_level(self, _level):
+                    return response()
+
+                def set_service_log_level(self, _name, _level):
+                    return response()
+
+                def train(self, _request):
+                    return response(201, head={"job": 7, "status": "running"})
+
+                def training_status(self, _request):
+                    state = "cancelled" if self.cancelled else "running"
+                    return response(
+                        head={"job": 7, "status": state, "time": 1.0},
+                        body={"measure": {"iteration": 4, "train_loss": 1.25}},
+                    )
+
+                def cancel_training(self, _request):
+                    class FakeTorch:
+                        @staticmethod
+                        def save(_payload, path):
+                            path.write_bytes(b"valid-checkpoint")
+
+                    _atomic_torch_save(
+                        FakeTorch,
+                        {"iteration": 4},
+                        self.repository / "checkpoint-latest.pt",
+                    )
+                    self.cancelled = True
+                    return response()
+
+                def delete_service(self, _name, _request):
+                    return response()
+
+
+            signal.signal(signal.SIGINT, signal.default_int_handler)
+            runtime = Runtime()
+            training.deepdetect.DeepDetect = lambda: DeepDetect(_runtime=runtime)
+            raise SystemExit(cli.main(sys.argv[1:]))
+            """
+        ),
+        encoding="utf-8",
+    )
+    _weights, train, test = write_training_files(tmp_path)
+    repository = tmp_path / "subprocess-repo"
+    source_python = str(Path(cli_package_file).resolve().parents[2])
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = os.pathsep.join(
+        [source_python, environment.get("PYTHONPATH", "")]
+    ).rstrip(os.pathsep)
+    master_fd, slave_fd = pty.openpty()
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            str(script),
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(repository),
+            "--iterations",
+            "100",
+            "--dataset-check",
+            "none",
+            "--terminal",
+            "live",
+        ],
+        stdout=slave_fd,
+        stderr=subprocess.PIPE,
+        env=environment,
+    )
+    os.close(slave_fd)
+
+    def drain_live_output() -> None:
+        while True:
+            try:
+                if not os.read(master_fd, 65536):
+                    return
+            except OSError as error:
+                if error.errno in {errno.EBADF, errno.EIO}:
+                    return
+                raise
+
+    drain_thread = threading.Thread(target=drain_live_output, daemon=True)
+    drain_thread.start()
+    try:
+        manifest_path = repository / "run.json"
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                last_status = manifest.get("last_status", {})
+                if (
+                    manifest["status"] == "running"
+                    and last_status.get("status") == "running"
+                    and last_status.get("measure", {}).get("train_loss") == 1.25
+                ):
+                    break
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+            time.sleep(0.02)
+        else:
+            raise AssertionError("subprocess training did not emit a running status")
+
+        process.send_signal(signal.SIGINT)
+        assert process.wait(timeout=10.0) == 130
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["status"] == "cancelled"
+        assert manifest["cancellation_reason"] == "keyboard_interrupt"
+        assert (repository / "checkpoint-latest.pt").read_bytes() == (
+            b"valid-checkpoint"
+        )
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5.0)
+        drain_thread.join(timeout=5.0)
+        os.close(master_fd)
+
+
+def test_pytorch_train_second_ctrl_c_forces_termination(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "running",
+            "body": {"measure": {"iteration": 3, "train_loss": 2.0}},
+        },
+        {
+            "status": "cancelling",
+            "body": {"measure": {"iteration": 3, "train_loss": 2.0}},
+        },
+        {
+            "status": "terminated",
+            "body": {"measure": {"iteration": 3, "train_loss": 2.0}},
+        },
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    sleep_calls = 0
+
+    def interrupt_twice(_interval):
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls <= 2:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(training.time, "sleep", interrupt_twice)
+    _weights, train, test = write_training_files(tmp_path)
+    run_root = tmp_path / "runs"
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(run_root),
+            "--run-name",
+            "forced-cancel",
+            "--iterations",
+            "100",
+            "--dataset-check",
+            "none",
+        ]
+    )
+
+    assert code == 130
+    cancel_calls = [call for call in runtime.calls if call[0] == "cancel"]
+    assert cancel_calls == [
+        (
+            "cancel",
+            {
+                "service": "python-torchvision-detector-train",
+                "job": 7,
+                "wait": False,
+            },
+        ),
+        (
+            "cancel",
+            {
+                "service": "python-torchvision-detector-train",
+                "job": 7,
+                "wait": False,
+                "force": True,
+            },
+        ),
+    ]
+    assert runtime.calls[-1] == (
+        "delete",
+        "python-torchvision-detector-train",
+        {},
+    )
+    manifest = json.loads(
+        (run_root / "forced-cancel" / "run.json").read_text(encoding="utf-8")
+    )
+    assert manifest["status"] == "terminated"
+    assert manifest["cancellation_reason"] == "keyboard_interrupt"
+    assert manifest["force_reason"] == "second_keyboard_interrupt"
+    events = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    assert "terminating" in {
+        event.get("status") for event in events if event["event"] == "training_status"
+    }
+
+
+def test_pytorch_train_cancel_timeout_forces_termination(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {"status": "running", "body": {"measure": {"iteration": 1}}},
+        {"status": "terminated", "body": {"measure": {"iteration": 1}}},
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    ticks = iter([0.0, 1.0, 3.0])
+    monkeypatch.setattr(training.time, "monotonic", lambda: next(ticks))
+    sleep_calls = 0
+
+    def interrupt_once(_interval):
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls == 1:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(training.time, "sleep", interrupt_once)
+    _weights, train, test = write_training_files(tmp_path)
+    run_root = tmp_path / "runs"
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(run_root),
+            "--run-name",
+            "cancel-timeout",
+            "--iterations",
+            "100",
+            "--dataset-check",
+            "none",
+            "--cancel-timeout",
+            "1",
+        ]
+    )
+
+    assert code == 130
+    force_call = [
+        call for call in runtime.calls if call[0] == "cancel" and call[1].get("force")
+    ]
+    assert len(force_call) == 1
+    manifest = json.loads(
+        (run_root / "cancel-timeout" / "run.json").read_text(encoding="utf-8")
+    )
+    assert manifest["status"] == "terminated"
+    assert manifest["force_reason"] == "cancel_timeout"
+    capsys.readouterr()
+
+
+def test_pytorch_training_timeout_reuses_staged_cancellation(
+    monkeypatch, tmp_path, capsys
+):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {"status": "running", "body": {"measure": {"iteration": 1}}},
+        {"status": "terminated", "body": {"measure": {"iteration": 1}}},
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    ticks = iter([0.0, 2.0, 3.0, 5.0])
+    monkeypatch.setattr(training.time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr(training.time, "sleep", lambda _interval: None)
+    _weights, train, test = write_training_files(tmp_path)
+    run_root = tmp_path / "runs"
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(run_root),
+            "--run-name",
+            "training-timeout",
+            "--iterations",
+            "100",
+            "--dataset-check",
+            "none",
+            "--timeout",
+            "1",
+            "--cancel-timeout",
+            "1",
+        ]
+    )
+
+    assert code == 130
+    manifest = json.loads(
+        (run_root / "training-timeout" / "run.json").read_text(encoding="utf-8")
+    )
+    assert manifest["status"] == "terminated"
+    assert manifest["cancellation_reason"] == "training_timeout"
+    assert manifest["force_reason"] == "cancel_timeout"
+    capsys.readouterr()
+
+
+def test_pytorch_train_finish_race_after_ctrl_c_returns_success(
+    monkeypatch, tmp_path, capsys
+):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {"status": "running", "body": {"measure": {"iteration": 1}}},
+        {"status": "finished", "body": {"measure": {"iteration": 2}}},
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    sleep_calls = 0
+
+    def interrupt_once(_interval):
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls == 1:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(training.time, "sleep", interrupt_once)
+    _weights, train, test = write_training_files(tmp_path)
+    run_root = tmp_path / "runs"
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--job-dir",
+            str(run_root),
+            "--run-name",
+            "finish-race",
+            "--iterations",
+            "2",
+            "--dataset-check",
+            "none",
+        ]
+    )
+
+    assert code == 0
+    manifest = json.loads(
+        (run_root / "finish-race" / "run.json").read_text(encoding="utf-8")
+    )
+    assert manifest["status"] == "finished"
+    assert manifest["cancellation_reason"] == "keyboard_interrupt"
+    events = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    assert events[-1]["status"] == "finished"
+
+
+def test_train_cancel_timeout_cli_overrides_yaml(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 1, "train_loss": 1.0}},
+        }
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    _weights, train, test = write_training_files(tmp_path)
+    repository = tmp_path / "repo"
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("cancel_timeout: 17\n", encoding="utf-8")
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--config",
+            str(cfg),
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(repository),
+            "--iterations",
+            "1",
+            "--dataset-check",
+            "none",
+            "--cancel-timeout",
+            "4",
+        ]
+    )
+
+    assert code == 0
+    assert config.load_config(repository / "config.yaml")["cancel_timeout"] == 4.0
+    capsys.readouterr()
+
+
+def test_train_cancel_timeout_must_be_positive(tmp_path, capsys):
+    _weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--dataset-check",
+            "none",
+            "--cancel-timeout",
+            "0",
+        ]
+    )
+
+    assert code != 0
+    assert "cancel_timeout must be positive" in capsys.readouterr().err
+
+
+def test_sync_pytorch_training_remains_blocking(monkeypatch, tmp_path, capsys):
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    _weights, train, test = write_training_files(tmp_path)
+
+    code = cli.main(
+        [
+            "train",
+            "torchvision-detector",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--repository",
+            str(tmp_path / "repo"),
+            "--iterations",
+            "1",
+            "--dataset-check",
+            "none",
+            "--sync",
+        ]
+    )
+
+    assert code == 0
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert train_call[1]["async"] is False
+    assert not any(call[0] == "cancel" for call in runtime.calls)
+    capsys.readouterr()
 
 
 def test_train_external_pytorch_detector_passes_entrypoint_from_yaml(
@@ -1568,6 +2210,24 @@ def test_live_training_terminal_reporter_renders_sink_warning():
     output = stream.getvalue()
     assert "warning" in output
     assert "VisdomResultSink: transient prediction failure" in output
+
+
+def test_live_training_terminal_reporter_explains_staged_cancellation():
+    for state, message in (
+        ("cancelling", "press Ctrl-C again to force termination"),
+        ("terminating", "forcing worker process-group termination"),
+    ):
+        stream = io.StringIO()
+        reporter = LiveTrainingTerminalReporter(
+            total_iterations=10,
+            gpu_monitor=None,
+            stream=stream,
+            force_terminal=True,
+        )
+        reporter.emit("training_status", status=state, measure={})
+        reporter.close()
+
+        assert message in strip_ansi(stream.getvalue())
 
 
 def test_explicit_run_name_collision_fails_before_training(
