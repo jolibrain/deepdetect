@@ -39,7 +39,12 @@ from vitpose_worker.assignment import hungarian_assign
 from vitpose_worker.checkpoint import _atomic_torch_save, load_model_checkpoint
 from vitpose_worker.config import worker_config_from_mllib
 from vitpose_worker.decode import decode_topdown_outputs
-from vitpose_worker.losses import PoseLossConfig, slot_pose_losses, topdown_pose_losses
+from vitpose_worker.losses import (
+    PoseLossConfig,
+    masked_heatmap_mse,
+    slot_pose_losses,
+    topdown_pose_losses,
+)
 from vitpose_worker.model import ViTPoseModelConfig, ViTPoseSlots, ViTPoseTopDown
 from vitpose_worker.targets import PoseTargetConfig, build_batch_targets
 from vitpose_worker.worker_impl import ConnectorBatchPrefetcher, DeepDetectWorker
@@ -99,6 +104,116 @@ def test_layer_decay_explicit_value_overrides_pretraining_policy():
     }
 
     assert worker_config_from_mllib(mllib).layer_decay == 0.6
+
+
+def test_heatmap_foreground_weight_defaults_by_head_and_can_be_overridden():
+    common = {
+        "nkeypoints": 2,
+        "vitpose": {
+            "variant": "tiny",
+            "image_size": [32, 32],
+            "heatmap_size": [8, 8],
+        },
+    }
+
+    topdown = worker_config_from_mllib(
+        {**common, "vitpose": {**common["vitpose"], "head": "topdown"}}
+    )
+    slots = worker_config_from_mllib(
+        {**common, "vitpose": {**common["vitpose"], "head": "slots"}}
+    )
+    overridden = worker_config_from_mllib(
+        {
+            **common,
+            "vitpose": {
+                **common["vitpose"],
+                "head": "slots",
+                "heatmap_foreground_weight": 25,
+            },
+        }
+    )
+
+    assert topdown.loss.heatmap_foreground_weight == 1.0
+    assert slots.loss.heatmap_foreground_weight == 100.0
+    assert overridden.loss.heatmap_foreground_weight == 25.0
+
+
+def test_foreground_weighted_heatmap_mse_emphasizes_target_peaks():
+    pred = torch.zeros((1, 1, 1, 8, 8))
+    target = torch.zeros_like(pred)
+    target[..., 3, 4] = 1.0
+    weights = torch.ones((1, 1, 1, 1))
+
+    unweighted = masked_heatmap_mse(pred, target, weights)
+    weighted = masked_heatmap_mse(
+        pred,
+        target,
+        weights,
+        foreground_weight=100.0,
+    )
+
+    assert weighted > 10.0 * unweighted
+    assert masked_heatmap_mse(
+        target,
+        target,
+        weights,
+        foreground_weight=100.0,
+    ).item() == 0.0
+
+
+def test_slot_assignment_uses_weighted_heatmap_loss_configuration():
+    target = {
+        "keypoints": torch.tensor([[[16.0, 16.0]]]),
+        "visible": torch.ones((1, 1)),
+    }
+    target_config = PoseTargetConfig(
+        image_size=(32, 32),
+        heatmap_size=(8, 8),
+        sigma=1.0,
+        max_objects=2,
+        nkeypoints=1,
+    )
+    target_heatmaps, _weights, _mask, _dropped = build_batch_targets(
+        [target],
+        config=target_config,
+        torch_module=torch,
+        device=torch.device("cpu"),
+    )
+    object_heatmap = target_heatmaps[0, 0]
+    outputs = {
+        "heatmaps": torch.stack(
+            (torch.zeros_like(object_heatmap), object_heatmap)
+        ).unsqueeze(0),
+        "objectness": torch.tensor([[4.0, 0.0]]),
+    }
+
+    _, _, objectness_only = slot_pose_losses(
+        outputs,
+        [target],
+        config=PoseLossConfig(
+            target=target_config,
+            heatmap_weight=0.0,
+            heatmap_foreground_weight=100.0,
+        ),
+        torch_module=torch,
+        device=torch.device("cpu"),
+        return_reduction=True,
+    )
+    _, _, heatmap_aware = slot_pose_losses(
+        outputs,
+        [target],
+        config=PoseLossConfig(
+            target=target_config,
+            heatmap_weight=10.0,
+            heatmap_foreground_weight=100.0,
+        ),
+        torch_module=torch,
+        device=torch.device("cpu"),
+        return_reduction=True,
+    )
+
+    assert objectness_only.assignments == ((0, 0, 0),)
+    assert heatmap_aware.assignments == ((0, 1, 0),)
 
 
 def test_worker_selects_layer_decay_for_existing_resume_checkpoint(tmp_path):

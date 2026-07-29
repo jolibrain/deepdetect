@@ -169,6 +169,7 @@ class PoseDatasetSummary:
 class PoseEvaluationLosses:
     heatmap_numerator: float = 0.0
     heatmap_denominator: float = 0.0
+    visible_keypoints: int = 0
     objectness_numerator: float = 0.0
     objectness_denominator: int = 0
     keypoint_error_sum: float = 0.0
@@ -181,6 +182,7 @@ class PoseEvaluationLosses:
         self.heatmap_denominator += float(
             reduction.heatmap_denominator.detach().cpu().item()
         )
+        self.visible_keypoints += reduction.visible_keypoints
         if reduction.objectness_numerator is not None:
             self.objectness_numerator += float(
                 reduction.objectness_numerator.detach().cpu().item()
@@ -197,11 +199,10 @@ class PoseEvaluationLosses:
             if self.heatmap_denominator > 0.0
             else 0.0
         )
-        heatmap_area = config.target.heatmap_size[0] * config.target.heatmap_size[1]
         metrics = {
             "heatmap_loss": heatmap_loss,
             "loss": float(config.loss.heatmap_weight) * heatmap_loss,
-            "visible_keypoints": self.heatmap_denominator / float(heatmap_area),
+            "visible_keypoints": float(self.visible_keypoints),
             "mean_keypoint_error_px": (
                 self.keypoint_error_sum / float(self.keypoint_error_count)
                 if self.keypoint_error_count > 0

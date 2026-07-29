@@ -86,6 +86,14 @@ def worker_config_from_mllib(
         target=target_config,
         heatmap_weight=float(options.get("heatmap_loss_weight", 1.0)),
         objectness_weight=float(options.get("objectness_loss_weight", 1.0)),
+        heatmap_foreground_weight=minimum_float(
+            options.get(
+                "heatmap_foreground_weight",
+                100.0 if head == "slots" else 1.0,
+            ),
+            "heatmap_foreground_weight",
+            minimum=1.0,
+        ),
     )
     if pretrained is None:
         pretrained = has_configured_pretrained_weights(mllib)
@@ -146,6 +154,13 @@ def positive_float(value: Any, name: str) -> float:
     result = float(value)
     if result <= 0.0:
         raise DatasetContractError(f"{name} must be positive")
+    return result
+
+
+def minimum_float(value: Any, name: str, *, minimum: float) -> float:
+    result = float(value)
+    if result < minimum:
+        raise DatasetContractError(f"{name} must be at least {minimum:g}")
     return result
 
 

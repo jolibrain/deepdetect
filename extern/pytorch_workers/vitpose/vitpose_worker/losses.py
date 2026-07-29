@@ -15,12 +15,14 @@ class PoseLossConfig:
     target: PoseTargetConfig
     heatmap_weight: float = 1.0
     objectness_weight: float = 1.0
+    heatmap_foreground_weight: float = 1.0
 
 
 @dataclass(frozen=True)
 class PoseLossReduction:
     heatmap_numerator: torch.Tensor
     heatmap_denominator: torch.Tensor
+    visible_keypoints: int = 0
     objectness_numerator: torch.Tensor | None = None
     objectness_denominator: int = 0
     assignments: tuple[tuple[int, int, int], ...] = ()
@@ -46,12 +48,18 @@ def topdown_pose_losses(
     )
     if return_reduction:
         heatmap_numerator, heatmap_denominator = masked_heatmap_mse_reduction(
-            outputs["heatmaps"], target_heatmaps, target_weights
+            outputs["heatmaps"],
+            target_heatmaps,
+            target_weights,
+            foreground_weight=config.heatmap_foreground_weight,
         )
         heatmap_loss = reduce_heatmap_mse(heatmap_numerator, heatmap_denominator)
     else:
         heatmap_loss = masked_heatmap_mse(
-            outputs["heatmaps"], target_heatmaps, target_weights
+            outputs["heatmaps"],
+            target_heatmaps,
+            target_weights,
+            foreground_weight=config.heatmap_foreground_weight,
         )
     losses = {
         "loss": float(config.heatmap_weight) * heatmap_loss,
@@ -65,6 +73,7 @@ def topdown_pose_losses(
             PoseLossReduction(
                 heatmap_numerator=heatmap_numerator,
                 heatmap_denominator=heatmap_denominator,
+                visible_keypoints=int(target_weights.sum().item()),
             ),
         )
     return losses, stats
@@ -122,9 +131,10 @@ def slot_pose_losses(
                         pred_heatmaps[batch_index, slot_index],
                         target_heatmaps[batch_index, object_index],
                         target_weights[batch_index, object_index],
+                        foreground_weight=config.heatmap_foreground_weight,
                     )
                     row.append(
-                        heatmap_cost
+                        float(config.heatmap_weight) * heatmap_cost
                         + float(config.objectness_weight)
                         * float(positive_cost[batch_index, slot_index].item())
                     )
@@ -145,6 +155,7 @@ def slot_pose_losses(
             pred_heatmaps,
             matched_heatmaps,
             matched_weights,
+            foreground_weight=config.heatmap_foreground_weight,
         )
         heatmap_loss = reduce_heatmap_mse(heatmap_numerator, heatmap_denominator)
         objectness_numerator = F.binary_cross_entropy_with_logits(
@@ -159,6 +170,7 @@ def slot_pose_losses(
             pred_heatmaps,
             matched_heatmaps,
             matched_weights,
+            foreground_weight=config.heatmap_foreground_weight,
         )
         objectness_loss = F.binary_cross_entropy_with_logits(
             pred_objectness,
@@ -184,6 +196,7 @@ def slot_pose_losses(
             PoseLossReduction(
                 heatmap_numerator=heatmap_numerator,
                 heatmap_denominator=heatmap_denominator,
+                visible_keypoints=int(matched_weights.sum().item()),
                 objectness_numerator=objectness_numerator,
                 objectness_denominator=objectness_denominator,
                 assignments=tuple(matched_assignments),
@@ -196,8 +209,15 @@ def masked_heatmap_mse(
     pred: torch.Tensor,
     target: torch.Tensor,
     weights: torch.Tensor,
+    *,
+    foreground_weight: float = 1.0,
 ) -> torch.Tensor:
-    numerator, denominator = masked_heatmap_mse_reduction(pred, target, weights)
+    numerator, denominator = masked_heatmap_mse_reduction(
+        pred,
+        target,
+        weights,
+        foreground_weight=foreground_weight,
+    )
     return reduce_heatmap_mse(numerator, denominator)
 
 
@@ -205,10 +225,17 @@ def masked_heatmap_mse_reduction(
     pred: torch.Tensor,
     target: torch.Tensor,
     weights: torch.Tensor,
+    *,
+    foreground_weight: float = 1.0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    weights = weights.to(dtype=pred.dtype).unsqueeze(-1)
-    squared = (pred - target).pow(2) * weights
-    denominator = weights.sum() * pred.shape[-1] * pred.shape[-2]
+    pixel_weights = _heatmap_pixel_weights(
+        target,
+        weights,
+        dtype=pred.dtype,
+        foreground_weight=foreground_weight,
+    )
+    squared = (pred - target).pow(2) * pixel_weights
+    denominator = pixel_weights.sum()
     return squared.sum(), denominator
 
 
@@ -225,9 +252,31 @@ def _visible_heatmap_cost(
     pred: torch.Tensor,
     target: torch.Tensor,
     weights: torch.Tensor,
+    *,
+    foreground_weight: float,
 ) -> float:
     visible = weights.reshape(-1) > 0.0
     if not bool(visible.any().item()):
         return 0.0
-    diff = pred.detach()[visible] - target.detach()[visible]
-    return float(diff.pow(2).mean().item())
+    numerator, denominator = masked_heatmap_mse_reduction(
+        pred.detach()[visible],
+        target.detach()[visible],
+        weights.detach()[visible],
+        foreground_weight=foreground_weight,
+    )
+    return float(reduce_heatmap_mse(numerator, denominator).item())
+
+
+def _heatmap_pixel_weights(
+    target: torch.Tensor,
+    weights: torch.Tensor,
+    *,
+    dtype: torch.dtype,
+    foreground_weight: float,
+) -> torch.Tensor:
+    foreground_weight = float(foreground_weight)
+    if foreground_weight < 1.0:
+        raise ValueError("heatmap foreground weight must be at least 1")
+    joint_weights = weights.to(dtype=dtype).unsqueeze(-1)
+    foreground = target.detach().to(dtype=dtype).clamp(min=0.0, max=1.0)
+    return joint_weights * (1.0 + (foreground_weight - 1.0) * foreground)
