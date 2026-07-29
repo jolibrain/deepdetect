@@ -23,7 +23,6 @@
 #define MLLIBSTRATEGY_H
 
 #include <atomic>
-#include <cstdint>
 #include <exception>
 #include <mutex>
 
@@ -101,7 +100,7 @@ namespace dd
           _meas_per_iter(mll._meas_per_iter),
           _status_payloads(mll._status_payloads), _stats(mll._stats),
           _tjob_running(mll._tjob_running.load()), _logger(mll._logger),
-          _model_flops(mll._model_flops), _model_params(mll._model_params),
+          _model_gflops(mll._model_gflops), _model_params(mll._model_params),
           _mem_used_train(mll._mem_used_train),
           _mem_used_test(mll._mem_used_test)
     {
@@ -370,7 +369,8 @@ namespace dd
           meas.add("remain_time_str", est_remain_time_str);
         }
 
-      meas.add("flops", this->_model_flops);
+      if (this->_model_gflops > 0.0)
+        meas.add("gflops", this->_model_gflops);
 
       APIData test_names;
       for (size_t i = 0; i < _test_names.size(); ++i)
@@ -423,8 +423,8 @@ namespace dd
 
     std::shared_ptr<spdlog::logger> _logger; /**< mllib logger. */
 
-    std::int64_t _model_flops = 0; /**< model flops. */
-    long int _model_params = 0;    /**< number of parameters in the model. */
+    double _model_gflops = 0.0; /**< model GFLOPs. */
+    long int _model_params = 0; /**< number of parameters in the model. */
     long int _model_frozen_params
         = 0; /**< number of frozen parameters in the model. */
     long int _mem_used_train = 0; /**< amount  of memory used. */

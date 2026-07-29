@@ -254,12 +254,13 @@ run.metric("train/loss", 0.081, step=12000)
 run.artifact(kind="sample-grid", path="samples/12000.png", step=12000)
 ```
 
-For PyTorch workers, `measure.flops` and service `model_stats.flops` are
+For PyTorch workers, `measure.gflops` and service `model_stats.gflops` are
 estimated from the first real model forward pass using the native PyTorch
-profiler. The value is reported per sample in that model forward. For top-down
-pose workers this means per cropped instance; for full-image models it means
-per input image. Unsupported operators are non-fatal and leave the value
-unavailable until a worker reports a supported estimate.
+profiler. The value is reported in billions of floating-point operations
+(GFLOPs) per sample in that model forward. For top-down pose workers this means
+per cropped instance; for full-image models it means per input image.
+Unsupported operators are non-fatal and leave the value unavailable until a
+worker reports a supported estimate.
 
 ### Visdom Metric Sink
 

@@ -839,7 +839,7 @@ TEST(pytorchworkerapi, reference_detector_trains_tiny_detection_fixture)
   cleanup_repo(fixture.root);
 }
 
-TEST(pytorchworkerapi, worker_status_updates_flops_measure)
+TEST(pytorchworkerapi, worker_status_updates_gflops_measure)
 {
   configure_pythonpath();
   JsonAPI japi;
@@ -897,12 +897,29 @@ class DeepDetectWorker(DeepDetectWorkerBase):
       << japi.jrender(status);
   ASSERT_TRUE(status.HasMember("body")) << japi.jrender(status);
   ASSERT_TRUE(status["body"].HasMember("measure")) << japi.jrender(status);
-  ASSERT_TRUE(status["body"]["measure"].HasMember("flops"))
+  ASSERT_TRUE(status["body"]["measure"].HasMember("gflops"))
       << japi.jrender(status);
-  ASSERT_TRUE(status["body"]["measure"]["flops"].IsNumber())
+  ASSERT_TRUE(status["body"]["measure"]["gflops"].IsNumber())
       << japi.jrender(status);
-  ASSERT_GT(status["body"]["measure"]["flops"].GetDouble(), 0.0)
+  ASSERT_GT(status["body"]["measure"]["gflops"].GetDouble(), 0.0)
       << japi.jrender(status);
+  ASSERT_LT(status["body"]["measure"]["gflops"].GetDouble(), 1.0)
+      << japi.jrender(status);
+  ASSERT_FALSE(status["body"]["measure"].HasMember("flops"))
+      << japi.jrender(status);
+
+  JDoc info = japi.service_status(service, false);
+  ASSERT_EQ(200, status_code(info)) << japi.jrender(info);
+  ASSERT_TRUE(info["body"]["model_stats"].HasMember("gflops"))
+      << japi.jrender(info);
+  ASSERT_GT(info["body"]["model_stats"]["gflops"].GetDouble(), 0.0)
+      << japi.jrender(info);
+  ASSERT_LT(info["body"]["model_stats"]["gflops"].GetDouble(), 1.0)
+      << japi.jrender(info);
+  ASSERT_FALSE(info["body"]["model_stats"].HasMember("flops"))
+      << japi.jrender(info);
+  ASSERT_TRUE(info["body"]["stats"].HasMember("gflops")) << japi.jrender(info);
+  ASSERT_FALSE(info["body"]["stats"].HasMember("flops")) << japi.jrender(info);
 
   ASSERT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
   cleanup_repo(repo);
