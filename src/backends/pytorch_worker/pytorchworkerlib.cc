@@ -288,7 +288,6 @@ namespace dd
     try
       {
         APIData params = request_params(train_request(ad));
-        this->_tjob_running.store(true);
         debug_log("train: sending train_start");
         _worker->request("train_start", params);
         debug_log("train: train_start acknowledged");
@@ -298,6 +297,14 @@ namespace dd
         int status = 1;
         while (!finished)
           {
+            if (this->_tjob_force_stop.load())
+              {
+                debug_log("train: force-terminating worker process group");
+                _worker->terminate();
+                finished = true;
+                status = static_cast<int>(TrainingJobResult::terminated);
+                break;
+              }
             if (!this->_tjob_running.load() && !cancel_sent)
               {
                 APIData cancel_params;
@@ -419,7 +426,14 @@ namespace dd
         std::string state = payload.IsObject() && payload.HasMember("status")
                                 ? json_string(payload["status"], "finished")
                                 : "finished";
-        status = state == "finished" ? 0 : 1;
+        if (state == "finished")
+          status = static_cast<int>(TrainingJobResult::finished);
+        else if (state == "cancelled")
+          status = static_cast<int>(TrainingJobResult::cancelled);
+        else if (state == "terminated")
+          status = static_cast<int>(TrainingJobResult::terminated);
+        else
+          status = static_cast<int>(TrainingJobResult::error);
         this->collect_measures(out);
       }
   }

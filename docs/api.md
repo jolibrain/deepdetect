@@ -758,7 +758,7 @@ parameters.output.max_hist_points | int    | yes      | 10000   | max number of 
 ```shell
 curl -X DELETE "http://localhost:8080/train?service=imageserv&job=1"
 
-{"status":{"code":200,"msg":"OK"},"head":{"time":196.0,"status":"terminated","method":"/train","job":1}}
+{"status":{"code":200,"msg":"OK"},"head":{"time":196.0,"status":"cancelled","method":"/train","job":1}}
 ```
 ```python
 from dd_client import DD
@@ -769,7 +769,9 @@ dd.set_return_format(dd.RETURN_PYTHON)
 dd.delete_train('imageserv',job=1)
 ```
 
-Kills a training job running asynchronously
+Cooperatively cancels a training job running asynchronously. Nonblocking
+requests expose `cancelling` and `terminating` states through training status
+polls. PyTorch force requests terminate the worker process group.
 
 ### HTTP Request
 
@@ -781,6 +783,8 @@ Parameter | Type | Optional | Default | Description
 --------- | ---- | -------- | ------- | -----------
 service | string | no | N/A | name of the service the training job is running on
 job | int | no | N/A | job identifier
+wait | bool | yes | true | wait for cancellation to finish before returning
+force | bool | yes | false | force PyTorch worker process-group termination
 
 
 # Predict

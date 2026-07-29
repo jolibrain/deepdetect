@@ -159,6 +159,9 @@ Shared training options:
   model repository. When explicitly set, the run files are written under
   `<job-dir>/<run-name>/`.
 - `--poll-interval`, `--timeout`: async monitoring controls.
+- `--cancel-timeout`: grace period for asynchronous `pytorch` workers after a
+  cooperative cancellation request. It defaults to 30 seconds and must be
+  positive.
 - `--terminal verbose|live`: choose stdout behavior for async training.
   `verbose` is the default and preserves `--output-format`. `live` uses a
   fixed-size Rich display when stdout is a TTY and falls back to JSONL when it
@@ -221,6 +224,17 @@ bbox line format, class ranges, and numeric bbox values; SegFormer validates
 mask values unless `--skip-mask-validation` is passed. With
 `--dataset-check none`, the CLI emits a skipped dataset-check event and leaves
 dataset validation to the DeepDetect backend.
+
+For asynchronous profiles using the `pytorch` worker backend, the first
+Ctrl-C requests cooperative cancellation so the worker can write its final
+checkpoint. Monitoring continues with a `cancelling` status, and another
+Ctrl-C forces worker process-group termination. If the worker does not finish
+within `--cancel-timeout`, the CLI escalates automatically and reports
+`terminating`. Cooperative and forced shutdown finish as `cancelled` and
+`terminated`, respectively, and return exit code 130. If training finishes
+while cancellation is racing with completion, the run remains `finished` and
+returns zero. Blocking `--sync` training and other backends retain their
+existing interrupt behavior.
 
 ### Agent Observation CLI
 

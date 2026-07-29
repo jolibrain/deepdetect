@@ -191,6 +191,29 @@ def test_job_wait_and_cancel(monkeypatch):
     assert runtime.calls[-1] == ("cancel", {"service": "classifier", "job": 7})
 
 
+def test_job_cancel_supports_nonblocking_and_force_requests():
+    runtime, _, service = make_service()
+    job = TrainingJob(service, 7)
+
+    job.cancel(wait=False)
+    assert runtime.calls[-1] == (
+        "cancel",
+        {"service": "classifier", "job": 7, "wait": False},
+    )
+
+    job.cancel(wait=False, force=True)
+    assert runtime.calls[-1] == (
+        "cancel",
+        {"service": "classifier", "job": 7, "wait": False, "force": True},
+    )
+
+    job.cancel(force=True)
+    assert runtime.calls[-1] == (
+        "cancel",
+        {"service": "classifier", "job": 7, "force": True},
+    )
+
+
 def test_job_status_accepts_output_parameters():
     runtime, _, service = make_service()
     runtime.statuses = ["running"]

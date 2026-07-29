@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -102,10 +104,34 @@ def save_checkpoint(
         "iteration": int(iteration),
         "optimizer_state": optimizer.state_dict(),
     }
-    torch.save(model_payload, repository / f"checkpoint-{iteration}.pt")
-    torch.save(model_payload, repository / "checkpoint-latest.pt")
-    torch.save(solver_payload, repository / f"solver-{iteration}.pt")
-    torch.save(solver_payload, repository / "solver-latest.pt")
+    _atomic_torch_save(
+        torch,
+        model_payload,
+        repository / f"checkpoint-{iteration}.pt",
+    )
+    _atomic_torch_save(torch, model_payload, repository / "checkpoint-latest.pt")
+    _atomic_torch_save(
+        torch,
+        solver_payload,
+        repository / f"solver-{iteration}.pt",
+    )
+    _atomic_torch_save(torch, solver_payload, repository / "solver-latest.pt")
+
+
+def _atomic_torch_save(torch: Any, payload: Any, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        delete=False,
+    ) as temporary:
+        temporary_path = Path(temporary.name)
+    try:
+        torch.save(payload, temporary_path)
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def _state_dict(payload: Any) -> dict[str, Any]:

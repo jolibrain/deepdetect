@@ -345,7 +345,12 @@ class TrainingJob:
                 raise TimeoutError(f"training job {self.job} did not finish in time")
             time.sleep(poll_interval)
 
-    def cancel(self) -> None:
+    def cancel(self, *, wait: bool = True, force: bool = False) -> None:
         self.service._active()
-        request = _json({"service": self.service.name, "job": self.job})
+        payload: dict[str, Any] = {"service": self.service.name, "job": self.job}
+        if wait is not True:
+            payload["wait"] = wait
+        if force is not False:
+            payload["force"] = force
+        request = _json(payload)
         _checked(self.service._client._runtime.cancel_training(request))

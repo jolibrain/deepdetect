@@ -1244,7 +1244,9 @@ namespace dd
       }
     jtrain.AddMember("head", jhead, jtrain.GetAllocator());
     jtrain.AddMember("body", jout, jtrain.GetAllocator());
-    if (train_status == "finished" || train_status == "running")
+    if (train_status == "finished" || train_status == "running"
+        || train_status == "cancelling" || train_status == "terminating"
+        || train_status == "cancelled" || train_status == "terminated")
       {
         std::string mrepo
             = out.getobj("model").get("repository").get<std::string>();

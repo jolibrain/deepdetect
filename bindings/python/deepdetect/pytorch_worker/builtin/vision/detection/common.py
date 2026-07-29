@@ -4,6 +4,7 @@ import math
 import os
 import random
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -933,10 +934,42 @@ def save_checkpoint(
         "iteration": iteration,
         "optimizer_state": optimizer.state_dict(),
     }
-    torch.save(model_payload, context.artifact_path(f"checkpoint-{iteration}.pt"))
-    torch.save(model_payload, context.artifact_path("checkpoint-latest.pt"))
-    torch.save(solver_payload, context.artifact_path(f"solver-{iteration}.pt"))
-    torch.save(solver_payload, context.artifact_path("solver-latest.pt"))
+    _atomic_torch_save(
+        torch,
+        model_payload,
+        context.artifact_path(f"checkpoint-{iteration}.pt"),
+    )
+    _atomic_torch_save(
+        torch,
+        model_payload,
+        context.artifact_path("checkpoint-latest.pt"),
+    )
+    _atomic_torch_save(
+        torch,
+        solver_payload,
+        context.artifact_path(f"solver-{iteration}.pt"),
+    )
+    _atomic_torch_save(
+        torch,
+        solver_payload,
+        context.artifact_path("solver-latest.pt"),
+    )
+
+
+def _atomic_torch_save(torch: Any, payload: Any, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        delete=False,
+    ) as temporary:
+        temporary_path = Path(temporary.name)
+    try:
+        torch.save(payload, temporary_path)
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def request_dict(params: dict[str, Any]) -> dict[str, Any]:

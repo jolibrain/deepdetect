@@ -35,7 +35,7 @@ from coco_keypoints_to_dd import (
     format_deepdetect_topdown_line,
 )
 from vitpose_worker.assignment import hungarian_assign
-from vitpose_worker.checkpoint import load_model_checkpoint
+from vitpose_worker.checkpoint import _atomic_torch_save, load_model_checkpoint
 from vitpose_worker.config import worker_config_from_mllib
 from vitpose_worker.decode import decode_topdown_outputs
 from vitpose_worker.losses import PoseLossConfig, slot_pose_losses, topdown_pose_losses
@@ -43,6 +43,27 @@ from vitpose_worker.model import ViTPoseModelConfig, ViTPoseSlots, ViTPoseTopDow
 from vitpose_worker.targets import PoseTargetConfig, build_batch_targets
 from vitpose_worker.worker_impl import ConnectorBatchPrefetcher, DeepDetectWorker
 from vitpose_worker.worker_impl import PoseTrainOptions, PoseTrainRequest
+
+
+def test_vitpose_atomic_checkpoint_preserves_previous_file_on_interruption(tmp_path):
+    final_path = tmp_path / "solver-latest.pt"
+    final_path.write_bytes(b"previous-solver")
+
+    class InterruptedTorch:
+        saved_path = None
+
+        @classmethod
+        def save(cls, _payload, path):
+            cls.saved_path = path
+            path.write_bytes(b"incomplete-solver")
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        _atomic_torch_save(InterruptedTorch, {"iteration": 2}, final_path)
+
+    assert InterruptedTorch.saved_path.parent == final_path.parent
+    assert final_path.read_bytes() == b"previous-solver"
+    assert list(tmp_path.glob(".solver-latest.pt.*.tmp")) == []
 
 
 def test_hungarian_assignment_is_permutation_invariant():

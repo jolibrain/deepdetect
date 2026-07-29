@@ -31,6 +31,7 @@ from deepdetect.pytorch_worker.builtin.vision.detection.base import (
 from deepdetect.pytorch_worker.builtin.vision.detection.common import (
     DetectionListDataset,
     DetectionTensorBatchDataset,
+    _atomic_torch_save,
     make_loader,
 )
 from deepdetect.pytorch_worker.builtin.vision.detection.training import (
@@ -54,6 +55,27 @@ from deepdetect.pytorch_worker.templates.train_worker import (
 from deepdetect.pytorch_worker.builtin.vision.detection.reference_torch_detector import (
     DeepDetectWorker as ReferenceTorchDetectorWorker,
 )
+
+
+def test_detector_atomic_checkpoint_preserves_previous_file_on_interruption(tmp_path):
+    final_path = tmp_path / "checkpoint-latest.pt"
+    final_path.write_bytes(b"previous-checkpoint")
+
+    class InterruptedTorch:
+        saved_path = None
+
+        @classmethod
+        def save(cls, _payload, path):
+            cls.saved_path = path
+            path.write_bytes(b"incomplete-checkpoint")
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        _atomic_torch_save(InterruptedTorch, {"iteration": 2}, final_path)
+
+    assert InterruptedTorch.saved_path.parent == final_path.parent
+    assert final_path.read_bytes() == b"previous-checkpoint"
+    assert list(tmp_path.glob(".checkpoint-latest.pt.*.tmp")) == []
 
 
 class MemorySocket:

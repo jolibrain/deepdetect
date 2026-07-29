@@ -93,6 +93,11 @@ def _add_train_parser(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--sync", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--timeout", type=float)
+    parser.add_argument(
+        "--cancel-timeout",
+        type=float,
+        help="seconds to wait for a cooperative PyTorch cancellation before forcing it",
+    )
     parser.add_argument("--poll-interval", type=float)
     parser.add_argument("--job-dir", type=Path)
     parser.add_argument("--run-name")
