@@ -235,12 +235,13 @@ class WorkerRuntime:
         flops = self._current_model_flops()
         if flops is None:
             return
-        if not _positive_number(payload.get("flops")):
-            payload["flops"] = int(flops)
+        gflops = float(flops) / 1_000_000_000.0
+        if not _positive_number(payload.get("gflops")):
+            payload["gflops"] = gflops
         model_stats = payload.setdefault("model_stats", {})
         if isinstance(model_stats, dict):
-            if not _positive_number(model_stats.get("flops")):
-                model_stats["flops"] = int(flops)
+            if not _positive_number(model_stats.get("gflops")):
+                model_stats["gflops"] = gflops
 
     def _emit_model_flops_warning(self) -> None:
         if not isinstance(self.worker, DeepDetectWorkerBase):

@@ -1452,6 +1452,7 @@ def test_live_training_terminal_reporter_renders_progress_losses_and_metrics():
             "test_processed": 20,
             "test_total": 40,
             "map-50": 0.75,
+            "gflops": 176.246,
             "elapsed_time_ms": 123.0,
         },
     )
@@ -1481,6 +1482,8 @@ def test_live_training_terminal_reporter_renders_progress_losses_and_metrics():
     assert "20/40" in output
     assert "map-50=0.75" in output
     assert "acc=0.9" in output
+    assert "gflops=176.246" in output
+    assert "1.76246e+11" not in output
     assert "elapsed_time_ms" not in output
 
 

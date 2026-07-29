@@ -40,11 +40,11 @@ namespace dd
     {
       DTO_INIT(ServiceModel, DTO /* extends */)
 
-      DTO_FIELD_INFO(flops)
+      DTO_FIELD_INFO(gflops)
       {
-        info->description = "Number of flops of the model";
+        info->description = "Number of GFLOPs of the model";
       }
-      DTO_FIELD(Int64, flops);
+      DTO_FIELD(Float64, gflops);
 
       DTO_FIELD_INFO(params)
       {

@@ -150,7 +150,7 @@ def test_worker_base_records_first_forward_flops_per_sample():
     assert worker.model_flops() == flops
 
 
-def test_runtime_status_includes_model_flops():
+def test_runtime_status_includes_model_gflops():
     torch = pytest.importorskip("torch")
 
     runtime_sock, host_sock = socket_pair()
@@ -158,6 +158,7 @@ def test_runtime_status_includes_model_flops():
     runtime.worker = DeepDetectWorkerBase()
     runtime.worker.model = torch.nn.Conv2d(3, 4, 3, padding=1)
     runtime.worker.model(torch.randn(2, 3, 8, 8))
+    expected_gflops = runtime.worker.model_flops() / 1_000_000_000.0
     try:
         runtime.event("status", {"iteration": 1})
 
@@ -165,14 +166,17 @@ def test_runtime_status_includes_model_flops():
         assert message["event"] == "status"
         payload = message["payload"]
         assert payload["iteration"] == 1
-        assert payload["flops"] > 0
-        assert payload["model_stats"]["flops"] == payload["flops"]
+        assert 0 < payload["gflops"] < 1
+        assert payload["gflops"] == pytest.approx(expected_gflops)
+        assert payload["model_stats"]["gflops"] == payload["gflops"]
+        assert "flops" not in payload
+        assert "flops" not in payload["model_stats"]
     finally:
         host_sock.close()
         runtime_sock.close()
 
 
-def test_runtime_predict_result_includes_model_flops():
+def test_runtime_predict_result_includes_model_gflops():
     torch = pytest.importorskip("torch")
 
     class FlopsPredictWorker(DeepDetectWorkerBase):
@@ -187,10 +191,14 @@ def test_runtime_predict_result_includes_model_flops():
     runtime.worker = FlopsPredictWorker()
     try:
         result = runtime._predict({})
+        expected_gflops = runtime.worker.model_flops() / 1_000_000_000.0
 
         assert result["results"] == []
-        assert result["flops"] > 0
-        assert result["model_stats"]["flops"] == result["flops"]
+        assert 0 < result["gflops"] < 1
+        assert result["gflops"] == pytest.approx(expected_gflops)
+        assert result["model_stats"]["gflops"] == result["gflops"]
+        assert "flops" not in result
+        assert "flops" not in result["model_stats"]
     finally:
         host_sock.close()
         runtime_sock.close()

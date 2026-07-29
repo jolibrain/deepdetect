@@ -12,7 +12,6 @@
 
 #include <cmath>
 #include <cstdlib>
-#include <cstdint>
 #include <iostream>
 #include <rapidjson/document.h>
 
@@ -76,11 +75,12 @@ namespace dd
                                          ad.get(key));
     }
 
-    std::int64_t rounded_positive_int64(double value)
+    constexpr double FLOPS_PER_GFLOP = 1.0e9;
+
+    void update_gflops(double value, double &target)
     {
-      if (!std::isfinite(value) || value <= 0.0)
-        return 0;
-      return static_cast<std::int64_t>(std::llround(value));
+      if (std::isfinite(value) && value > 0.0)
+        target = value;
     }
 
     bool debug_enabled()
@@ -437,6 +437,13 @@ namespace dd
     if (!json_number(payload["value"], value))
       return;
     std::string name = payload["name"].GetString();
+    if (name == "flops")
+      {
+        name = "gflops";
+        value /= FLOPS_PER_GFLOP;
+      }
+    if (name == "gflops")
+      update_gflops(value, this->_model_gflops);
     this->add_meas(name, value);
     this->add_meas_per_iter(name, value);
     if (payload.HasMember("iteration"))
@@ -463,26 +470,33 @@ namespace dd
             this->add_status_payload(name, status_payload);
             continue;
           }
+        if (name == "gflops")
+          {
+            double gflops = 0.0;
+            if (json_number(it->value, gflops))
+              update_gflops(gflops, this->_model_gflops);
+            continue;
+          }
+        // Accept raw FLOPs from older workers, but expose only GFLOPs.
         if (name == "flops")
           {
             double flops = 0.0;
             if (json_number(it->value, flops))
-              {
-                const std::int64_t rounded = rounded_positive_int64(flops);
-                if (rounded > 0)
-                  this->_model_flops = rounded;
-              }
+              update_gflops(flops / FLOPS_PER_GFLOP, this->_model_gflops);
             continue;
           }
         if (name == "model_stats" && it->value.IsObject()
-            && it->value.HasMember("flops"))
+            && (it->value.HasMember("gflops") || it->value.HasMember("flops")))
           {
-            double flops = 0.0;
-            if (json_number(it->value["flops"], flops))
+            double gflops = 0.0;
+            if (it->value.HasMember("gflops")
+                && json_number(it->value["gflops"], gflops))
+              update_gflops(gflops, this->_model_gflops);
+            else if (it->value.HasMember("flops"))
               {
-                const std::int64_t rounded = rounded_positive_int64(flops);
-                if (rounded > 0)
-                  this->_model_flops = rounded;
+                double flops = 0.0;
+                if (json_number(it->value["flops"], flops))
+                  update_gflops(flops / FLOPS_PER_GFLOP, this->_model_gflops);
               }
             continue;
           }
@@ -591,22 +605,26 @@ namespace dd
     if (result.has("model_stats"))
       {
         APIData stats = result.getobj("model_stats");
-        double flops = 0.0;
-        if (api_number(stats, "flops", flops))
+        double gflops = 0.0;
+        if (api_number(stats, "gflops", gflops))
+          update_gflops(gflops, this->_model_gflops);
+        else
           {
-            const std::int64_t rounded = rounded_positive_int64(flops);
-            if (rounded > 0)
-              this->_model_flops = rounded;
+            double flops = 0.0;
+            if (api_number(stats, "flops", flops))
+              update_gflops(flops / FLOPS_PER_GFLOP, this->_model_gflops);
           }
       }
     else
       {
-        double flops = 0.0;
-        if (api_number(result, "flops", flops))
+        double gflops = 0.0;
+        if (api_number(result, "gflops", gflops))
+          update_gflops(gflops, this->_model_gflops);
+        else
           {
-            const std::int64_t rounded = rounded_positive_int64(flops);
-            if (rounded > 0)
-              this->_model_flops = rounded;
+            double flops = 0.0;
+            if (api_number(result, "flops", flops))
+              update_gflops(flops / FLOPS_PER_GFLOP, this->_model_gflops);
           }
       }
     std::string pending_message;
