@@ -136,9 +136,11 @@ class ModelProfile:
             mllib["max_objects"] = int(options["max_objects"])
         if self.backend == "pytorch":
             mllib.setdefault("python", sys.executable)
-        if options.get("weights") is not None:
+        if options.get("weights") is not None and not options.get("resume"):
             mllib["weights"] = str(Path(options["weights"]).expanduser().resolve())
         if options.get("resume"):
+            mllib.pop("weights", None)
+            mllib.pop("checkpoint", None)
             mllib["resume_from"] = str(options["resume"])
         if self.task == "keypoint":
             _sync_keypoint_model_size(mllib, options)
@@ -177,9 +179,11 @@ class ModelProfile:
                 options["class_weights"], "class_weights"
             )
         if options.get("resume"):
+            mllib.pop("weights", None)
+            mllib.pop("checkpoint", None)
             mllib["resume"] = True
             mllib["resume_from"] = str(options["resume"])
-        if options.get("weights") is not None:
+        if options.get("weights") is not None and not options.get("resume"):
             mllib["weights"] = str(Path(options["weights"]).expanduser().resolve())
         mllib.setdefault("net", {})
         mllib["net"]["batch_size"] = int(options["batch_size"])

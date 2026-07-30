@@ -116,6 +116,12 @@ def run_train(args: Any) -> int:
         raise ValueError("--repository-override cannot be used with --resume")
     if resume:
         validate_resume_repository(Path(options["repository"]), str(resume))
+        if args.weights is not None:
+            print(
+                f"warning: --resume {resume} ignores --weights {args.weights}",
+                file=sys.stderr,
+            )
+        options["weights"] = None
     elif options.get("repository_override"):
         clear_repository(Path(options["repository"]))
 

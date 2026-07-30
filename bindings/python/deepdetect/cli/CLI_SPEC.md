@@ -144,9 +144,14 @@ Shared training options:
   name from `--repository`. No date, model prefix, or random suffix is added
   unless an explicit `--run-name` is provided.
 - `--resume latest|best`: resume training from `--repository` instead of
-  staging `--weights`. `latest` uses the newest checkpoint and solver state
-  found in the repository. `best` reads `best_model.txt` and resumes the
-  matching `checkpoint-N.*` and `solver-N.pt` files.
+  staging `--weights`. `latest` selects a matching checkpoint and solver state
+  from the repository. `best` reads `best_model.txt` and resumes the
+  matching `checkpoint-N.*` and `solver-N.pt` files. Resume takes precedence
+  over all initialization weights. An explicitly supplied `--weights` is
+  ignored with a warning; profile and YAML default weights are ignored
+  silently. Python workers define `latest` as the highest numbered iteration
+  with both `checkpoint-N.pt` and `solver-N.pt`, with the corresponding
+  `*-latest.pt` aliases accepted only when no numbered pair exists.
 - `--repository-override`: remove all existing contents of `--repository`
   before starting a new run. The flag is explicit confirmation and writes a
   warning to stderr. It cannot be combined with `--resume`.
@@ -210,7 +215,7 @@ Training also writes `config.yaml` at the root of `--repository`. This file is
 the effective training configuration after profile defaults, YAML config,
 explicit CLI arguments, and `--set` overrides have all been applied.
 
-On resume, `--weights` is optional because the model state comes from
+On resume, `--weights` is ignored because the model state comes from
 `--repository`. When Visdom is enabled, the CLI replays previous metric history
 from `--repository/metrics.json` into the run environment before streaming new
 points, then ignores already-seen history points from the first live status

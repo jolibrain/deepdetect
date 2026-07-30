@@ -7,20 +7,19 @@ from typing import Any
 
 import torch.nn.functional as F
 
+from deepdetect.pytorch_worker.checkpoints import resolve_training_checkpoint
 from deepdetect.pytorch_worker.sdk import WorkerDependencyError
 
 
 def checkpoint_path(mllib: dict[str, Any], repository: Path | None) -> Path | None:
-    raw = mllib.get("weights") or mllib.get("checkpoint")
-    if raw:
-        return Path(str(raw)).expanduser().resolve()
+    selection = resolve_training_checkpoint(mllib, repository)
+    if selection.model is not None:
+        return selection.model
     vitpose = mllib.get("vitpose", {})
     if isinstance(vitpose, dict):
         raw = vitpose.get("pretrained_model") or vitpose.get("pretrained")
         if raw:
             return Path(str(raw)).expanduser().resolve()
-    if mllib.get("resume") and repository is not None:
-        return latest_checkpoint(repository)
     return None
 
 
@@ -70,15 +69,12 @@ def load_optimizer_checkpoint(
     device: Any,
     mllib: dict[str, Any],
 ) -> None:
-    if repository is None or not mllib.get("resume"):
+    if not mllib.get("resume"):
         return
-    solvers = sorted(
-        repository.glob("solver-*.pt"),
-        key=lambda path: path.stat().st_mtime,
-    )
-    if not solvers:
+    selection = resolve_training_checkpoint(mllib, repository)
+    if selection.solver is None:
         return
-    payload = torch.load(solvers[-1], map_location=device)
+    payload = torch.load(selection.solver, map_location=device)
     if isinstance(payload, dict) and "optimizer_state" in payload:
         optimizer.load_state_dict(payload["optimizer_state"])
 
