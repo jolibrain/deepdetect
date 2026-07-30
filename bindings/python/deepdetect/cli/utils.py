@@ -50,13 +50,10 @@ def validate_resume_repository(repository: Path, resume: str) -> None:
     if not repository.is_dir():
         raise FileNotFoundError(f"model repository not found: {repository}")
     if resume == "latest":
-        _require_any(repository, "solver-*.pt", "solver state")
-        if not any(
-            any(repository.glob(pattern))
-            for pattern in ("checkpoint-*.pt", "checkpoint-*.npt", "checkpoint-*.ptw")
-        ):
+        if not _has_complete_resume_pair(repository):
             raise FileNotFoundError(
-                f"resume repository has no model checkpoint: {repository}"
+                "resume repository has no complete model/solver checkpoint pair: "
+                f"{repository}"
             )
         return
     if resume == "best":
@@ -78,6 +75,24 @@ def validate_resume_repository(repository: Path, resume: str) -> None:
     raise ValueError("resume must be one of: latest, best")
 
 
+def _has_complete_resume_pair(repository: Path) -> bool:
+    iterations = {
+        match.group(1)
+        for solver in repository.glob("solver-*.pt")
+        if (match := re.fullmatch(r"solver-(\d+)\.pt", solver.name)) is not None
+    }
+    for iteration in iterations:
+        if any(
+            (repository / f"checkpoint-{iteration}{extension}").is_file()
+            for extension in (".pt", ".npt", ".ptw")
+        ):
+            return True
+    return (repository / "solver-latest.pt").is_file() and any(
+        (repository / f"checkpoint-latest{extension}").is_file()
+        for extension in (".pt", ".npt", ".ptw")
+    )
+
+
 def best_model_iteration(repository: Path) -> str:
     path = repository.expanduser().resolve() / "best_model.txt"
     if not path.is_file():
@@ -89,13 +104,6 @@ def best_model_iteration(repository: Path) -> str:
             if iteration:
                 return iteration
     raise ValueError(f"best model marker has no iteration entry: {path}")
-
-
-def _require_any(repository: Path, pattern: str, description: str) -> None:
-    if not any(repository.glob(pattern)):
-        raise FileNotFoundError(
-            f"resume repository has no {description} matching {pattern}: {repository}"
-        )
 
 
 def chunks(values: list[Any], size: int) -> Iterable[list[Any]]:

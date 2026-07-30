@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from ....checkpoints import resolve_training_checkpoint
 from ....sdk import (
     DatasetContractError,
     WorkerContext,
@@ -864,12 +865,11 @@ def select_device(torch: Any, mllib: Any) -> tuple[Any, bool]:
 def checkpoint_path(
     mllib: dict[str, Any], context: WorkerContext | None
 ) -> Path | None:
-    raw = mllib.get("weights") or mllib.get("checkpoint")
-    if raw:
-        return Path(str(raw)).expanduser().resolve()
-    if mllib.get("resume") and context is not None:
-        return latest_checkpoint(context)
-    return None
+    selection = resolve_training_checkpoint(
+        mllib,
+        context.repository_path if context is not None else None,
+    )
+    return selection.model
 
 
 def latest_checkpoint(context: WorkerContext | None) -> Path | None:
@@ -902,15 +902,15 @@ def maybe_load_solver(
     context: WorkerContext | None,
     mllib: dict[str, Any],
 ) -> None:
-    if not mllib.get("resume") or context is None:
+    if not mllib.get("resume"):
         return
-    solvers = sorted(
-        context.repository_path.glob("solver-*.pt"),
-        key=lambda path: path.stat().st_mtime,
+    selection = resolve_training_checkpoint(
+        mllib,
+        context.repository_path if context is not None else None,
     )
-    if not solvers:
+    if selection.solver is None:
         return
-    payload = torch.load(solvers[-1], map_location=device)
+    payload = torch.load(selection.solver, map_location=device)
     if isinstance(payload, dict) and "optimizer_state" in payload:
         optimizer.load_state_dict(payload["optimizer_state"])
 

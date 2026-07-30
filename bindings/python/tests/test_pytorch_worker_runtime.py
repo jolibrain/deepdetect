@@ -32,7 +32,9 @@ from deepdetect.pytorch_worker.builtin.vision.detection.common import (
     DetectionListDataset,
     DetectionTensorBatchDataset,
     _atomic_torch_save,
+    checkpoint_path,
     make_loader,
+    maybe_load_solver,
 )
 from deepdetect.pytorch_worker.builtin.vision.detection.training import (
     DetectionProgressReporter,
@@ -115,6 +117,58 @@ class MemorySocket:
         with self.condition:
             self.closed = True
             self.condition.notify_all()
+
+
+def test_detection_resume_checkpoint_precedes_weights(tmp_path):
+    weights = tmp_path / "pretrained.pt"
+    weights.write_bytes(b"weights")
+    (tmp_path / "checkpoint-5.pt").write_bytes(b"model")
+    (tmp_path / "solver-5.pt").write_bytes(b"solver")
+    context = WorkerContext(repository=str(tmp_path), mllib={}, raw={})
+
+    selected = checkpoint_path(
+        {
+            "resume": True,
+            "resume_from": "latest",
+            "weights": str(weights),
+        },
+        context,
+    )
+
+    assert selected == tmp_path / "checkpoint-5.pt"
+
+
+def test_detection_resume_loads_solver_from_selected_model_iteration(tmp_path):
+    class FakeTorch:
+        loaded = []
+
+        @classmethod
+        def load(cls, path, *, map_location):
+            cls.loaded.append((path, map_location))
+            return {"optimizer_state": {"iteration": 5}}
+
+    class FakeOptimizer:
+        state = None
+
+        @classmethod
+        def load_state_dict(cls, state):
+            cls.state = state
+
+    (tmp_path / "checkpoint-5.pt").write_bytes(b"model")
+    (tmp_path / "solver-5.pt").write_bytes(b"solver")
+    (tmp_path / "checkpoint-8.pt").write_bytes(b"incomplete")
+    context = WorkerContext(repository=str(tmp_path), mllib={}, raw={})
+
+    maybe_load_solver(
+        FakeOptimizer(),
+        FakeTorch,
+        "cpu",
+        context,
+        {"resume": True, "resume_from": "latest"},
+    )
+
+    assert FakeTorch.loaded == [(tmp_path / "solver-5.pt", "cpu")]
+    assert FakeOptimizer.state == {"iteration": 5}
 
 
 def socket_pair():

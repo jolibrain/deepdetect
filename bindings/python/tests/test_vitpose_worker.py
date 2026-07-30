@@ -36,7 +36,12 @@ from coco_keypoints_to_dd import (
     format_deepdetect_topdown_line,
 )
 from vitpose_worker.assignment import hungarian_assign
-from vitpose_worker.checkpoint import _atomic_torch_save, load_model_checkpoint
+from vitpose_worker.checkpoint import (
+    _atomic_torch_save,
+    checkpoint_path,
+    load_model_checkpoint,
+    load_optimizer_checkpoint,
+)
 from vitpose_worker.config import worker_config_from_mllib
 from vitpose_worker.decode import decode_topdown_outputs
 from vitpose_worker.losses import (
@@ -74,6 +79,59 @@ def test_vitpose_atomic_checkpoint_preserves_previous_file_on_interruption(tmp_p
 
 def test_hungarian_assignment_is_permutation_invariant():
     assert hungarian_assign([[4.0, 1.0], [1.0, 4.0]]) == [(1, 0), (0, 1)]
+
+
+def test_vitpose_resume_checkpoint_precedes_all_pretrained_sources(tmp_path):
+    weights = tmp_path / "weights.pt"
+    nested_weights = tmp_path / "nested-weights.pt"
+    weights.write_bytes(b"weights")
+    nested_weights.write_bytes(b"nested")
+    (tmp_path / "checkpoint-6.pt").write_bytes(b"model")
+    (tmp_path / "solver-6.pt").write_bytes(b"solver")
+
+    selected = checkpoint_path(
+        {
+            "resume": True,
+            "resume_from": "latest",
+            "weights": str(weights),
+            "vitpose": {"pretrained_model": str(nested_weights)},
+        },
+        tmp_path,
+    )
+
+    assert selected == tmp_path / "checkpoint-6.pt"
+
+
+def test_vitpose_resume_loads_solver_from_selected_model_iteration(tmp_path):
+    class FakeTorch:
+        loaded = []
+
+        @classmethod
+        def load(cls, path, *, map_location):
+            cls.loaded.append((path, map_location))
+            return {"optimizer_state": {"iteration": 6}}
+
+    class FakeOptimizer:
+        state = None
+
+        @classmethod
+        def load_state_dict(cls, state):
+            cls.state = state
+
+    (tmp_path / "checkpoint-6.pt").write_bytes(b"model")
+    (tmp_path / "solver-6.pt").write_bytes(b"solver")
+    (tmp_path / "checkpoint-9.pt").write_bytes(b"incomplete")
+
+    load_optimizer_checkpoint(
+        FakeTorch,
+        FakeOptimizer(),
+        tmp_path,
+        device="cpu",
+        mllib={"resume": True, "resume_from": "latest"},
+    )
+
+    assert FakeTorch.loaded == [(tmp_path / "solver-6.pt", "cpu")]
+    assert FakeOptimizer.state == {"iteration": 6}
 
 
 def test_layer_decay_defaults_to_uniform_for_fresh_training():
@@ -228,6 +286,7 @@ def test_worker_selects_layer_decay_for_existing_resume_checkpoint(tmp_path):
         },
     }
     (tmp_path / "checkpoint-1.pt").touch()
+    (tmp_path / "solver-1.pt").touch()
     worker = DeepDetectWorker()
     worker.configure(WorkerContext(repository=str(tmp_path), mllib=service_mllib, raw={}))
     request = PoseTrainRequest(

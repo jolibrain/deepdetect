@@ -1507,18 +1507,73 @@ def test_train_resume_latest_uses_repository_state_without_weights(
     assert code == 0
     create = next(call for call in runtime.calls if call[0] == "create")
     assert create[2]["parameters"]["mllib"]["resume_from"] == "latest"
+    assert "weights" not in create[2]["parameters"]["mllib"]
     train_call = next(call for call in runtime.calls if call[0] == "train")
     assert train_call[1]["parameters"]["mllib"]["resume"] is True
     assert train_call[1]["parameters"]["mllib"]["resume_from"] == "latest"
+    assert "weights" not in train_call[1]["parameters"]["mllib"]
     run_json = run_root / "repo" / "run.json"
     assert run_json.is_file()
+    assert config.load_config(repository / "config.yaml")["weights"] is None
+    captured = capsys.readouterr()
     events = [
         json.loads(line)
-        for line in capsys.readouterr().out.splitlines()
+        for line in captured.out.splitlines()
         if line.strip()
     ]
     assert events[0]["run_name"] == "repo"
     assert events[0]["resume"] == "latest"
+    assert "ignores --weights" not in captured.err
+
+
+def test_train_resume_warns_for_explicit_weights_and_omits_them(
+    monkeypatch, tmp_path, capsys
+):
+    runtime = FakeRuntime()
+    runtime.statuses = [
+        {
+            "status": "finished",
+            "body": {"measure": {"iteration": 11, "train_loss": 1.0}},
+        },
+    ]
+    monkeypatch.setattr(
+        training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
+    )
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    weights, train, test = write_training_files(tmp_path)
+    repository = write_resume_repository(tmp_path / "repo")
+
+    code = cli.main(
+        [
+            "train",
+            "yolox",
+            "--train-data",
+            str(train),
+            "--test-data",
+            str(test),
+            "--weights",
+            str(weights),
+            "--repository",
+            str(repository),
+            "--job-dir",
+            str(tmp_path / "runs"),
+            "--resume",
+            "latest",
+            "--dataset-check",
+            "none",
+        ]
+    )
+
+    assert code == 0
+    create = next(call for call in runtime.calls if call[0] == "create")
+    train_call = next(call for call in runtime.calls if call[0] == "train")
+    assert "weights" not in create[2]["parameters"]["mllib"]
+    assert "weights" not in train_call[1]["parameters"]["mllib"]
+    assert config.load_config(repository / "config.yaml")["weights"] is None
+    assert (
+        f"warning: --resume latest ignores --weights {weights}"
+        in capsys.readouterr().err
+    )
 
 
 def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
@@ -1623,9 +1678,11 @@ def test_train_resume_best_replays_metrics_to_visdom_and_skips_old_live_history(
     assert code == 0
     create = next(call for call in runtime.calls if call[0] == "create")
     assert create[2]["parameters"]["mllib"]["resume_from"] == "best"
+    assert "weights" not in create[2]["parameters"]["mllib"]
     train_call = next(call for call in runtime.calls if call[0] == "train")
     assert train_call[1]["parameters"]["mllib"]["resume"] is True
     assert train_call[1]["parameters"]["mllib"]["resume_from"] == "best"
+    assert "weights" not in train_call[1]["parameters"]["mllib"]
     lines = FakeVisdom.instances[0].lines
     assert [
         (line["name"], line["X"].tolist(), line["Y"].tolist()) for line in lines
