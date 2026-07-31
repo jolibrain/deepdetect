@@ -141,7 +141,7 @@ class VisdomMetricSink:
             name=plot.trace,
             update=update,
             opts={
-                "title": f"{self.env} {plot.title}",
+                "title": plot.title,
                 "xlabel": "iteration",
                 "ylabel": plot.ylabel,
                 "legend": legend,
@@ -200,7 +200,7 @@ class VisdomMetricSink:
                 name=trace_name,
                 update=update,
                 opts={
-                    "title": f"{self.env} {title}",
+                    "title": title,
                     "xlabel": "iteration",
                     "ylabel": ylabel,
                     "legend": self._window_traces[window],
