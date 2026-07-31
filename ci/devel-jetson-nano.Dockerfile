@@ -1,5 +1,6 @@
 # Special docker image for Jetson nano
-FROM nvcr.io/nvidia/deepstream-l4t:5.1-21.02-base
+#FROM nvcr.io/nvidia/deepstream-l4t:5.1-21.02-base
+FROM nvcr.io/nvidia/deepstream-l4t:6.1-base
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update -y && apt-get install -y \
@@ -54,7 +55,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     bash-completion \
     schedtool \
     python-numpy \
-    util-linux
+    util-linux \
+    libcudnn8-dev
 
 RUN apt clean -y
 
@@ -63,10 +65,10 @@ RUN chmod +x ./cmake-install.sh
 RUN ./cmake-install.sh --prefix=/usr/local --skip-license
 
 # ubuntu GTEST ugly packaging
-WORKDIR /usr/src/gtest
+WORKDIR /usr/src/gtest/
 RUN cmake .
 RUN make -j8
-RUN make install
+RUN cp lib/libgtest* /usr/lib/
 
 # NOTE(sileht): docker nvidia on jetson is bugged with non-root account, we
 # have to configure the device access manually. The UID and GID must be the
