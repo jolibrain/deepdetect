@@ -91,8 +91,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     schedtool \
     util-linux \
     googletest \
-    python3-yaml \
-    python3-numpy 
+    python3-yaml
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN python -m pip install --break-system-packages torch==2.12.1 torchvision==0.27.1 --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}

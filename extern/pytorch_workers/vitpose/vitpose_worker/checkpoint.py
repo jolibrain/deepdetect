@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 from pathlib import Path
@@ -9,6 +10,62 @@ import torch.nn.functional as F
 
 from deepdetect.pytorch_worker.checkpoints import resolve_training_checkpoint
 from deepdetect.pytorch_worker.sdk import WorkerDependencyError
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+def adapt_patch_embed_kernel(
+    loaded: Any,
+    target: Any,
+    *,
+    checkpoint: Path | None = None,
+) -> Any:
+    """PI-resample a compatible ViT patch kernel to the configured patch size."""
+    if not hasattr(loaded, "shape") or not hasattr(target, "shape"):
+        return loaded
+    loaded_shape = tuple(loaded.shape)
+    target_shape = tuple(target.shape)
+    if loaded_shape == target_shape:
+        return loaded
+    if (
+        len(loaded_shape) != 4
+        or len(target_shape) != 4
+        or loaded_shape[:2] != target_shape[:2]
+    ):
+        return loaded
+    try:
+        from timm.layers import resample_patch_embed
+    except Exception as error:
+        raise WorkerDependencyError(
+            "loading a MAE/ViT checkpoint with a different patch size requires "
+            "timm.layers.resample_patch_embed"
+        ) from error
+
+    try:
+        converted = resample_patch_embed(
+            loaded,
+            new_size=list(target_shape[-2:]),
+            interpolation="bicubic",
+            antialias=True,
+        )
+    except Exception as error:
+        raise WorkerDependencyError(
+            "failed to resample MAE/ViT patch kernel from "
+            f"{loaded_shape[-2:]} to {target_shape[-2:]}"
+        ) from error
+    if tuple(converted.shape) != target_shape:
+        raise WorkerDependencyError(
+            "resampled MAE/ViT patch kernel has shape "
+            f"{tuple(converted.shape)}, expected {target_shape}"
+        )
+    LOGGER.info(
+        "resampled MAE/ViT patch kernel from %s to %s%s",
+        loaded_shape[-2:],
+        target_shape[-2:],
+        f" while loading {checkpoint}" if checkpoint is not None else "",
+    )
+    return converted
 
 
 def checkpoint_path(mllib: dict[str, Any], repository: Path | None) -> Path | None:
@@ -181,6 +238,8 @@ def _load_backbone_checkpoint(
         target = expected.get(target_name)
         if target is None or not hasattr(value, "shape"):
             continue
+        if target_name == "patch_embed.proj.weight":
+            value = adapt_patch_embed_kernel(value, target, checkpoint=path)
         if tuple(value.shape) != tuple(target.shape) and target_name != "pos_embed":
             continue
         compatible[f"backbone.{target_name}"] = value

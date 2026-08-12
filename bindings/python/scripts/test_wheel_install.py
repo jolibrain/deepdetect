@@ -253,7 +253,7 @@ def main() -> None:
     run(
         pip_install_command(
             python,
-            [args.torch_dependency, args.torchvision_dependency],
+            [args.torch_dependency, args.torchvision_dependency, "timm>=1.0"],
             index_url=args.torch_index_url,
         )
     )
@@ -301,11 +301,32 @@ def main() -> None:
     # that are deliberately not installed in the Python wheel.
     test_env["DEEPDETECT_WHEEL_TEST_SOURCE_ROOT"] = str(REPO_ROOT)
 
+    pytest_command = [python, "-m", "pytest", "--import-mode=importlib"]
+    vitpose_test_path = copied_tests / "test_vitpose_worker.py"
+    vitpose_resampling_test = "test_bare_mae_patch_kernel_is_resampled_for_vitpose"
+    if vitpose_test_path.is_file():
+        pytest_command.extend(["-k", f"not {vitpose_resampling_test}"])
+    pytest_command.append(str(copied_tests))
     run(
-        [python, "-m", "pytest", "--import-mode=importlib", str(copied_tests)],
+        pytest_command,
         cwd=venv_dir,
         env=test_env,
     )
+    # Importing timm.layers imports Python torchvision. The main test process
+    # may already have loaded DeepDetect's bundled native libtorchvision, whose
+    # C++ operator registrations cannot coexist with Python torchvision's.
+    if vitpose_test_path.is_file():
+        run(
+            [
+                python,
+                "-m",
+                "pytest",
+                "--import-mode=importlib",
+                f"{vitpose_test_path}::{vitpose_resampling_test}",
+            ],
+            cwd=venv_dir,
+            env=test_env,
+        )
     # Python torchvision and bundled native libtorchvision both register C++ ops.
     # Keep their smoke checks in separate interpreters to avoid duplicate schemas.
     run([python, "-c", torchvision_smoke_script()], cwd=venv_dir, env=test_env)

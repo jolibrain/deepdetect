@@ -38,6 +38,7 @@ from coco_keypoints_to_dd import (
 from vitpose_worker.assignment import hungarian_assign
 from vitpose_worker.checkpoint import (
     _atomic_torch_save,
+    adapt_patch_embed_kernel,
     checkpoint_path,
     load_model_checkpoint,
     load_optimizer_checkpoint,
@@ -538,6 +539,63 @@ def test_mae_style_weights_initialize_only_the_vit_backbone(tmp_path):
         torch.full_like(model.backbone.last_norm.weight, 0.125),
     )
     assert torch.equal(model.keypoint_head.final_layer.weight, head_before)
+
+
+def test_patch_kernel_adapter_leaves_exact_and_channel_mismatches_unchanged():
+    exact = torch.randn(64, 3, 16, 16)
+    assert adapt_patch_embed_kernel(exact, torch.empty_like(exact)) is exact
+
+    channel_mismatch = torch.randn(32, 3, 16, 16)
+    target = torch.empty(64, 3, 32, 32)
+    assert adapt_patch_embed_kernel(channel_mismatch, target) is channel_mismatch
+
+
+def test_bare_mae_patch_kernel_is_resampled_for_vitpose(tmp_path):
+    from timm.layers import resample_patch_embed
+
+    def tiny_model(patch_size):
+        return ViTPoseTopDown(
+            ViTPoseModelConfig(
+                head="topdown",
+                image_size=(64, 64),
+                heatmap_size=(16, 16),
+                nkeypoints=2,
+                max_objects=1,
+                variant="tiny",
+                patch_size=patch_size,
+                embed_dim=64,
+                depth=2,
+                num_heads=4,
+                mlp_ratio=4.0,
+                qkv_bias=True,
+                drop_path_rate=0.0,
+                upsample=4,
+                final_conv_kernel=3,
+                num_deconv_layers=0,
+                num_deconv_filters=(),
+                num_deconv_kernels=(),
+            )
+        )
+
+    source = tiny_model(patch_size=16)
+    target = tiny_model(patch_size=32)
+    source_kernel = source.backbone.patch_embed.proj.weight.detach().clone()
+    head_before = target.keypoint_head.final_layer.weight.detach().clone()
+    checkpoint = tmp_path / "mae-patch16.pt"
+    torch.save({"model": source.backbone.state_dict()}, checkpoint)
+
+    loaded = load_model_checkpoint(
+        torch,
+        target,
+        checkpoint,
+        device=torch.device("cpu"),
+    )
+
+    expected = resample_patch_embed(source_kernel, [32, 32])
+    assert loaded == checkpoint
+    torch.testing.assert_close(target.backbone.patch_embed.proj.weight, expected)
+    assert target.backbone.pos_embed.shape[1] == 5
+    assert torch.equal(target.keypoint_head.final_layer.weight, head_before)
 
 
 def test_prediction_contract_accepts_keypoints():
