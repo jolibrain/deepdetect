@@ -16,6 +16,6 @@
     }
   ],
   "external_repositories_required": false,
-  "python_dependencies": ["torch", "numpy", "Pillow"],
+  "python_dependencies": ["torch", "timm>=1.0", "numpy", "Pillow"],
   "generation_notes": "Self-contained ViTPose worker with default bbox-driven top-down heatmaps and optional Hungarian-assigned full-image slots."
 }

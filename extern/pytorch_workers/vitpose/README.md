@@ -96,7 +96,10 @@ explicitly to override this policy.
 
 `--weights` accepts a regular DeepDetect/ViTPose checkpoint or a MAE-style ViT
 checkpoint. Bare MAE weights are detected automatically and initialize only
-the ViT backbone; the pose heatmap head remains newly initialized.
+the ViT backbone; the pose heatmap head remains newly initialized. When the
+checkpoint and configured model use different patch sizes, the patch embedding
+kernel is converted with `timm.layers.resample_patch_embed` instead of being
+discarded.
 
 ```shell
 PYTHONPATH=bindings/python python3 -m deepdetect.cli.main train vitpose \
