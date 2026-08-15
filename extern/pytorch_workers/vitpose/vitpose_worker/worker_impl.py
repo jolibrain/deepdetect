@@ -403,16 +403,21 @@ class DeepDetectWorker(DeepDetectWorkerBase):
         load_model_checkpoint(torch, self.model, loaded_path, device=self.device)
         self.model.train()
         optimizer = self.create_optimizer(torch, self.model, base_lr=options.base_lr)
-        load_optimizer_checkpoint(
+        optimizer_steps = load_optimizer_checkpoint(
             torch,
             optimizer,
             self.context.repository_path if self.context is not None else None,
             device=self.device,
             mllib=train_request.effective_mllib,
         )
+        if optimizer_steps > options.iterations:
+            raise DatasetContractError(
+                "ViTPose resume target iterations must be at least the checkpoint "
+                f"iteration ({optimizer_steps}), got {options.iterations}"
+            )
         optimizer.zero_grad(set_to_none=True)
         start_time = time.monotonic()
-        optimizer_steps = 0
+        start_iteration = optimizer_steps
         accumulated = 0
         latest_loss = 0.0
         dropped_total = 0.0
@@ -471,6 +476,7 @@ class DeepDetectWorker(DeepDetectWorkerBase):
                 reporter,
                 iteration=optimizer_steps,
                 iterations=options.iterations,
+                start_iteration=start_iteration,
                 start_time=start_time,
                 base_lr=options.base_lr,
                 train_loss=latest_loss,
@@ -1328,13 +1334,15 @@ def report_train_step(
     *,
     iteration: int,
     iterations: int,
+    start_iteration: int,
     start_time: float,
     base_lr: float,
     train_loss: float,
     losses: dict[str, float],
 ) -> None:
     elapsed = time.monotonic() - start_time
-    mean_step = elapsed / float(max(1, iteration))
+    completed = iteration - start_iteration
+    mean_step = elapsed / float(max(1, completed))
     remain_time = max(0.0, (iterations - iteration) * mean_step)
     reporter.status(
         phase="train",

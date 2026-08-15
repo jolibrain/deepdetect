@@ -109,6 +109,24 @@ PYTHONPATH=bindings/python python3 -m deepdetect.cli.main train vitpose \
   --repository runs/vitpose-mae
 ```
 
+## Resume Training
+
+Resume restores both the model and optimizer from a complete checkpoint pair.
+`--iterations` remains the absolute training target: resuming an iteration
+10,000 checkpoint with `--iterations 100000` continues at iteration 10,001 and
+finishes at iteration 100,000. Existing metric history is replayed before new
+points are appended to the same Visdom environment.
+
+```shell
+PYTHONPATH=bindings/python python3 -m deepdetect.cli.main train vitpose \
+  --config runs/vitpose/config.yaml \
+  --resume latest \
+  --iterations 100000
+```
+
+Do not combine resume with `--repository-override`. Initialization weights are
+ignored because the model state comes from the selected repository checkpoint.
+
 ## Inference
 
 ```shell

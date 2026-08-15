@@ -35,6 +35,7 @@ from coco_keypoints_to_dd import (
     format_deepdetect_keypoint_line,
     format_deepdetect_topdown_line,
 )
+import vitpose_worker.worker_impl as worker_impl_module
 from vitpose_worker.assignment import hungarian_assign
 from vitpose_worker.checkpoint import (
     _atomic_torch_save,
@@ -123,7 +124,7 @@ def test_vitpose_resume_loads_solver_from_selected_model_iteration(tmp_path):
     (tmp_path / "solver-6.pt").write_bytes(b"solver")
     (tmp_path / "checkpoint-9.pt").write_bytes(b"incomplete")
 
-    load_optimizer_checkpoint(
+    resumed_iteration = load_optimizer_checkpoint(
         FakeTorch,
         FakeOptimizer(),
         tmp_path,
@@ -133,6 +134,94 @@ def test_vitpose_resume_loads_solver_from_selected_model_iteration(tmp_path):
 
     assert FakeTorch.loaded == [(tmp_path / "solver-6.pt", "cpu")]
     assert FakeOptimizer.state == {"iteration": 6}
+    assert resumed_iteration == 6
+
+
+def test_vitpose_resume_uses_checkpoint_iteration_as_absolute_progress(
+    monkeypatch, tmp_path
+):
+    class FakeModel:
+        def to(self, _device):
+            return self
+
+        def train(self):
+            return None
+
+    class FakeOptimizer:
+        def zero_grad(self, *, set_to_none):
+            assert set_to_none is True
+
+    class FakeReporter:
+        def __init__(self):
+            self.statuses = []
+
+        def status(self, **payload):
+            self.statuses.append(payload)
+
+    class RequestedCancellation:
+        requested = True
+
+    worker = DeepDetectWorker()
+    worker.context = WorkerContext(repository=str(tmp_path), mllib={}, raw={})
+    worker.device = "cpu"
+    worker.create_model = lambda _torch: FakeModel()
+    worker.create_optimizer = lambda _torch, _model, *, base_lr: FakeOptimizer()
+    monkeypatch.setattr(worker_impl_module, "checkpoint_path", lambda *_args: None)
+    monkeypatch.setattr(
+        worker_impl_module,
+        "load_model_checkpoint",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        worker_impl_module,
+        "load_optimizer_checkpoint",
+        lambda *_args, **_kwargs: 10_000,
+    )
+    saved_iterations = []
+    monkeypatch.setattr(
+        worker_impl_module,
+        "save_checkpoint",
+        lambda _torch, _model, _optimizer, _repository, iteration: (
+            saved_iterations.append(iteration)
+        ),
+    )
+    reporter = FakeReporter()
+    request = PoseTrainRequest(
+        request={},
+        request_params={},
+        effective_mllib={"resume": True, "resume_from": "latest"},
+        source="tensor",
+        train_list=None,
+        test_lists=[],
+        train_tensor_batches=[],
+        test_tensor_batches=[],
+        options=PoseTrainOptions(
+            iterations=100_000,
+            test_interval=100,
+            batch_size=1,
+            iter_size=1,
+            base_lr=0.0001,
+        ),
+    )
+
+    result = worker._run_training_loop(
+        request,
+        train_batches=iter(()),
+        reporter=reporter,
+        cancellation=RequestedCancellation(),
+        torch=object(),
+    )
+
+    assert result == {"status": "cancelled", "iteration": 10_000}
+    assert saved_iterations == [10_000]
+    assert reporter.statuses == [
+        {
+            "phase": "cancelled",
+            "iteration": 10_000,
+            "iterations": 100_000,
+            "test_active": 0,
+        }
+    ]
 
 
 def test_layer_decay_defaults_to_uniform_for_fresh_training():

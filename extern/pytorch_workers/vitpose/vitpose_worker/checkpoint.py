@@ -125,15 +125,34 @@ def load_optimizer_checkpoint(
     *,
     device: Any,
     mllib: dict[str, Any],
-) -> None:
+) -> int:
     if not mllib.get("resume"):
-        return
+        return 0
     selection = resolve_training_checkpoint(mllib, repository)
     if selection.solver is None:
-        return
+        return 0
     payload = torch.load(selection.solver, map_location=device)
     if isinstance(payload, dict) and "optimizer_state" in payload:
         optimizer.load_state_dict(payload["optimizer_state"])
+    iteration = payload.get("iteration") if isinstance(payload, dict) else None
+    if iteration is None:
+        iteration = selection.iteration
+    if isinstance(iteration, bool):
+        iteration = None
+    try:
+        resumed_iteration = int(iteration) if iteration is not None else None
+    except (TypeError, ValueError):
+        resumed_iteration = None
+    if resumed_iteration is None or resumed_iteration < 0:
+        raise WorkerDependencyError(
+            f"ViTPose solver checkpoint has no valid iteration: {selection.solver}"
+        )
+    if selection.iteration is not None and resumed_iteration != selection.iteration:
+        raise WorkerDependencyError(
+            "ViTPose solver checkpoint iteration does not match its filename: "
+            f"payload={resumed_iteration}, filename={selection.iteration}"
+        )
+    return resumed_iteration
 
 
 def save_checkpoint(
