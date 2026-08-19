@@ -895,97 +895,110 @@ namespace dd
             }
           if (bbox)
             {
-              // required iou thresholds for map. If there are more than one
-              // threshold, the global map is the mean over the different iou
-              // thresholds.
-              std::vector<int> thresholds;
-              bool has_map = find_ap_iou_thresholds(measures, thresholds);
-
-              if (has_map)
+              if (ad_res.has("detection_map_v2"))
                 {
-                  double sum_map = 0;
-                  std::map<int, float> sum_aps;
-                  int ap_count = 0;
-
-                  // map for each threshold
-                  for (int iou_thres : thresholds)
-                    {
-                      std::map<int, float> aps;
-                      double bmap = ap(ad_res, aps, iou_thres);
-                      std::string map_key = "map";
-                      if (iou_thres != 0)
-                        {
-                          std::stringstream ss;
-                          ss << map_key << "-" << std::setfill('0')
-                             << std::setw(2) << iou_thres;
-                          map_key = ss.str();
-                        }
-                      meas_out.add(map_key, bmap);
-                      for (auto ap : aps)
-                        {
-                          std::string s
-                              = map_key + "_" + std::to_string(ap.first);
-                          meas_out.add(s, static_cast<double>(ap.second));
-                        }
-
-                      sum_map += bmap;
-                      if (sum_aps.size() == 0)
-                        sum_aps = aps;
-                      else
-                        {
-                          for (auto ap : aps)
-                            sum_aps[ap.first] += ap.second;
-                        }
-                      ap_count++;
-                    }
-
-                  // mean of all thresholds
-                  if (thresholds.size() > 0)
-                    {
-                      meas_out.add("map", sum_map / ap_count);
-                      for (auto sum_ap : sum_aps)
-                        {
-                          std::string s
-                              = "map_" + std::to_string(sum_ap.first);
-                          meas_out.add(s, static_cast<double>(sum_ap.second
-                                                              / ap_count));
-                        }
-                    }
-
-                  // false positives
-                  std::map<int, float> fp_by_cls;
-                  std::map<int, float> recall_by_cls;
-
-                  // TODO conf_thres as a parameter
-                  APIData bad = ad_res.getobj("0");
-                  // TODO chose policy to select iou threshold
-                  std::string key = "map-" + std::to_string(thresholds.at(0));
-                  if (bad.has(key))
-                    bad = bad.getobj(key);
-                  int pos_count = ad_res.get("pos_count").get<int>();
-
-                  compute_positives(pos_count, bad, recall_by_cls, fp_by_cls,
-                                    0.5);
-                  double fp_mean = 0;
-                  for (auto e : fp_by_cls)
-                    {
-                      std::string key = "fp_" + std::to_string(e.first);
-                      meas_out.add(key, static_cast<double>(e.second));
-                      fp_mean += static_cast<double>(e.second);
-                    }
-                  if (!fp_by_cls.empty())
-                    fp_mean /= fp_by_cls.size();
-                  meas_out.add("fp", fp_mean);
+                  APIData map_metrics = ad_res.getobj("detection_map_v2");
+                  for (const std::string &name : map_metrics.list_keys())
+                    meas_out.add(name, map_metrics.get(name).get<double>());
                 }
-
-              bool raw = (std::find(measures.begin(), measures.end(), "raw")
-                          != measures.end());
-              if (raw)
+              else
                 {
-                  std::vector<std::string> clnames
-                      = ad_res.get("clnames").get<std::vector<std::string>>();
-                  APIData ap = raw_detection_results(ad_res, clnames);
-                  meas_out.add("raw", ap);
+                  // required iou thresholds for map. If there are more than
+                  // one threshold, the global map is the mean over the
+                  // different iou thresholds.
+                  std::vector<int> thresholds;
+                  bool has_map = find_ap_iou_thresholds(measures, thresholds);
+
+                  if (has_map)
+                    {
+                      double sum_map = 0;
+                      std::map<int, float> sum_aps;
+                      int ap_count = 0;
+
+                      // map for each threshold
+                      for (int iou_thres : thresholds)
+                        {
+                          std::map<int, float> aps;
+                          double bmap = ap(ad_res, aps, iou_thres);
+                          std::string map_key = "map";
+                          if (iou_thres != 0)
+                            {
+                              std::stringstream ss;
+                              ss << map_key << "-" << std::setfill('0')
+                                 << std::setw(2) << iou_thres;
+                              map_key = ss.str();
+                            }
+                          meas_out.add(map_key, bmap);
+                          for (auto ap : aps)
+                            {
+                              std::string s
+                                  = map_key + "_" + std::to_string(ap.first);
+                              meas_out.add(s, static_cast<double>(ap.second));
+                            }
+
+                          sum_map += bmap;
+                          if (sum_aps.size() == 0)
+                            sum_aps = aps;
+                          else
+                            {
+                              for (auto ap : aps)
+                                sum_aps[ap.first] += ap.second;
+                            }
+                          ap_count++;
+                        }
+
+                      // mean of all thresholds
+                      if (thresholds.size() > 0)
+                        {
+                          meas_out.add("map", sum_map / ap_count);
+                          for (auto sum_ap : sum_aps)
+                            {
+                              std::string s
+                                  = "map_" + std::to_string(sum_ap.first);
+                              meas_out.add(
+                                  s, static_cast<double>(sum_ap.second
+                                                         / ap_count));
+                            }
+                        }
+
+                      // false positives
+                      std::map<int, float> fp_by_cls;
+                      std::map<int, float> recall_by_cls;
+
+                      // TODO conf_thres as a parameter
+                      APIData bad = ad_res.getobj("0");
+                      // TODO chose policy to select iou threshold
+                      std::string key
+                          = "map-" + std::to_string(thresholds.at(0));
+                      if (bad.has(key))
+                        bad = bad.getobj(key);
+                      int pos_count = ad_res.get("pos_count").get<int>();
+
+                      compute_positives(pos_count, bad, recall_by_cls,
+                                        fp_by_cls, 0.5);
+                      double fp_mean = 0;
+                      for (auto e : fp_by_cls)
+                        {
+                          std::string key = "fp_" + std::to_string(e.first);
+                          meas_out.add(key, static_cast<double>(e.second));
+                          fp_mean += static_cast<double>(e.second);
+                        }
+                      if (!fp_by_cls.empty())
+                        fp_mean /= fp_by_cls.size();
+                      meas_out.add("fp", fp_mean);
+                    }
+
+                  bool raw
+                      = (std::find(measures.begin(), measures.end(), "raw")
+                         != measures.end());
+                  if (raw)
+                    {
+                      std::vector<std::string> clnames
+                          = ad_res.get("clnames")
+                                .get<std::vector<std::string>>();
+                      APIData ap = raw_detection_results(ad_res, clnames);
+                      meas_out.add("raw", ap);
+                    }
                 }
             }
           if (net_meas) // measure is coming from the net directly

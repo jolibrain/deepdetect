@@ -26,7 +26,9 @@ set(ddetect_SOURCES deepdetect.h deepdetect.cc embedded_runtime.cc
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
     txtinputfileconn.cc apidata.h apidata.cc chain_actions.h chain_actions.cc
     service_stats.h service_stats.cc chain.h chain.cc resources.cc ext/rmustache/mustache.h ext/rmustache/mustache.cc
-    utils/oatpp.cc dto/ddtypes.cc utils/db.cpp utils/db_lmdb.cpp utils/rectangular_lsap.cpp ${CMAKE_BINARY_DIR}/src/caffe.pb.cc ${CMAKE_BINARY_DIR}/dd_config.cc)
+    utils/oatpp.cc dto/ddtypes.cc utils/db.cpp utils/db_lmdb.cpp
+    utils/detection_map_v2.cc utils/rectangular_lsap.cpp
+    ${CMAKE_BINARY_DIR}/src/caffe.pb.cc ${CMAKE_BINARY_DIR}/dd_config.cc)
 
 if (USE_JSON_API)
   list(APPEND ddetect_SOURCES jsonapi.h jsonapi.cc)

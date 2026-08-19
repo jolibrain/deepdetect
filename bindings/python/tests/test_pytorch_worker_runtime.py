@@ -4,6 +4,7 @@ import threading
 import time
 import sys
 import types
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -1729,6 +1730,42 @@ def test_torchvision_detection_map_metrics_without_targets_are_zero():
         "map-50": 0.0,
         "map-90": 0.0,
     }
+
+
+def test_torchvision_detection_map_metrics_match_cpp_v2_golden_cases():
+    fixture_path = (
+        Path(__file__).resolve().parents[3]
+        / "tests"
+        / "fixtures"
+        / "detection_map_v2_cases.json"
+    )
+    cases = json.loads(fixture_path.read_text(encoding="utf-8"))["cases"]
+
+    for case in cases:
+        targets = [
+            DetectionEvalBox(
+                int(item["image_id"]),
+                int(item["label"]),
+                tuple(float(value) for value in item["box"]),
+            )
+            for item in case["targets"]
+        ]
+        predictions = [
+            DetectionEvalBox(
+                int(item["image_id"]),
+                int(item["label"]),
+                tuple(float(value) for value in item["box"]),
+                float(item["score"]),
+            )
+            for item in case["predictions"]
+        ]
+        thresholds = detection_metric_thresholds({"measure": case["measures"]})
+
+        actual = detection_map_metrics(predictions, targets, thresholds)
+
+        assert actual.keys() == case["expected"].keys(), case["name"]
+        for name, expected in case["expected"].items():
+            assert abs(actual[name] - float(expected)) <= 1e-12, case["name"]
 
 
 def test_torchvision_detection_metrics_are_reported_per_test_set():

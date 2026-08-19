@@ -52,6 +52,7 @@ def run_train(args: Any) -> int:
         iter_size=args.iter_size,
         base_lr=args.base_lr,
         test_interval=args.test_interval,
+        detection_map_version=args.detection_map_version,
         gpu=args.gpu,
         gpuid=parse_gpu_ids(args.gpuid),
         sync=args.sync,
@@ -102,6 +103,16 @@ def run_train(args: Any) -> int:
         validate_positive(numeric, options[numeric])
     if int(options["nclasses"]) <= 0:
         raise ValueError("nclasses must be positive")
+    if int(options["detection_map_version"]) not in {1, 2}:
+        raise ValueError("detection_map_version must be one of: 1, 2")
+    if (
+        profile.task == "detection"
+        and profile.backend != "torch"
+        and int(options["detection_map_version"]) != 2
+    ):
+        raise ValueError(
+            "detection_map_version=1 is only available to native C++ detection models"
+        )
     if options.get("nkeypoints") is not None and int(options["nkeypoints"]) <= 0:
         raise ValueError("nkeypoints must be positive")
     if options.get("max_objects") is not None and int(options["max_objects"]) <= 0:

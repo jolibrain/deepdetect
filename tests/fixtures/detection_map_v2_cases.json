@@ -1,0 +1,117 @@
+{
+  "cases": [
+    {
+      "name": "default_iou_thresholds",
+      "measures": ["map"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]}
+      ],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [5.0, 5.0, 15.0, 15.0], "score": 0.9}
+      ],
+      "expected": {"map": 0.3333333333333333, "map-05": 1.0, "map-50": 0.0, "map-90": 0.0}
+    },
+    {
+      "name": "early_false_positive",
+      "measures": ["map-50"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]}
+      ],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [20.0, 20.0, 30.0, 30.0], "score": 0.9},
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.8}
+      ],
+      "expected": {"map": 0.5, "map-50": 0.5}
+    },
+    {
+      "name": "false_positive_on_image_without_class",
+      "measures": ["map-50"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]}
+      ],
+      "predictions": [
+        {"image_id": 1, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.99},
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
+      ],
+      "expected": {"map": 0.5, "map-50": 0.5}
+    },
+    {
+      "name": "dataset_level_target_weighting",
+      "measures": ["map-50"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]},
+        {"image_id": 1, "label": 1, "box": [0.0, 0.0, 1.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [2.0, 0.0, 3.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [4.0, 0.0, 5.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [6.0, 0.0, 7.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [8.0, 0.0, 9.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [10.0, 0.0, 11.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [12.0, 0.0, 13.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [14.0, 0.0, 15.0, 1.0]},
+        {"image_id": 1, "label": 1, "box": [16.0, 0.0, 17.0, 1.0]}
+      ],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
+      ],
+      "expected": {"map": 0.1, "map-50": 0.1}
+    },
+    {
+      "name": "classes_are_weighted_equally",
+      "measures": ["map-50"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]},
+        {"image_id": 0, "label": 2, "box": [20.0, 20.0, 30.0, 30.0]}
+      ],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
+      ],
+      "expected": {"map": 0.5, "map-50": 0.5}
+    },
+    {
+      "name": "matching_uses_score_order",
+      "measures": ["map-50"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]}
+      ],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.2},
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
+      ],
+      "expected": {"map": 1.0, "map-50": 1.0}
+    },
+    {
+      "name": "equal_scores_preserve_prediction_order",
+      "measures": ["map-50"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]}
+      ],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [20.0, 20.0, 30.0, 30.0], "score": 0.9},
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
+      ],
+      "expected": {"map": 0.5, "map-50": 0.5}
+    },
+    {
+      "name": "equal_iou_preserves_target_order",
+      "measures": ["map-50"],
+      "targets": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0]},
+        {"image_id": 0, "label": 1, "box": [10.0, 0.0, 20.0, 10.0]}
+      ],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 20.0, 10.0], "score": 0.9},
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.8}
+      ],
+      "expected": {"map": 0.5, "map-50": 0.5}
+    },
+    {
+      "name": "no_ground_truth",
+      "measures": ["map"],
+      "targets": [],
+      "predictions": [
+        {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
+      ],
+      "expected": {"map": 0.0, "map-05": 0.0, "map-50": 0.0, "map-90": 0.0}
+    }
+  ]
+}

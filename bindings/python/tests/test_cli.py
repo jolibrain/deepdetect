@@ -313,6 +313,7 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
         "map-50",
         "map-90",
     ]
+    assert train_call[1]["parameters"]["output"]["detection_map_version"] == 2
     run_json = run_root / "ring-hand-yolox" / "run.json"
     manifest = json.loads(run_json.read_text(encoding="utf-8"))
     assert manifest["status"] == "finished"
@@ -324,6 +325,7 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
     assert saved_config["width"] == 320
     assert saved_config["gpuid"] == [1, 3]
     assert saved_config["run_name"] == "ring-hand-yolox"
+    assert saved_config["detection_map_version"] == 2
     events = [
         json.loads(line)
         for line in capsys.readouterr().out.splitlines()
@@ -383,6 +385,7 @@ def test_train_torchvision_detector_uses_pytorch_backend_without_weights(
         "map-50",
         "map-90",
     ]
+    assert "detection_map_version" not in train_call[1]["parameters"]["output"]
     saved_config = config.load_config(tmp_path / "repo" / "config.yaml")
     assert saved_config["weights"] is None
     assert saved_config["batch_size"] == 1
@@ -1116,6 +1119,16 @@ def test_vitpose_profile_passes_keypoint_worker_parameters():
     assert predict_params["output_parameters"]["bbox"] is True
     assert predict_params["output_parameters"]["confidence_threshold"] == 0.25
     assert predict_params["output_parameters"]["keypoint_threshold"] == 0.05
+
+
+def test_yolox_profile_selects_legacy_detection_map_version():
+    profile = get_profile("yolox")
+    options = profile.train_defaults()
+    options["detection_map_version"] = 1
+
+    parameters = profile.train_parameters(options)
+
+    assert parameters["output_parameters"]["detection_map_version"] == 1
 
 
 def test_vitpose_training_parameters_accept_photometric_augmentation():

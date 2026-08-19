@@ -146,6 +146,11 @@ endfunction()
 find_package(PythonInterp 3 REQUIRED)
 
 REGISTER_TEST(ut_common ut-common.cc)
+REGISTER_TEST(ut_detection_map_v2 ut-detection-map-v2.cc)
+target_compile_definitions(
+  ut_detection_map_v2
+  PRIVATE DEEPDETECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
 REGISTER_TEST(ut_imgdataaug ut-imgdataaug.cc)
 
 if (USE_JSON_API)

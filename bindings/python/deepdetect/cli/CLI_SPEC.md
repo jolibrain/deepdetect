@@ -70,6 +70,12 @@ YAML files may also define an `augmentation` mapping. This mapping is
 deep-merged into the selected model profile's training augmentation defaults
 without adding one command-line flag per augmentation parameter.
 Class weighting is available as a YAML-only top-level `class_weights` list.
+Native C++ detection profiles use the dataset-level detection mAP v2
+implementation by default. Use `--detection-map-version 1` or the top-level
+YAML field `detection_map_version: 1` to retain the historical native metric.
+The direct DeepDetect API field is
+`parameters.output.detection_map_version`. PyTorch workers continue to use
+their Python detection evaluator.
 
 Example default-style configs are provided next to this document:
 
@@ -220,6 +226,11 @@ On resume, `--weights` is ignored because the model state comes from
 from `--repository/metrics.json` into the run environment before streaming new
 points, then ignores already-seen history points from the first live status
 poll.
+
+Legacy native detection runs resumed without an explicit
+`detection_map_version` use version 2. Their existing `map*` history may
+therefore contain version 1 values followed by version 2 values; select version
+1 explicitly when a single historical metric definition is required.
 
 The CLI emits events such as `run_started`, `dataset_check`,
 `training_status`, `metric`, and `run_finished`. Dataset checks are deliberately

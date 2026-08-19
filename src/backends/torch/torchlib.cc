@@ -44,6 +44,7 @@
 
 #include "dto/mllib.hpp"
 #include "utils/bbox.hpp"
+#include "utils/detection_map_v2.hpp"
 
 using namespace torch;
 
@@ -132,6 +133,17 @@ namespace dd
       if (!cfg.has("best_bbox"))
         return -1;
       return cfg.get("best_bbox").get<int>();
+    }
+
+    int detection_map_version(const APIData &ad_out)
+    {
+      if (!ad_out.has("detection_map_version"))
+        return 2;
+      const int version = ad_out.get("detection_map_version").get<int>();
+      if (version != 1 && version != 2)
+        throw OutputConnectorBadParamException(
+            "output.detection_map_version must be 1 or 2");
+      return version;
     }
 
     std::string test_prediction_uri(const TorchDataset &dataset,
@@ -2202,16 +2214,28 @@ namespace dd
         ad_out.add("measure", meas);
       }
 
+    const int map_version = _bbox ? detection_map_version(ad_out) : 1;
+    if (_bbox && map_version == 2 && !ad_out.has("measure"))
+      ad_out.add("measure", std::vector<std::string>{ "map" });
+    const std::vector<std::string> requested_measures
+        = ad_out.has("measure")
+              ? ad_out.get("measure").get<std::vector<std::string>>()
+              : std::vector<std::string>();
     std::vector<int> iou_thresholds;
     std::map<int, APIData> ad_bbox_per_iou;
-    if (_bbox)
+    DetectionMapV2 detection_map_v2;
+    std::vector<DetectionMapV2Threshold> map_v2_thresholds;
+    if (_bbox && map_version == 1)
       {
-        auto meas = ad_out.get("measure").get<std::vector<std::string>>();
-        SupervisedOutput::find_ap_iou_thresholds(meas, iou_thresholds);
+        SupervisedOutput::find_ap_iou_thresholds(requested_measures,
+                                                 iou_thresholds);
 
         for (int i : iou_thresholds)
           ad_bbox_per_iou[i] = APIData();
       }
+    else if (_bbox)
+      map_v2_thresholds
+          = DetectionMapV2::thresholds_from_measures(requested_measures);
 
     dataset.reset(false);
     auto dataloader = torch::data::make_data_loader(
@@ -2325,10 +2349,12 @@ namespace dd
           {
             // Supporting only Faster RCNN format at the moment.
             auto out_dicts = out_ivalue.toList();
-            Tensor targ_ids = batch.target.at(0);
+            Tensor targ_ids = batch.target.at(0).to(cpu);
             auto targ_ids_acc = targ_ids.accessor<int, 1>();
-            Tensor targ_bboxes = batch.target.at(1);
-            Tensor targ_labels = batch.target.at(2);
+            Tensor targ_bboxes = batch.target.at(1).to(cpu);
+            Tensor targ_labels = batch.target.at(2).to(cpu);
+            auto targ_bboxes_acc = targ_bboxes.accessor<float, 2>();
+            auto targ_labels_acc = targ_labels.accessor<int64_t, 1>();
 
             int stop = 0;
 
@@ -2344,6 +2370,9 @@ namespace dd
                 Tensor score_tensor
                     = torch_utils::to_tensor_safe(out_dict.at("scores"))
                           .to(cpu);
+                auto bboxes_acc = bboxes_tensor.accessor<float, 2>();
+                auto labels_acc = labels_tensor.accessor<int64_t, 1>();
+                auto score_acc = score_tensor.accessor<float, 1>();
 
                 int start = stop;
                 while (stop < static_cast<int>(targ_ids.size(0))
@@ -2352,18 +2381,40 @@ namespace dd
                     ++stop;
                   }
 
-                for (int iou_thres : iou_thresholds)
+                if (map_version == 1)
                   {
-                    double iou_thres_d = static_cast<double>(iou_thres) / 100;
-                    std::vector<APIData> vbad = get_bbox_stats(
-                        targ_bboxes.index(
-                            { torch::indexing::Slice(start, stop) }),
-                        targ_labels.index(
-                            { torch::indexing::Slice(start, stop) }),
-                        bboxes_tensor, labels_tensor, score_tensor,
-                        iou_thres_d);
-                    ad_bbox_per_iou[iou_thres].add(std::to_string(entry_id),
-                                                   vbad);
+                    for (int iou_thres : iou_thresholds)
+                      {
+                        double iou_thres_d
+                            = static_cast<double>(iou_thres) / 100;
+                        std::vector<APIData> vbad = get_bbox_stats(
+                            targ_bboxes.index(
+                                { torch::indexing::Slice(start, stop) }),
+                            targ_labels.index(
+                                { torch::indexing::Slice(start, stop) }),
+                            bboxes_tensor, labels_tensor, score_tensor,
+                            iou_thres_d);
+                        ad_bbox_per_iou[iou_thres].add(
+                            std::to_string(entry_id), vbad);
+                      }
+                  }
+                else
+                  {
+                    for (int j = start; j < stop; ++j)
+                      detection_map_v2.add_target(
+                          entry_id, static_cast<int>(targ_labels_acc[j]),
+                          { static_cast<double>(targ_bboxes_acc[j][0]),
+                            static_cast<double>(targ_bboxes_acc[j][1]),
+                            static_cast<double>(targ_bboxes_acc[j][2]),
+                            static_cast<double>(targ_bboxes_acc[j][3]) });
+                    for (int j = 0; j < labels_tensor.size(0); ++j)
+                      detection_map_v2.add_prediction(
+                          entry_id, static_cast<int>(labels_acc[j]),
+                          { static_cast<double>(bboxes_acc[j][0]),
+                            static_cast<double>(bboxes_acc[j][1]),
+                            static_cast<double>(bboxes_acc[j][2]),
+                            static_cast<double>(bboxes_acc[j][3]) },
+                          static_cast<double>(score_acc[j]));
                   }
                 int source_index = static_cast<int>(
                     static_cast<size_t>(entry_id) / test_crop_samples);
@@ -2375,9 +2426,6 @@ namespace dd
                                          bbox_coordinate_height);
                     std::vector<APIData> &classes
                         = detection_prediction_classes[source_index];
-                    auto bboxes_acc = bboxes_tensor.accessor<float, 2>();
-                    auto labels_acc = labels_tensor.accessor<int64_t, 1>();
-                    auto score_acc = score_tensor.accessor<float, 1>();
 
                     for (int j = 0; j < labels_tensor.size(0); ++j)
                       {
@@ -2607,14 +2655,22 @@ namespace dd
     if (_bbox)
       {
         ad_res.add("bbox", true);
-        ad_res.add("pos_count", entry_id);
-
-        for (int iou_thres : iou_thresholds)
+        if (map_version == 1)
           {
-            ad_bbox.add("map-" + std::to_string(iou_thres),
-                        ad_bbox_per_iou[iou_thres]);
+            ad_res.add("pos_count", entry_id);
+            for (int iou_thres : iou_thresholds)
+              ad_bbox.add("map-" + std::to_string(iou_thres),
+                          ad_bbox_per_iou[iou_thres]);
+            ad_res.add("0", ad_bbox);
           }
-        ad_res.add("0", ad_bbox);
+        else
+          {
+            APIData map_metrics;
+            for (const DetectionMapV2Metric &metric :
+                 detection_map_v2.compute(map_v2_thresholds))
+              map_metrics.add(metric.name, metric.value);
+            ad_res.add("detection_map_v2", map_metrics);
+          }
       }
     else if (_segmentation)
       ad_res.add("segmentation", true);
