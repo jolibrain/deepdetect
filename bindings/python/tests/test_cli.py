@@ -3046,6 +3046,54 @@ def test_visdom_sink_groups_test_set_metrics_on_base_metric_window():
     ]
 
 
+def test_visdom_sink_groups_per_class_map_metrics_with_global_window():
+    class FakeClient:
+        def __init__(self):
+            self.lines = []
+
+        def line(self, **kwargs):
+            self.lines.append(kwargs)
+
+    client = FakeClient()
+    sink = VisdomMetricSink(
+        env="class-map",
+        server="http://localhost",
+        port=8097,
+        base_url="/",
+        client=client,
+    )
+
+    sink.write({"name": "map-50_test0", "value": 0.5, "iteration": 10})
+    sink.write({"name": "map-50_1_test0", "value": 0.8, "iteration": 10})
+    sink.write({"name": "map-50_2_test1", "value": 0.2, "iteration": 10})
+    sink.write({"name": "map_1", "value": 0.7, "iteration": 10})
+    written = sink.write_many(
+        [
+            {"name": "map-90_1_test0", "value": 0.4, "iteration": 10},
+            {"name": "map-90_1_test0", "value": 0.5, "iteration": 20},
+        ]
+    )
+
+    assert written == 2
+    assert [(line["win"], line["name"]) for line in client.lines[:4]] == [
+        ("metric-map-50", "test0"),
+        ("metric-map-50", "class 1 / test0"),
+        ("metric-map-50", "class 2 / test1"),
+        ("metric-map", "class 1"),
+    ]
+    assert (
+        client.lines[4]["win"],
+        client.lines[4]["name"],
+        client.lines[4]["X"].tolist(),
+        client.lines[4]["Y"].tolist(),
+    ) == ("metric-map-90", "class 1 / test0", [10.0, 20.0], [0.4, 0.5])
+    assert client.lines[2]["opts"]["legend"] == [
+        "test0",
+        "class 1 / test0",
+        "class 2 / test1",
+    ]
+
+
 def test_train_visdom_unreachable_can_fail_fast(monkeypatch, tmp_path, capsys):
     class FakeVisdom:
         def __init__(self, **kwargs):

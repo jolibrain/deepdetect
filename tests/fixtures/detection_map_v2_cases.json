@@ -9,7 +9,7 @@
       "predictions": [
         {"image_id": 0, "label": 1, "box": [5.0, 5.0, 15.0, 15.0], "score": 0.9}
       ],
-      "expected": {"map": 0.3333333333333333, "map-05": 1.0, "map-50": 0.0, "map-90": 0.0}
+      "expected": {"map": 0.3333333333333333, "map-05": 1.0, "map-50": 0.0, "map-90": 0.0, "map_1": 0.3333333333333333, "map-05_1": 1.0, "map-50_1": 0.0, "map-90_1": 0.0}
     },
     {
       "name": "early_false_positive",
@@ -21,7 +21,7 @@
         {"image_id": 0, "label": 1, "box": [20.0, 20.0, 30.0, 30.0], "score": 0.9},
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.8}
       ],
-      "expected": {"map": 0.5, "map-50": 0.5}
+      "expected": {"map": 0.5, "map-50": 0.5, "map_1": 0.5, "map-50_1": 0.5}
     },
     {
       "name": "false_positive_on_image_without_class",
@@ -33,7 +33,7 @@
         {"image_id": 1, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.99},
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
       ],
-      "expected": {"map": 0.5, "map-50": 0.5}
+      "expected": {"map": 0.5, "map-50": 0.5, "map_1": 0.5, "map-50_1": 0.5}
     },
     {
       "name": "dataset_level_target_weighting",
@@ -53,7 +53,7 @@
       "predictions": [
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
       ],
-      "expected": {"map": 0.1, "map-50": 0.1}
+      "expected": {"map": 0.1, "map-50": 0.1, "map_1": 0.1, "map-50_1": 0.1}
     },
     {
       "name": "classes_are_weighted_equally",
@@ -65,7 +65,7 @@
       "predictions": [
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
       ],
-      "expected": {"map": 0.5, "map-50": 0.5}
+      "expected": {"map": 0.5, "map-50": 0.5, "map_1": 1.0, "map_2": 0.0, "map-50_1": 1.0, "map-50_2": 0.0}
     },
     {
       "name": "matching_uses_score_order",
@@ -77,7 +77,7 @@
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.2},
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
       ],
-      "expected": {"map": 1.0, "map-50": 1.0}
+      "expected": {"map": 1.0, "map-50": 1.0, "map_1": 1.0, "map-50_1": 1.0}
     },
     {
       "name": "equal_scores_preserve_prediction_order",
@@ -89,7 +89,7 @@
         {"image_id": 0, "label": 1, "box": [20.0, 20.0, 30.0, 30.0], "score": 0.9},
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.9}
       ],
-      "expected": {"map": 0.5, "map-50": 0.5}
+      "expected": {"map": 0.5, "map-50": 0.5, "map_1": 0.5, "map-50_1": 0.5}
     },
     {
       "name": "equal_iou_preserves_target_order",
@@ -102,7 +102,7 @@
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 20.0, 10.0], "score": 0.9},
         {"image_id": 0, "label": 1, "box": [0.0, 0.0, 10.0, 10.0], "score": 0.8}
       ],
-      "expected": {"map": 0.5, "map-50": 0.5}
+      "expected": {"map": 0.5, "map-50": 0.5, "map_1": 0.5, "map-50_1": 0.5}
     },
     {
       "name": "no_ground_truth",

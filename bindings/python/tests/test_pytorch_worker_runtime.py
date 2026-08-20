@@ -1402,6 +1402,8 @@ def test_reference_torch_detector_trains_one_cpu_iteration(tmp_path):
         "loss_classifier",
         "loss_box_reg",
         "map_test0",
+        "map_1_test0",
+        "map-50_1_test0",
     } <= metric_names
     worker_config = json.loads(
         (tmp_path / "pytorch_worker_config.json").read_text(encoding="utf-8")
@@ -1528,7 +1530,14 @@ def test_runtime_loads_reference_detector_from_mllib_module(tmp_path):
             elif message.get("event") == "train_result":
                 assert message["payload"]["status"] == "finished"
                 break
-        assert {"train_loss", "loss_classifier", "loss_box_reg", "map_test0"} <= metrics
+        assert {
+            "train_loss",
+            "loss_classifier",
+            "loss_box_reg",
+            "map_test0",
+            "map_1_test0",
+            "map-50_1_test0",
+        } <= metrics
         assert saw_test_predictions
         manifest = json.loads(
             (tmp_path / "connector_manifest.json").read_text(encoding="utf-8")
@@ -1685,7 +1694,17 @@ def test_torchvision_worker_detection_list_rejects_invalid_class(tmp_path):
 
 def test_torchvision_detection_metric_thresholds_use_native_names():
     thresholds = detection_metric_thresholds(
-        {"measure": ["map", "map-05", "map-50", "map-90"]}
+        {
+            "measure": [
+                "map",
+                "map-05",
+                "map-50",
+                "map-90",
+                "map-50_1",
+                "map-90-extra",
+                "map-٥٠",
+            ]
+        }
     )
 
     assert thresholds == {
@@ -1705,6 +1724,10 @@ def test_torchvision_detection_map_metrics_use_iou_thresholds():
     assert metrics["map-50"] == 0.0
     assert metrics["map-90"] == 0.0
     assert abs(metrics["map"] - (1.0 / 3.0)) < 1e-12
+    assert metrics["map-05_1"] == 1.0
+    assert metrics["map-50_1"] == 0.0
+    assert metrics["map-90_1"] == 0.0
+    assert abs(metrics["map_1"] - (1.0 / 3.0)) < 1e-12
 
 
 def test_torchvision_detection_map_metrics_penalize_early_false_positive():
@@ -1716,7 +1739,29 @@ def test_torchvision_detection_map_metrics_penalize_early_false_positive():
 
     metrics = detection_map_metrics(predictions, targets, {"map-50": 0.5})
 
-    assert metrics == {"map": 0.5, "map-50": 0.5}
+    assert metrics == {
+        "map": 0.5,
+        "map-50": 0.5,
+        "map_1": 0.5,
+        "map-50_1": 0.5,
+    }
+
+
+def test_torchvision_detection_map_metrics_omit_prediction_only_classes():
+    targets = [DetectionEvalBox(0, 1, (0.0, 0.0, 10.0, 10.0))]
+    predictions = [
+        DetectionEvalBox(0, 1, (0.0, 0.0, 10.0, 10.0), 0.9),
+        DetectionEvalBox(0, 2, (20.0, 20.0, 30.0, 30.0), 0.8),
+    ]
+
+    metrics = detection_map_metrics(predictions, targets, {"map-50": 0.5})
+
+    assert metrics == {
+        "map": 1.0,
+        "map-50": 1.0,
+        "map_1": 1.0,
+        "map-50_1": 1.0,
+    }
 
 
 def test_torchvision_detection_map_metrics_without_targets_are_zero():
@@ -1774,7 +1819,7 @@ def test_torchvision_detection_metrics_are_reported_per_test_set():
 
     report_detection_metrics(
         reporter,
-        {"map": 0.2, "map-50": 0.3},
+        {"map": 0.2, "map-50": 0.3, "map_1": 0.4, "map-50_1": 0.5},
         iteration=7,
         test_index=1,
     )
@@ -1782,6 +1827,8 @@ def test_torchvision_detection_metrics_are_reported_per_test_set():
     assert events == [
         ("metric", {"name": "map_test1", "value": 0.2, "iteration": 7}),
         ("metric", {"name": "map-50_test1", "value": 0.3, "iteration": 7}),
+        ("metric", {"name": "map_1_test1", "value": 0.4, "iteration": 7}),
+        ("metric", {"name": "map-50_1_test1", "value": 0.5, "iteration": 7}),
     ]
 
 
