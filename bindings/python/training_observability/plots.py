@@ -19,11 +19,30 @@ class MetricPlotKey:
 def metric_plot_key(name: str) -> MetricPlotKey:
     base, separator, suffix = name.rpartition("_test")
     trace = name
+    test_trace = None
     if separator and suffix.isdigit() and base:
         name = base
-        trace = f"test{suffix}"
+        test_trace = f"test{suffix}"
+        trace = test_trace
+    class_metric = _per_class_map_metric(name)
+    if class_metric is not None:
+        name, class_id = class_metric
+        trace = f"class {class_id}"
+        if test_trace is not None:
+            trace += f" / {test_trace}"
     window = _window_for(name)
     return MetricPlotKey(window, _window_title(window), _window_ylabel(window, name), trace)
+
+
+def _per_class_map_metric(name: str) -> tuple[str, str] | None:
+    metric, separator, class_id = name.rpartition("_")
+    if not separator or not class_id.isdigit() or int(class_id) <= 0:
+        return None
+    if metric == "map":
+        return metric, class_id
+    if not metric.startswith("map-") or not metric[4:].isdigit():
+        return None
+    return metric, class_id
 
 
 def _window_name(value: str) -> str:

@@ -85,6 +85,12 @@ def _add_train_parser(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--base-lr", type=float)
     parser.add_argument("--test-interval", type=int)
+    parser.add_argument(
+        "--detection-map-version",
+        type=int,
+        choices=(1, 2),
+        help="native C++ detection mAP implementation version",
+    )
     parser.add_argument("--gpu", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument(
         "--gpuid",

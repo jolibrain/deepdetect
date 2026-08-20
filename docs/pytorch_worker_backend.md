@@ -828,10 +828,15 @@ The base emits detection metrics for every test set:
 - `map-05`
 - `map-50`
 - `map-90`
+- `map_<class-id>` for each foreground class present in ground truth
+- `map-<threshold>_<class-id>` for each requested threshold and present class
 
 Metric names are suffixed with `_testX` when reported by the worker, for example
-`map-50_test0`. It also emits test progress and sampled predictions for visual
-result sinks.
+`map-50_test0` and `map-50_1_test0`. A per-class `map_<class-id>` value is the
+mean of that class's AP over the requested IoU thresholds. Background class
+`0`, prediction-only classes, and classes without ground-truth objects in the
+test set are omitted. It also emits test progress and sampled predictions for
+visual result sinks.
 
 ### Prediction Schema
 

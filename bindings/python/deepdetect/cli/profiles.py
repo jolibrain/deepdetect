@@ -66,6 +66,7 @@ class ModelProfile:
                 self.train_mllib.get("solver", {}).get("base_lr", 0.0001)
             ),
             "test_interval": 100,
+            "detection_map_version": 2,
             "gpu": False,
             "gpuid": None,
             "sync": False,
@@ -196,10 +197,15 @@ class ModelProfile:
             input_parameters["width"] = int(options["width"])
         if "height" in self.service_input:
             input_parameters["height"] = int(options["height"])
+        output = copy.deepcopy(self.train_output)
+        if self.task == "detection" and self.backend == "torch":
+            output["detection_map_version"] = int(
+                options["detection_map_version"]
+            )
         return {
             "input_parameters": input_parameters,
             "mllib_parameters": mllib,
-            "output_parameters": copy.deepcopy(self.train_output),
+            "output_parameters": output,
         }
 
     def predict_parameters(self, options: dict[str, Any]) -> dict[str, Any]:

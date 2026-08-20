@@ -2695,7 +2695,8 @@ TEST(torchapi, service_train_object_detection_fasterrcnn)
           "\"pad_mode\":\"constant\"},\"noise\":{\"prob\":0.01},\"distort\":{"
           "\"prob\":0."
           "01}},\"input\":{\"seed\":12347,"
-          "\"db\":true,\"shuffle\":true},\"output\":{\"measure\":[\"map\"]}},"
+          "\"db\":true,\"shuffle\":true},\"output\":{\"measure\":[\"map\"],"
+          "\"detection_map_version\":1}},"
           "\"data\":[\""
         + fasterrcnn_train_data + "\",\"" + fasterrcnn_test_data + "\"]}";
 
@@ -2710,6 +2711,7 @@ TEST(torchapi, service_train_object_detection_fasterrcnn)
       << "iterations";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() <= 1.0) << "map";
   ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
+  ASSERT_TRUE(jd["body"]["measure"].HasMember("fp")) << "fp";
 
   std::unordered_set<std::string> lfiles;
   fileops::list_directory(detect_train_repo_fasterrcnn, true, false, false,
@@ -2784,6 +2786,14 @@ TEST(torchapi, service_train_object_detection_yolox)
   ASSERT_TRUE(jd["body"]["measure"]["map-05"].GetDouble() <= 1.0) << "map-05";
   ASSERT_TRUE(jd["body"]["measure"]["map-50"].GetDouble() <= 1.0) << "map-50";
   ASSERT_TRUE(jd["body"]["measure"]["map-90"].GetDouble() <= 1.0) << "map-90";
+  ASSERT_TRUE(jd["body"]["measure"]["map_1"].GetDouble() <= 1.0) << "map_1";
+  ASSERT_TRUE(jd["body"]["measure"]["map-05_1"].GetDouble() <= 1.0)
+      << "map-05_1";
+  ASSERT_TRUE(jd["body"]["measure"]["map-50_1"].GetDouble() <= 1.0)
+      << "map-50_1";
+  ASSERT_TRUE(jd["body"]["measure"]["map-90_1"].GetDouble() <= 1.0)
+      << "map-90_1";
+  ASSERT_FALSE(jd["body"]["measure"].HasMember("fp")) << "fp";
   // ASSERT_TRUE(jd["body"]["measure"]["map"].GetDouble() > 0.0) << "map";
 
   // check metrics

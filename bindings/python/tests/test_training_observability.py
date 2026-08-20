@@ -14,6 +14,7 @@ def test_generic_writer_reader_and_cli_artifacts(tmp_path, capsys):
     writer.metric("train_loss", 0.5, step=2, timestamp=11)
     writer.metric("map-50_test0", 0.25, step=2, timestamp=12)
     writer.metric("map-50_test1", 0.5, step=2, timestamp=13)
+    writer.metric("map-50_1_test0", 0.75, step=2, timestamp=14)
 
     image = root / "visuals" / "sample.png"
     image.parent.mkdir(parents=True)
@@ -31,6 +32,8 @@ def test_generic_writer_reader_and_cli_artifacts(tmp_path, capsys):
     reader = RunReader(root)
     assert reader.summary()["run_id"] == "generic-run"
     assert {plot.id for plot in reader.plots()} == {"loss-train-loss", "metric-map-50"}
+    map_plot = next(plot for plot in reader.plots() if plot.id == "metric-map-50")
+    assert map_plot.traces == ("class 1 / test0", "test0", "test1")
     artifacts = reader.artifacts(kind="prediction-overlay", step=2)
     assert len(artifacts) == 1
     assert artifacts[0].path == image.resolve()

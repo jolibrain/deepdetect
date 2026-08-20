@@ -32,6 +32,7 @@ augmentation:
 class_weights: null
 base_lr: 0.0001
 test_interval: 100
+detection_map_version: 2
 gpu: false
 gpuid: null
 sync: false

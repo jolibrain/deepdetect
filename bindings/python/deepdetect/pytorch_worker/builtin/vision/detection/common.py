@@ -42,6 +42,10 @@ DEFAULT_DETECTION_MAP_THRESHOLDS = {
 }
 
 
+def _ascii_decimal_integer(value: str) -> bool:
+    return bool(value) and all("0" <= character <= "9" for character in value)
+
+
 class DetectionListDataset:
     def __init__(self, list_path: Path, *, nclasses: int, torch: Any):
         self.list_path = list_path.expanduser().resolve()
@@ -579,10 +583,10 @@ def detection_metric_thresholds(output: dict[str, Any]) -> dict[str, float]:
         for measure in measures:
             if not isinstance(measure, str) or not measure.startswith("map-"):
                 continue
-            try:
-                threshold = int(measure.split("-", 1)[1])
-            except ValueError:
+            suffix = measure.split("-", 1)[1]
+            if not _ascii_decimal_integer(suffix):
                 continue
+            threshold = int(suffix)
             if 0 < threshold <= 100:
                 thresholds[measure] = float(threshold) / 100.0
     return thresholds or dict(DEFAULT_DETECTION_MAP_THRESHOLDS)
@@ -634,12 +638,37 @@ def detection_map_metrics(
     thresholds: dict[str, float] | None = None,
 ) -> dict[str, float]:
     thresholds = thresholds or DEFAULT_DETECTION_MAP_THRESHOLDS
-    metrics = {
-        name: mean_ap_at_iou(predictions, targets, threshold)
-        for name, threshold in thresholds.items()
-    }
-    map_value = sum(metrics.values()) / float(len(metrics)) if metrics else 0.0
-    return {"map": map_value, **metrics}
+    threshold_metrics: dict[str, float] = {}
+    class_metrics_by_threshold: dict[str, dict[int, float]] = {}
+    class_metric_sums: dict[int, float] = {}
+    for name, threshold in thresholds.items():
+        class_metrics = average_precisions_at_iou(
+            predictions,
+            targets,
+            threshold,
+        )
+        class_metrics_by_threshold[name] = class_metrics
+        threshold_metrics[name] = (
+            sum(class_metrics.values()) / float(len(class_metrics))
+            if class_metrics
+            else 0.0
+        )
+        for label, value in class_metrics.items():
+            class_metric_sums[label] = class_metric_sums.get(label, 0.0) + value
+
+    map_value = (
+        sum(threshold_metrics.values()) / float(len(threshold_metrics))
+        if threshold_metrics
+        else 0.0
+    )
+    metrics = {"map": map_value, **threshold_metrics}
+    if thresholds:
+        for label, value in sorted(class_metric_sums.items()):
+            metrics[f"map_{label}"] = value / float(len(thresholds))
+    for name, class_metrics in class_metrics_by_threshold.items():
+        for label, value in class_metrics.items():
+            metrics[f"{name}_{label}"] = value
+    return metrics
 
 
 def report_detection_metrics(
@@ -671,10 +700,10 @@ def warn_non_monotonic_map_metrics(
     for name, value in metrics.items():
         if not name.startswith("map-"):
             continue
-        try:
-            threshold = int(name.split("-", 1)[1])
-        except ValueError:
+        suffix = name.split("-", 1)[1]
+        if not _ascii_decimal_integer(suffix):
             continue
+        threshold = int(suffix)
         threshold_metrics.append((threshold, name, float(value)))
     threshold_metrics.sort()
     for index in range(1, len(threshold_metrics)):
@@ -701,23 +730,28 @@ def mean_ap_at_iou(
     targets: list[DetectionEvalBox],
     threshold: float,
 ) -> float:
+    aps = average_precisions_at_iou(predictions, targets, threshold)
+    return sum(aps.values()) / float(len(aps)) if aps else 0.0
+
+
+def average_precisions_at_iou(
+    predictions: list[DetectionEvalBox],
+    targets: list[DetectionEvalBox],
+    threshold: float,
+) -> dict[int, float]:
     labels = sorted({target.label for target in targets})
-    if not labels:
-        return 0.0
-    aps = []
+    aps = {}
     for label in labels:
         label_targets = [target for target in targets if target.label == label]
         label_predictions = [
             prediction for prediction in predictions if prediction.label == label
         ]
-        aps.append(
-            average_precision_for_label(
-                label_predictions,
-                label_targets,
-                threshold,
-            )
+        aps[label] = average_precision_for_label(
+            label_predictions,
+            label_targets,
+            threshold,
         )
-    return sum(aps) / float(len(aps)) if aps else 0.0
+    return aps
 
 
 def average_precision_for_label(

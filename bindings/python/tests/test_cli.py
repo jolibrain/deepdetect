@@ -313,6 +313,7 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
         "map-50",
         "map-90",
     ]
+    assert train_call[1]["parameters"]["output"]["detection_map_version"] == 2
     run_json = run_root / "ring-hand-yolox" / "run.json"
     manifest = json.loads(run_json.read_text(encoding="utf-8"))
     assert manifest["status"] == "finished"
@@ -324,6 +325,7 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
     assert saved_config["width"] == 320
     assert saved_config["gpuid"] == [1, 3]
     assert saved_config["run_name"] == "ring-hand-yolox"
+    assert saved_config["detection_map_version"] == 2
     events = [
         json.loads(line)
         for line in capsys.readouterr().out.splitlines()
@@ -383,6 +385,7 @@ def test_train_torchvision_detector_uses_pytorch_backend_without_weights(
         "map-50",
         "map-90",
     ]
+    assert "detection_map_version" not in train_call[1]["parameters"]["output"]
     saved_config = config.load_config(tmp_path / "repo" / "config.yaml")
     assert saved_config["weights"] is None
     assert saved_config["batch_size"] == 1
@@ -1116,6 +1119,16 @@ def test_vitpose_profile_passes_keypoint_worker_parameters():
     assert predict_params["output_parameters"]["bbox"] is True
     assert predict_params["output_parameters"]["confidence_threshold"] == 0.25
     assert predict_params["output_parameters"]["keypoint_threshold"] == 0.05
+
+
+def test_yolox_profile_selects_legacy_detection_map_version():
+    profile = get_profile("yolox")
+    options = profile.train_defaults()
+    options["detection_map_version"] = 1
+
+    parameters = profile.train_parameters(options)
+
+    assert parameters["output_parameters"]["detection_map_version"] == 1
 
 
 def test_vitpose_training_parameters_accept_photometric_augmentation():
@@ -3030,6 +3043,54 @@ def test_visdom_sink_groups_test_set_metrics_on_base_metric_window():
         ["test0", "test1"],
         ["test0", "test1"],
         ["test0", "test1"],
+    ]
+
+
+def test_visdom_sink_groups_per_class_map_metrics_with_global_window():
+    class FakeClient:
+        def __init__(self):
+            self.lines = []
+
+        def line(self, **kwargs):
+            self.lines.append(kwargs)
+
+    client = FakeClient()
+    sink = VisdomMetricSink(
+        env="class-map",
+        server="http://localhost",
+        port=8097,
+        base_url="/",
+        client=client,
+    )
+
+    sink.write({"name": "map-50_test0", "value": 0.5, "iteration": 10})
+    sink.write({"name": "map-50_1_test0", "value": 0.8, "iteration": 10})
+    sink.write({"name": "map-50_2_test1", "value": 0.2, "iteration": 10})
+    sink.write({"name": "map_1", "value": 0.7, "iteration": 10})
+    written = sink.write_many(
+        [
+            {"name": "map-90_1_test0", "value": 0.4, "iteration": 10},
+            {"name": "map-90_1_test0", "value": 0.5, "iteration": 20},
+        ]
+    )
+
+    assert written == 2
+    assert [(line["win"], line["name"]) for line in client.lines[:4]] == [
+        ("metric-map-50", "test0"),
+        ("metric-map-50", "class 1 / test0"),
+        ("metric-map-50", "class 2 / test1"),
+        ("metric-map", "class 1"),
+    ]
+    assert (
+        client.lines[4]["win"],
+        client.lines[4]["name"],
+        client.lines[4]["X"].tolist(),
+        client.lines[4]["Y"].tolist(),
+    ) == ("metric-map-90", "class 1 / test0", [10.0, 20.0], [0.4, 0.5])
+    assert client.lines[2]["opts"]["legend"] == [
+        "test0",
+        "class 1 / test0",
+        "class 2 / test1",
     ]
 
 

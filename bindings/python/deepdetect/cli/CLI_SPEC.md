@@ -70,6 +70,21 @@ YAML files may also define an `augmentation` mapping. This mapping is
 deep-merged into the selected model profile's training augmentation defaults
 without adding one command-line flag per augmentation parameter.
 Class weighting is available as a YAML-only top-level `class_weights` list.
+Native C++ detection profiles use the dataset-level detection mAP v2
+implementation by default. Use `--detection-map-version 1` or the top-level
+YAML field `detection_map_version: 1` to retain the historical native metric.
+The direct DeepDetect API field is
+`parameters.output.detection_map_version`. PyTorch workers continue to use
+their Python detection evaluator.
+
+Both the native version 2 and Python detection evaluators automatically report
+per-class AP for foreground classes present in the test ground truth. For
+example, `map-50_1` is class `1` AP at IoU `0.50`, while `map_1` is that
+class's AP averaged over the requested IoU thresholds. Python worker metrics
+retain their test-set suffix, for example `map-50_1_test0`. Background class
+`0`, prediction-only classes, and classes absent from a test set are omitted.
+When native results from multiple test sets are aggregated, each per-class
+metric is averaged only over the test sets containing that class.
 
 Example default-style configs are provided next to this document:
 
@@ -221,6 +236,11 @@ from `--repository/metrics.json` into the run environment before streaming new
 points, then ignores already-seen history points from the first live status
 poll.
 
+Legacy native detection runs resumed without an explicit
+`detection_map_version` use version 2. Their existing `map*` history may
+therefore contain version 1 values followed by version 2 values; select version
+1 explicitly when a single historical metric definition is required.
+
 The CLI emits events such as `run_started`, `dataset_check`,
 `training_status`, `metric`, and `run_finished`. Dataset checks are deliberately
 structured as extension points. With `--dataset-check full`, list files are
@@ -310,9 +330,12 @@ whose names contain `loss` are each sent to their own line plot. mAP metrics
 are split by metric name, for example `map`, `map-05`, `map-50`, and `map-90`
 use separate windows. Per-test-set metrics such as `map-50_test0` and
 `map-50_test1` are sent to the same `map-50` window with traces named `test0`
-and `test1`. Other numeric metrics are grouped into scale-compatible line
-plots. Non-numeric metrics are ignored with a one-time warning. Non-finite
-numeric values such as `NaN` and `Inf` are silently skipped for Visdom.
+and `test1`. Per-class metrics share that window: `map-50_1` uses trace
+`class 1`, and `map-50_1_test0` uses `class 1 / test0`. Existing global trace
+names are unchanged so resumed Visdom histories remain continuous. Other
+numeric metrics are grouped into scale-compatible line plots. Non-numeric
+metrics are ignored with a one-time warning. Non-finite numeric values such as
+`NaN` and `Inf` are silently skipped for Visdom.
 Result images are resampled from every test set at each evaluation interval.
 Detection results draw predicted boxes and labels on input-sized images;
 segmentation results show mask overlays on input-sized images.
