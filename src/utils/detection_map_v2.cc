@@ -86,22 +86,48 @@ namespace dd
                                        : requested_thresholds;
     std::vector<DetectionMapV2Metric> threshold_metrics;
     threshold_metrics.reserve(thresholds.size());
+    std::vector<std::pair<std::string, std::map<int, double>>>
+        class_metrics_by_threshold;
+    class_metrics_by_threshold.reserve(thresholds.size());
+    std::map<int, double> class_metric_sums;
     double sum = 0.0;
     for (const DetectionMapV2Threshold &threshold : thresholds)
       {
-        const double value = mean_ap_at_iou(threshold.iou);
+        std::map<int, double> class_metrics
+            = average_precisions_at_iou(threshold.iou);
+        double value = 0.0;
+        for (const auto &metric : class_metrics)
+          {
+            value += metric.second;
+            class_metric_sums[metric.first] += metric.second;
+          }
+        if (!class_metrics.empty())
+          value /= static_cast<double>(class_metrics.size());
         threshold_metrics.push_back({ threshold.name, value });
+        class_metrics_by_threshold.emplace_back(threshold.name,
+                                                std::move(class_metrics));
         sum += value;
       }
 
     std::vector<DetectionMapV2Metric> metrics;
-    metrics.reserve(threshold_metrics.size() + 1);
+    metrics.reserve(threshold_metrics.size() + 1
+                    + class_metric_sums.size() * (thresholds.size() + 1));
     metrics.push_back(
         { "map", threshold_metrics.empty()
                      ? 0.0
                      : sum / static_cast<double>(threshold_metrics.size()) });
     metrics.insert(metrics.end(), threshold_metrics.begin(),
                    threshold_metrics.end());
+    if (!thresholds.empty())
+      for (const auto &metric : class_metric_sums)
+        metrics.push_back(
+            { "map_" + std::to_string(metric.first),
+              metric.second / static_cast<double>(thresholds.size()) });
+    for (const auto &threshold : class_metrics_by_threshold)
+      for (const auto &metric : threshold.second)
+        metrics.push_back(
+            { threshold.first + "_" + std::to_string(metric.first),
+              metric.second });
     return metrics;
   }
 
@@ -121,11 +147,9 @@ namespace dd
   double DetectionMapV2::box_iou(const Box &left, const Box &right)
   {
     const double left_area
-        = std::max(0.0, left[2] - left[0])
-          * std::max(0.0, left[3] - left[1]);
-    const double right_area
-        = std::max(0.0, right[2] - right[0])
-          * std::max(0.0, right[3] - right[1]);
+        = std::max(0.0, left[2] - left[0]) * std::max(0.0, left[3] - left[1]);
+    const double right_area = std::max(0.0, right[2] - right[0])
+                              * std::max(0.0, right[3] - right[1]);
     if (left_area <= 0.0 || right_area <= 0.0)
       return 0.0;
     const double xmin = std::max(left[0], right[0]);
@@ -138,9 +162,10 @@ namespace dd
     return union_area > 0.0 ? intersection / union_area : 0.0;
   }
 
-  double DetectionMapV2::average_precision(
-      const std::vector<int> &true_positives,
-      const std::vector<int> &false_positives, int num_targets)
+  double
+  DetectionMapV2::average_precision(const std::vector<int> &true_positives,
+                                    const std::vector<int> &false_positives,
+                                    int num_targets)
   {
     if (num_targets <= 0 || true_positives.empty())
       return 0.0;
@@ -157,9 +182,9 @@ namespace dd
         cumulative_fp += false_positives[i];
         recalls.push_back(static_cast<double>(cumulative_tp)
                           / static_cast<double>(num_targets));
-        precisions.push_back(static_cast<double>(cumulative_tp)
-                             / static_cast<double>(cumulative_tp
-                                                   + cumulative_fp));
+        precisions.push_back(
+            static_cast<double>(cumulative_tp)
+            / static_cast<double>(cumulative_tp + cumulative_fp));
       }
 
     std::vector<double> recall_points;
@@ -225,8 +250,8 @@ namespace dd
               {
                 if (image_matched[i])
                   continue;
-                const double iou = box_iou(prediction.box,
-                                           image_targets[i].box);
+                const double iou
+                    = box_iou(prediction.box, image_targets[i].box);
                 if (iou > best_iou)
                   {
                     best_iou = iou;
@@ -252,15 +277,13 @@ namespace dd
                              static_cast<int>(targets.size()));
   }
 
-  double DetectionMapV2::mean_ap_at_iou(double threshold) const
+  std::map<int, double>
+  DetectionMapV2::average_precisions_at_iou(double threshold) const
   {
     std::set<int> labels;
     for (const Record &target : _targets)
       labels.insert(target.label);
-    if (labels.empty())
-      return 0.0;
-
-    double sum = 0.0;
+    std::map<int, double> aps;
     for (int label : labels)
       {
         std::vector<Record> label_targets;
@@ -271,9 +294,9 @@ namespace dd
         for (const Record &prediction : _predictions)
           if (prediction.label == label)
             label_predictions.push_back(prediction);
-        sum += average_precision_for_label(label_predictions, label_targets,
-                                           threshold);
+        aps[label] = average_precision_for_label(label_predictions,
+                                                 label_targets, threshold);
       }
-    return sum / static_cast<double>(labels.size());
+    return aps;
   }
 }

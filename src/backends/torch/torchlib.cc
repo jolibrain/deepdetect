@@ -2158,7 +2158,11 @@ namespace dd
         throw;
       }
 
-    SupervisedOutput::aggregate_multiple_testsets(out);
+    APIData ad_out = ad.getobj("parameters").getobj("output");
+    const bool average_per_class_map_where_present
+        = _bbox && detection_map_version(ad_out) == 2;
+    SupervisedOutput::aggregate_multiple_testsets(
+        out, average_per_class_map_where_present);
     this->add_meas("test_active", 0.0);
     return 0;
   }

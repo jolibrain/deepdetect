@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -61,10 +62,11 @@ namespace dd
     static double average_precision(const std::vector<int> &true_positives,
                                     const std::vector<int> &false_positives,
                                     int num_targets);
-    static double average_precision_for_label(
-        const std::vector<Record> &predictions,
-        const std::vector<Record> &targets, double threshold);
-    double mean_ap_at_iou(double threshold) const;
+    static double
+    average_precision_for_label(const std::vector<Record> &predictions,
+                                const std::vector<Record> &targets,
+                                double threshold);
+    std::map<int, double> average_precisions_at_iou(double threshold) const;
 
     std::vector<Record> _predictions;
     std::vector<Record> _targets;

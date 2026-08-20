@@ -955,9 +955,8 @@ namespace dd
                             {
                               std::string s
                                   = "map_" + std::to_string(sum_ap.first);
-                              meas_out.add(
-                                  s, static_cast<double>(sum_ap.second
-                                                         / ap_count));
+                              meas_out.add(s, static_cast<double>(sum_ap.second
+                                                                  / ap_count));
                             }
                         }
 
@@ -1477,12 +1476,44 @@ namespace dd
     }
 
     /** Reduce metrics over multiple test sets. The aggregated metrics are used
-     * to determine the best model. */
-    static void aggregate_multiple_testsets(APIData &ad_out)
+     * to determine the best model. Per-class mAP metrics can be averaged over
+     * only the test sets in which they are present. */
+    static bool is_per_class_map_metric(const std::string &name)
+    {
+      const size_t separator = name.rfind('_');
+      if (separator == std::string::npos || separator + 1 >= name.size())
+        return false;
+      const std::string metric = name.substr(0, separator);
+      const std::string label = name.substr(separator + 1);
+      const bool valid_label
+          = std::all_of(label.begin(), label.end(),
+                        [](unsigned char c) { return c >= '0' && c <= '9'; });
+      const bool positive_label
+          = valid_label
+            && std::any_of(label.begin(), label.end(),
+                           [](unsigned char c) { return c != '0'; });
+      if (!positive_label)
+        return false;
+      if (metric == "map")
+        return true;
+      constexpr const char threshold_prefix[] = "map-";
+      if (metric.rfind(threshold_prefix, 0) != 0)
+        return false;
+      const std::string threshold
+          = metric.substr(sizeof(threshold_prefix) - 1);
+      return !threshold.empty()
+             && std::all_of(
+                 threshold.begin(), threshold.end(),
+                 [](unsigned char c) { return c >= '0' && c <= '9'; });
+    }
+
+    static void aggregate_multiple_testsets(
+        APIData &ad_out, bool average_per_class_map_where_present = false)
     {
       APIData meas_obj;
       std::vector<APIData> measures = ad_out.getv("measures");
       std::unordered_map<std::string, double> measures_sum;
+      std::unordered_map<std::string, size_t> measures_count;
 
       for (size_t i = 0; i < measures.size(); ++i)
         {
@@ -1494,13 +1525,19 @@ namespace dd
                   double val = test_meas.get(key).get<double>();
                   auto it = measures_sum.insert({ key, 0.0 });
                   it.first->second += val;
+                  ++measures_count[key];
                 }
             }
         }
 
       for (auto &e : measures_sum)
         {
-          e.second /= measures.size();
+          const size_t denominator
+              = average_per_class_map_where_present
+                        && is_per_class_map_metric(e.first)
+                    ? measures_count[e.first]
+                    : measures.size();
+          e.second /= denominator;
           meas_obj.add(e.first, e.second);
         }
       ad_out.add("measure", meas_obj);
