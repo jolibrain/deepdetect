@@ -464,7 +464,11 @@ namespace dd
       {
         double iteration = 0.0;
         if (json_number(payload["iteration"], iteration))
-          this->add_meas("iteration", iteration);
+          {
+            this->add_meas("iteration", iteration);
+            if (name != "iteration")
+              this->add_meas_per_iter("iteration_" + name, iteration);
+          }
       }
   }
 

@@ -822,7 +822,26 @@ TEST(pytorchworkerapi, reference_detector_trains_tiny_detection_fixture)
   ASSERT_TRUE(hist.HasMember("train_loss_hist")) << japi.jrender(status);
   ASSERT_TRUE(hist.HasMember("map_test0_hist")) << japi.jrender(status);
   ASSERT_TRUE(hist.HasMember("map_test1_hist")) << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("iteration_train_loss_hist"))
+      << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("iteration_map_test0_hist"))
+      << japi.jrender(status);
+  ASSERT_TRUE(hist.HasMember("iteration_map_test1_hist"))
+      << japi.jrender(status);
   ASSERT_GE(hist["iteration_hist"].Size(), 1U) << japi.jrender(status);
+  ASSERT_EQ(hist["train_loss_hist"].Size(),
+            hist["iteration_train_loss_hist"].Size())
+      << japi.jrender(status);
+  ASSERT_EQ(hist["map_test0_hist"].Size(),
+            hist["iteration_map_test0_hist"].Size())
+      << japi.jrender(status);
+  ASSERT_EQ(hist["map_test1_hist"].Size(),
+            hist["iteration_map_test1_hist"].Size())
+      << japi.jrender(status);
+  ASSERT_DOUBLE_EQ(2.0, hist["iteration_map_test0_hist"]
+                            [hist["iteration_map_test0_hist"].Size() - 1]
+                                .GetDouble())
+      << japi.jrender(status);
 
   ASSERT_TRUE(status["body"].HasMember("test_predictions"))
       << japi.jrender(status);

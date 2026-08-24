@@ -26,6 +26,7 @@ from deepdetect.cli.checks import validate_detection_lists
 from deepdetect.cli import results
 from deepdetect.cli import runs
 from deepdetect.cli import training
+from deepdetect.cli.events import MetricEventExtractor
 from deepdetect.cli.profiles import get_profile
 from deepdetect.cli.sinks import VisdomMetricSink
 from deepdetect.cli.terminal import LiveTrainingTerminalReporter
@@ -2001,6 +2002,45 @@ def test_train_uses_iteration_history_for_eval_metrics(monkeypatch, tmp_path, ca
         1.0,
         2.0,
     ]
+
+
+def test_metric_extractor_uses_exact_python_worker_metric_iterations():
+    events = MetricEventExtractor().events(
+        {
+            "measure_hist": {
+                "iteration_hist": [float(iteration) for iteration in range(1, 201)],
+                "iteration_loss_test0_hist": [100.0, 200.0],
+                "loss_test0_hist": [0.5, 0.25],
+            }
+        }
+    )
+
+    assert events == [
+        {"name": "loss_test0", "value": 0.5, "iteration": 100.0},
+        {"name": "loss_test0", "value": 0.25, "iteration": 200.0},
+    ]
+
+
+def test_metric_extractor_aligns_new_worker_iterations_after_resume():
+    extractor = MetricEventExtractor()
+    extractor.prime(
+        [
+            {"name": "loss_test0", "value": 0.5, "iteration": 100.0},
+            {"name": "loss_test0", "value": 0.25, "iteration": 200.0},
+        ]
+    )
+
+    events = extractor.events(
+        {
+            "measure_hist": {
+                "iteration_hist": [float(iteration) for iteration in range(1, 301)],
+                "iteration_loss_test0_hist": [300.0],
+                "loss_test0_hist": [0.5, 0.25, 0.125],
+            }
+        }
+    )
+
+    assert events == [{"name": "loss_test0", "value": 0.125, "iteration": 300.0}]
 
 
 def test_train_live_terminal_falls_back_to_jsonl_when_not_tty(

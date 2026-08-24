@@ -152,6 +152,11 @@ def _matching_iteration_history(
     values: Sequence[Any],
     measure_hist: dict[str, Any],
 ) -> Sequence[Any] | None:
+    exact_name = f"iteration_{name}_hist"
+    exact = measure_hist.get(exact_name)
+    if _is_sequence(exact) and len(exact) == len(values):
+        return exact
+
     candidate_names = []
     suffix = _test_suffix(name)
     if suffix:
@@ -162,6 +167,13 @@ def _matching_iteration_history(
         candidate = measure_hist.get(candidate_name)
         if _is_sequence(candidate) and len(candidate) == len(values):
             return candidate
+
+    # Repositories created before Python-worker metric iterations were
+    # persisted can contain an old value-history prefix followed by new,
+    # correctly paired iteration points after resume. Align those new points
+    # with the tail and retain the legacy index fallback for the old prefix.
+    if _is_sequence(exact) and 0 < len(exact) < len(values):
+        return [None] * (len(values) - len(exact)) + list(exact)
     return None
 
 
