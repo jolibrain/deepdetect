@@ -56,6 +56,13 @@ def run_infer(args: Any) -> int:
     )
     options = resolve_options(profile.infer_defaults(), args, cli_values)
     normalize_gpu_options(options, gpu_disabled=args.gpu is False)
+    if profile.task == "image-reconstruction" and (
+        options.get("visualize") or options.get("output") is not None
+    ):
+        raise ValueError(
+            "image-reconstruction workers write visual artifacts to the model "
+            "repository; --visualize and --output are not supported"
+        )
     images = _input_paths(
         options.get("images", []),
         options.get("images_file"),
