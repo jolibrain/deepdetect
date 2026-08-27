@@ -11,6 +11,9 @@ to focused model profiles:
 - `torchvision-detector`: managed PyTorch Faster R-CNN detection.
 - `external-pytorch-detector`: an external Python worker selected through
   YAML/API `mllib.entrypoint`.
+- `external-pytorch-image`: an external self-supervised image worker selected
+  through YAML/API `mllib.entrypoint`. DeepDetect passes manifest paths and the
+  worker loads images directly in Python.
 - `vitpose`: a self-contained PyTorch keypoint worker selected through an
   in-tree `extern/pytorch_workers/vitpose/worker.py` entrypoint. It uses
   bbox-driven top-down pose by default; `vitpose.head: slots` retains the
@@ -26,6 +29,7 @@ deepdetect train yolox ...
 deepdetect train segformer ...
 deepdetect train torchvision-detector ...
 deepdetect train external-pytorch-detector ...
+deepdetect train external-pytorch-image ...
 deepdetect train vitpose ...
 deepdetect infer yolox ...
 deepdetect infer segformer ...
@@ -92,6 +96,7 @@ Example default-style configs are provided next to this document:
 - `segformer-default.yaml`
 - `torchvision-detector-default.yaml`
 - `external-pytorch-detector-default.yaml`
+- `external-pytorch-image-default.yaml`
 - `vitpose-default.yaml`
 - `sam2-default.yaml`
 
@@ -103,6 +108,7 @@ deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yam
 deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-default.yaml
 deepdetect train torchvision-detector --config bindings/python/deepdetect/cli/torchvision-detector-default.yaml
 deepdetect train external-pytorch-detector --config bindings/python/deepdetect/cli/external-pytorch-detector-default.yaml
+deepdetect train external-pytorch-image --config bindings/python/deepdetect/cli/external-pytorch-image-default.yaml
 deepdetect train vitpose --config bindings/python/deepdetect/cli/vitpose-default.yaml
 deepdetect infer sam2 image.jpg --config bindings/python/deepdetect/cli/sam2-default.yaml
 ```
@@ -122,6 +128,16 @@ mllib:
 The worker file may live outside the packaged `deepdetect` module. Generated
 adapters should live under `extern/pytorch_workers/<model_slug>/`, which is
 ignored by git except for workspace documentation.
+
+`external-pytorch-image` deliberately has no `mllib.data_source` setting.
+DeepDetect forwards the train/test manifest paths to the worker, which is
+responsible for decoding and transforming each image. Manifests contain an
+image path and may contain one optional label field; generic validation checks
+the files, while the worker decides whether labels have a useful objective.
+Model-specific masked patches should be created by the Python model or dataset,
+not by a generic C++ connector. Reconstruction workers persist visual outputs
+under their model repository rather than returning encoded images through the
+prediction API.
 
 ## Training Commands
 

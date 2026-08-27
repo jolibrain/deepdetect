@@ -52,6 +52,7 @@ The first CLI profiles are:
 - `segformer`: semantic segmentation
 - `torchvision-detector`: managed PyTorch Faster R-CNN detection
 - `external-pytorch-detector`: external PyTorch detection worker entrypoint
+- `external-pytorch-image`: external Python-loaded image worker entrypoint
 
 YAML config files make runs repeatable. The default examples are starting
 points; replace dataset, weight, and repository paths before using them for a
@@ -61,7 +62,12 @@ real run.
 deepdetect train yolox --config bindings/python/deepdetect/cli/yolox-default.yaml
 deepdetect infer yolox image.jpg --config bindings/python/deepdetect/cli/yolox-default.yaml
 deepdetect train external-pytorch-detector --config bindings/python/deepdetect/cli/external-pytorch-detector-default.yaml
+deepdetect train external-pytorch-image --config bindings/python/deepdetect/cli/external-pytorch-image-default.yaml
 ```
+
+The generic `external-pytorch-image` profile passes image-list paths to its
+worker. The worker owns image decoding, augmentation, batching, and any
+model-specific masking; it does not use the C++ tensor-pull dataloader.
 
 A minimal object-detection run can use the same tiny fixtures as the wheel
 tests. Start Visdom in a second terminal:

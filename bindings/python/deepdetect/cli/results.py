@@ -329,7 +329,19 @@ def result_image_array(
     *,
     image_size: tuple[int, int],
 ) -> np.ndarray:
-    if task == "detection" or task == "yolox" or task == "torchvision-detector":
+    if task == "image-reconstruction":
+        reconstruction_path = prediction.get("reconstruction_path")
+        if not isinstance(reconstruction_path, str) or not reconstruction_path:
+            raise ValueError(
+                "image-reconstruction result has no reconstruction_path"
+            )
+        panel_path = Path(reconstruction_path).expanduser().resolve()
+        if not panel_path.is_file():
+            raise FileNotFoundError(
+                f"reconstruction result image not found: {panel_path}"
+            )
+        image = Image.open(panel_path)
+    elif task == "detection" or task == "yolox" or task == "torchvision-detector":
         image = detection_overlay_image(
             image_path,
             prediction,
@@ -422,4 +434,5 @@ def _is_result_visualization_metric(name: Any) -> bool:
         "acc",
         "meaniou",
         "meanacc",
+        "reconstruction_loss",
     }

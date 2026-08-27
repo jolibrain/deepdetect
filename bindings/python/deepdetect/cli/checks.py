@@ -145,6 +145,34 @@ def validate_detection_lists(list_paths: list[Path], nclasses: int) -> dict[str,
     }
 
 
+def validate_image_lists(list_paths: list[Path]) -> dict[str, Any]:
+    checked_images = 0
+    labeled_samples = 0
+    for list_path in list_paths:
+        summary = check_dataset_list(list_path)
+        resolved_list = list_path.expanduser().resolve()
+        for line_number, line in enumerate(
+            resolved_list.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            if not line.strip():
+                continue
+            fields = line.split()
+            if len(fields) not in {1, 2}:
+                raise ValueError(
+                    f"{resolved_list}:{line_number}: expected image path and optional label"
+                )
+            image_path = _resolve_dataset_entry_path(resolved_list.parent, fields[0])
+            if not image_path.is_file():
+                raise FileNotFoundError(
+                    f"{resolved_list}:{line_number}: image not found: {image_path}"
+                )
+            checked_images += 1
+            labeled_samples += int(len(fields) == 2)
+        if summary["samples"] <= 0:
+            raise ValueError(f"image dataset list contains no samples: {resolved_list}")
+    return {"checked_images": checked_images, "labeled_samples": labeled_samples}
+
+
 def validate_keypoint_lists(
     list_paths: list[Path], nkeypoints: int, *, head: str
 ) -> dict[str, Any]:
@@ -318,6 +346,13 @@ def run_training_checks(task: str, options: dict[str, Any]) -> list[dict[str, An
                     int(options["nkeypoints"]),
                     head=_keypoint_head(options),
                 ),
+            }
+        )
+    if task == "image-reconstruction":
+        checks.append(
+            {
+                "name": "image_samples",
+                **validate_image_lists([train_data, *test_data]),
             }
         )
     return checks

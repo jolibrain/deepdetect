@@ -22,7 +22,7 @@ from deepdetect.cli import config
 from deepdetect.cli import inference
 from deepdetect.cli import __file__ as cli_package_file
 from deepdetect.cli import main as cli
-from deepdetect.cli.checks import validate_detection_lists
+from deepdetect.cli.checks import validate_detection_lists, validate_image_lists
 from deepdetect.cli import results
 from deepdetect.cli import runs
 from deepdetect.cli import training
@@ -186,6 +186,7 @@ def test_default_example_configs_load():
     segformer = config.load_config(root / "segformer-default.yaml")
     torchvision = config.load_config(root / "torchvision-detector-default.yaml")
     external = config.load_config(root / "external-pytorch-detector-default.yaml")
+    external_image = config.load_config(root / "external-pytorch-image-default.yaml")
     vitpose = config.load_config(root / "vitpose-default.yaml")
     sam2 = config.load_config(root / "sam2-default.yaml")
 
@@ -221,6 +222,10 @@ def test_default_example_configs_load():
     assert external["service_mllib"]["class"] == "DeepDetectWorker"
     assert external["mllib"]["data_source"] == "connector_tensor_pull"
     assert external["dataset_check"] == "full"
+    assert external_image["service_mllib"]["task"] == "image-reconstruction"
+    assert external_image["service_mllib"]["class"] == "DeepDetectWorker"
+    assert external_image["mllib"] == {}
+    assert external_image["visdom_results"] is True
     assert vitpose["weights"] is None
     assert vitpose["width"] == 192
     assert vitpose["height"] == 256
@@ -246,6 +251,39 @@ def test_generated_training_run_name_is_repository_name_only():
     )
 
     assert name == "ring-hand-detector"
+
+
+def test_image_dataset_validation_accepts_optional_labels(tmp_path):
+    images = tmp_path / "images"
+    images.mkdir()
+    first = images / "first.jpg"
+    second = images / "second.jpg"
+    Image.new("RGB", (8, 8), color="white").save(first)
+    Image.new("RGB", (8, 8), color="black").save(second)
+    manifest = tmp_path / "images.txt"
+    manifest.write_text(
+        "images/first.jpg\nimages/second.jpg class-b\n",
+        encoding="utf-8",
+    )
+
+    summary = validate_image_lists([manifest])
+
+    assert summary == {"checked_images": 2, "labeled_samples": 1}
+
+
+def test_external_pytorch_image_profile_uses_python_path_loading():
+    profile = get_profile("external-pytorch-image")
+    options = profile.train_defaults()
+
+    service = profile.service_parameters(options)
+    training_parameters = profile.train_parameters(options)
+
+    assert profile.task == "image-reconstruction"
+    assert options["visdom_results"] is True
+    assert service["input_parameters"]["connector"] == "image"
+    assert "bbox" not in service["input_parameters"]
+    assert service["mllib_parameters"]["task"] == "image-reconstruction"
+    assert "data_source" not in training_parameters["mllib_parameters"]
 
 
 def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
@@ -2879,6 +2917,23 @@ def test_segmentation_result_image_is_rgb_chw_overlay(tmp_path):
     )
 
     assert array.shape == (3, 2, 2)
+    assert array.dtype.name == "uint8"
+
+
+def test_reconstruction_result_image_loads_worker_panel(tmp_path):
+    source = tmp_path / "source.png"
+    panel = tmp_path / "panel.png"
+    Image.new("RGB", (8, 8), color="white").save(source)
+    Image.new("RGB", (24, 10), color="navy").save(panel)
+
+    array = results.result_image_array(
+        "image-reconstruction",
+        source,
+        {"reconstruction_path": str(panel)},
+        image_size=(8, 8),
+    )
+
+    assert array.shape == (3, 10, 24)
     assert array.dtype.name == "uint8"
 
 

@@ -29,6 +29,7 @@ class ModelProfile:
     predict_input: dict[str, Any]
     predict_output: dict[str, Any]
     supports_training: bool = True
+    default_visdom_results: bool = True
 
     @property
     def default_width(self) -> int:
@@ -87,7 +88,7 @@ class ModelProfile:
             "visdom_base_url": "/",
             "visdom_offline_ok": True,
             "visdom_save": False,
-            "visdom_results": True,
+            "visdom_results": self.default_visdom_results,
             "visdom_results_count": 10,
             "visdom_results_seed": 12345,
             "confidence_threshold": 0.25,
@@ -394,6 +395,38 @@ PROFILES = {
         train_output={"measure": ["map-05", "map-50", "map-90"]},
         predict_input={"height": 640, "width": 640},
         predict_output={"bbox": True},
+    ),
+    "external-pytorch-image": ModelProfile(
+        name="external-pytorch-image",
+        task="image-reconstruction",
+        description="External PyTorch image training worker",
+        backend="pytorch",
+        default_weights=None,
+        default_repository=Path("deepdetect-models/external-pytorch-image"),
+        default_service_name="python-external-pytorch-image-train",
+        default_nclasses=1,
+        requires_weights=False,
+        service_input={
+            "connector": "image",
+            "height": 256,
+            "width": 256,
+            "rgb": True,
+            "db": False,
+        },
+        service_mllib={
+            "task": "image-reconstruction",
+            "class": "DeepDetectWorker",
+        },
+        train_input={"seed": 12347, "db": False, "shuffle": True},
+        train_mllib={
+            "solver": {"iter_size": 1, "solver_type": "ADAMW"},
+            "net": {"batch_size": 1},
+            "resume": False,
+        },
+        train_output={"measure": ["train_loss"]},
+        predict_input={"height": 256, "width": 256},
+        predict_output={},
+        default_visdom_results=True,
     ),
     "vitpose": ModelProfile(
         name="vitpose",

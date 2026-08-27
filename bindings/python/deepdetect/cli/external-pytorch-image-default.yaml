@@ -1,0 +1,53 @@
+# Default-style external PyTorch image-worker configuration.
+# Fill in the entrypoint and model-specific parameters before running.
+train_data: train.txt
+test_data:
+  - test.txt
+weights: null
+repository: deepdetect-models/external-pytorch-image
+service_name: python-external-pytorch-image-train
+nclasses: 1
+width: 256
+height: 256
+iterations: 100
+batch_size: 1
+iter_size: 1
+augmentation: {}
+service_mllib:
+  entrypoint: /path/to/external/image_worker/worker.py
+  class: DeepDetectWorker
+  task: image-reconstruction
+mllib: {}
+class_weights: null
+base_lr: 0.000025
+test_interval: 100
+gpu: false
+gpuid: null
+sync: false
+poll_interval: 0.5
+timeout: null
+cancel_timeout: 30
+job_dir: null
+run_name: null
+resume: null
+output_format: jsonl
+terminal: verbose
+dataset_check: full
+skip_mask_validation: false
+visdom: false
+visdom_server: http://localhost
+visdom_port: 8097
+visdom_base_url: /
+visdom_offline_ok: true
+visdom_save: false
+visdom_results: true
+visdom_results_count: 4
+visdom_results_seed: 12345
+
+# Reconstruction workers write images below the model repository.
+output: null
+visualize: false
+benchmark: false
+warmup: 0
+confidence_threshold: 0.25
+best_bbox: null
