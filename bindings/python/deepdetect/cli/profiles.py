@@ -123,6 +123,10 @@ class ModelProfile:
             "images_file": None,
             "bbox_files_file": None,
             "keypoint_threshold": 0.05,
+            "tiled": False,
+            "tile_overlap": None,
+            "preview_max_side": 4096,
+            "confidence_maps": False,
         }
 
     def service_parameters(self, options: dict[str, Any]) -> dict[str, Any]:

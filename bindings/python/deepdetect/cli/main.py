@@ -187,6 +187,28 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
     parser.add_argument("--visualize", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--benchmark", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--warmup", type=int)
+    parser.add_argument(
+        "--tiled",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="split semantic-segmentation images into overlapping tiles",
+    )
+    parser.add_argument(
+        "--tile-overlap",
+        type=int,
+        help="tile overlap in pixels on both axes (default: 25%% of the smaller tile side)",
+    )
+    parser.add_argument(
+        "--preview-max-side",
+        type=int,
+        help="maximum width or height of a tiled overlay preview",
+    )
+    parser.add_argument(
+        "--confidence-maps",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="write full-resolution 16-bit confidence maps in tiled mode",
+    )
     if PROFILES[model].task in {"detection", "keypoint"}:
         parser.add_argument("--confidence-threshold", type=float)
     if PROFILES[model].task == "detection":

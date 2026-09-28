@@ -376,6 +376,29 @@ deepdetect infer segformer image1.png image2.png \
   --output outputs/
 ```
 
+Large semantic-segmentation images can be inferred without resizing the full
+source to the model input size. Tiled mode keeps one DeepDetect service alive,
+predicts overlapping model-sized crops in batches, and stitches hard class
+labels using nearest-tile-center ownership:
+
+```shell
+python3 -m deepdetect.cli.main infer segformer \
+  images/*.jpg \
+  --weights segformer-b0-cls2.pt \
+  --repository runs/segformer-model \
+  --service-name segmentation \
+  --nclasses 2 \
+  --width 512 \
+  --height 512 \
+  --tiled \
+  --confidence-maps \
+  --tile-overlap 128 \
+  --batch-size 8 \
+  --gpu --gpuid 0 \
+  --output outputs/ \
+  --output-format text
+```
+
 Shared inference options:
 
 - `--gpu` / `--no-gpu`: request or disable GPU execution.
@@ -391,9 +414,48 @@ Shared inference options:
 - `--visualize` / `--no-visualize`: produce or suppress visual outputs.
 - `--output`: file or directory for visual outputs.
 
+SegFormer tiled-inference options:
+
+- `--tiled`: enable Python-side tiled semantic-segmentation inference. This
+  requires `--output`, supports at most 256 classes, and is rejected by
+  non-segmentation profiles.
+- `--tile-overlap PIXELS`: overlap on both axes. It must satisfy
+  `0 <= overlap < min(width, height)`. When omitted, the overlap is 25% of the
+  smaller tile dimension.
+- `--preview-max-side PIXELS`: bound the largest side of the overlay preview;
+  the default is `4096`.
+- `--confidence-maps`: request DeepDetect's per-pixel winning-class softmax
+  confidence and write full-resolution 16-bit confidence maps. It requires
+  `--tiled`.
+- In tiled mode, `--width` and `--height` are both the tile dimensions and
+  model input dimensions, while `--batch-size` is the number of tiles in each
+  DeepDetect prediction call.
+
+For each source image, tiled inference atomically writes
+`<stem>_mask.png`, a full-resolution paletted class-index mask, and
+`<stem>_overlay_preview.png`, a bounded review image. Binary preview reduction
+preserves foreground pixels so thin features remain visible. The CLI emits a
+compact `tile_plan`, one `tile_progress` event per batch, a final `prediction`
+summary with dimensions, tile count, class histogram, and inference time, and
+normal artifact events. It never emits the full stitched pixel array. Tiled
+benchmark events additionally contain total tile count, average milliseconds
+per tile and per source image, and tile throughput.
+
+With `--confidence-maps`, tiled inference also writes
+`<stem>_confidence.png`, the winning-class softmax confidence, as a
+full-resolution 16-bit grayscale PNG. For binary segmentation it additionally
+writes `<stem>_foreground_probability.png`, the class-1 probability derived
+exactly from the winning class and confidence. Convert any stored pixel value
+back to probability with `value / 65535`. Confidence arrays remain excluded
+from stdout events.
+
+The equivalent YAML keys are `tiled`, `tile_overlap`, and
+`preview_max_side`, and `confidence_maps`.
+
 Prediction events include the image path, per-image wall-clock inference time,
-and the raw DeepDetect prediction payload, including available confidence
-values.
+and, for ordinary inference, the raw DeepDetect prediction payload including
+available confidence values. Tiled prediction events use the compact summary
+described above.
 
 ## Monitoring
 

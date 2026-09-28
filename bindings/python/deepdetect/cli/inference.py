@@ -17,7 +17,8 @@ from .options import (
 )
 from .profiles import get_profile
 from .runs import summarize_timings
-from .utils import configure_gpu_compatibility, stage_model
+from .tiled_segmentation import run_tiled_image
+from .utils import configure_gpu_compatibility, predictions_by_uri, stage_model
 from .visualize import (
     output_path_for,
     render_detections,
@@ -53,6 +54,10 @@ def run_infer(args: Any) -> int:
         bbox_files=getattr(args, "bbox_files", None),
         bbox_files_file=getattr(args, "bbox_files_file", None),
         best_bbox=getattr(args, "best_bbox", None),
+        tiled=getattr(args, "tiled", None),
+        tile_overlap=getattr(args, "tile_overlap", None),
+        preview_max_side=getattr(args, "preview_max_side", None),
+        confidence_maps=getattr(args, "confidence_maps", None),
     )
     options = resolve_options(profile.infer_defaults(), args, cli_values)
     normalize_gpu_options(options, gpu_disabled=args.gpu is False)
@@ -79,6 +84,28 @@ def run_infer(args: Any) -> int:
         validate_positive(numeric, int(options[numeric]))
     if int(options["warmup"]) < 0:
         raise ValueError("warmup must be non-negative")
+    tiled = bool(options.get("tiled"))
+    if options.get("confidence_maps") and not tiled:
+        raise ValueError("--confidence-maps requires --tiled")
+    if tiled:
+        if profile.task != "segmentation":
+            raise ValueError("--tiled is only supported for semantic segmentation")
+        if options.get("output") is None:
+            raise ValueError("--output is required with --tiled")
+        nclasses = int(options["nclasses"])
+        if not 1 <= nclasses <= 256:
+            raise ValueError("tiled segmentation requires between 1 and 256 classes")
+        validate_positive("preview_max_side", int(options["preview_max_side"]))
+        smaller_tile_side = min(int(options["width"]), int(options["height"]))
+        overlap = options.get("tile_overlap")
+        if overlap is None:
+            overlap = int(smaller_tile_side * 0.25)
+            options["tile_overlap"] = overlap
+        overlap = int(overlap)
+        if not 0 <= overlap < smaller_tile_side:
+            raise ValueError(
+                "tile_overlap must satisfy 0 <= overlap < min(width, height)"
+            )
     if profile.task in {"detection", "keypoint"}:
         threshold = float(options["confidence_threshold"])
         if not 0.0 <= threshold <= 1.0:
@@ -98,6 +125,8 @@ def run_infer(args: Any) -> int:
     configure_gpu_compatibility(dd.build_info, requested=bool(options["gpu"]))
     service_parameters = profile.service_parameters(options)
     predict_parameters = profile.predict_parameters(options)
+    if tiled and not options.get("confidence_maps"):
+        predict_parameters["output_parameters"].pop("confidences", None)
     bbox_files = _input_paths(
         options.get("bbox_files") or [],
         options.get("bbox_files_file"),
@@ -136,6 +165,52 @@ def run_infer(args: Any) -> int:
     with dd.create_service(options["service_name"], **service_parameters) as service:
         resolved_images = [image.resolve() for image in images]
         batch_size = int(options["batch_size"])
+        if tiled:
+            total_tiles = 0
+            source_inference_seconds = 0.0
+            for image in resolved_images:
+                result = run_tiled_image(
+                    service=service,
+                    image_path=image,
+                    output_dir=output_path,
+                    predict_parameters=predict_parameters,
+                    tile_width=int(options["width"]),
+                    tile_height=int(options["height"]),
+                    overlap=int(options["tile_overlap"]),
+                    batch_size=batch_size,
+                    nclasses=int(options["nclasses"]),
+                    preview_max_side=int(options["preview_max_side"]),
+                    confidence_maps=bool(options.get("confidence_maps")),
+                    writer=writer,
+                    warmup=int(options["warmup"]),
+                )
+                total_tiles += result.tiles
+                source_inference_seconds += result.inference_seconds
+            if options.get("benchmark"):
+                total_ms = source_inference_seconds * 1000.0
+                writer.emit(
+                    "benchmark",
+                    batch_size=batch_size,
+                    warmup=int(options["warmup"]),
+                    images=len(images),
+                    total_tiles=total_tiles,
+                    total_seconds=source_inference_seconds,
+                    total_time_ms=total_ms,
+                    avg_ms_per_tile=(total_ms / total_tiles),
+                    avg_ms_per_image=(total_ms / len(images)),
+                    avg_inference_ms_per_source=(total_ms / len(images)),
+                    tile_throughput=(
+                        total_tiles / source_inference_seconds
+                        if source_inference_seconds > 0.0
+                        else 0.0
+                    ),
+                    throughput_tiles_per_sec=(
+                        total_tiles / source_inference_seconds
+                        if source_inference_seconds > 0.0
+                        else 0.0
+                    ),
+                )
+            return 0
         first_batch = resolved_images[:batch_size]
         first_parameters = _prediction_batch_parameters(
             predict_parameters, bbox_files[:batch_size]
@@ -151,9 +226,9 @@ def run_infer(args: Any) -> int:
             result = service.predict(batch, **batch_parameters)
             elapsed = time.perf_counter() - started
             batch_times.append(elapsed)
-            predictions = result.get("predictions", [])
-            if len(predictions) != len(batch):
-                raise ValueError("DeepDetect returned an unexpected prediction count")
+            predictions = predictions_by_uri(
+                batch, result.get("predictions", [])
+            )
             per_image_ms = elapsed * 1000.0 / len(batch)
             for image, prediction in zip(batch, predictions):
                 writer.emit(
