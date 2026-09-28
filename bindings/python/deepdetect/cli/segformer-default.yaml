@@ -59,3 +59,7 @@ output: null
 visualize: false
 benchmark: false
 warmup: 0
+tiled: false
+tile_overlap: null
+preview_max_side: 4096
+confidence_maps: false

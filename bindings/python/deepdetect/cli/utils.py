@@ -4,10 +4,42 @@ import os
 import re
 import shutil
 import sys
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 from typing import Any, Iterable
 
 import deepdetect
+
+
+def predictions_by_uri(
+    inputs: list[Path], predictions: Any, *, label: str = "prediction"
+) -> list[dict[str, Any]]:
+    """Return predictions in request order using DeepDetect's URI key."""
+    if not isinstance(predictions, list):
+        raise ValueError(f"DeepDetect {label} response must be a list")
+    if len(predictions) != len(inputs):
+        raise ValueError(f"DeepDetect returned an unexpected {label} count")
+
+    requested = [str(path) for path in inputs]
+    remaining = Counter(requested)
+    by_uri: dict[str, deque[dict[str, Any]]] = defaultdict(deque)
+    for index, prediction in enumerate(predictions):
+        if not isinstance(prediction, dict):
+            raise ValueError(f"DeepDetect {label} {index} must be an object")
+        uri = prediction.get("uri")
+        if not isinstance(uri, str) or not uri:
+            raise ValueError(f"DeepDetect {label} {index} is missing its uri")
+        if remaining[uri] <= 0:
+            raise ValueError(
+                f"DeepDetect returned an unexpected or duplicate {label} uri: {uri}"
+            )
+        remaining[uri] -= 1
+        by_uri[uri].append(prediction)
+
+    missing = [uri for uri, count in remaining.items() for _ in range(count)]
+    if missing:
+        raise ValueError(f"DeepDetect returned no {label} for uri: {missing[0]}")
+    return [by_uri[uri].popleft() for uri in requested]
 
 
 def configure_gpu_compatibility(

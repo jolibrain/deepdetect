@@ -205,6 +205,9 @@ def test_default_example_configs_load():
     assert segformer["augmentation"]["cutout"] == 0.5
     assert segformer["class_weights"] is None
     assert segformer["dataset_check"] == "full"
+    assert segformer["tiled"] is False
+    assert segformer["tile_overlap"] is None
+    assert segformer["preview_max_side"] == 4096
     assert torchvision["weights"] is None
     assert torchvision["width"] == 640
     assert torchvision["height"] == 640
@@ -3462,7 +3465,7 @@ def test_infer_streams_visual_artifacts_per_prediction(monkeypatch, tmp_path, ca
             body={
                 "predictions": [
                     {"uri": str(image), "classes": []} for image in request["data"]
-                ]
+                ][::-1]
             }
         )
 
@@ -3621,6 +3624,7 @@ def test_infer_segformer_keeps_default_size(monkeypatch, tmp_path, capsys):
             body={
                 "predictions": [
                     {
+                        "uri": json.loads(request)["data"][0],
                         "imgsize": {"width": 480, "height": 480},
                         "vals": [0] * (480 * 480),
                     }
