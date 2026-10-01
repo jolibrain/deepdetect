@@ -160,16 +160,21 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.model.train()
         self.debug("train: creating optimizer")
         optimizer = self.create_optimizer(torch, self.model, base_lr=options.base_lr)
-        self.load_optimizer_for_training(
+        start_iteration = self.load_optimizer_for_training(
             checkpoint_manager,
             optimizer,
             train_request.effective_mllib,
         )
+        if start_iteration >= options.iterations:
+            raise DatasetContractError(
+                f"requested iterations ({options.iterations}) must exceed "
+                f"resumed checkpoint iteration ({start_iteration})"
+            )
         optimizer.zero_grad(set_to_none=True)
         self.debug("train: entering training loop")
 
         start_time = time.monotonic()
-        optimizer_steps = 0
+        optimizer_steps = start_iteration
         accumulated = 0
         latest_loss = 0.0
         while optimizer_steps < options.iterations:
@@ -187,14 +192,14 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 return {"status": "cancelled", "iteration": optimizer_steps}
 
             try:
-                if optimizer_steps == 0 and accumulated == 0:
+                if optimizer_steps == start_iteration and accumulated == 0:
                     self.debug("train: loading first batch")
                 images, targets, _meta = next(train_batches)
             except StopIteration:
                 train_batches = iter(train_loader)
                 images, targets, _meta = next(train_batches)
             images, targets = self.prepare_training_batch(images, targets, _meta)
-            if optimizer_steps == 0 and accumulated == 0:
+            if optimizer_steps == start_iteration and accumulated == 0:
                 self.debug("train: running first forward/backward")
             loss_dict = self.training_losses(self.model, images, targets)
             total_loss = sum(loss for loss in loss_dict.values())
@@ -220,6 +225,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 base_lr=options.base_lr,
                 train_loss=latest_loss,
                 losses=loss_values,
+                start_iteration=start_iteration,
             )
 
             should_test = test_datasets and (
@@ -310,16 +316,21 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.model.train()
         self.debug("train: creating optimizer")
         optimizer = self.create_optimizer(torch, self.model, base_lr=options.base_lr)
-        self.load_optimizer_for_training(
+        start_iteration = self.load_optimizer_for_training(
             checkpoint_manager,
             optimizer,
             train_request.effective_mllib,
         )
+        if start_iteration >= options.iterations:
+            raise DatasetContractError(
+                f"requested iterations ({options.iterations}) must exceed "
+                f"resumed checkpoint iteration ({start_iteration})"
+            )
         optimizer.zero_grad(set_to_none=True)
         self.debug("train: entering connector pull training loop")
 
         start_time = time.monotonic()
-        optimizer_steps = 0
+        optimizer_steps = start_iteration
         accumulated = 0
         latest_loss = 0.0
         prefetcher = self.connector_batch_prefetcher(
@@ -361,7 +372,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 continue
             images, targets, _metas = batch
             images, targets = self.prepare_training_batch(images, targets, _metas)
-            if optimizer_steps == 0 and accumulated == 0:
+            if optimizer_steps == start_iteration and accumulated == 0:
                 self.debug("train: running first connector forward/backward")
             loss_dict = self.training_losses(self.model, images, targets)
             total_loss = sum(loss for loss in loss_dict.values())
@@ -387,6 +398,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 base_lr=options.base_lr,
                 train_loss=latest_loss,
                 losses=loss_values,
+                start_iteration=start_iteration,
             )
 
             should_test = bool(test_samples) and (
@@ -895,8 +907,8 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         checkpoint_manager: DetectionCheckpointManager,
         optimizer: Any,
         mllib: dict[str, Any],
-    ) -> None:
-        checkpoint_manager.load_optimizer(optimizer, mllib)
+    ) -> int:
+        return checkpoint_manager.load_optimizer(optimizer, mllib)
 
     def save_training_checkpoint(
         self,

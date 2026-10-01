@@ -145,8 +145,8 @@ class DetectionCheckpointManager:
             latest_checkpoint(self.context),
         )
 
-    def load_optimizer(self, optimizer: Any, mllib: dict[str, Any]) -> None:
-        maybe_load_solver(optimizer, self.torch, self.device, self.context, mllib)
+    def load_optimizer(self, optimizer: Any, mllib: dict[str, Any]) -> int:
+        return maybe_load_solver(optimizer, self.torch, self.device, self.context, mllib)
 
     def save(self, model: Any, optimizer: Any, iteration: int) -> None:
         save_checkpoint(self.context, model, optimizer, self.torch, iteration)
@@ -307,6 +307,7 @@ class DetectionProgressReporter:
         base_lr: float,
         train_loss: float,
         losses: dict[str, float],
+        start_iteration: int = 0,
     ) -> None:
         report_train_step(
             self.reporter,
@@ -316,6 +317,7 @@ class DetectionProgressReporter:
             base_lr=base_lr,
             train_loss=train_loss,
             losses=losses,
+            start_iteration=start_iteration,
         )
 
     def test_progress(
