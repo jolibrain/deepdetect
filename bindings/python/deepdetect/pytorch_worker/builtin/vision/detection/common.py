@@ -460,9 +460,10 @@ def report_train_step(
     base_lr: float,
     train_loss: float,
     losses: dict[str, float],
+    start_iteration: int = 0,
 ) -> None:
     elapsed = time.monotonic() - start_time
-    mean_step = elapsed / float(max(1, iteration))
+    mean_step = elapsed / float(max(1, iteration - start_iteration))
     remain_time = max(0.0, (iterations - iteration) * mean_step)
     reporter.status(
         phase="train",
@@ -935,18 +936,32 @@ def maybe_load_solver(
     device: Any,
     context: WorkerContext | None,
     mllib: dict[str, Any],
-) -> None:
+) -> int:
     if not mllib.get("resume"):
-        return
+        return 0
     selection = resolve_training_checkpoint(
         mllib,
         context.repository_path if context is not None else None,
     )
     if selection.solver is None:
-        return
+        raise WorkerDependencyError("resume checkpoint has no solver state")
     payload = torch.load(selection.solver, map_location=device)
-    if isinstance(payload, dict) and "optimizer_state" in payload:
-        optimizer.load_state_dict(payload["optimizer_state"])
+    if not isinstance(payload, dict) or "optimizer_state" not in payload:
+        raise WorkerDependencyError(
+            f"resume solver has no optimizer state: {selection.solver}"
+        )
+    iteration = payload.get("iteration", selection.iteration)
+    if isinstance(iteration, bool) or not isinstance(iteration, int) or iteration < 1:
+        raise WorkerDependencyError(
+            f"resume solver has no valid iteration: {selection.solver}"
+        )
+    if selection.iteration is not None and iteration != selection.iteration:
+        raise WorkerDependencyError(
+            "resume solver iteration does not match checkpoint filename: "
+            f"{iteration} != {selection.iteration}"
+        )
+    optimizer.load_state_dict(payload["optimizer_state"])
+    return iteration
 
 
 def save_checkpoint(

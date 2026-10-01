@@ -173,6 +173,43 @@ def test_detection_resume_loads_solver_from_selected_model_iteration(tmp_path):
     assert FakeOptimizer.state == {"iteration": 5}
 
 
+def test_detection_resume_rejects_solver_iteration_mismatch(tmp_path):
+    torch = pytest.importorskip("torch")
+    (tmp_path / "checkpoint-5.pt").write_bytes(b"model")
+    torch.save({"iteration": 4, "optimizer_state": {}}, tmp_path / "solver-5.pt")
+    context = WorkerContext(repository=str(tmp_path), mllib={}, raw={})
+    optimizer = torch.optim.AdamW([torch.nn.Parameter(torch.ones(()))])
+
+    with pytest.raises(WorkerDependencyError, match="does not match"):
+        maybe_load_solver(
+            optimizer,
+            torch,
+            "cpu",
+            context,
+            {"resume": True, "resume_from": "latest"},
+        )
+
+
+def test_detection_resume_uses_latest_alias_iteration(tmp_path):
+    torch = pytest.importorskip("torch")
+    (tmp_path / "checkpoint-latest.pt").write_bytes(b"model")
+    parameter = torch.nn.Parameter(torch.ones(()))
+    optimizer = torch.optim.AdamW([parameter])
+    torch.save(
+        {"iteration": 7, "optimizer_state": optimizer.state_dict()},
+        tmp_path / "solver-latest.pt",
+    )
+    context = WorkerContext(repository=str(tmp_path), mllib={}, raw={})
+
+    assert maybe_load_solver(
+        optimizer,
+        torch,
+        "cpu",
+        context,
+        {"resume": True, "resume_from": "latest"},
+    ) == 7
+
+
 def socket_pair():
     left = MemorySocket()
     right = MemorySocket()
@@ -1430,6 +1467,152 @@ def test_reference_torch_detector_trains_one_cpu_iteration(tmp_path):
     assert (tmp_path / "checkpoint-latest.pt").is_file()
     assert (tmp_path / "solver-1.pt").is_file()
     assert (tmp_path / "solver-latest.pt").is_file()
+
+
+def test_reference_torch_detector_resume_keeps_global_iteration(tmp_path):
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    _image, data = write_detection_list(tmp_path)
+
+    def run(*, iterations, resume):
+        worker = ReferenceTorchDetectorWorker()
+        worker.configure(
+            WorkerContext(
+                repository=str(tmp_path),
+                mllib={"nclasses": 2, "resume": resume, "resume_from": "latest"},
+                raw={},
+            )
+        )
+        events = []
+        result = worker.train(
+            {
+                "request": {
+                    "data": [str(data), str(data)],
+                    "parameters": {
+                        "mllib": {
+                            "solver": {
+                                "iterations": iterations,
+                                "test_interval": 1,
+                                "base_lr": 0.001,
+                            },
+                            "net": {"batch_size": 1},
+                        },
+                        "output": {"measure": ["map-50"]},
+                    },
+                }
+            },
+            reporter=WorkerReporter(
+                lambda event, payload: events.append((event, payload))
+            ),
+            cancellation=Cancellation(),
+        )
+        return result, events
+
+    first, _events = run(iterations=2, resume=False)
+    assert first["iteration"] == 2
+    old_model = (tmp_path / "checkpoint-2.pt").read_bytes()
+    old_solver = (tmp_path / "solver-2.pt").read_bytes()
+
+    resumed, events = run(iterations=4, resume=True)
+    assert resumed["iteration"] == 4
+    assert [
+        payload["iteration"]
+        for event, payload in events
+        if event == "metric" and payload["name"] == "train_loss"
+    ] == [3, 4]
+    assert (tmp_path / "checkpoint-3.pt").is_file()
+    assert (tmp_path / "checkpoint-4.pt").is_file()
+    assert (tmp_path / "checkpoint-2.pt").read_bytes() == old_model
+    assert (tmp_path / "solver-2.pt").read_bytes() == old_solver
+    solver = torch.load(tmp_path / "solver-4.pt", map_location="cpu", weights_only=False)
+    assert solver["iteration"] == 4
+    assert solver["optimizer_state"]["state"]
+    assert all(
+        int(state["step"]) == 4
+        for state in solver["optimizer_state"]["state"].values()
+        if "step" in state
+    )
+
+    with pytest.raises(DatasetContractError, match="must exceed"):
+        run(iterations=4, resume=True)
+
+
+def test_connector_pull_detector_resume_keeps_global_iteration(tmp_path):
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(1234)
+    _image, data = write_detection_list(tmp_path)
+    sample = DetectionListDataset(data, nclasses=2, torch=torch)[0]
+    evaluations = []
+
+    class FakeConnector:
+        def dataset_info(self):
+            return {"train_samples": 1, "test_samples": [1]}
+
+    class FakePrefetcher:
+        def next(self):
+            image, target, meta = sample
+            return [image], [target], [meta]
+
+        def close(self):
+            pass
+
+    class ConnectorDetector(ReferenceTorchDetectorWorker):
+        def connector_batch_prefetcher(self, **kwargs):
+            return FakePrefetcher()
+
+        def evaluate_connector_pull(self, test_samples, **kwargs):
+            evaluations.append(kwargs["iteration"])
+
+    def run(iterations, resume):
+        worker = ConnectorDetector()
+        worker.configure(
+            WorkerContext(
+                repository=str(tmp_path),
+                mllib={
+                    "nclasses": 2,
+                    "data_source": "connector_tensor_pull",
+                    "resume": resume,
+                    "resume_from": "latest",
+                },
+                raw={},
+                connector=FakeConnector(),
+            )
+        )
+        events = []
+        result = worker.train(
+            {
+                "request": {
+                    "data": [str(data), str(data)],
+                    "parameters": {
+                        "mllib": {
+                            "solver": {
+                                "iterations": iterations,
+                                "test_interval": 1,
+                                "base_lr": 0.001,
+                            },
+                            "net": {"batch_size": 1},
+                        }
+                    },
+                }
+            },
+            reporter=WorkerReporter(
+                lambda event, payload: events.append((event, payload))
+            ),
+            cancellation=Cancellation(),
+        )
+        return result, events
+
+    run(2, False)
+    resumed, events = run(4, True)
+    assert resumed["iteration"] == 4
+    assert evaluations == [1, 2, 3, 4]
+    assert [
+        payload["iteration"]
+        for event, payload in events
+        if event == "metric" and payload["name"] == "train_loss"
+    ] == [3, 4]
+    assert (tmp_path / "solver-3.pt").is_file()
+    assert (tmp_path / "solver-4.pt").is_file()
 
 
 def test_reference_torch_detector_predicts_detection_schema(tmp_path):
