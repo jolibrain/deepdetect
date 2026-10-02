@@ -1,0 +1,32 @@
+# Fine-tune the official full RT-DETRv4-M detector (HGNetV2-B2).
+train_data: /path/to/train.txt
+test_data: [/path/to/val.txt]
+weights: /path/to/RTv4-M-hgnet.pth
+repository: deepdetect-models/rtv4-m-finetuned
+service_name: python-rtv4-m-train
+nclasses: 2  # Background plus foreground classes.
+width: 640
+height: 640
+iterations: 1000
+test_interval: 100
+batch_size: 2
+iter_size: 1
+base_lr: 0.0004
+augmentation:
+  mirror: true
+service_mllib:
+  entrypoint: extern/pytorch_workers/rtdetrv4/worker.py
+  class: DeepDetectWorker
+  rtdetrv4:
+    repo_path: /data1/beniz/apps/RT-DETRv4
+    config_path: configs/rtv4/rtv4_hgnetv2_m_coco.yml
+    disable_teacher: true
+    pretrained_backbone: false
+mllib:
+  data_source: connector_tensor_pull
+  rtdetrv4:
+    require_pretrained: true
+    backbone_lr_multiplier: 0.1
+    weight_decay: 0.0001
+output_format: jsonl
+terminal: verbose

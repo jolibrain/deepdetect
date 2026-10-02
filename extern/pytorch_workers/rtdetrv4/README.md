@@ -8,6 +8,7 @@ this directory; the upstream RT-DETRv4 model code is not vendored here.
 
 - `worker.py`: DeepDetect worker adapter.
 - `config.yaml`: default-style CLI config for training and inference.
+- `finetune-m.yaml`, `finetune-l.yaml`: full-detector fine-tuning recipes.
 - `manifest.json`: adapter metadata and upstream requirements.
 
 ## Prerequisites
@@ -17,8 +18,12 @@ Prepare:
 - a DeepDetect Python environment with the PyTorch worker backend available;
 - an upstream RT-DETRv4 checkout;
 - an RT-DETRv4 config file from that checkout;
-- detection list files in DeepDetect format, with image paths and bbox paths;
-- optionally, a pretrained RT-DETRv4 checkpoint.
+- the official full [M](https://drive.google.com/file/d/1O-YpP4X-quuOXbi96y2TKkztbjroP5mX)
+  or [L](https://drive.google.com/file/d/1shO9EzZvXZyKedE2urLsN4dwEv8Jqa_8)
+  detector checkpoint, downloaded from the [upstream release](https://github.com/RT-DETRs/RT-DETRv4);
+  use a trusted local checkpoint because PyTorch deserializes it;
+- DeepDetect detection lists with image and bbox paths (not keypoint or
+  image-only lists).
 
 The worker expects the upstream checkout through either
 `service_mllib.rtdetrv4.repo_path` or `RTDETRV4_REPO`. It expects the upstream
@@ -26,29 +31,40 @@ model config through `service_mllib.rtdetrv4.config_path`.
 
 ## Train
 
-From the repository root, run the source CLI:
+From the repository root, activate an environment with a built DeepDetect
+wheel, choose the M or L recipe, then override its example paths. The source
+package under `bindings/python` has no compiled `_native` extension; do not
+put it on `PYTHONPATH` when launching training. `--weights` must point to the
+full detector checkpoint of the matching flavor. `--nclasses` counts
+background as class 0, so a two-class foreground dataset uses `--nclasses 3`.
 
 ```shell
-PYTHONPATH=bindings/python python3 -m deepdetect.cli.main train external-pytorch-detector \
-  --config extern/pytorch_workers/rtdetrv4/config.yaml \
+source ~/venv/bin/activate
+env -u PYTHONPATH deepdetect train external-pytorch-detector \
+  --config extern/pytorch_workers/rtdetrv4/finetune-m.yaml \
   --train-data /path/to/train.txt \
-  --test-data /path/to/test.txt \
-  --repository runs/rtdetrv4 \
-  --nclasses 2 \
-  --iterations 1000 \
-  --test-interval 100 \
-  --batch-size 2 \
+  --test-data /path/to/val.txt \
+  --weights /path/to/RTv4-M-hgnet.pth \
+  --repository runs/rtv4-m \
+  --nclasses 3 \
   --gpu --gpuid 0 \
   --terminal verbose \
-  --output-format jsonl \
-  --set service_mllib.rtdetrv4.repo_path=/path/to/rtdetrv4 \
-  --set service_mllib.rtdetrv4.config_path=/path/to/rtdetrv4/config.yaml \
-  --set service_mllib.rtdetrv4.pretrained_model=/path/to/checkpoint.pth
+  --output-format jsonl
 ```
 
-For CPU smoke tests, replace `--gpu --gpuid 0` with `--no-gpu`. For an
-installed wheel, replace `PYTHONPATH=bindings/python python3 -m
-deepdetect.cli.main` with `deepdetect`.
+For L, use `finetune-l.yaml`, the official L checkpoint, and a separate
+repository. Set `service_mllib.rtdetrv4.repo_path` if the upstream checkout
+is elsewhere. For CPU smoke tests, replace `--gpu --gpuid 0` with `--no-gpu`.
+The wheel supplies the native runtime; the external worker is loaded from
+`extern/pytorch_workers/rtdetrv4/worker.py` in this source checkout.
+
+The worker loads every backbone, encoder, and decoder tensor from the selected
+checkpoint. It reinitializes only the classification tensors whose dimensions
+change with `--nclasses`; incompatible or backbone-only checkpoints fail.
+The recipes use AdamW with lower backbone LR and no weight decay on bias or
+normalization parameters. The DeepDetect worker runs a constant LR and its
+standard augmentation; this is detector fine-tuning, not a reproduction of
+upstream's teacher/distillation training schedule.
 
 The config uses `mllib.data_source: connector_tensor_pull`, so image loading,
 basic preprocessing, bbox tensor packing, and configured augmentation are
@@ -60,17 +76,17 @@ Use JSONL stdout events for automation. The repository also contains the latest
 run state and worker artifacts:
 
 ```shell
-PYTHONPATH=bindings/python python3 -m deepdetect.cli.main job status runs/rtdetrv4 \
+env -u PYTHONPATH deepdetect job status runs/rtv4-m \
   --output-format json
 ```
 
 Useful files include:
 
-- `runs/rtdetrv4/config.yaml`: effective CLI config;
-- `runs/rtdetrv4/run.json`: latest run manifest and status;
-- `runs/rtdetrv4/metrics.jsonl`: persisted metric stream;
-- `runs/rtdetrv4/pytorch_worker_config.json`: worker-side effective config;
-- `runs/rtdetrv4/connector_manifest.json`: connector tensor-pull manifest.
+- `runs/rtv4-m/config.yaml`: effective CLI config;
+- `runs/rtv4-m/run.json`: latest run manifest and status;
+- `runs/rtv4-m/metrics.jsonl`: persisted metric stream;
+- `runs/rtv4-m/pytorch_worker_config.json`: worker-side effective config;
+- `runs/rtv4-m/connector_manifest.json`: connector tensor-pull manifest.
 
 ## Inference
 
@@ -78,18 +94,16 @@ Inference uses the same external worker entrypoint and loads the trained
 checkpoint from the model repository:
 
 ```shell
-PYTHONPATH=bindings/python python3 -m deepdetect.cli.main infer external-pytorch-detector \
+env -u PYTHONPATH deepdetect infer external-pytorch-detector \
   /path/to/image.jpg \
-  --config extern/pytorch_workers/rtdetrv4/config.yaml \
-  --repository runs/rtdetrv4 \
+  --config extern/pytorch_workers/rtdetrv4/finetune-m.yaml \
+  --repository runs/rtv4-m \
   --service-name python-rtdetrv4-infer \
-  --nclasses 2 \
+  --nclasses 3 \
   --gpu --gpuid 0 \
   --confidence-threshold 0.25 \
   --visualize \
-  --output runs/rtdetrv4-predictions \
-  --set service_mllib.rtdetrv4.repo_path=/path/to/rtdetrv4 \
-  --set service_mllib.rtdetrv4.config_path=/path/to/rtdetrv4/config.yaml
+  --output runs/rtv4-m-predictions
 ```
 
 Add more image paths after the first image to run batched inference. Use
