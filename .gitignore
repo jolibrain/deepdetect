@@ -11,6 +11,7 @@ extern/pytorch_workers/**
 !extern/pytorch_workers/
 !extern/pytorch_workers/*/
 !extern/pytorch_workers/*/README.md
+!extern/pytorch_workers/rtdetrv4/finetune-*.yaml
 !extern/pytorch_workers/vitpose/
 !extern/pytorch_workers/vitpose/**
 extern/pytorch_workers/vitpose/**/__pycache__/
