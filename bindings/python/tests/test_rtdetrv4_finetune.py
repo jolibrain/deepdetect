@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,7 +15,12 @@ from deepdetect.pytorch_worker.sdk import WorkerDependencyError
 torch = pytest.importorskip("torch")
 
 
-ROOT = Path(__file__).resolve().parents[3]
+source_root = os.environ.get("DEEPDETECT_WHEEL_TEST_SOURCE_ROOT")
+ROOT = (
+    Path(source_root).resolve()
+    if source_root
+    else Path(__file__).resolve().parents[3]
+)
 WORKER_PATH = ROOT / "extern/pytorch_workers/rtdetrv4/worker.py"
 spec = importlib.util.spec_from_file_location("rtdetrv4_finetune_worker", WORKER_PATH)
 assert spec is not None and spec.loader is not None
