@@ -1,5 +1,18 @@
 # DeepDetect Agent Instructions
 
+## Repository Skills
+
+Read the relevant skill before starting work in its scope:
+
+- [Training observability](bindings/python/training-observability/SKILL.md):
+  use to inspect live or completed training runs, compare metric trends,
+  review saved prediction images, and diagnose model quality. This workflow
+  is read-only with respect to the run.
+- [DeepDetect PyTorch worker](bindings/python/deepdetect/pytorch_worker/SKILL.md):
+  use to port, integrate, adapt, or test external PyTorch detection models
+  through the external worker backend, including worker adapters and
+  connector tensor pull.
+
 ## DeepDetect CLI Training And Monitoring
 
 These instructions are for agent LLMs operating in this repository. They
