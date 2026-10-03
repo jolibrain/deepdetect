@@ -25,6 +25,7 @@ class DeepDetectWorker(DetectionTrainingWorkerBase):
         super().__init__()
         self._cfg: Any = None
         self._postprocessor: Any = None
+        self._train_mllib: dict[str, Any] = {}
 
     def import_backend(self) -> tuple[Any, ...]:
         try:
@@ -142,10 +143,16 @@ class DeepDetectWorker(DetectionTrainingWorkerBase):
         model: Any,
         mllib: dict[str, Any],
     ) -> Path | None:
+        self._train_mllib = mllib
         path = self._checkpoint_path_for_training(mllib)
         if path is None:
             return None
-        return self._load_checkpoint_payload(checkpoint_manager.torch, model, path)
+        return self._load_checkpoint_payload(
+            checkpoint_manager.torch,
+            model,
+            path,
+            resume=bool(mllib.get("resume")),
+        )
 
     def _checkpoint_path_for_training(self, mllib: dict[str, Any]) -> Path | None:
         path = checkpoint_path(mllib, self.context)
@@ -159,6 +166,11 @@ class DeepDetectWorker(DetectionTrainingWorkerBase):
                 or options.get("checkpoint")
             )
             if not raw:
+                if options.get("require_pretrained", False):
+                    raise WorkerDependencyError(
+                        "RT-DETRv4 fine-tuning requires a full detector checkpoint; "
+                        "set --weights or rtdetrv4.pretrained_model"
+                    )
                 return None
             path = Path(str(raw)).expanduser().resolve()
         if path.is_dir():
@@ -397,33 +409,90 @@ class DeepDetectWorker(DetectionTrainingWorkerBase):
         torch: Any,
         model: Any,
         path: Path,
+        *,
+        resume: bool = False,
     ) -> Path:
-        payload = torch.load(path, map_location=self.device)
+        payload = torch.load(path, map_location="cpu", weights_only=False)
         state = self._state_dict_from_checkpoint(payload)
         model_state = model.state_dict()
-        compatible = {}
-        skipped = []
-        for key, value in state.items():
-            target = model_state.get(key)
-            if target is None and key.startswith("module."):
-                target = model_state.get(key[len("module.") :])
-                if target is not None:
-                    key = key[len("module.") :]
-            if target is None:
-                skipped.append(key)
-                continue
-            if hasattr(value, "shape") and hasattr(target, "shape"):
-                if tuple(value.shape) != tuple(target.shape):
-                    skipped.append(key)
-                    continue
-            compatible[key] = value
-        model.load_state_dict(compatible, strict=False)
-        if skipped:
-            self.debug(
-                "train: skipped incompatible RT-DETRv4 checkpoint tensors "
-                f"count={len(skipped)} sample={skipped[:8]}"
+        normalized = {
+            key.removeprefix("module."): value for key, value in state.items()
+        }
+        def classifier(key: str) -> bool:
+            return (
+                key == "decoder.denoising_class_embed.weight"
+                or key.startswith("decoder.enc_score_head.")
+                or key.startswith("decoder.dec_score_head.")
             )
+        mismatched = [
+            key
+            for key, value in normalized.items()
+            if key in model_state
+            and (
+                not hasattr(value, "shape")
+                or tuple(value.shape) != tuple(model_state[key].shape)
+            )
+        ]
+        missing = [key for key in model_state if key not in normalized]
+        unexpected = [key for key in normalized if key not in model_state]
+        required_missing = missing + [
+            key for key in mismatched if resume or not classifier(key)
+        ]
+        required_extra = [
+            key
+            for key in unexpected
+            if resume or not key.startswith("encoder.feature_projector.")
+        ]
+        if required_missing or required_extra:
+            raise WorkerDependencyError(
+                "RT-DETRv4 checkpoint is incomplete or incompatible with the "
+                "selected detector config (wrong M/L variant or backbone-only "
+                "weights?): "
+                f"missing/mismatched={required_missing[:8]} "
+                f"unexpected={required_extra[:8]}"
+            )
+        compatible = {
+            key: value
+            for key, value in normalized.items()
+            if key in model_state and key not in mismatched
+        }
+        model.load_state_dict(compatible, strict=False)
+        replaced = [key for key in mismatched if classifier(key)]
+        self.debug(
+            "train: loaded RT-DETRv4 detector checkpoint "
+            f"tensors={len(compatible)}/{len(model_state)} "
+            f"reinitialized_classification_tensors={len(replaced)} "
+            f"source={path}"
+        )
         return path
+
+    def create_optimizer(self, torch: Any, model: Any, *, base_lr: float) -> Any:
+        options = self._train_mllib.get("rtdetrv4", {})
+        options = options if isinstance(options, dict) else {}
+        backbone_multiplier = float(options.get("backbone_lr_multiplier", 1.0))
+        weight_decay = float(options.get("weight_decay", 0.0001))
+        if base_lr <= 0 or backbone_multiplier <= 0 or weight_decay < 0:
+            raise WorkerDependencyError(
+                "RT-DETRv4 learning rates must be positive and weight decay nonnegative"
+            )
+        groups: dict[tuple[bool, bool], list[Any]] = {}
+        for name, parameter in model.named_parameters():
+            if not parameter.requires_grad:
+                continue
+            backbone = name.startswith("backbone.")
+            no_decay = parameter.ndim <= 1 or name.endswith(".bias")
+            groups.setdefault((backbone, no_decay), []).append(parameter)
+        if not groups:
+            raise WorkerDependencyError("RT-DETRv4 model has no trainable parameters")
+        parameters = [
+            {
+                "params": values,
+                "lr": base_lr * (backbone_multiplier if backbone else 1.0),
+                "weight_decay": 0.0 if no_decay else weight_decay,
+            }
+            for (backbone, no_decay), values in groups.items()
+        ]
+        return torch.optim.AdamW(parameters, lr=base_lr)
 
     @staticmethod
     def _state_dict_from_checkpoint(payload: Any) -> dict[str, Any]:
