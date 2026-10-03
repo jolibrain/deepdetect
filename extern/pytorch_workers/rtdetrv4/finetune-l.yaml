@@ -14,6 +14,22 @@ iter_size: 1
 base_lr: 0.0005
 augmentation:
   mirror: true
+  rotate: true  # Applied only when width and height are equal.
+  crop_size: 0  # Keep the configured input dimensions.
+  cutout: 0.1
+  geometry:
+    prob: 0.1
+    persp_horizontal: true
+    persp_vertical: true
+    transl_horizontal: true
+    transl_vertical: true
+    zoom_in: true
+    zoom_out: true
+    pad_mode: constant
+  noise:
+    prob: 0.01
+  distort:
+    prob: 0.01
 service_mllib:
   entrypoint: extern/pytorch_workers/rtdetrv4/worker.py
   class: DeepDetectWorker

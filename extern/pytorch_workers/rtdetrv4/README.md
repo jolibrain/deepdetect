@@ -70,6 +70,29 @@ The config uses `mllib.data_source: connector_tensor_pull`, so image loading,
 basic preprocessing, bbox tensor packing, and configured augmentation are
 handled by DeepDetect before batches reach `worker.py`.
 
+The default `config.yaml`, including when used with RT-DETRv4-S (HGNetV2-B0),
+enables mirroring, rotation, cutout, perspective, translation, zoom, noise,
+and color distortion. The M/L fine-tuning recipes use the same augmentation
+settings. Cropping is disabled to preserve the configured input dimensions;
+rotation requires square inputs. Augmentation applies only to training.
+
+To continue a run, set `--iterations` to the **new total optimizer step**.
+For example, a run stopped at step 1000 resumes at step 1001 and adds 1000
+steps with `--iterations 2000`. The model and optimizer state come from the
+latest complete checkpoint pair in the same repository. The saved `config.yaml`
+can be reused; turn off its original `repository_override` value so the run is
+preserved:
+
+```shell
+env -u PYTHONPATH deepdetect train external-pytorch-detector \
+  --config runs/rtv4-m/config.yaml \
+  --resume latest --iterations 2000 \
+  --set repository_override=false
+```
+
+Do not pass `--repository-override` on resume. Numbered checkpoints and new
+metric events keep their global step numbers.
+
 ## Monitor
 
 Use JSONL stdout events for automation. The repository also contains the latest
