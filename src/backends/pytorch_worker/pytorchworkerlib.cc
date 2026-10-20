@@ -9,6 +9,7 @@
 
 #include "backends/pytorch_worker/pytorchworkerinputconns.h"
 #include "supervisedoutputconnector.h"
+#include "unsupervisedoutputconnector.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -658,14 +659,33 @@ namespace dd
       }
     std::vector<APIData> results = result.getv("results");
 
-    TOutputConnectorStrategy outputc(this->_outputc);
-    outputc.add_results(results);
-
     oatpp::Object<DTO::ServicePredict> predict_dto
         = ad_in.createSharedDTO<DTO::ServicePredict>();
     auto output_params = predict_dto->parameters->output;
     OutputConnectorConfig config;
     config._nclasses = static_cast<int>(_nclasses);
+    if (result.has("output_format")
+        && result.get("output_format").get<std::string>()
+               == "semantic_segmentation_v1")
+      {
+        if (result.get("nclasses").get<int>() != static_cast<int>(_nclasses))
+          throw MLLibBadParamException(
+              "semantic worker nclasses does not match service");
+        // APIData represents integral JSON arrays as vector<int>, whereas
+        // the generic array connector consumes vector<double>.
+        for (auto &item : results)
+          if (item.get("vals").is<std::vector<int>>())
+            {
+              auto ids = item.get("vals").get<std::vector<int>>();
+              item.add("vals", std::vector<double>(ids.begin(), ids.end()));
+            }
+        UnsupervisedOutput outputc;
+        outputc.add_results(results);
+        return outputc.finalize(output_params, config,
+                                static_cast<MLModel *>(&this->_mlmodel));
+      }
+    TOutputConnectorStrategy outputc(this->_outputc);
+    outputc.add_results(results);
     config._has_bbox = output_params->bbox;
     config._has_keypoints = output_params->keypoints;
     config._has_mask = output_params->image;
