@@ -270,14 +270,56 @@ def validate_prediction_result(result: Any) -> dict[str, Any]:
     results = result.get("results")
     if not isinstance(results, list):
         raise PredictionContractError("predict result must contain results list")
+    output_format = result.get("output_format")
+    if output_format not in (None, "deepdetect_supervised_v1", "semantic_segmentation_v1"):
+        raise PredictionContractError(f"unknown prediction output_format: {output_format}")
+    semantic = output_format == "semantic_segmentation_v1"
+    nclasses = result.get("nclasses")
+    if semantic and (type(nclasses) is not int or nclasses < 2):
+        raise PredictionContractError("semantic result requires integer nclasses >= 2")
     for index, item in enumerate(results):
         if not isinstance(item, dict):
             raise PredictionContractError(f"prediction {index} must be an object")
+        if semantic:
+            _validate_semantic_prediction(item, index, nclasses)
+            continue
         _validate_prediction_objects(item, index)
         _validate_bboxes(item, index)
         _validate_masks(item, index)
         _validate_keypoints(item, index)
     return result
+
+
+def _validate_semantic_prediction(item, index, nclasses):
+    prefix = f"semantic prediction {index}"
+    if not isinstance(item.get("uri"), str) or not item["uri"]:
+        raise PredictionContractError(f"{prefix} requires a non-empty uri")
+    size = item.get("imgsize", {})
+    if not isinstance(size, dict) or any(
+        type(size.get(key)) is not int or size[key] <= 0
+        for key in ("width", "height")
+    ):
+        raise PredictionContractError(f"{prefix} requires positive integer dimensions")
+    count = size["width"] * size["height"]
+    values = item.get("vals")
+    if not isinstance(values, list) or len(values) != count:
+        raise PredictionContractError(f"{prefix} vals length must match dimensions")
+    if any(type(v) is not int or not 0 <= v < nclasses for v in values):
+        raise PredictionContractError(f"{prefix} has invalid class IDs")
+    confidences = item.get("confidences", {})
+    if not isinstance(confidences, dict):
+        raise PredictionContractError(f"{prefix} confidences must be an object")
+    for key, values in confidences.items():
+        if key != "best" and key not in {str(i) for i in range(nclasses)}:
+            raise PredictionContractError(f"{prefix} invalid confidence class: {key}")
+        if not isinstance(values, list) or len(values) != count:
+            raise PredictionContractError(f"{prefix} confidence length must match dimensions")
+        for value in values:
+            value = finite_scalar(value, prefix, PredictionContractError)
+            if not 0 <= value <= 1:
+                raise PredictionContractError(f"{prefix} confidence outside [0, 1]")
+        # The C++ array connector consumes floating-point confidence vectors.
+        confidences[key] = [float(value) for value in values]
 
 
 def _validate_prediction_objects(item: Mapping[str, Any], prediction_index: int) -> None:

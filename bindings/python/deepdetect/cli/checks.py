@@ -25,10 +25,14 @@ def check_dataset_list(path: Path, *, expected_fields: int | None = None) -> dic
     return {"path": str(path), "samples": samples}
 
 
-def validate_segmentation_lists(list_paths: list[Path], nclasses: int) -> dict[str, Any]:
+def validate_segmentation_lists(
+    list_paths: list[Path], nclasses: int, *, ignore_label=None,
+    label_mapping=None, color_mapping=None,
+) -> dict[str, Any]:
+    from ..pytorch_worker.segmentation import decode_mask
+
     if nclasses <= 0:
         raise ValueError("number of classes must be positive")
-    invalid_values: set[int] = set()
     checked_masks = 0
     for list_path in list_paths:
         check_dataset_list(list_path, expected_fields=2)
@@ -39,24 +43,22 @@ def validate_segmentation_lists(list_paths: list[Path], nclasses: int) -> dict[s
             if not line.strip():
                 continue
             fields = line.split()
-            mask_path = Path(fields[1])
+            mask_path = Path(fields[1]).expanduser()
+            if not mask_path.is_absolute():
+                mask_path = list_path.expanduser().resolve().parent / mask_path
             if not mask_path.is_file():
                 raise FileNotFoundError(
                     f"{list_path}:{line_number}: mask not found: {mask_path}"
                 )
-            values = np.unique(np.asarray(Image.open(mask_path)))
-            invalid_values.update(
-                int(value) for value in values if int(value) >= nclasses
-            )
+            with Image.open(mask_path) as mask:
+                try:
+                    decode_mask(mask, nclasses, ignore_label=ignore_label,
+                                label_mapping=label_mapping, color_mapping=color_mapping)
+                except ValueError as error:
+                    raise ValueError(f"{list_path}:{line_number}: {error}") from error
             checked_masks += 1
     if checked_masks == 0:
         raise ValueError("segmentation dataset lists contain no samples")
-    if invalid_values:
-        values = ", ".join(str(value) for value in sorted(invalid_values))
-        raise ValueError(
-            f"the {nclasses}-class SegFormer configuration requires mask values "
-            f"from 0 through {nclasses - 1}; found: {values}"
-        )
     return {"checked_masks": checked_masks, "nclasses": nclasses}
 
 
@@ -320,11 +322,25 @@ def run_training_checks(task: str, options: dict[str, Any]) -> list[dict[str, An
         name = "test_list" if len(test_data) == 1 else f"test_list_test{index}"
         checks.append({"name": name, **check_dataset_list(path)})
     if task == "segmentation" and not options.get("skip_mask_validation", False):
+        from .config import deep_merge
+
+        # Native profiles also use a boolean segmentation flag; only mappings
+        # carry label settings.
+        namespaces = [
+            (options.get(key) or {}).get("segmentation")
+            for key in ("service_mllib", "mllib")
+        ]
+        segmentation = deep_merge(
+            *(value for value in namespaces if isinstance(value, dict))
+        )
         checks.append(
             {
                 "name": "segmentation_masks",
                 **validate_segmentation_lists(
-                    [train_data, *test_data], int(options["nclasses"])
+                    [train_data, *test_data], int(options["nclasses"]),
+                    **{key: segmentation[key] for key in
+                       ("ignore_label", "label_mapping", "color_mapping")
+                       if key in segmentation},
                 ),
             }
         )

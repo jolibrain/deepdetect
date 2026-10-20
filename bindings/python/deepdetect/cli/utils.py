@@ -60,11 +60,17 @@ def configure_gpu_compatibility(
         )
 
 
-def stage_model(weights: Path, repository: Path) -> Path:
+def stage_model(
+    weights: Path, repository: Path, *, reuse_checkpoint: bool = True
+) -> Path:
     weights = weights.expanduser().resolve()
     repository = repository.expanduser().resolve()
     if not weights.is_file():
         raise FileNotFoundError(f"model weights not found: {weights}")
+    if not reuse_checkpoint:
+        # External workers can read the requested file directly. In particular,
+        # do not overwrite a same-named checkpoint already in the repository.
+        return weights
     repository.mkdir(parents=True, exist_ok=True)
     checkpoints = sorted(
         repository.glob("checkpoint-*.pt"), key=lambda path: path.stat().st_mtime

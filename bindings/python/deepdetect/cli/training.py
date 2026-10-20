@@ -185,7 +185,10 @@ def run_train(args: Any) -> int:
 
         if not resume and options.get("weights") is not None:
             _debug("run_train: staging model weights")
-            options["weights"] = stage_model(options["weights"], options["repository"])
+            options["weights"] = stage_model(
+                options["weights"], options["repository"],
+                reuse_checkpoint=not (profile.backend == "pytorch" and profile.task == "segmentation"),
+            )
         save_training_config(options)
         command_path = Path(options["repository"]).expanduser().resolve() / "command.txt"
         command_path.write_text(args.command_line, encoding="utf-8")

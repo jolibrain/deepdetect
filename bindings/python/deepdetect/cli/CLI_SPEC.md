@@ -488,3 +488,20 @@ agent interfaces can be added without changing the command contract:
 - Metric sinks accept metric events and can later forward them to TensorBoard,
   MLflow, Weights & Biases, or a DeepDetect-specific dashboard.
 - Visualization helpers are optional and only run when requested.
+
+### External semantic segmentation workers
+
+`external-pytorch-segmentation` selects `backend="pytorch"`,
+`task="segmentation"`, a 512×512 RGB image connector and two classes by default.
+It needs `service_mllib.entrypoint` and optionally `service_mllib.class` and
+`service_mllib.python` (the latter defaults to the CLI interpreter). It does not
+require native SegFormer weights. See `external-pytorch-segmentation-default.yaml`
+and the semantic-result contract in `docs/pytorch_worker_backend.md`.
+
+Use `service_mllib.segmentation` for worker settings and `mllib.segmentation`
+for training overrides. Mask checking merges these namespaces and supports
+`ignore_label` (255 by default for this external profile), `label_mapping`, and
+explicit RGB `color_mapping`. Existing segmentation profiles retain their
+previous default label range. Model loading, losses and preprocessing belong
+to the external worker; CLI run manifests, JSONL metrics, masks/overlays, and
+saved validation image/JSON pairs use the normal segmentation flows.
