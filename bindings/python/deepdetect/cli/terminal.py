@@ -58,6 +58,7 @@ class LiveTrainingTerminalReporter:
 
         self.total_iterations = max(int(total_iterations), 1)
         self.events: list[dict[str, Any]] = []
+        self._run_name: str | None = None
         self._status = "starting"
         self._measure: dict[str, Any] = {}
         self._latest_metrics: dict[str, float] = {}
@@ -78,7 +79,10 @@ class LiveTrainingTerminalReporter:
     def emit(self, event: str, **payload: Any) -> dict[str, Any]:
         record = {"event": event, "timestamp": time.time(), **payload}
         self.events.append(record)
-        if event == "training_status":
+        if event == "run_started":
+            self._run_name = record.get("run_name")
+            self._refresh()
+        elif event == "training_status":
             self._status = str(record.get("status", self._status) or self._status)
             measure = record.get("measure")
             if isinstance(measure, dict):
@@ -140,6 +144,7 @@ class LiveTrainingTerminalReporter:
         from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
         from rich.rule import Rule
         from rich.table import Table
+        from rich.text import Text
 
         table = Table.grid(padding=(0, 1))
         table.expand = True
@@ -177,7 +182,10 @@ class LiveTrainingTerminalReporter:
         )
         if self._latest_warning:
             table.add_row(f"[bold red]warning[/] {self._latest_warning}")
-        return Panel(table, title=f"training {self._status}", border_style="cyan")
+        title = f"training {self._status}"
+        if self._run_name:
+            title = f"{self._run_name} — {title}"
+        return Panel(table, title=Text(title), border_style="cyan")
 
     def _gpu_text(self) -> str | None:
         if self._gpu_monitor is None:
