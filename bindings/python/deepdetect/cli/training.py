@@ -179,7 +179,7 @@ def run_train(args: Any) -> int:
                 visdom_sink=visdom_sink,
             )
         _debug("run_train: running dataset checks")
-        for check in run_training_checks(profile.task, options):
+        for check in run_training_checks(profile.task, options, backend=profile.backend):
             writer.emit("dataset_check", run_id=manifest.data["run_id"], **check)
         _debug("run_train: dataset checks complete")
 

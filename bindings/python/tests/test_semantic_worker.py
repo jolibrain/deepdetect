@@ -45,16 +45,54 @@ def test_segmentation_profile_and_ignore_mapping(tmp_path):
     options.update(train_data=tmp_path / "train.txt", test_data=[tmp_path / "train.txt"])
     Image.fromarray(np.array([[0, 1, 255]], dtype=np.uint8)).save(tmp_path / "mask.png")
     options["train_data"].write_text("image.png mask.png\n")
-    assert run_training_checks(profile.task, options)[-1]["checked_masks"] == 2
+    assert run_training_checks(profile.task, options, backend=profile.backend)[-1]["checked_masks"] == 2
     with pytest.raises(ValueError, match="unknown mask"):
-        validate_segmentation_lists([options["train_data"]], 2)
+        validate_segmentation_lists([options["train_data"]], 2, list_relative=True)
     assert validate_segmentation_lists(
-        [options["train_data"]], 2, label_mapping={255: 1}
+        [options["train_data"]], 2, label_mapping={255: 1}, list_relative=True
     )["checked_masks"] == 1
     options["service_mllib"]["entrypoint"] = "/tmp/worker.py"
     options["mllib"] = {"segmentation": {"dice_weight": 0}}
     assert profile.service_parameters(options)["mllib_parameters"]["task"] == "segmentation"
     assert profile.train_parameters(options)["mllib_parameters"]["segmentation"]["dice_weight"] == 0
+
+
+@pytest.mark.parametrize("backend", ["torch", "pytorch"])
+@pytest.mark.parametrize("absolute", [False, True])
+def test_segmentation_mask_path_base(tmp_path, monkeypatch, backend, absolute):
+    monkeypatch.chdir(tmp_path)
+    folder = tmp_path / "data"
+    folder.mkdir()
+    mask = folder / "mask.png"
+    Image.new("L", (2, 2), color=1).save(mask)
+    entry = str(mask) if absolute else ("data/mask.png" if backend == "torch" else "mask.png")
+    # A different, invalid mask exists at the other backend's relative path.
+    other = folder / "data" / "mask.png" if backend == "torch" else tmp_path / "mask.png"
+    other.parent.mkdir(exist_ok=True)
+    Image.new("L", (2, 2), color=9).save(other)
+    listing = Path("data/train.txt")
+    listing.write_text(f"image.png {entry}\n")
+    options = {"train_data": listing, "test_data": [listing], "nclasses": 2}
+    checks = run_training_checks("segmentation", options, backend=backend)
+    assert checks[-1]["checked_masks"] == 2
+    if backend == "torch":
+        # Direct validation retains the native cwd-relative default.
+        assert validate_segmentation_lists([listing], 2)["checked_masks"] == 1
+
+
+@pytest.mark.parametrize("backend", ["torch", "pytorch"])
+def test_segmentation_does_not_fall_back_to_other_path_base(tmp_path, monkeypatch, backend):
+    monkeypatch.chdir(tmp_path)
+    folder = tmp_path / "data"
+    folder.mkdir()
+    wrong_base = folder if backend == "torch" else tmp_path
+    Image.new("L", (2, 2)).save(wrong_base / "mask.png")
+    listing = folder / "train.txt"
+    listing.write_text("image.png mask.png\n")
+    with pytest.raises(FileNotFoundError, match="mask not found"):
+        run_training_checks("segmentation", {
+            "train_data": listing, "test_data": [listing], "nclasses": 2,
+        }, backend=backend)
 
 
 def test_explicit_weights_are_distinct_from_resume(tmp_path):

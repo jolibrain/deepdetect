@@ -391,6 +391,35 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys, u
     assert "metric" in {event["event"] for event in events}
 
 
+@pytest.mark.parametrize("model", ["segformer", "external-pytorch-segmentation"])
+def test_segmentation_training_validates_loader_relative_paths(monkeypatch, tmp_path, model):
+    monkeypatch.chdir(tmp_path)
+    runtime = FakeRuntime()
+    runtime.statuses = [{"status": "finished", "body": {"measure": {"iteration": 1}}}]
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    folder = tmp_path / "data"
+    folder.mkdir()
+    Image.new("RGB", (2, 2)).save(folder / "image.png")
+    Image.new("L", (2, 2), color=1).save(folder / "mask.png")
+    prefix = "data/" if model == "segformer" else ""
+    listing = folder / "train.txt"
+    listing.write_text(f"{prefix}image.png {prefix}mask.png\n")
+    extra = []
+    if model == "segformer":
+        weights = tmp_path / "weights.pt"
+        weights.write_bytes(b"model")
+        extra = ["--weights", str(weights)]
+    else:
+        extra = ["--set", "service_mllib.entrypoint=/tmp/fixture-worker.py"]
+    assert cli.main([
+        "train", model, "--train-data", "data/train.txt", "--test-data", "data/train.txt",
+        "--repository", str(tmp_path / "repo"), "--iterations", "1", "--nclasses", "2",
+        *extra,
+    ]) == 0
+    assert any(call[0] == "train" for call in runtime.calls)
+
+
 def test_train_torchvision_detector_uses_pytorch_backend_without_weights(
     monkeypatch, tmp_path, capsys
 ):
