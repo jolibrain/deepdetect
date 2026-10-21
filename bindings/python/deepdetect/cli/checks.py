@@ -27,8 +27,9 @@ def check_dataset_list(path: Path, *, expected_fields: int | None = None) -> dic
 
 def validate_segmentation_lists(
     list_paths: list[Path], nclasses: int, *, ignore_label=None,
-    label_mapping=None, color_mapping=None,
+    label_mapping=None, color_mapping=None, list_relative: bool = False,
 ) -> dict[str, Any]:
+    """Validate masks using the loader's path base (native defaults to cwd)."""
     from ..pytorch_worker.segmentation import decode_mask
 
     if nclasses <= 0:
@@ -44,7 +45,7 @@ def validate_segmentation_lists(
                 continue
             fields = line.split()
             mask_path = Path(fields[1]).expanduser()
-            if not mask_path.is_absolute():
+            if list_relative and not mask_path.is_absolute():
                 mask_path = list_path.expanduser().resolve().parent / mask_path
             if not mask_path.is_file():
                 raise FileNotFoundError(
@@ -298,7 +299,9 @@ class _NullProgress:
         return None
 
 
-def run_training_checks(task: str, options: dict[str, Any]) -> list[dict[str, Any]]:
+def run_training_checks(
+    task: str, options: dict[str, Any], *, backend: str = "torch"
+) -> list[dict[str, Any]]:
     train_data = Path(options["train_data"])
     test_data = _test_data_paths(options["test_data"])
     dataset_check = str(options.get("dataset_check", "full"))
@@ -338,6 +341,7 @@ def run_training_checks(task: str, options: dict[str, Any]) -> list[dict[str, An
                 "name": "segmentation_masks",
                 **validate_segmentation_lists(
                     [train_data, *test_data], int(options["nclasses"]),
+                    list_relative=backend == "pytorch",
                     **{key: segmentation[key] for key in
                        ("ignore_label", "label_mapping", "color_mapping")
                        if key in segmentation},
