@@ -141,3 +141,10 @@ python -m pip wheel ./bindings/python \
 Set `--config-settings=cmake.define.DEEPDETECT_PYTHON_BUNDLE_NATIVE=OFF` to
 produce the old thin wheel that requires an external DeepDetect SDK and
 runtime library path configuration.
+
+## Reusable CPU augmentation
+
+See [the augmentation API](deepdetect/augmentation.md) for NumPy images, aligned
+hard masks, replayable transforms, and explicit/legacy policies. This API does
+not create a DeepDetect service. The [validation report](AUGMENTATION_VALIDATION.md)
+records compatibility checks and the initial throughput measurements.

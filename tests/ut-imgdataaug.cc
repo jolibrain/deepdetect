@@ -178,3 +178,58 @@ TEST(imgdataaug, parse_bw_config_disables_color_noise_defaults)
   EXPECT_FALSE(config.noise_params._rgb);
   EXPECT_FALSE(config.distort_params._rgb);
 }
+
+TEST(imgdataaug, replay_preserves_geometry_masks_and_local_cutout_rng)
+{
+  dd::NoiseParams noise(false);
+  noise._prob = 0.3;
+  dd::DistortParams distort(false);
+  distort._prob = 0.3;
+  dd::GeometryParams geometry(0.5, true, true, false, false, true, true,
+                              "constant");
+  dd::ImgRandAugCV first(true, true, dd::CropParams(24), dd::CutoutParams(1),
+                         geometry, noise, distort);
+  dd::AugmentationTrace trace;
+  cv::RNG local(123);
+  const auto global_state = cv::theRNG().state;
+  first.seed_rnd_gen(42);
+  first._trace = &trace;
+  first._cutout_rng = &local;
+  cv::Mat image(32, 32, CV_8UC3, cv::Scalar(40, 120, 200));
+  cv::Mat mask(32, 32, CV_16UC1, cv::Scalar(1000));
+  cv::Mat original = image.clone(), original_mask = mask.clone();
+  first.augment_with_segmap(image, mask);
+  EXPECT_EQ(global_state, cv::theRNG().state);
+
+  dd::ImgRandAugCV replay(true, true, dd::CropParams(24), dd::CutoutParams(1),
+                          geometry, noise, distort);
+  trace.replay = true;
+  trace.operations.clear();
+  cv::RNG repeated_local(123);
+  replay.seed_rnd_gen(999); // Recorded choices, not this seed, drive replay.
+  replay._trace = &trace;
+  replay._cutout_rng = &repeated_local;
+  replay.augment_with_segmap(original, original_mask);
+  EXPECT_EQ(0, cv::norm(image, original, cv::NORM_INF));
+  EXPECT_EQ(0, cv::norm(mask, original_mask, cv::NORM_INF));
+  EXPECT_EQ(trace.draws.size(), trace.position);
+  EXPECT_EQ(trace.blocks.size(), trace.block_position);
+  EXPECT_EQ(global_state, cv::theRNG().state);
+}
+
+TEST(imgdataaug, signed_brightness_is_opt_in)
+{
+  dd::DistortParams distort(true, false, false, false, false);
+  distort._prob = 1;
+  distort._uniform_real_brightness
+      = std::uniform_real_distribution<float>(-10, -10);
+  dd::ImgRandAugCV legacy(false, false, dd::CropParams(), dd::CutoutParams(),
+                          dd::GeometryParams(), dd::NoiseParams(true),
+                          distort);
+  cv::Mat image(8, 8, CV_8UC1, cv::Scalar(30));
+  legacy.augment(image);
+  EXPECT_EQ(30, image.at<uchar>(0, 0));
+  legacy._signed_brightness = true;
+  legacy.augment(image);
+  EXPECT_EQ(20, image.at<uchar>(0, 0));
+}

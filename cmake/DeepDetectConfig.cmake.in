@@ -1,5 +1,7 @@
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+find_dependency(OpenCV COMPONENTS core imgproc imgcodecs)
 include("${CMAKE_CURRENT_LIST_DIR}/DeepDetectTargets.cmake")
 
 set(DeepDetect_VERSION "@GIT_VERSION@")
@@ -11,3 +13,5 @@ set(DeepDetect_TORCH_ENABLED "@USE_TORCH@")
 set(DeepDetect_TORCH_PREBUILT "@USE_PREBUILT_TORCH@")
 set(DeepDetect_TORCH_VERSION "@DEEPDETECT_TORCH_VERSION@")
 set(DeepDetect_TORCH_MODE "@DEEPDETECT_TORCH_MODE@")
+
+set(DeepDetect_AUGMENTATION_FINGERPRINT "@AUGMENTATION_HASH@")

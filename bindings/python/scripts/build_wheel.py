@@ -17,6 +17,11 @@ TORCH_DEPENDENCY = "torch==2.12.1"
 TORCHVISION_DEPENDENCY = "torchvision==0.27.1"
 
 AUDITWHEEL_EXCLUDES = [
+    # Keep GLVND with the host GL stack. Renaming these while libGL remains
+    # external can load two dispatch implementations and crash during dlopen.
+    "libGLX.so.0",
+    "libOpenGL.so.0",
+    "libGLdispatch.so.0",
     "libc10.so",
     "libc10_cuda.so",
     "libtorch.so",
@@ -118,8 +123,14 @@ def assert_bundled_runtime_libraries(wheel: Path) -> None:
 
     required = {
         "deepdetect/libdeepdetect.so.0",
+        "deepdetect/libdeepdetect_augmentation.so.0",
     }
     missing = sorted(required - names)
+    if not any(
+        name.startswith("deepdetect/_augmentation.") and name.endswith(".so")
+        for name in names
+    ):
+        missing.append("deepdetect/_augmentation.*.so")
     for pattern in (
         "deepdetect/libprotobuf.so.",
         "deepdetect/libprotobuf-lite.so.",
