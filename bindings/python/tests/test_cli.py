@@ -3768,3 +3768,38 @@ def test_inspect_models_is_discoverable(capsys):
         if line.strip()
     }
     assert {"yolox", "segformer"} <= names
+
+
+@pytest.mark.parametrize("original_size", [False, True])
+def test_segmentation_padding_is_gray_without_changing_predictions(tmp_path, original_size):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (8, 8), "white").save(image)
+    prediction = {"imgsize": {"width": 4, "height": 4}, "vals": [1]*16,
+                  "source": {"valid_extent": [2, 3]}}
+    mask, overlay = segmentation_overlay_images(image, prediction, original_size=original_size)
+    scale = 2 if original_size else 1
+    assert set(mask.tobytes()) == {1}
+    assert prediction["vals"] == [1]*16
+    assert overlay.getpixel((0, 0)) != (100, 100, 100)
+    assert overlay.getpixel((2*scale-1, 3*scale-1)) != (100, 100, 100)
+    assert overlay.getpixel((2*scale, 0)) == (100, 100, 100)
+    assert overlay.getpixel((0, 3*scale)) == (100, 100, 100)
+
+
+@pytest.mark.parametrize("extent", [[0, 0], [4, 4], [0, 4]])
+def test_segmentation_padding_empty_and_full_valid_region(tmp_path, extent):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (4, 4), "white").save(image)
+    _, overlay = segmentation_overlay_images(image, {
+        "imgsize": {"width": 4, "height": 4}, "vals": [1]*16,
+        "source": {"valid_extent": extent}})
+    assert (overlay.getpixel((0, 0)) == (100, 100, 100)) == (0 in extent)
+
+
+@pytest.mark.parametrize("extent", [[5, 4], [-1, 2], [1.5, 2], [2], [True, 2]])
+def test_segmentation_padding_invalid_extent(tmp_path, extent):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (4, 4), "white").save(image)
+    with pytest.raises(ValueError, match="valid_extent"):
+        segmentation_overlay_images(image, {"imgsize": {"width": 4, "height": 4},
+            "vals": [1]*16, "source": {"valid_extent": extent}})
