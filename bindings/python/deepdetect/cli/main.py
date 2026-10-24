@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import shlex
+import sys
 from pathlib import Path
 
 import deepdetect
@@ -218,7 +220,12 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
+    argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
+    args.command_line = (
+        f"cd {shlex.quote(str(Path.cwd()))} && "
+        f"{shlex.join([sys.executable, '-m', 'deepdetect.cli.main', *argv])}\n"
+    )
     try:
         return args.func(args)
     except KeyboardInterrupt:

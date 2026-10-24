@@ -246,6 +246,13 @@ Training also writes `config.yaml` at the root of `--repository`. This file is
 the effective training configuration after profile defaults, YAML config,
 explicit CLI arguments, and `--set` overrides have all been applied.
 
+`command.txt` is also written at the root of `--repository` on each training
+invocation, including resumes. It contains a shell-quoted command using the
+current Python interpreter and `-m deepdetect.cli.main`, preceded by `cd` to
+the original working directory so relative paths still resolve. The command
+preserves the supplied CLI arguments; referenced input files, YAML configs,
+and environment variables must still be available when rerunning it.
+
 On resume, `--weights` is ignored because the model state comes from
 `--repository`. When Visdom is enabled, the CLI replays previous metric history
 from `--repository/metrics.json` into the run environment before streaming new

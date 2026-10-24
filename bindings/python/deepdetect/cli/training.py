@@ -187,6 +187,8 @@ def run_train(args: Any) -> int:
             _debug("run_train: staging model weights")
             options["weights"] = stage_model(options["weights"], options["repository"])
         save_training_config(options)
+        command_path = Path(options["repository"]).expanduser().resolve() / "command.txt"
+        command_path.write_text(args.command_line, encoding="utf-8")
         _debug("run_train: config saved")
         dd = deepdetect.DeepDetect()
         _debug("run_train: DeepDetect runtime created")
