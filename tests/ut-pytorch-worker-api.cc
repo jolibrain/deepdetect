@@ -1580,3 +1580,53 @@ TEST(pytorchworkerapi, invalid_python_executable_reports_launch_error)
 
   cleanup_repo(repo);
 }
+
+TEST(pytorchworkerapi, prediction_connector_normalization_and_identity)
+{
+  const auto repo = repo_path("prediction_pixels");
+  prepare_repo(repo);
+  const auto path = repo + "/pixels.png";
+  cv::imwrite(path, cv::Mat(2, 3, CV_8UC3, cv::Scalar(10, 20, 30)));
+  APIData service;
+  service.add("width", 2);
+  service.add("height", 2);
+  service.add("rgb", true);
+  service.add("mean", std::vector<double>{ 1, 2, 3 });
+  service.add("std", std::vector<double>{ 2, 4, 8 });
+  service.add("scale", 0.5);
+  ImgPytorchInputFileConn configured;
+  configured.init(service);
+  APIData override;
+  override.add("rgb", false);
+  APIData parameters;
+  parameters.add("input", override);
+  APIData request;
+  request.add("parameters", parameters);
+  parameters.add("input", configured.prediction_input(request));
+  APIData mllib;
+  mllib.add("connector_tensor_transport", std::string("inline"));
+  parameters.add("mllib", mllib);
+  request.add("parameters", parameters);
+  request.add("data", std::vector<std::string>{ path, path });
+  request.add("ids", std::vector<std::string>{ "first", "second" });
+  ImgPytorchInputFileConn local;
+  auto batch = local.prediction_tensor_batch(request, 4);
+  auto tensor = batch.getv("inputs")[0];
+  EXPECT_EQ((std::vector<int>{ 2, 3, 2, 2 }),
+            tensor.get("shape").get<std::vector<int>>());
+  auto values
+      = tensor.getobj("storage").get("values").get<std::vector<double>>();
+  ASSERT_EQ(24U, values.size());
+  EXPECT_DOUBLE_EQ(2.0, values[0]);
+  EXPECT_DOUBLE_EQ(2.0, values[4]);
+  EXPECT_DOUBLE_EQ(1.5, values[8]);
+  EXPECT_DOUBLE_EQ(values[0], values[12]);
+  auto meta = batch.getobj("meta");
+  EXPECT_EQ((std::vector<int>{ 4, 5 }),
+            meta.get("sample_ids").get<std::vector<int>>());
+  EXPECT_EQ((std::vector<std::string>{ "first", "second" }),
+            meta.get("paths").get<std::vector<std::string>>());
+  EXPECT_EQ((std::vector<int>{ 3, 3 }),
+            meta.get("original_widths").get<std::vector<int>>());
+  cleanup_repo(repo);
+}

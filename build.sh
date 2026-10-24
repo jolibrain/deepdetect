@@ -307,7 +307,7 @@ cpu_build() {
 
     *)
         configure_prebuilt_torch
-        cmake .. ${torch_flags} -DUSE_XGBOOST=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
+        cmake .. ${torch_flags} -DUSE_PYTORCH_WORKER=${USE_PYTORCH_WORKER:-OFF} -DUSE_XGBOOST=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
         ;; 
     esac
@@ -329,7 +329,7 @@ gpu_build() {
             ;;
         *)
             configure_prebuilt_torch
-            extra_flags="$default_flags"
+            extra_flags="$default_flags -DUSE_PYTORCH_WORKER=${USE_PYTORCH_WORKER:-OFF}"
             ;;
     esac
     echo $extra_flags

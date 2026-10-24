@@ -232,6 +232,7 @@ class ModelProfile:
             )
         return {
             "input_parameters": input_parameters,
+            "mllib_parameters": {"net": {"test_batch_size": int(options.get("batch_size", 1))}},
             "output_parameters": output,
         }
 

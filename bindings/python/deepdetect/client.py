@@ -254,6 +254,7 @@ class Service:
         data: Any,
         *,
         input_parameters: Mapping[str, Any] | None = None,
+        mllib_parameters: Mapping[str, Any] | None = None,
         output_parameters: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         self._active()
@@ -261,6 +262,7 @@ class Service:
             "service": self.name,
             "parameters": {
                 "input": dict(input_parameters or {}),
+                "mllib": dict(mllib_parameters or {}),
                 "output": dict(output_parameters or {}),
             },
             "data": _data(data, self._connector == "image" if self._connector else None),

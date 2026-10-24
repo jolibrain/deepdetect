@@ -4,6 +4,7 @@ FROM ubuntu:24.04 AS build
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=cpu
 ARG DEEPDETECT_BUILD=default
+ARG USE_PYTORCH_WORKER=ON
 ARG DEEPDETECT_DEFAULT_MODELS=true
 
 # Install build dependencies
@@ -156,6 +157,16 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libtcmalloc-minimal4 \
     libomp-dev \
     libomp5
+
+# Worker runtime and SDK from the same revision as the native server.
+ARG USE_PYTORCH_WORKER=ON
+
+RUN if [ "$USE_PYTORCH_WORKER" = "ON" ]; then \
+    apt-get update && apt-get install -y python3 python3-pip && \
+    python3 -m pip install --break-system-packages torch==2.12.1 torchvision==0.27.1 --index-url https://download.pytorch.org/whl/cpu && \
+    python3 -m pip install --break-system-packages numpy Pillow PyYAML; fi
+COPY --from=build /opt/deepdetect/bindings/python/deepdetect /opt/deepdetect/bindings/python/deepdetect
+ENV PYTHONPATH=/opt/deepdetect/bindings/python
 
 # Fix permissions
 RUN ln -sf /dev/stdout /var/log/deepdetect.log && \

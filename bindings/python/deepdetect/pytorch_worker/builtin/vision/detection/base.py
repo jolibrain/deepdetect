@@ -49,6 +49,7 @@ from .training import (
 
 
 class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
+    predict_inputs = ["paths", "connector"]
     worker_name = "detection-worker"
     task_name = "detection"
     debug_name = "detection-worker"
@@ -764,6 +765,27 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 self.model.eval()
         self.model.eval()
         results = []
+        if "tensor_batch" in request:
+            from ....prediction import prediction_batch
+
+            with prediction_batch(request, torch) as (batch, metas), torch.no_grad():
+                outputs = self.predict_detection_batch(
+                    self.model, [image.to(self.device) for image in batch], metas
+                )
+                if len(outputs) != len(metas):
+                    raise PredictionContractError("detection output count differs from batch")
+                for output, meta in zip(outputs, metas):
+                    output = dict(output)
+                    if output.get("boxes") is not None:
+                        boxes = output["boxes"].clone()
+                        boxes[:, [0, 2]] *= meta["original_width"] / meta["width"]
+                        boxes[:, [1, 3]] *= meta["original_height"] / meta["height"]
+                        output["boxes"] = boxes
+                    results.append(connector_prediction(
+                        meta["path"], output, confidence_threshold=threshold,
+                        best_bbox=best_bbox,
+                    ))
+            return {"results": results}
         with torch.no_grad():
             for image_path in data:
                 image_path = Path(str(image_path)).expanduser().resolve()
