@@ -4,6 +4,7 @@ import json
 import os
 import pty
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -289,7 +290,12 @@ def test_external_pytorch_image_profile_uses_python_path_loading():
     assert "data_source" not in training_parameters["mllib_parameters"]
 
 
-def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
+@pytest.mark.parametrize("use_sys_argv", [False, True])
+def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys, use_sys_argv):
+    weights, train, test = write_training_files(tmp_path)
+    tmp_path = tmp_path / "training space; literal"
+    tmp_path.mkdir()
+    monkeypatch.chdir(tmp_path)
     runtime = FakeRuntime()
     runtime.statuses = [
         {"status": "running", "body": {"measure": {"iteration": 1, "train_loss": 2.0}}},
@@ -302,41 +308,49 @@ def test_train_yolox_async_payload_and_manifest(monkeypatch, tmp_path, capsys):
         training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime)
     )
     monkeypatch.setattr(training.time, "sleep", lambda _: None)
-    weights, train, test = write_training_files(tmp_path)
     run_root = tmp_path / "runs"
 
-    code = cli.main(
-        [
-            "train",
-            "yolox",
-            "--train-data",
-            str(train),
-            "--test-data",
-            str(test),
-            "--weights",
-            str(weights),
-            "--repository",
-            str(tmp_path / "repo"),
-            "--job-dir",
-            str(run_root),
-            "--iterations",
-            "3",
-            "--batch-size",
-            "2",
-            "--iter-size",
-            "4",
-            "--width",
-            "320",
-            "--height",
-            "352",
-            "--gpuid",
-            "1,3",
-            "--run-name",
-            "ring-hand-yolox",
-        ]
-    )
+    command_args = [
+        "train",
+        "yolox",
+        "--train-data",
+        str(train),
+        "--test-data",
+        str(test),
+        "--weights",
+        str(weights),
+        "--repository",
+        str(tmp_path / "repo"),
+        "--job-dir",
+        str(run_root),
+        "--iterations",
+        "3",
+        "--batch-size",
+        "2",
+        "--iter-size",
+        "4",
+        "--width",
+        "320",
+        "--height",
+        "352",
+        "--gpuid",
+        "1,3",
+        "--run-name",
+        "ring-hand-yolox",
+    ]
+    if use_sys_argv:
+        monkeypatch.setattr(sys, "argv", ["deepdetect", *command_args])
+        code = cli.main()
+    else:
+        code = cli.main(command_args)
 
     assert code == 0
+    saved_command = (tmp_path / "repo" / "command.txt").read_text(encoding="utf-8")
+    assert shlex.split(saved_command) == [
+        "cd", str(tmp_path), "&&",
+        sys.executable, "-m", "deepdetect.cli.main", *command_args,
+    ]
+    assert not (run_root / "ring-hand-yolox" / "command.txt").exists()
     create = next(call for call in runtime.calls if call[0] == "create")
     assert create[2]["parameters"]["mllib"]["template"] == "yolox"
     assert create[2]["parameters"]["mllib"]["gpu"] is True
