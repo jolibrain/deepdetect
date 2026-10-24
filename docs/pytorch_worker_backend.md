@@ -1236,3 +1236,110 @@ python -m deepdetect.cli.main infer external-pytorch-segmentation image.png \
 ```
 
 Rebuild/install the native library or wheel after changing the C++ result path.
+## Batched connector prediction
+
+`parameters.mllib.predict_input` is independent of training `data_source`:
+`auto` (default) selects connector tensors when the configured worker advertises
+`predict_inputs: ["paths", "connector"]`; legacy workers fall back to their
+Python reader with one warning per service. `connector` requires support;
+`paths` explicitly selects the existing reader. Service settings can be overridden
+per prediction. Keypoint prediction retains its existing crop pipeline.
+
+For an external detection worker, create a normal supervised service with
+`mllib: "pytorch"`, `parameters.input` containing `connector: "image"`, positive
+`width` and `height`, and `rgb: true` when the model expects RGB. Set
+`parameters.mllib.entrypoint`, `class`, `nclasses` and, optionally,
+`net: {"test_batch_size": 2}`. Prediction example:
+
+```json
+{"service":"detector","parameters":{"mllib":{"predict_input":"connector","net":{"test_batch_size":2}},"output":{"bbox":true,"confidence_threshold":0.3}},"data":["/images/a.jpg","/images/b.jpg","/images/a.jpg"]}
+```
+
+The final partial batch is forwarded normally. The CLI's `--batch-size` controls
+both request grouping and `net.test_batch_size`. Input order and repeated paths
+are preserved. Input `ids` may supply explicit identities. Files, URLs and base64
+use the native image decoder. Normalization is `(pixel * scale - mean) / std`,
+with defaults `scale=1/255`, mean zero and std one. Mean/std accept one value or
+one per channel; std must be positive. Explicit service input settings and then
+request input overrides take precedence. Color conversion and interpolation
+follow the image connector settings (default BGR and cubic interpolation).
+Crop, aspect-ratio padding and variable-size scaling are rejected in connector
+prediction. To use an adapter's own preprocessing, request
+`parameters.mllib.predict_input: "paths"`.
+
+Tensor workers receive a single contiguous CPU float32 NCHW `TensorBatchRef` in
+`request.tensor_batch`, with empty `request.data`. Metadata arrays contain
+`paths`, `sample_ids`, `original_widths`, `original_heights`,
+`preprocessed_widths` and `preprocessed_heights`. No annotation files are needed.
+Use `deepdetect.pytorch_worker.prediction.prediction_batch` as a context manager;
+do not reopen images, normalize again, or retain tensor views after it exits.
+Detection base workers receive one `predict_detection_batch` call per batch and
+must return boxes in processed pixel coordinates; the base rescales them once.
+
+Semantic workers can use `semantic_prediction_results` to resize NHW class maps
+with nearest interpolation and optional named confidence maps with bilinear
+interpolation. The internal result is `{"task":"segmentation","results":[...]}`;
+each result has `uri`, flattened `vals`, original `imgsize`, and optional
+`confidences`. The bridge uses the native unsupervised output format. This does
+not add segmentation training support.
+
+Shared memory is the default transport and is released after each synchronous
+RPC, including failed requests. `connector_tensor_transport: "inline"` is
+available for tiny tests. Prediction does not make connector pull callbacks.
+
+### Regular Docker images and RT-DETRv4 verification
+
+CPU and GPU images enable the worker by default. Build with
+`--build-arg USE_PYTORCH_WORKER=OFF` to disable it. The final image includes the
+source-matched SDK, Python and the same pinned Torch/torchvision pair as the
+build. TensorRT and ARM image behavior is unchanged. Docker CI runs
+`tests/pytorch_prediction_http.py` in each regular image, exercising actual
+batched detection and semantic tensors over HTTP, in addition to `/info`.
+
+Model dependencies are separate. Build the optional extension with:
+
+```sh
+docker build -f docker/rtdetrv4-test.Dockerfile \
+  --build-arg DEEPDETECT_IMAGE=your-regular-deepdetect-image -t dd-rtdetrv4-test .
+docker run --rm --shm-size=1g -p 8080:8080 \
+  -v "$PWD/extern/pytorch_workers/rtdetrv4:/workers/rtdetrv4:ro" \
+  -v "$RTDETRV4_REPO:/upstream/RT-DETRv4:ro" \
+  -v "$MODEL_REPOSITORY:/models/rtdetrv4" \
+  -v "$IMAGE_DIRECTORY:/images:ro" dd-rtdetrv4-test
+```
+
+Use `/workers/rtdetrv4/worker.py` as entrypoint and set `rtdetrv4.repo_path` to
+`/upstream/RT-DETRv4`, `config_path` to `configs/rtv4/rtv4_hgnetv2_m_coco.yml`,
+`disable_teacher: true` and `pretrained_backbone: false`. The official M model
+uses `nclasses: 81` (80 foreground plus background), RGB and 640×640 input.
+The model repository must be writable by image user `dd`; adapter, upstream
+checkout and images can be read-only. Size `/dev/shm` for at least one float32
+batch plus overhead (N×3×640×640×4 bytes). Add `--gpus all` and `gpu: true` for
+GPU execution. The extension constrains dependencies to preserve the generic
+image's Torch packages. It does not bundle upstream code or weights.
+
+To prepare a compatible checkpoint in a **new disposable directory** using the
+adapter's loader and verify real HTTP model batches, run (server and test must
+see the same paths):
+
+```sh
+PYTHONPATH=bindings/python python3 tests/pytorch_rtdetr_http.py \
+  --url http://127.0.0.1:8080 \
+  --adapter extern/pytorch_workers/rtdetrv4/worker.py \
+  --upstream "$RTDETRV4_REPO" --checkpoint /weights/RTv4-M-hgnet.pth \
+  --image examples/python/cat.jpg --gpu
+```
+
+This does not train or modify the original checkpoint. It records actual model
+forward shapes, predictions and a numerical batch/single comparison in the
+printed disposable repository. Omit `--gpu` for CPU. Dependencies must already
+be installed; missing prerequisites fail the test instead of counting as a pass.
+
+The RT-DETRv4 extension also includes the HTTP acceptance scripts at
+`/opt/deepdetect/tests/`. To run inside that container, mount the official
+checkpoint read-only (for example `/weights/RTv4-M-hgnet.pth`) and invoke
+`python3 /opt/deepdetect/tests/pytorch_rtdetr_http.py` with the container paths
+above, `--image /images/example.jpg`, and `--output-directory` pointing to a
+new writable directory. The test creates its own temporary service and removes
+it afterward; checkpoint conversion and verification artifacts remain in that
+directory for review.

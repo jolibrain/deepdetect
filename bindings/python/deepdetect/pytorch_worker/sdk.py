@@ -283,10 +283,21 @@ def validate_prediction_result(result: Any) -> dict[str, Any]:
         if semantic:
             _validate_semantic_prediction(item, index, nclasses)
             continue
+        if result.get("task") == "segmentation":
+            _validate_connector_semantic_prediction(item, index)
+            continue
         _validate_prediction_objects(item, index)
         _validate_bboxes(item, index)
         _validate_masks(item, index)
         _validate_keypoints(item, index)
+        # APIData distinguishes integer and floating arrays at the C++ boundary.
+        item["probs"] = [float(value) for value in item["probs"]]
+        item["loss"] = float(
+            finite_scalar(item.get("loss", 0.0), "prediction loss", PredictionContractError)
+        )
+        for bbox in item.get("bboxes", []):
+            for key in ("xmin", "ymin", "xmax", "ymax"):
+                bbox[key] = float(bbox[key])
     return result
 
 
@@ -319,6 +330,34 @@ def _validate_semantic_prediction(item, index, nclasses):
             if not 0 <= value <= 1:
                 raise PredictionContractError(f"{prefix} confidence outside [0, 1]")
         # The C++ array connector consumes floating-point confidence vectors.
+        confidences[key] = [float(value) for value in values]
+
+
+def _validate_connector_semantic_prediction(item: dict[str, Any], index: int) -> None:
+    if not isinstance(item.get("uri"), str):
+        raise PredictionContractError("semantic prediction requires uri")
+    size = item.get("imgsize")
+    if not isinstance(size, dict) or any(
+        type(size.get(key)) is not int or size[key] <= 0 for key in ("width", "height")
+    ):
+        raise PredictionContractError("semantic imgsize must contain positive dimensions")
+    count = size["width"] * size["height"]
+    vals = item.get("vals")
+    if not isinstance(vals, list) or len(vals) != count:
+        raise PredictionContractError("semantic vals must match original image size")
+    for value in vals:
+        value = finite_scalar(value, "semantic class", PredictionContractError)
+        if value < 0 or value != int(value):
+            raise PredictionContractError("semantic classes must be nonnegative integers")
+    item["vals"] = [float(value) for value in vals]
+    confidences = item.get("confidences", {})
+    if not isinstance(confidences, dict):
+        raise PredictionContractError("semantic confidences must be an object")
+    for key, values in confidences.items():
+        if not isinstance(values, list) or len(values) != count:
+            raise PredictionContractError("semantic confidences must match original image size")
+        for value in values:
+            finite_scalar(value, "semantic confidence", PredictionContractError)
         confidences[key] = [float(value) for value in values]
 
 

@@ -290,6 +290,10 @@ def main() -> None:
         )
 
     test_env = os.environ.copy()
+    # These tests train tiny models; large host CPU pools can make their
+    # threaded forwards slower and contend with concurrent wheel CI jobs.
+    test_env["OMP_NUM_THREADS"] = "1"
+    test_env["MKL_NUM_THREADS"] = "1"
     prepend_env_path(test_env, "LD_LIBRARY_PATH", native_package_dir)
     print(f"Using LD_LIBRARY_PATH={test_env['LD_LIBRARY_PATH']}", flush=True)
     if fixtures_dir is not None:

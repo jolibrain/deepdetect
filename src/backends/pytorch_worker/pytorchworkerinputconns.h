@@ -38,8 +38,138 @@ namespace dd
     }
 
     ImgPytorchInputFileConn(const ImgPytorchInputFileConn &other)
-        : ImgInputFileConn(other)
+        : ImgInputFileConn(other), _prediction_input(other._prediction_input)
     {
+    }
+
+    void init(const APIData &ad)
+    {
+      _prediction_input = ad;
+      ImgInputFileConn::init(ad);
+    }
+
+    // Each request owns its decoder and transport; training state is
+    // untouched.
+    APIData prediction_input(const APIData &ad) const
+    {
+      APIData input = _prediction_input;
+      if (ad.has("parameters") && ad.getobj("parameters").has("input"))
+        {
+          auto overrides = ad.getobj("parameters").getobj("input");
+          for (const auto &key : overrides.list_keys())
+            input.add(key, overrides.get(key));
+        }
+      return input;
+    }
+
+    APIData prediction_tensor_batch(const APIData &ad, size_t offset)
+    {
+      cleanup_inline_detection_pull_session();
+      const auto input = ad.getobj("parameters").getobj("input");
+      if (!input.has("width") || !input.has("height")
+          || input.get("width").get<int>() <= 0
+          || input.get("height").get<int>() <= 0)
+        throw InputConnectorBadParamException(
+            "connector prediction requires positive input width and height");
+      for (const auto &key : { "crop_width", "crop_height", "crop_size",
+                               "scale_min", "scale_max" })
+        if (input.has(key) && input.get(key).get<int>() != 0)
+          throw InputConnectorBadParamException(
+              "connector prediction does not support " + std::string(key));
+      for (const auto &key : { "scaled", "aspect_ratio_pad", "cuda" })
+        if (input.has(key) && input.get(key).get<bool>())
+          throw InputConnectorBadParamException(
+              "connector prediction does not support " + std::string(key));
+      _scale = 1.0 / 255.0;
+      fillup_parameters(input);
+      configure_pull_transport(ad);
+      const auto data = ad.get("data").get<std::vector<std::string>>();
+      std::vector<std::string> ids;
+      if (ad.has("ids"))
+        ids = ad.get("ids").get<std::vector<std::string>>();
+      if (!ids.empty() && ids.size() != data.size())
+        throw InputConnectorBadParamException("ids must match image count");
+      std::vector<double> values;
+      std::vector<int> sample_ids, widths, heights, original_widths,
+          original_heights;
+      std::vector<std::string> paths;
+      int channels = 0;
+      for (size_t i = 0; i < data.size(); ++i)
+        {
+          // Use the normal connector reader sequentially to retain
+          // association, including duplicate paths, URL inputs and base64
+          // inputs.
+          std::error_code path_error;
+          if (std::filesystem::is_directory(data[i], path_error))
+            throw InputConnectorBadParamException(
+                "connector prediction requires image inputs, not directories");
+          DataEl<DDImg> element(this->_input_timeout);
+          copy_parameters_to(element._ctype);
+          if (element.read_element(data[i], this->_logger)
+              || element._ctype._imgs.size() != 1)
+            throw InputConnectorBadParamException(
+                "connector prediction requires one readable image per input");
+          const auto &image = element._ctype._imgs[0];
+          if (image.depth() != CV_8U || image.cols != _width
+              || image.rows != _height
+              || (channels && channels != image.channels()))
+            throw InputConnectorBadParamException(
+                "connector prediction requires common 8-bit image dimensions");
+          channels = image.channels();
+          if ((!_mean.empty() && _mean.size() != 1
+               && _mean.size() != static_cast<size_t>(channels))
+              || (!_std.empty() && _std.size() != 1
+                  && _std.size() != static_cast<size_t>(channels))
+              || !std::isfinite(_scale))
+            throw InputConnectorBadParamException(
+                "invalid prediction normalization");
+          for (int c = 0; c < channels; ++c)
+            {
+              const double mean
+                  = _mean.empty() ? 0 : _mean[_mean.size() == 1 ? 0 : c];
+              const double std
+                  = _std.empty() ? 1 : _std[_std.size() == 1 ? 0 : c];
+              if (!std::isfinite(mean) || !std::isfinite(std) || std <= 0)
+                throw InputConnectorBadParamException(
+                    "invalid prediction mean/std");
+              for (int y = 0; y < image.rows; ++y)
+                for (int x = 0; x < image.cols; ++x)
+                  {
+                    const double value
+                        = (image.ptr<unsigned char>(y)[x * channels + c]
+                               * _scale
+                           - mean)
+                          / std;
+                    if (!std::isfinite(static_cast<float>(value)))
+                      throw InputConnectorBadParamException(
+                          "prediction normalization overflows float32");
+                    values.push_back(value);
+                  }
+            }
+          sample_ids.push_back(static_cast<int>(offset + i));
+          paths.push_back(!ids.empty()          ? ids[i]
+                          : element._ctype._b64 ? std::to_string(offset + i)
+                                                : data[i]);
+          original_heights.push_back(element._ctype._imgs_size[0].first);
+          original_widths.push_back(element._ctype._imgs_size[0].second);
+          widths.push_back(_width);
+          heights.push_back(_height);
+        }
+      TensorWriteStats stats;
+      APIData batch;
+      batch.add("kind", std::string("tensor_batch"));
+      batch.add("inputs", std::vector<APIData>{ pull_image_tensor_ref(
+                              values, static_cast<int>(data.size()), channels,
+                              _height, _width, "prediction", stats) });
+      APIData meta;
+      meta.add("sample_ids", sample_ids);
+      meta.add("paths", paths);
+      meta.add("original_widths", original_widths);
+      meta.add("original_heights", original_heights);
+      meta.add("preprocessed_widths", widths);
+      meta.add("preprocessed_heights", heights);
+      batch.add("meta", meta);
+      return batch;
     }
 
     int width() const
@@ -2136,6 +2266,7 @@ namespace dd
       return std::filesystem::absolute(path);
     }
 
+    APIData _prediction_input;
     std::vector<DetectionPair> _pull_train;
     std::vector<std::vector<DetectionPair>> _pull_tests;
     std::vector<PoseRecord> _pull_pose_train;

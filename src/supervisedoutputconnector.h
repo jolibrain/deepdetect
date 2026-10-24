@@ -184,7 +184,8 @@ namespace dd
      * \brief add prediction result to supervised connector output
      * @param vrad vector of data objects
      */
-    inline void add_results(const std::vector<APIData> &vrad)
+    inline void add_results(const std::vector<APIData> &vrad,
+                            bool preserve_duplicates = false)
     {
       std::unordered_map<std::string, int>::iterator hit;
       for (APIData ad : vrad)
@@ -221,10 +222,12 @@ namespace dd
 
           if (ad.has("masks"))
             masks = ad.getv("masks");
-          if ((hit = _vcats.find(uri)) == _vcats.end())
+          const std::string key
+              = preserve_duplicates ? std::to_string(_vvcats.size()) : uri;
+          if ((hit = _vcats.find(key)) == _vcats.end())
             {
               auto resit = _vcats.insert(
-                  std::pair<std::string, int>(uri, _vvcats.size()));
+                  std::pair<std::string, int>(key, _vvcats.size()));
               sup_result supres(uri, loss);
 
 #ifdef USE_SIMSEARCH

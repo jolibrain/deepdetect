@@ -132,7 +132,8 @@ namespace dd
       _vvres = std::move(results);
     }
 
-    void add_results(const std::vector<APIData> &vrad)
+    void add_results(const std::vector<APIData> &vrad,
+                     bool preserve_duplicates = false)
     {
       std::unordered_map<std::string, int>::iterator hit;
       for (APIData ad : vrad)
@@ -150,9 +151,11 @@ namespace dd
             {
               vals = ad.get("vals").get<std::vector<double>>();
             }
-          if ((hit = _vres.find(uri)) == _vres.end())
+          const std::string key
+              = preserve_duplicates ? std::to_string(_vvres.size()) : uri;
+          if ((hit = _vres.find(key)) == _vres.end())
             {
-              _vres.insert(std::pair<std::string, int>(uri, _vvres.size()));
+              _vres.insert(std::pair<std::string, int>(key, _vvres.size()));
               UnsupervisedExtra extra;
 
               if (ad.has("imgsize"))

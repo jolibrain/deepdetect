@@ -118,6 +118,8 @@ namespace dd
           std::move(other)),
         _worker(std::move(other._worker)),
         _mllib_params(std::move(other._mllib_params)),
+        _tensor_prediction(other._tensor_prediction),
+        _prediction_fallback_warned(other._prediction_fallback_warned),
         _nclasses(other._nclasses)
   {
     this->_libname = "pytorch";
@@ -168,7 +170,14 @@ namespace dd
     params.add("repository", this->_mlmodel._repo);
     params.add("mllib", ad);
     debug_log("configure_worker: sending configure");
-    _worker->request("configure", params);
+    auto configured = _worker->request("configure", params).getobj("result");
+    if (configured.has("predict_inputs"))
+      {
+        const auto modes
+            = configured.get("predict_inputs").get<std::vector<std::string>>();
+        _tensor_prediction = std::find(modes.begin(), modes.end(), "connector")
+                             != modes.end();
+      }
     debug_log("configure_worker: configured");
   }
 
@@ -580,28 +589,118 @@ namespace dd
       throw MLLibInternalException("pytorch worker is not configured");
 
     std::lock_guard<std::mutex> lock(_worker_mutex);
-    APIData request = ad_in;
-    APIData prepared = this->_inputc.keypoint_prediction_tensor_batch(
-        ad_in, connector_effective_mllib(ad_in));
-    std::string prediction_batch_id;
-    if (!prepared.empty())
-      {
-        request.add(
-            "pose_sources",
-            prepared.get("source_paths").get<std::vector<std::string>>());
-        if (!prepared.get("empty").get<bool>())
-          {
-            prediction_batch_id = prepared.get("batch_id").get<std::string>();
-            request.add("tensor_batch", prepared.getobj("batch"));
-          }
-      }
+    const APIData mllib = connector_effective_mllib(ad_in);
+    const std::string mode
+        = mllib.has("predict_input")
+              ? mllib.get("predict_input").get<std::string>()
+              : "auto";
+    if (mode != "auto" && mode != "connector" && mode != "paths")
+      throw MLLibBadParamException(
+          "predict_input must be auto, connector or paths");
+    int batch_size = 1;
+    if (mllib.has("net") && mllib.getobj("net").has("test_batch_size"))
+      batch_size = mllib.getobj("net").get("test_batch_size").get<int>();
+    if (batch_size <= 0)
+      throw MLLibBadParamException("net.test_batch_size must be positive");
+    const bool keypoint = this->_mltype == "keypoint"
+                          || this->_mltype == "keypoints"
+                          || this->_mltype == "pose";
+    if (mode == "connector" && !_tensor_prediction && !keypoint)
+      throw MLLibBadParamException(
+          "worker does not support connector prediction input");
     APIData response;
-    try
+    if (!keypoint && mode != "paths" && _tensor_prediction)
       {
-        response = _worker->request("predict", request_params(request));
+        TInputConnectorStrategy input;
+        input._logger = this->_logger;
+        APIData parameters = ad_in.getobj("parameters");
+        parameters.add("input", this->_inputc.prediction_input(ad_in));
+        parameters.add("mllib", mllib);
+        const auto data = ad_in.get("data").get<std::vector<std::string>>();
+        std::vector<std::string> ids;
+        if (ad_in.has("ids"))
+          ids = ad_in.get("ids").get<std::vector<std::string>>();
+        if (!ids.empty() && ids.size() != data.size())
+          throw MLLibBadParamException("ids must match image count");
+        std::vector<APIData> all_results;
+        APIData combined;
+        for (size_t offset = 0; offset < data.size(); offset += batch_size)
+          {
+            const size_t end = std::min(data.size(), offset + batch_size);
+            APIData request = ad_in;
+            request.add("parameters", parameters);
+            request.add("data", std::vector<std::string>(data.begin() + offset,
+                                                         data.begin() + end));
+            if (!ids.empty())
+              request.add("ids", std::vector<std::string>(ids.begin() + offset,
+                                                          ids.begin() + end));
+            APIData batch = input.prediction_tensor_batch(request, offset);
+            request.add("tensor_batch", batch);
+            request.add("data", std::vector<std::string>());
+            APIData reply
+                = _worker->request("predict", request_params(request))
+                      .getobj("result");
+            input.cleanup_inline_detection_pull_session();
+            std::vector<APIData> results = reply.getv("results");
+            const auto paths = batch.getobj("meta")
+                                   .get("paths")
+                                   .get<std::vector<std::string>>();
+            if (results.size() != paths.size())
+              throw MLLibInternalException(
+                  "worker prediction result count differs from batch");
+            for (size_t i = 0; i < results.size(); ++i)
+              if (!results[i].has("uri")
+                  || results[i].get("uri").get<std::string>() != paths[i])
+                throw MLLibInternalException(
+                    "worker prediction sample association mismatch");
+            all_results.insert(all_results.end(), results.begin(),
+                               results.end());
+            combined = reply;
+          }
+        combined.add("results", all_results);
+        response.add("result", combined);
       }
-    catch (...)
+    else
       {
+        if (!keypoint && mode == "auto" && !_prediction_fallback_warned)
+          {
+            this->_logger->warn("worker lacks connector prediction support; "
+                                "using Python paths reader");
+            _prediction_fallback_warned = true;
+          }
+        APIData request = ad_in;
+        APIData prepared = this->_inputc.keypoint_prediction_tensor_batch(
+            ad_in, connector_effective_mllib(ad_in));
+        std::string prediction_batch_id;
+        if (!prepared.empty())
+          {
+            request.add(
+                "pose_sources",
+                prepared.get("source_paths").get<std::vector<std::string>>());
+            if (!prepared.get("empty").get<bool>())
+              {
+                prediction_batch_id
+                    = prepared.get("batch_id").get<std::string>();
+                request.add("tensor_batch", prepared.getobj("batch"));
+              }
+          }
+
+        try
+          {
+            response = _worker->request("predict", request_params(request));
+          }
+        catch (...)
+          {
+            if (!prediction_batch_id.empty())
+              {
+                APIData done;
+                done.add("batch_id", prediction_batch_id);
+                this->_inputc.connector_batch_done(done);
+              }
+            if (!prepared.empty())
+              this->_inputc.cleanup_inline_detection_pull_session();
+            throw;
+          }
         if (!prediction_batch_id.empty())
           {
             APIData done;
@@ -610,16 +709,7 @@ namespace dd
           }
         if (!prepared.empty())
           this->_inputc.cleanup_inline_detection_pull_session();
-        throw;
       }
-    if (!prediction_batch_id.empty())
-      {
-        APIData done;
-        done.add("batch_id", prediction_batch_id);
-        this->_inputc.connector_batch_done(done);
-      }
-    if (!prepared.empty())
-      this->_inputc.cleanup_inline_detection_pull_session();
     APIData result = response.getobj("result");
     if (result.has("model_stats"))
       {
@@ -680,18 +770,36 @@ namespace dd
               item.add("vals", std::vector<double>(ids.begin(), ids.end()));
             }
         UnsupervisedOutput outputc;
-        outputc.add_results(results);
+        outputc.add_results(results, true);
         return outputc.finalize(output_params, config,
                                 static_cast<MLModel *>(&this->_mlmodel));
       }
     TOutputConnectorStrategy outputc(this->_outputc);
-    outputc.add_results(results);
     config._has_bbox = output_params->bbox;
     config._has_keypoints = output_params->keypoints;
     config._has_mask = output_params->image;
     config._regression = output_params->regression;
-    return outputc.finalize(output_params, config,
-                            static_cast<MLModel *>(&this->_mlmodel));
+    oatpp::Object<DTO::PredictBody> body;
+    if (result.has("task")
+        && result.get("task").get<std::string>() == "segmentation")
+      {
+        UnsupervisedOutput semantic;
+        semantic._logger = this->_logger;
+        semantic.add_results(results, true);
+        body = semantic.finalize(output_params, config,
+                                 static_cast<MLModel *>(&this->_mlmodel));
+      }
+    else
+      {
+        // APIData omits empty JSON arrays; retain empty detections as samples.
+        for (auto &sample : results)
+          if (!sample.has("probs"))
+            sample.add("probs", std::vector<double>());
+        outputc.add_results(results, true);
+        body = outputc.finalize(output_params, config,
+                                static_cast<MLModel *>(&this->_mlmodel));
+      }
+    return body;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,

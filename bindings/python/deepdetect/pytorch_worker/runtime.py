@@ -155,9 +155,20 @@ class WorkerRuntime:
             result = self.worker.configure(context)
         else:
             result = self.worker.configure(dict(params))
-        return validate_optional_result_dict(
+        result = validate_optional_result_dict(
             result, WorkerContractError, "configure result"
         )
+        modes = result.get(
+            "predict_inputs", getattr(self.worker, "predict_inputs", ["paths"])
+        )
+        if (
+            not isinstance(modes, (list, tuple))
+            or not modes
+            or any(mode not in ("paths", "connector") for mode in modes)
+        ):
+            raise WorkerContractError("predict_inputs must list paths and/or connector")
+        result.setdefault("predict_inputs", list(modes))
+        return result
 
     def _predict(self, params: dict[str, Any]) -> dict[str, Any]:
         result = validate_prediction_result(self.worker.predict(params))

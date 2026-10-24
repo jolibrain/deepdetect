@@ -231,6 +231,13 @@ for name in "${NAMES[@]}"; do
             sleep 10  # Wait dd start
 
             curl -s --head --request GET http://localhost:$PORT/info | head -1 | grep 'HTTP/1.1 200'
+            if [ "$arch" = "cpu" ] || [ "$arch" = "gpu" ]; then
+                docker cp tests/pytorch_prediction_worker.py "$CONTAINER_NAME:/tmp/pytorch_prediction_worker.py"
+                docker cp tests/pytorch_prediction_http.py "$CONTAINER_NAME:/tmp/pytorch_prediction_http.py"
+                worker_test_args=()
+                if [ "$arch" = "gpu" ]; then worker_test_args+=(--gpu); fi
+                docker exec "$CONTAINER_NAME" python3 /tmp/pytorch_prediction_http.py "${worker_test_args[@]}"
+            fi
             trap - EXIT
 
             docker stop $CONTAINER_NAME

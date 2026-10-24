@@ -57,6 +57,8 @@ namespace dd
 
     std::shared_ptr<PytorchWorkerSupervisor> _worker;
     APIData _mllib_params;
+    bool _tensor_prediction = false;
+    bool _prediction_fallback_warned = false;
     unsigned int _nclasses = 1;
     mutable std::mutex _worker_mutex;
   };

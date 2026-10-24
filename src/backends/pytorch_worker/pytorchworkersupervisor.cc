@@ -408,7 +408,10 @@ namespace dd
     int id = -1;
     send_request(method, params, id);
     std::string message;
-    while (read_message(message, timeout_ms))
+    // Queued events belong to the caller. Reading them again here would
+    // requeue the same event forever while the RPC reply waits on the socket.
+    read_worker_stderr();
+    while (read_frame(message, timeout_ms))
       {
         if (message_id(message) == id)
           {

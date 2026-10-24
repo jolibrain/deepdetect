@@ -367,7 +367,7 @@ def test_runtime_routes_training_thread_connector_request():
             {"repository": "/tmp/dd-test", "mllib": {"module": module_name}},
         )
         configure_response = read_until(host_sock, message_id=1)
-        assert configure_response["result"] == {}
+        assert configure_response["result"] == {"predict_inputs": ["paths"]}
 
         request(host_sock, 2, "train_start", {"request": {"data": []}})
         train_start_response = read_until(host_sock, message_id=2)
@@ -1701,6 +1701,8 @@ def test_runtime_loads_reference_detector_from_mllib_module(tmp_path):
         assert read_until(server, message_id=2)["result"]["status"] == "started"
         metrics = set()
         saw_test_predictions = False
+        # Real training needs a separate budget from the five-second RPC ack.
+        server.settimeout(60.0)
         while True:
             message = read_frame(server)
             if message.get("event") == "metric":
@@ -1814,6 +1816,8 @@ def test_runtime_trains_reference_detector_from_tensor_batches(tmp_path):
         assert read_until(server, message_id=2)["result"]["status"] == "started"
         metrics = set()
         saw_test_predictions = False
+        # Real training needs a separate budget from the five-second RPC ack.
+        server.settimeout(60.0)
         while True:
             message = read_frame(server)
             if message.get("event") == "metric":
@@ -2066,7 +2070,7 @@ def test_runtime_maps_non_finite_metric_to_contract_error():
     thread.start()
     try:
         request(server, 1, "configure", {"mllib": {"module": module_name}})
-        assert read_until(server, message_id=1)["result"] == {}
+        assert read_until(server, message_id=1)["result"] == {"predict_inputs": ["paths"]}
         request(server, 2, "train_start", {"request": {"parameters": {}}})
         assert read_until(server, message_id=2)["result"]["status"] == "started"
         failure = read_until(server, event="failure")
@@ -2152,7 +2156,7 @@ def test_runtime_loads_external_worker_from_entrypoint(tmp_path):
             {"mllib": {"entrypoint": str(entrypoint), "class": "DeepDetectWorker"}},
         )
         response = read_until(server, message_id=1)
-        assert response["result"] == {"worker": "external-file-worker"}
+        assert response["result"] == {"worker": "external-file-worker", "predict_inputs": ["paths"]}
     finally:
         request(server, 99, "shutdown")
         read_until(server, message_id=99)
@@ -2227,7 +2231,7 @@ def test_runtime_reports_generic_training_exception_as_training_error():
     thread.start()
     try:
         request(server, 1, "configure", {"mllib": {"module": module_name}})
-        assert read_until(server, message_id=1)["result"] == {}
+        assert read_until(server, message_id=1)["result"] == {"predict_inputs": ["paths"]}
         request(server, 2, "train_start", {"request": {"parameters": {}}})
         assert read_until(server, message_id=2)["result"]["status"] == "started"
         failure = read_until(server, event="failure")
@@ -2263,7 +2267,7 @@ def test_runtime_cooperative_cancellation_returns_cancelled_result():
     thread.start()
     try:
         request(server, 1, "configure", {"mllib": {"module": module_name}})
-        assert read_until(server, message_id=1)["result"] == {}
+        assert read_until(server, message_id=1)["result"] == {"predict_inputs": ["paths"]}
         request(server, 2, "train_start", {"request": {"parameters": {}}})
         assert read_until(server, message_id=2)["result"]["status"] == "started"
         request(server, 3, "train_cancel")
@@ -2294,7 +2298,7 @@ def test_runtime_rejects_malformed_predictions():
     thread.start()
     try:
         request(server, 1, "configure", {"mllib": {"module": module_name}})
-        assert read_until(server, message_id=1)["result"] == {}
+        assert read_until(server, message_id=1)["result"] == {"predict_inputs": ["paths"]}
         request(server, 2, "predict", {"request": {"data": ["image.jpg"]}})
         response = read_until(server, message_id=2)
         assert response["error"]["category"] == "prediction_contract_error"
