@@ -291,7 +291,48 @@ def segmentation_overlay_images(
     if not original_size:
         image = image.resize((width, height))
     overlay = Image.alpha_composite(image, color_mask).convert("RGB")
+    # Worker validation windows can include ignored right/bottom padding. This
+    # is display metadata, not a predicted class: preserve the raw class map.
+    source = prediction.get("source")
+    extent = source.get("valid_extent") if isinstance(source, dict) else None
+    if extent is not None:
+        if (not isinstance(extent, (list, tuple)) or len(extent) != 2
+                or any(type(value) is not int for value in extent)
+                or not 0 <= extent[0] <= width or not 0 <= extent[1] <= height):
+            raise ValueError("segmentation source.valid_extent must fit prediction dimensions")
+        valid = Image.new("L", (width, height), 0)
+        if extent[0] and extent[1]:
+            ImageDraw.Draw(valid).rectangle((0, 0, extent[0]-1, extent[1]-1), fill=255)
+        if valid.size != overlay.size:
+            valid = valid.resize(overlay.size, Image.Resampling.NEAREST)
+        overlay = Image.composite(overlay, Image.new("RGB", overlay.size, (100, 100, 100)), valid)
     return mask, overlay
+
+
+
+def segmentation_ground_truth_images(
+    image_path: Path, prediction: dict[str, Any], *, original_size: bool = False,
+) -> tuple[Image.Image, Image.Image]:
+    """Prediction / green target overlays; ignored target pixels are gray in both."""
+    target = prediction["ground_truth"]
+    if not isinstance(target, dict) or target.get("imgsize") != prediction.get("imgsize"):
+        raise ValueError("ground truth dimensions must match the segmentation prediction")
+    width, height = int(target["imgsize"]["width"]), int(target["imgsize"]["height"])
+    values = target.get("vals", [])
+    ignore = target.get("ignore_label", 255)
+    if (type(ignore) is not int or len(values) != width * height
+            or any(type(v) is not int or (v < 0 and v != ignore) for v in values)):
+        raise ValueError("invalid segmentation ground truth labels")
+    _, predicted = segmentation_overlay_images(image_path, prediction, original_size=original_size)
+    image = Image.open(image_path).convert("RGB").resize(predicted.size)
+    valid = Image.frombytes("L", (width, height), bytes(0 if v == ignore else 255 for v in values))
+    foreground = Image.frombytes("L", (width, height), bytes(120 if v != ignore and v > 0 else 0 for v in values))
+    if valid.size != image.size:
+        valid = valid.resize(image.size, Image.Resampling.NEAREST)
+        foreground = foreground.resize(image.size, Image.Resampling.NEAREST)
+    colored = Image.composite(Image.new("RGB", image.size, (40, 220, 40)), image, foreground)
+    gray = Image.new("RGB", image.size, (100, 100, 100))
+    return Image.composite(predicted, gray, valid), Image.composite(colored, gray, valid)
 
 
 def _segmentation_palette() -> list[int]:
