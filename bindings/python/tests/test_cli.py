@@ -3768,3 +3768,92 @@ def test_inspect_models_is_discoverable(capsys):
         if line.strip()
     }
     assert {"yolox", "segformer"} <= names
+
+
+@pytest.mark.parametrize("original_size", [False, True])
+def test_segmentation_padding_is_gray_without_changing_predictions(tmp_path, original_size):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (8, 8), "white").save(image)
+    prediction = {"imgsize": {"width": 4, "height": 4}, "vals": [1]*16,
+                  "source": {"valid_extent": [2, 3]}}
+    mask, overlay = segmentation_overlay_images(image, prediction, original_size=original_size)
+    scale = 2 if original_size else 1
+    assert set(mask.tobytes()) == {1}
+    assert prediction["vals"] == [1]*16
+    assert overlay.getpixel((0, 0)) != (100, 100, 100)
+    assert overlay.getpixel((2*scale-1, 3*scale-1)) != (100, 100, 100)
+    assert overlay.getpixel((2*scale, 0)) == (100, 100, 100)
+    assert overlay.getpixel((0, 3*scale)) == (100, 100, 100)
+
+
+@pytest.mark.parametrize("extent", [[0, 0], [4, 4], [0, 4]])
+def test_segmentation_padding_empty_and_full_valid_region(tmp_path, extent):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (4, 4), "white").save(image)
+    _, overlay = segmentation_overlay_images(image, {
+        "imgsize": {"width": 4, "height": 4}, "vals": [1]*16,
+        "source": {"valid_extent": extent}})
+    assert (overlay.getpixel((0, 0)) == (100, 100, 100)) == (0 in extent)
+
+
+@pytest.mark.parametrize("extent", [[5, 4], [-1, 2], [1.5, 2], [2], [True, 2]])
+def test_segmentation_padding_invalid_extent(tmp_path, extent):
+    image = tmp_path / "image.png"
+    Image.new("RGB", (4, 4), "white").save(image)
+    with pytest.raises(ValueError, match="valid_extent"):
+        segmentation_overlay_images(image, {"imgsize": {"width": 4, "height": 4},
+            "vals": [1]*16, "source": {"valid_extent": extent}})
+
+
+@pytest.mark.parametrize('original_size', [False, True])
+def test_segmentation_ground_truth_green_and_ignore(tmp_path, original_size):
+    from deepdetect.cli.visualize import segmentation_ground_truth_images
+    image = tmp_path/'image.png'
+    Image.new('RGB',(8,8),'white').save(image)
+    prediction = {'imgsize':{'width':2,'height':2}, 'vals':[1,1,1,1],
+                  'ground_truth':{'imgsize':{'width':2,'height':2}, 'vals':[0,1,255,1], 'ignore_label':255}}
+    before = json.dumps(prediction)
+    pred, target = segmentation_ground_truth_images(image,prediction,original_size=original_size)
+    scale=4 if original_size else 1
+    assert target.getpixel((0,0))==(255,255,255)
+    green=target.getpixel((scale,0)); assert green[1]>green[0] and green[1]>green[2]
+    assert pred.getpixel((0,scale))==target.getpixel((0,scale))==(100,100,100)
+    assert json.dumps(prediction)==before
+
+
+def test_segmentation_visdom_ground_truth_second_row_and_artifact(tmp_path):
+    import numpy as np
+    calls=[]
+    class Client:
+        def images(self, tensor, **kw): calls.append((tensor,kw))
+    sink=VisdomMetricSink(env='test',server='http://localhost',port=8097,base_url='/',client=Client())
+    paths=[]
+    for i in range(2):
+        p=tmp_path/f'image{i}.png';Image.new('RGB',(4,4),(150+i*50,)*3).save(p);paths.append(p)
+    v=results.TrainingResultVisualizer(model='external-pytorch-segmentation',task='segmentation',
+        samples=[[results.TestResultSample(i,p) for i,p in enumerate(paths)]],sample_count=2,sample_seed=1,
+        image_size=(4,4),best_bbox=None,artifact_dir=tmp_path/'visdom-results',artifact_index_root=tmp_path,
+        visdom_sink=sink,warning_callback=lambda *a:pytest.fail(str(a)),disable_failed=False)
+    assert v.train_output_parameters()['test_predictions']['ground_truth'] is True
+    predictions=[{'index':i,'imgsize':{'width':4,'height':4},'vals':[0]*16,
+                  'ground_truth':{'imgsize':{'width':4,'height':4},'vals':[i]*16,'ignore_label':255}}
+                 for i in (1,0)]
+    assert v._write({'test_predictions':{'test0':{'samples':predictions}}},50)
+    tensor,kw=calls[0]
+    assert tensor.shape==(4,3,4,4) and kw['nrow']==2
+    assert 'bottom: ground truth' in kw['opts']['title']
+    assert tensor[0,0,0,0]==200 and tensor[1,0,0,0]==150
+    assert tensor[2,1,0,0]>tensor[2,0,0,0]  # target for source 1 stays first
+    assert np.array_equal(tensor[3],tensor[1])
+    metadata=json.loads((tmp_path/'visdom-results/iteration-000050/test0/sample-000001.json').read_text())
+    assert Path(metadata['ground_truth_overlay']).is_file()
+    assert metadata['prediction']==predictions[0]
+
+
+def test_bad_ground_truth_keeps_prediction_display(tmp_path):
+    from deepdetect.cli.visualize import segmentation_ground_truth_images
+    p=tmp_path/'image.png';Image.new('RGB',(2,2),'white').save(p)
+    prediction={'imgsize':{'width':2,'height':2},'vals':[1]*4,
+                'ground_truth':{'imgsize':{'width':3,'height':2},'vals':[1]*6}}
+    with pytest.raises(ValueError,match='dimensions'):
+        segmentation_ground_truth_images(p,prediction)

@@ -498,3 +498,20 @@ explicit RGB `color_mapping`. Existing segmentation profiles retain their
 previous default label range. Model loading, losses and preprocessing belong
 to the external worker; CLI run manifests, JSONL metrics, masks/overlays, and
 saved validation image/JSON pairs use the normal segmentation flows.
+
+
+### Segmentation ground-truth comparison rows
+
+The training visualizer requests `test_predictions.ground_truth=true` for
+segmentation. Workers may attach a `ground_truth` object to each sampled result:
+`imgsize` matching the prediction, flattened integer `vals`, and `ignore_label`
+(default 255). These must be the targets actually evaluated, after preprocessing.
+Optional `mask_convention` metadata distinguishes support/dilated targets.
+
+When every displayed sample supplies ground truth, Visdom uses two aligned rows:
+predictions above, ground truth in green below. Ignored target pixels are gray in
+both rows. Ground-truth overlays are saved as `sample-NNNNNN-ground-truth.png`,
+linked from each sample JSON's `ground_truth_overlay` field; the exact target
+values remain in the JSON prediction payload. Existing prediction masks and
+values are unchanged. Backends without this optional payload retain their
+prediction-only display; the CLI does not guess targets from source annotations.

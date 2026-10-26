@@ -15,6 +15,7 @@ from .visualize import (
     detection_overlay_image,
     keypoint_overlay_image,
     segmentation_overlay_images,
+    segmentation_ground_truth_images,
 )
 
 VISDOM_RESULT_MAX_SIDE = 512
@@ -63,6 +64,8 @@ class TrainingResultVisualizer:
                 "sample_seed": self.sample_seed,
             }
         }
+        if self.task == "segmentation":
+            parameters["test_predictions"]["ground_truth"] = True
         if self.best_bbox is not None:
             parameters["test_predictions"]["best_bbox"] = self.best_bbox
         return parameters
@@ -137,6 +140,7 @@ class TrainingResultVisualizer:
                 continue
             sample_by_index = {sample.index: sample.path for sample in samples}
             images = []
+            ground_truth_images = {}
             rendered: list[tuple[int, Path, dict[str, Any], np.ndarray]] = []
             for prediction in predictions:
                 if not isinstance(prediction, dict):
@@ -154,6 +158,15 @@ class TrainingResultVisualizer:
                     prediction,
                     image_size=self.image_size,
                 )
+                if self.task == "segmentation" and "ground_truth" in prediction:
+                    try:
+                        pred_overlay, target_overlay = segmentation_ground_truth_images(
+                            image_path, prediction, original_size=True,
+                        )
+                        image = np.asarray(pred_overlay, dtype=np.uint8).transpose(2, 0, 1)
+                        ground_truth_images[sample_index] = np.asarray(target_overlay, dtype=np.uint8).transpose(2, 0, 1)
+                    except (ValueError, TypeError, KeyError) as error:
+                        self.warning_callback("VisdomGroundTruth", error)
                 images.append(image)
                 rendered.append((sample_index, image_path, prediction, image))
             if not images:
@@ -162,11 +175,16 @@ class TrainingResultVisualizer:
                 test_index=test_index,
                 iteration=iteration,
                 rendered=rendered,
+                ground_truth_images=ground_truth_images,
             )
+            paired = bool(ground_truth_images) and len(ground_truth_images) == len(images)
+            title = f"{self.task} test{test_index} results iteration {iteration:g}"
+            if paired:
+                title += " — top: prediction; bottom: ground truth (green)"
             self.visdom_sink.write_images(
-                window=f"results-{self.task}-test{test_index}",
-                title=f"{self.task} test{test_index} results iteration {iteration:g}",
-                images=visdom_result_image_arrays(images),
+                window=f"results-{self.task}-test{test_index}", title=title,
+                images=visdom_result_image_arrays(images + [ground_truth_images[r[0]] for r in rendered] if paired else images),
+                **({"nrow": len(images)} if paired else {}),
             )
             wrote = True
         return wrote
@@ -177,6 +195,7 @@ class TrainingResultVisualizer:
         test_index: int,
         iteration: float,
         rendered: list[tuple[int, Path, dict[str, Any], np.ndarray]],
+        ground_truth_images: dict[int, np.ndarray] | None = None,
     ) -> None:
         iteration_dir = (
             self.artifact_dir
@@ -189,12 +208,17 @@ class TrainingResultVisualizer:
             image_out = iteration_dir / f"{stem}.png"
             prediction_out = iteration_dir / f"{stem}.json"
             _save_chw_image(image, image_out)
+            target_out = None
+            if ground_truth_images and sample_index in ground_truth_images:
+                target_out = iteration_dir / f"{stem}-ground-truth.png"
+                _save_chw_image(ground_truth_images[sample_index], target_out)
             prediction_out.write_text(
                 json.dumps(
                     {
                         "image": str(image_path),
                         "sample_index": sample_index,
                         "prediction": prediction,
+                        **({"ground_truth_overlay": str(target_out)} if target_out else {}),
                     },
                     indent=2,
                     sort_keys=True,

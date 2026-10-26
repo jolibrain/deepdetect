@@ -218,12 +218,14 @@ class VisdomMetricSink:
         window: str,
         title: str,
         images: list[np.ndarray],
+        nrow: int | None = None,
     ) -> None:
         if not images:
             return
         self.client.images(
             np.stack(images, axis=0),
             win=window,
+            **({"nrow": nrow} if nrow is not None else {}),
             opts={"title": title, "jpgquality": 90},
         )
 
