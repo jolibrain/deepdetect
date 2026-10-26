@@ -38,6 +38,7 @@ wheel.packages = ["deepdetect", "training_observability"]
 sdist.include = [
   "CMakeLists.txt",
   "README.md",
+  "AUGMENTATION_VALIDATION.md",
   "deepdetect/*.py",
   "deepdetect/**/*.py",
   "deepdetect/cli/*.md",
@@ -46,7 +47,9 @@ sdist.include = [
   "training-observability/**",
   "examples/*.py",
   "scripts/*.py",
-  "src/native.cpp",
+  "src/*.cpp",
+  "deepdetect/augmentation.md",
+  "tests/data/augmentation_legacy/**",
   "tests/*.py",
 ]
 sdist.exclude = [".pytest_cache", "**/__pycache__/**", "**/.pytest_cache/**"]

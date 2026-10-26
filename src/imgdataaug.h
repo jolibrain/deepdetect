@@ -26,6 +26,10 @@
 
 #include <cstdint>
 #include <random>
+#include <map>
+#include <sstream>
+#include <stdexcept>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -248,6 +252,17 @@ namespace dd
                                                   int width, int height,
                                                   bool bw, bool rgb);
 
+  // Optional per-call capture/replay. Native callers leave this disabled.
+  struct AugmentationTrace
+  {
+    bool replay = false;
+    bool suspended = false;
+    size_t position = 0, block_position = 0;
+    std::vector<std::pair<std::string, double>> draws;
+    std::vector<std::pair<std::string, std::string>> blocks;
+    std::vector<std::string> operations;
+  };
+
   class ImgRandAugCV
   {
   public:
@@ -295,6 +310,88 @@ namespace dd
                                 std::vector<std::vector<float>> &bboxes,
                                 std::vector<int> &classes);
     void augment_test_with_segmap(cv::Mat &src, cv::Mat &tgt);
+
+  public:
+    AugmentationTrace *_trace = nullptr;
+    cv::RNG *_cutout_rng = nullptr;
+    bool _signed_brightness = false;
+    std::map<std::string, float> _operation_probabilities;
+    bool roll_operation(const char *name, float fallback)
+    {
+      auto it = _operation_probabilities.find(name);
+      if (it != _operation_probabilities.end() && it->second == 0)
+        return false;
+      return roll_weighted_dice(
+          it == _operation_probabilities.end() ? fallback : it->second);
+    }
+
+  protected:
+    template <class Distribution>
+    typename Distribution::result_type draw(Distribution &distribution,
+                                            const char *name)
+    {
+      if (!_trace || _trace->suspended)
+        return distribution(_rnd_gen);
+      if (!_trace->replay)
+        {
+          auto value = distribution(_rnd_gen);
+          _trace->draws.emplace_back(name, static_cast<double>(value));
+          return value;
+        }
+      if (_trace->position >= _trace->draws.size())
+        throw std::invalid_argument("truncated augmentation replay");
+      const auto &entry = _trace->draws[_trace->position++];
+      if (entry.first != name || !std::isfinite(entry.second)
+          || entry.second < distribution.min()
+          || entry.second > distribution.max())
+        throw std::invalid_argument("invalid augmentation replay draw");
+      return static_cast<typename Distribution::result_type>(entry.second);
+    }
+
+    // Large stochastic fields use a compact engine snapshot rather than one
+    // JSON entry per pixel. The snapshot belongs to this operation only.
+    class RandomBlock
+    {
+      ImgRandAugCV &owner;
+
+    public:
+      RandomBlock(ImgRandAugCV &aug, const char *name) : owner(aug)
+      {
+        auto *trace = owner._trace;
+        if (!trace)
+          return;
+        if (trace->replay)
+          {
+            if (trace->block_position >= trace->blocks.size())
+              throw std::invalid_argument("truncated random block");
+            auto entry = trace->blocks[trace->block_position++];
+            std::istringstream input(entry.second);
+            if (entry.first != name || !(input >> owner._rnd_gen))
+              throw std::invalid_argument("invalid random block");
+          }
+        else
+          {
+            std::ostringstream output;
+            output << owner._rnd_gen;
+            trace->blocks.emplace_back(name, output.str());
+          }
+        trace->suspended = true;
+      }
+      ~RandomBlock()
+      {
+        if (owner._trace)
+          owner._trace->suspended = false;
+      }
+    };
+
+    void fill_cutout(cv::Mat &area, const cv::Scalar &low,
+                     const cv::Scalar &high)
+    {
+      if (_cutout_rng)
+        _cutout_rng->fill(area, cv::RNG::UNIFORM, low, high);
+      else
+        cv::randu(area, low, high);
+    }
 
   protected:
     bool roll_weighted_dice(const float &prob);

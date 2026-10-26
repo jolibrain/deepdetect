@@ -291,6 +291,21 @@ def segmentation_overlay_images(
     if not original_size:
         image = image.resize((width, height))
     overlay = Image.alpha_composite(image, color_mask).convert("RGB")
+    # Worker validation windows can include ignored right/bottom padding. This
+    # is display metadata, not a predicted class: preserve the raw class map.
+    source = prediction.get("source")
+    extent = source.get("valid_extent") if isinstance(source, dict) else None
+    if extent is not None:
+        if (not isinstance(extent, (list, tuple)) or len(extent) != 2
+                or any(type(value) is not int for value in extent)
+                or not 0 <= extent[0] <= width or not 0 <= extent[1] <= height):
+            raise ValueError("segmentation source.valid_extent must fit prediction dimensions")
+        valid = Image.new("L", (width, height), 0)
+        if extent[0] and extent[1]:
+            ImageDraw.Draw(valid).rectangle((0, 0, extent[0]-1, extent[1]-1), fill=255)
+        if valid.size != overlay.size:
+            valid = valid.resize(overlay.size, Image.Resampling.NEAREST)
+        overlay = Image.composite(overlay, Image.new("RGB", overlay.size, (100, 100, 100)), valid)
     return mask, overlay
 
 

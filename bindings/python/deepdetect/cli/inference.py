@@ -120,7 +120,10 @@ def run_infer(args: Any) -> int:
 
     writer = EventWriter(output_format=options["output_format"], collect_events=False)
     if options.get("weights") is not None:
-        options["weights"] = stage_model(options["weights"], options["repository"])
+        options["weights"] = stage_model(
+            options["weights"], options["repository"],
+            reuse_checkpoint=not (profile.backend == "pytorch" and profile.task == "segmentation"),
+        )
     dd = deepdetect.DeepDetect()
     configure_gpu_compatibility(dd.build_info, requested=bool(options["gpu"]))
     service_parameters = profile.service_parameters(options)

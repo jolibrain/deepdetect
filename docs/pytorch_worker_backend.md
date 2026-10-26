@@ -1169,3 +1169,70 @@ Phase 4:
 
 - prototype GPU tensor references and stream/lifetime management;
 - evaluate whether zero-copy matters for target workloads.
+
+## External semantic segmentation
+
+Use the `external-pytorch-segmentation` CLI profile (`mllib: pytorch`,
+`task: segmentation`) for external eager segmentation workers. Select an
+absolute `service_mllib.entrypoint`, optional class, and worker interpreter
+(`service_mllib.python`, defaulting to the CLI interpreter). The profile uses
+path-backed data and does not enable detection tensor pull. Segmentation
+workers should subclass `DeepDetectWorkerBase`, not the detection training base.
+
+Worker-specific settings belong in `service_mllib.segmentation`, with training
+overrides in `mllib.segmentation`. The worker must merge these recursively,
+record its resolved configuration separately from CLI-owned artifacts, and
+implement the corresponding preprocessing. CLI mask checks understand
+`ignore_label`, `label_mapping` (integer source-to-target IDs), and
+`color_mapping` (`"R,G,B"` keys). Indexed PNG values are preserved; RGB masks
+require explicit mappings. Relative mask paths resolve against the list's
+parent. The external profile defaults to ignore label 255; existing profiles
+retain their default strict class-range validation.
+
+A worker opts into the semantic serializer by returning:
+
+```json
+{
+  "output_format": "semantic_segmentation_v1",
+  "nclasses": 2,
+  "results": [{
+    "uri": "image.png",
+    "imgsize": {"width": 2, "height": 2},
+    "vals": [0, 1, 1, 0],
+    "confidences": {"best": [0.9, 0.8, 0.95, 0.7]}
+  }]
+}
+```
+
+`vals` must contain width×height row-major integer class IDs in
+`[0, nclasses)`. Confidence maps are optional, flattened arrays of the same
+length containing finite probabilities in `[0,1]`; keys are `best` or numeric
+class IDs. Dimensions must be positive integers. The declared class count must
+match the service. Python validates the contract before C++ routes it through
+`UnsupervisedOutput`, the generic array/image output formatter also used for
+native semantic output. This routing does not run a native segmentation model.
+Existing supervised detection, pose and instance-mask results keep their
+serializer and validation.
+
+Training previews reuse `test_predictions.testN.samples` with stable `index`,
+`uri`, `imgsize`, and `vals`. Report full-set metrics with `_testN` suffixes.
+The CLI's existing segmentation renderer creates masks, overlays and durable
+preview image/JSON pairs. The lightweight fixture in
+`bindings/python/tests/fixtures/semantic_worker.py` exercises the serializer:
+
+```sh
+DD_SEMANTIC_NATIVE=1 python -m pytest -q bindings/python/tests/test_semantic_worker.py
+python -m deepdetect.cli.main train external-pytorch-segmentation \
+  --config bindings/python/deepdetect/cli/external-pytorch-segmentation-default.yaml \
+  --set service_mllib.entrypoint=/absolute/worker.py \
+  --set service_mllib.python=/absolute/venv/bin/python \
+  --train-data train.txt --test-data test.txt --repository runs/semantic \
+  --terminal verbose --output-format jsonl --visdom --visdom-results
+python -m deepdetect.cli.main infer external-pytorch-segmentation image.png \
+  --config bindings/python/deepdetect/cli/external-pytorch-segmentation-default.yaml \
+  --set service_mllib.entrypoint=/absolute/worker.py \
+  --set service_mllib.python=/absolute/venv/bin/python \
+  --repository runs/semantic --output predictions --visualize
+```
+
+Rebuild/install the native library or wheel after changing the C++ result path.

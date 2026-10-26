@@ -21,109 +21,18 @@
 
 #include "imgdataaug.h"
 
-#include "apidata.h"
-
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <mutex>
+
+namespace
+{
+  std::mutex augmentation_random_mutex;
+}
 
 namespace dd
 {
-  ImgRandAugCVConfig parse_img_rand_aug_cv_config(const APIData &mllib,
-                                                  int width, int height,
-                                                  bool bw, bool rgb)
-  {
-    ImgRandAugCVConfig config;
-    config.enabled = mllib.has("mirror") || mllib.has("rotate")
-                     || mllib.has("crop_size") || mllib.has("cutout")
-                     || mllib.has("geometry") || mllib.has("noise")
-                     || mllib.has("distort");
-    if (!config.enabled)
-      return config;
-
-    config.mirror = mllib.has("mirror") && mllib.get("mirror").get<bool>();
-    config.rotate = mllib.has("rotate") && mllib.get("rotate").get<bool>();
-    if (width != height && config.rotate)
-      {
-        config.rotate = false;
-        config.rotate_disabled_for_shape = true;
-      }
-
-    if (mllib.has("crop_size"))
-      {
-        config.has_crop_size = true;
-        config.crop_size = mllib.get("crop_size").get<int>();
-        config.crop_params = CropParams(config.crop_size);
-        if (mllib.has("test_crop_samples"))
-          config.crop_params._test_crop_samples
-              = mllib.get("test_crop_samples").get<int>();
-      }
-
-    if (mllib.has("cutout"))
-      {
-        config.has_cutout = true;
-        config.cutout = mllib.get("cutout").get<double>();
-        config.cutout_params = CutoutParams(config.cutout);
-      }
-
-    APIData geometry = mllib.getobj("geometry");
-    if (!geometry.empty())
-      {
-        config.has_geometry = true;
-        config.geometry_params._prob = geometry.get("prob").get<double>();
-        if (geometry.has("persp_vertical"))
-          config.geometry_params._geometry_persp_vertical
-              = geometry.get("persp_vertical").get<bool>();
-        if (geometry.has("persp_horizontal"))
-          config.geometry_params._geometry_persp_horizontal
-              = geometry.get("persp_horizontal").get<bool>();
-        if (geometry.has("transl_vertical"))
-          config.geometry_params._geometry_transl_vertical
-              = geometry.get("transl_vertical").get<bool>();
-        if (geometry.has("transl_horizontal"))
-          config.geometry_params._geometry_transl_horizontal
-              = geometry.get("transl_horizontal").get<bool>();
-        if (geometry.has("zoom_out"))
-          config.geometry_params._geometry_zoom_out
-              = geometry.get("zoom_out").get<bool>();
-        if (geometry.has("zoom_in"))
-          config.geometry_params._geometry_zoom_in
-              = geometry.get("zoom_in").get<bool>();
-        if (geometry.has("persp_factor"))
-          config.geometry_params._geometry_persp_factor
-              = geometry.get("persp_factor").get<double>();
-        if (geometry.has("transl_factor"))
-          config.geometry_params._geometry_transl_factor
-              = geometry.get("transl_factor").get<double>();
-        if (geometry.has("zoom_factor"))
-          config.geometry_params._geometry_zoom_factor
-              = geometry.get("zoom_factor").get<double>();
-        if (geometry.has("pad_mode"))
-          config.geometry_params.set_pad_mode(
-              geometry.get("pad_mode").get<std::string>());
-      }
-
-    config.noise_params = NoiseParams(bw);
-    config.noise_params._rgb = rgb;
-    APIData noise = mllib.getobj("noise");
-    if (!noise.empty())
-      {
-        config.has_noise = true;
-        config.noise_params._prob = noise.get("prob").get<double>();
-      }
-
-    config.distort_params = DistortParams(bw);
-    config.distort_params._rgb = rgb;
-    APIData distort = mllib.getobj("distort");
-    if (!distort.empty())
-      {
-        config.has_distort = true;
-        config.distort_params._prob = distort.get("prob").get<double>();
-      }
-
-    return config;
-  }
-
   ImgRandAugCV make_img_rand_aug_cv(const ImgRandAugCVConfig &config, int seed)
   {
     ImgRandAugCV aug(config.mirror, config.rotate, config.crop_params,
@@ -294,9 +203,9 @@ namespace dd
   bool ImgRandAugCV::roll_weighted_dice(const float &prob)
   {
     float r1 = 0.0;
-#pragma omp critical
     {
-      r1 = _uniform_real_1(_rnd_gen);
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+      r1 = draw(_uniform_real_1, "_uniform_real_1");
     }
     if (r1 > prob)
       return false;
@@ -310,10 +219,10 @@ namespace dd
       return false;
 
     bool mirror = false;
-#pragma omp critical
     {
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
       if (sample)
-        mirror = _bernouilli(_rnd_gen);
+        mirror = draw(_bernouilli, "_bernouilli");
       else
         mirror = true;
     }
@@ -342,10 +251,10 @@ namespace dd
     if (!_rotate)
       return -1;
 
-#pragma omp critical
     {
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
       if (sample)
-        rot = _uniform_int_rotate(_rnd_gen);
+        rot = draw(_uniform_int_rotate, "_uniform_int_rotate");
     }
     if (rot == 0)
       return rot;
@@ -421,8 +330,8 @@ namespace dd
         std::uniform_int_distribution<int> uniform_int_crop_y(
             0, img_height - cp._crop_size);
 
-#pragma omp critical
         {
+          std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
           if (test)
             {
               crop_x = uniform_int_crop_x(_rnd_test_gen);
@@ -430,8 +339,8 @@ namespace dd
             }
           else
             {
-              crop_x = uniform_int_crop_x(_rnd_gen);
-              crop_y = uniform_int_crop_y(_rnd_gen);
+              crop_x = draw(uniform_int_crop_x, "uniform_int_crop_x");
+              crop_y = draw(uniform_int_crop_y, "uniform_int_crop_y");
             }
         }
       }
@@ -485,16 +394,18 @@ namespace dd
     if (!roll_weighted_dice(cp._prob))
       return;
 
-#pragma omp critical
     {
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
       int img_width = src.cols;
       int img_height = src.rows;
       int w = 0, h = 0, rect_x = 0, rect_y = 0;
       if (cp._w == 0 && cp._h == 0)
         {
           float s
-              = cp._uniform_real_cutout_s(_rnd_gen) * img_width * img_height;
-          float r = cp._uniform_real_cutout_r(_rnd_gen);
+              = draw(cp._uniform_real_cutout_s, "cp._uniform_real_cutout_s")
+                * img_width * img_height;
+          float r
+              = draw(cp._uniform_real_cutout_r, "cp._uniform_real_cutout_r");
 
           w = std::min(img_width,
                        static_cast<int>(std::floor(std::sqrt(s / r))));
@@ -502,19 +413,19 @@ namespace dd
                        static_cast<int>(std::floor(std::sqrt(s * r))));
           std::uniform_int_distribution<int> distx(0, img_width - w);
           std::uniform_int_distribution<int> disty(0, img_height - h);
-          rect_x = distx(_rnd_gen);
-          rect_y = disty(_rnd_gen);
+          rect_x = draw(distx, "distx");
+          rect_y = draw(disty, "disty");
         }
 
       cv::Rect rect(rect_x, rect_y, w, h);
       cv::Mat selected_area = src(rect);
       if (selected_area.channels() == 3)
-        cv::randu(selected_area,
-                  cv::Scalar(cp._cutout_vl, cp._cutout_vl, cp._cutout_vl),
-                  cv::Scalar(cp._cutout_vh, cp._cutout_vh, cp._cutout_vh));
+        fill_cutout(selected_area,
+                    cv::Scalar(cp._cutout_vl, cp._cutout_vl, cp._cutout_vl),
+                    cv::Scalar(cp._cutout_vh, cp._cutout_vh, cp._cutout_vh));
       else
-        cv::randu(selected_area, cv::Scalar(cp._cutout_vl),
-                  cv::Scalar(cp._cutout_vh));
+        fill_cutout(selected_area, cv::Scalar(cp._cutout_vl),
+                    cv::Scalar(cp._cutout_vh));
 
       if (store_rparams)
         {
@@ -565,7 +476,7 @@ namespace dd
         bool zoom_out = cp._geometry_zoom_out;
         if (cp._geometry_zoom_out && cp._geometry_zoom_in)
           {
-            if (_bernouilli(_rnd_gen))
+            if (draw(_bernouilli, "_bernouilli"))
               zoom_in = false;
             else
               zoom_out = false;
@@ -593,9 +504,11 @@ namespace dd
             y0min = y0;
           }
 
-        x0 = ((x0max - x0min) * _uniform_real_1(_rnd_gen) + x0min);
+        x0 = ((x0max - x0min) * draw(_uniform_real_1, "_uniform_real_1")
+              + x0min);
         x1 = 3 * cols - x0;
-        y0 = ((y0max - y0min) * _uniform_real_1(_rnd_gen) + y0min);
+        y0 = ((y0max - y0min) * draw(_uniform_real_1, "_uniform_real_1")
+              + y0min);
         y1 = 3 * rows - y0;
       }
 
@@ -610,45 +523,45 @@ namespace dd
     outputQuad[3] = cv::Point2f(0, rows - 1);
     if (cp._geometry_persp_horizontal)
       {
-        if (_bernouilli(_rnd_gen))
+        if (draw(_bernouilli, "_bernouilli"))
           {
-            outputQuad[0].y
-                = rows * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[0].y = rows * cp._geometry_persp_factor
+                              * draw(_uniform_real_1, "_uniform_real_1");
             outputQuad[3].y = rows - outputQuad[0].y;
           }
         else
           {
-            outputQuad[1].y
-                = rows * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[1].y = rows * cp._geometry_persp_factor
+                              * draw(_uniform_real_1, "_uniform_real_1");
             outputQuad[2].y = rows - outputQuad[1].y;
           }
       }
     if (cp._geometry_persp_vertical)
       {
-        if (_bernouilli(_rnd_gen))
+        if (draw(_bernouilli, "_bernouilli"))
           {
-            outputQuad[3].x
-                = cols * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[3].x = cols * cp._geometry_persp_factor
+                              * draw(_uniform_real_1, "_uniform_real_1");
             outputQuad[2].x = cols - outputQuad[3].x;
           }
         else
           {
-            outputQuad[0].x
-                = cols * cp._geometry_persp_factor * _uniform_real_1(_rnd_gen);
+            outputQuad[0].x = cols * cp._geometry_persp_factor
+                              * draw(_uniform_real_1, "_uniform_real_1");
             outputQuad[1].x = cols - outputQuad[0].x;
           }
       }
     if (cp._geometry_transl_horizontal)
       {
         float tx = cols * cp._geometry_transl_factor
-                   * (2 * _uniform_real_1(_rnd_gen) - 1);
+                   * (2 * draw(_uniform_real_1, "_uniform_real_1") - 1);
         for (int i = 0; i < 4; ++i)
           outputQuad[i].x += tx;
       }
     if (cp._geometry_transl_vertical)
       {
         float ty = rows * cp._geometry_transl_factor
-                   * (2 * _uniform_real_1(_rnd_gen) - 1);
+                   * (2 * draw(_uniform_real_1, "_uniform_real_1") - 1);
         for (int i = 0; i < 4; ++i)
           outputQuad[i].y += ty;
       }
@@ -673,8 +586,8 @@ namespace dd
     cv::Point2f inputQuad[4];
     cv::Point2f outputQuad[4];
 
-#pragma omp critical
     {
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
       if (sample)
         getQuads(src.rows, src.cols, cp, inputQuad, outputQuad);
     }
@@ -855,9 +768,9 @@ namespace dd
       }
 
     float lprob;
-#pragma omp critical
     {
-      lprob = _uniform_real_1(_rnd_gen);
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+      lprob = draw(_uniform_real_1, "_uniform_real_1");
     }
     if (lprob > 0.5)
       {
@@ -896,8 +809,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseDecolorize(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseDecolorize", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseDecolorize");
     if (src.channels() > 1)
       {
         cv::Mat grayscale;
@@ -908,8 +823,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseGaussianBlur(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseGaussianBlur", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseGaussianBlur");
     cv::Mat out;
     cv::GaussianBlur(src, out, cv::Size(7, 7), 1.5);
     src = out;
@@ -917,8 +834,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseHistEq(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseHistEq", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseHistEq");
     if (src.channels() > 1)
       {
         cv::Mat ycrcb_image;
@@ -941,8 +860,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseClahe(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseClahe", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseClahe");
     cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
     clahe->setClipLimit(4);
     if (src.channels() > 1)
@@ -969,14 +890,16 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseJPG(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseJPG", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseJPG");
     std::vector<uchar> buf;
     std::vector<int> params;
     params.push_back(cv::IMWRITE_JPEG_QUALITY);
-#pragma omp critical
     {
-      params.push_back(_uniform_real_1(_rnd_gen) * 100.0);
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+      params.push_back(draw(_uniform_real_1, "_uniform_real_1") * 100.0);
     }
     cv::imencode(".jpg", src, buf, params);
     src = cv::imdecode(buf, cv::IMREAD_COLOR);
@@ -984,8 +907,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseErosion(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseErosion", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseErosion");
     cv::Mat element
         = cv::getStructuringElement(2, cv::Size(3, 3), cv::Point(1, 1));
     cv::erode(src, src, element);
@@ -993,8 +918,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoisePosterize(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoisePosterize", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoisePosterize");
     int div = 64;
     cv::Mat lookUpTable(1, 256, CV_8U);
     uchar *p = lookUpTable.data;
@@ -1008,8 +935,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseInverse(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseInverse", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseInverse");
     cv::Mat tmp_img;
     cv::bitwise_not(src, tmp_img);
     src = tmp_img;
@@ -1017,24 +946,29 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseSaltpepper(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseSaltpepper", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseSaltpepper");
+    RandomBlock block(*this, "saltpepper");
     const int noise_pixels_n
         = std::floor(_noise_params._saltpepper_fraction * src.cols * src.rows);
     const std::vector<uchar> val_black = { 0, 0, 0 };
     const std::vector<uchar> val_white = { 255, 255, 255 };
     if (src.channels() == 1)
       {
-#pragma omp critical
         {
+          std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
           if (src.depth() == CV_8U)
             {
               for (int k = 0; k < noise_pixels_n; ++k)
                 {
-                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
-                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  const int i
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.cols;
+                  const int j
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.rows;
                   uchar *ptr = src.ptr<uchar>(j);
-                  if (_bernouilli(_rnd_gen))
+                  if (draw(_bernouilli, "_bernouilli"))
                     ptr[i] = val_black[0];
                   else
                     ptr[i] = val_white[0];
@@ -1044,8 +978,10 @@ namespace dd
             {
               for (int k = 0; k < noise_pixels_n; ++k)
                 {
-                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
-                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  const int i
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.cols;
+                  const int j
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.rows;
                   uchar *ptr = src.ptr<uchar>(j);
                   ptr[i] = val_black[0];
                 }
@@ -1054,16 +990,18 @@ namespace dd
       }
     else if (src.channels() == 3)
       {
-#pragma omp critical
         {
+          std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
           if (src.depth() == CV_8U)
             {
               for (int k = 0; k < noise_pixels_n; ++k)
                 {
-                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
-                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  const int i
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.cols;
+                  const int j
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.rows;
                   cv::Vec3b *ptr = src.ptr<cv::Vec3b>(j);
-                  if (_bernouilli(_rnd_gen))
+                  if (draw(_bernouilli, "_bernouilli"))
                     {
                       (ptr[i])[0] = val_black[0];
                       (ptr[i])[1] = val_black[1];
@@ -1081,8 +1019,10 @@ namespace dd
             {
               for (int k = 0; k < noise_pixels_n; ++k)
                 {
-                  const int i = _uniform_real_1(_rnd_gen) * src.cols;
-                  const int j = _uniform_real_1(_rnd_gen) * src.rows;
+                  const int i
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.cols;
+                  const int j
+                      = draw(_uniform_real_1, "_uniform_real_1") * src.rows;
                   cv::Vec3b *ptr = src.ptr<cv::Vec3b>(j);
                   (ptr[i])[0] = val_black[0];
                   (ptr[i])[1] = val_black[1];
@@ -1095,8 +1035,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseConvertHSV(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseConvertHSV", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseConvertHSV");
     cv::Mat hsv_image;
     cv::cvtColor(src, hsv_image, cv::COLOR_BGR2HSV);
     src = hsv_image;
@@ -1104,8 +1046,10 @@ namespace dd
 
   void ImgRandAugCV::applyNoiseConvertLAB(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_noise_params._prob))
+    if (!roll_operation("applyNoiseConvertLAB", _noise_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyNoiseConvertLAB");
     int orig_depth = src.depth();
     cv::Mat lab_image;
     src.convertTo(lab_image, CV_32F);
@@ -1117,14 +1061,17 @@ namespace dd
 
   void ImgRandAugCV::applyDistortBrightness(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_distort_params._prob))
+    if (!roll_operation("applyDistortBrightness", _distort_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyDistortBrightness");
     float delta;
-#pragma omp critical
     {
-      delta = _distort_params._uniform_real_brightness(_rnd_gen);
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+      delta = draw(_distort_params._uniform_real_brightness,
+                   "_distort_params._uniform_real_brightness");
     }
-    if (delta > 0)
+    if (delta > 0 || (_signed_brightness && delta < 0))
       {
         cv::Mat tmp;
         src.convertTo(tmp, -1, 1, delta);
@@ -1134,12 +1081,15 @@ namespace dd
 
   void ImgRandAugCV::applyDistortContrast(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_distort_params._prob))
+    if (!roll_operation("applyDistortContrast", _distort_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyDistortContrast");
     float delta;
-#pragma omp critical
     {
-      delta = _distort_params._uniform_real_contrast(_rnd_gen);
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+      delta = draw(_distort_params._uniform_real_contrast,
+                   "_distort_params._uniform_real_contrast");
     }
     if (std::fabs(delta - 1.f) > 1e-3)
       {
@@ -1151,12 +1101,15 @@ namespace dd
 
   void ImgRandAugCV::applyDistortSaturation(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_distort_params._prob))
+    if (!roll_operation("applyDistortSaturation", _distort_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyDistortSaturation");
     float delta;
-#pragma omp critical
     {
-      delta = _distort_params._uniform_real_saturation(_rnd_gen);
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+      delta = draw(_distort_params._uniform_real_saturation,
+                   "_distort_params._uniform_real_saturation");
     }
     if (std::fabs(delta - 1.f) >= 1e-3)
       {
@@ -1172,12 +1125,15 @@ namespace dd
 
   void ImgRandAugCV::applyDistortHue(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_distort_params._prob))
+    if (!roll_operation("applyDistortHue", _distort_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyDistortHue");
     float delta;
-#pragma omp critical
     {
-      delta = _distort_params._uniform_real_hue(_rnd_gen);
+      std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+      delta = draw(_distort_params._uniform_real_hue,
+                   "_distort_params._uniform_real_hue");
     }
     if (std::fabs(delta) > 0)
       {
@@ -1193,12 +1149,16 @@ namespace dd
 
   void ImgRandAugCV::applyDistortOrderChannel(cv::Mat &src)
   {
-    if (!roll_weighted_dice(_distort_params._prob))
+    if (!roll_operation("applyDistortOrderChannel", _distort_params._prob))
       return;
+    if (_trace)
+      _trace->operations.push_back("applyDistortOrderChannel");
     if (src.channels() == 3)
       {
         std::vector<cv::Mat> channels;
         cv::split(src, channels);
+        std::lock_guard<std::mutex> random_lock(augmentation_random_mutex);
+        RandomBlock block(*this, "channel_order");
         std::shuffle(channels.begin(), channels.end(), _rnd_gen);
         cv::merge(channels, src);
       }

@@ -1353,7 +1353,7 @@ list(REMOVE_ITEM DDETECT_PRIVATE_LINK_LIBS ddetect)
 target_link_directories(ddetect PRIVATE ${COMMON_LINK_DIRS})
 target_link_libraries(ddetect PRIVATE ${DDETECT_PRIVATE_LINK_LIBS})
 
-install(TARGETS ddetect
+install(TARGETS ddetect image_augmentation
     EXPORT DeepDetectTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -1374,6 +1374,8 @@ if (USE_TORCH AND USE_PREBUILT_TORCH)
       ${TORCHVISION_LOCATION}/${CMAKE_INSTALL_LIBDIR}/libtorchvision.so
       DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
+install(FILES src/imgdataaug.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/deepdetect)
 install(FILES include/deepdetect/runtime.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/deepdetect)
 install(EXPORT DeepDetectTargets

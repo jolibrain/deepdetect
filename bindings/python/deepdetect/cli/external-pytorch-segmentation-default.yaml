@@ -1,0 +1,25 @@
+train_data: train.txt
+test_data: [test.txt]
+repository: deepdetect-models/external-pytorch-segmentation
+nclasses: 2
+width: 512
+height: 512
+iterations: 100
+batch_size: 1
+iter_size: 1
+base_lr: 0.00006
+test_interval: 100
+service_mllib:
+  entrypoint: /absolute/path/to/worker.py
+  class: DeepDetectWorker
+  task: segmentation
+  # python defaults to the CLI interpreter; set an absolute path if different.
+  segmentation:
+    ignore_label: 255
+mllib:
+  segmentation: {}
+gpu: false
+terminal: verbose
+output_format: jsonl
+visdom: false
+visdom_results: true

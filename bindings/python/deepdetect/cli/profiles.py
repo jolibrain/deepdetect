@@ -61,7 +61,10 @@ class ModelProfile:
             ),
             "iter_size": int(self.train_mllib.get("solver", {}).get("iter_size", 1)),
             "augmentation": _augmentation_defaults(self.train_mllib),
-            "service_mllib": None,
+            "service_mllib": (
+                {"segmentation": copy.deepcopy(self.service_mllib["segmentation"])}
+                if self.backend == "pytorch" and self.task == "segmentation" else None
+            ),
             "class_weights": None,
             "base_lr": float(
                 self.train_mllib.get("solver", {}).get("base_lr", 0.0001)
@@ -234,6 +237,27 @@ class ModelProfile:
 
 
 PROFILES = {
+    "external-pytorch-segmentation": ModelProfile(
+        name="external-pytorch-segmentation",
+        task="segmentation",
+        description="External PyTorch semantic segmentation worker",
+        backend="pytorch",
+        default_weights=None,
+        default_repository=Path("deepdetect-models/external-pytorch-segmentation"),
+        default_service_name="python-external-pytorch-segmentation-train",
+        default_nclasses=2,
+        requires_weights=False,
+        service_input={"connector": "image", "width": 512, "height": 512,
+                       "rgb": True, "segmentation": True, "db": False},
+        service_mllib={"task": "segmentation", "class": "DeepDetectWorker",
+                       "segmentation": {"ignore_label": 255}},
+        train_input={"seed": 12345, "shuffle": True, "segmentation": True, "db": False},
+        train_mllib={"solver": {"base_lr": 6e-5, "iter_size": 1},
+                     "net": {"batch_size": 1}},
+        train_output={"measure": ["acc", "meaniou", "foreground_iou", "foreground_dice"]},
+        predict_input={"width": 512, "height": 512},
+        predict_output={"confidences": ["best"]},
+    ),
     "yolox": ModelProfile(
         name="yolox",
         task="detection",

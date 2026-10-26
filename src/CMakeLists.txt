@@ -21,7 +21,7 @@ endif()
 set(ddetect_SOURCES deepdetect.h deepdetect.cc embedded_runtime.cc
     ${PROJECT_SOURCE_DIR}/include/deepdetect/runtime.h mllibstrategy.h mlmodel.h
     mlservice.h inputconnectorstrategy.h imginputfileconn.h csvinputfileconn.h
-    imgdataaug.h imgdataaug.cc csvinputfileconn.cc csvtsinputfileconn.h
+    imgdataaug.h imgdataaug_config.cc csvinputfileconn.cc csvtsinputfileconn.h
     csvtsinputfileconn.cc
     svminputfileconn.h svminputfileconn.cc txtinputfileconn.h
     txtinputfileconn.cc apidata.h apidata.cc chain_actions.h chain_actions.cc
@@ -122,7 +122,28 @@ if (USE_TENSORRT)
 endif()
 
 
+# Shared CPU operators: no server, tensor runtime or CUDA dependency.
+add_library(image_augmentation SHARED imgdataaug.cc)
+add_library(DeepDetect::image_augmentation ALIAS image_augmentation)
+set_target_properties(image_augmentation PROPERTIES
+  OUTPUT_NAME deepdetect_augmentation VERSION 0.1.0 SOVERSION 0
+  INSTALL_RPATH "$ORIGIN")
+target_compile_features(image_augmentation PUBLIC cxx_std_17)
+target_include_directories(image_augmentation PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:include>
+  ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(image_augmentation PUBLIC opencv_core opencv_imgproc opencv_imgcodecs)
+file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/imgdataaug.cc" AUGMENTATION_SOURCE_HASH)
+file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/imgdataaug.h" AUGMENTATION_HEADER_HASH)
+file(SHA256 "${PROJECT_SOURCE_DIR}/bindings/python/src/augmentation.cpp" AUGMENTATION_BINDING_HASH)
+string(SHA256 AUGMENTATION_HASH "${AUGMENTATION_SOURCE_HASH}${AUGMENTATION_HEADER_HASH}${AUGMENTATION_BINDING_HASH}")
+set(AUGMENTATION_HASH "${AUGMENTATION_HASH}" PARENT_SCOPE)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  imgdataaug.cc imgdataaug.h ${PROJECT_SOURCE_DIR}/bindings/python/src/augmentation.cpp)
+
 add_library(ddetect SHARED ${ddetect_SOURCES})
+target_link_libraries(ddetect PUBLIC image_augmentation)
 add_library(DeepDetect::ddetect ALIAS ddetect)
 set_target_properties(ddetect PROPERTIES
   OUTPUT_NAME deepdetect
