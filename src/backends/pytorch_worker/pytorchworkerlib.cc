@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <rapidjson/document.h>
 
 namespace dd
@@ -78,6 +79,19 @@ namespace dd
 
     constexpr double FLOPS_PER_GFLOP = 1.0e9;
 
+    int prediction_timeout_ms(const APIData &mllib)
+    {
+      double seconds = 10.0;
+      if (mllib.has("predict_timeout")
+          && (!api_number(mllib, "predict_timeout", seconds)
+              || !std::isfinite(seconds) || seconds <= 0.0
+              || seconds > std::numeric_limits<int>::max() / 1000.0))
+        throw MLLibBadParamException(
+            "predict_timeout must be a positive finite number of seconds "
+            "not exceeding 2147483.647");
+      return static_cast<int>(std::ceil(seconds * 1000.0));
+    }
+
     void update_gflops(double value, double &target)
     {
       if (std::isfinite(value) && value > 0.0)
@@ -140,6 +154,7 @@ namespace dd
                         TMLModel>::init_mllib(const APIData &ad)
   {
     _mllib_params = ad;
+    prediction_timeout_ms(ad);
     if (ad.has("nclasses"))
       _nclasses = static_cast<unsigned int>(ad.get("nclasses").get<int>());
     if (_nclasses == 0)
@@ -590,6 +605,7 @@ namespace dd
 
     std::lock_guard<std::mutex> lock(_worker_mutex);
     const APIData mllib = connector_effective_mllib(ad_in);
+    const int timeout_ms = prediction_timeout_ms(mllib);
     const std::string mode
         = mllib.has("predict_input")
               ? mllib.get("predict_input").get<std::string>()
@@ -638,7 +654,8 @@ namespace dd
             request.add("tensor_batch", batch);
             request.add("data", std::vector<std::string>());
             APIData reply
-                = _worker->request("predict", request_params(request))
+                = _worker
+                      ->request("predict", request_params(request), timeout_ms)
                       .getobj("result");
             input.cleanup_inline_detection_pull_session();
             std::vector<APIData> results = reply.getv("results");
@@ -687,7 +704,8 @@ namespace dd
 
         try
           {
-            response = _worker->request("predict", request_params(request));
+            response = _worker->request("predict", request_params(request),
+                                        timeout_ms);
           }
         catch (...)
           {
