@@ -1238,6 +1238,16 @@ python -m deepdetect.cli.main infer external-pytorch-segmentation image.png \
 Rebuild/install the native library or wheel after changing the C++ result path.
 ## Batched connector prediction
 
+`parameters.mllib.predict_timeout` sets the worker response wait in seconds
+(positive number, default `10`). Set it at service creation or override it on a
+prediction request, for example `"mllib": {"predict_timeout": 60}` for a large
+CPU model. It applies to path, connector and keypoint prediction. Connector
+mode applies this wait to each batch RPC; path mode sends the entire request
+to the worker. Allow for initial checkpoint loading, inference and result
+serialization. This is separate from the HTTP client's timeout. Values must
+not exceed `2147483.647` seconds; fractional seconds are rounded up to the next
+millisecond.
+
 `parameters.mllib.predict_input` is independent of training `data_source`:
 `auto` (default) selects connector tensors when the configured worker advertises
 `predict_inputs: ["paths", "connector"]`; legacy workers fall back to their

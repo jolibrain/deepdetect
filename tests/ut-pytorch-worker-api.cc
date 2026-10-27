@@ -1630,3 +1630,54 @@ TEST(pytorchworkerapi, prediction_connector_normalization_and_identity)
             meta.get("original_widths").get<std::vector<int>>());
   cleanup_repo(repo);
 }
+
+TEST(pytorchworkerapi, prediction_timeout_service_and_request_override)
+{
+  configure_pythonpath();
+  for (const std::string mode : { "paths", "connector" })
+    {
+      JsonAPI japi;
+      const std::string service = "prediction_timeout_" + mode;
+      const auto repo = repo_path(service);
+      prepare_repo(repo);
+      const auto worker = repo + "/worker.py";
+      const auto image = repo + "/image.png";
+      cv::imwrite(image, cv::Mat(2, 2, CV_8UC3, cv::Scalar(10, 20, 30)));
+      write_text_file(worker, R"PY(
+import time
+from deepdetect.pytorch_worker.sdk import DeepDetectWorkerBase
+class DeepDetectWorker(DeepDetectWorkerBase):
+    predict_inputs = ['paths', 'connector']
+    def predict(self, params):
+        time.sleep(0.15)
+        request = params['request']
+        paths = request.get('data') or request['tensor_batch']['meta']['paths']
+        return {'results': [{'uri': path, 'probs': [1.0], 'cats': ['1']} for path in paths]}
+)PY");
+      auto extra = ",\"entrypoint\":\"" + worker + "\",\"predict_input\":\""
+                   + mode + "\",\"predict_timeout\":0.02";
+      ASSERT_EQ(created_str, japi.jrender(japi.service_create(
+                                 service, create_request(repo, extra))));
+      auto predict = [&](const std::string &mllib) {
+        return japi.service_predict("{\"service\":\"" + service
+                                    + "\",\"data\":[\"" + image
+                                    + "\"],\"parameters\":{\"mllib\":{" + mllib
+                                    + "},\"output\":{\"best\":1}}}");
+      };
+      // A per-request override must replace the shorter service timeout.
+      auto success = predict("\"predict_timeout\":2");
+      ASSERT_EQ(200, status_code(success)) << japi.jrender(success);
+      for (const std::string value : { "0", "-1", "true", "\"60\"", "1e20" })
+        {
+          auto invalid = predict("\"predict_timeout\":" + value);
+          EXPECT_EQ(400, status_code(invalid)) << japi.jrender(invalid);
+        }
+      // Without an override, the configured service deadline still applies.
+      auto expired = predict("");
+      EXPECT_EQ(500, status_code(expired)) << japi.jrender(expired);
+      EXPECT_NE(std::string::npos,
+                japi.jrender(expired).find("timeout_error"));
+      EXPECT_EQ(ok_str, japi.jrender(japi.service_delete(service, "")));
+      cleanup_repo(repo);
+    }
+}

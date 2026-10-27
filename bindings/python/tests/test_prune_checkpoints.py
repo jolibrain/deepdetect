@@ -1,12 +1,19 @@
 """Checkpoint cleanup tests use temporary files only."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 import pytest
 
+source_root = os.environ.get("DEEPDETECT_WHEEL_TEST_SOURCE_ROOT")
+root = (
+    Path(source_root).resolve()
+    if source_root
+    else Path(__file__).resolve().parents[3]
+)
 spec = importlib.util.spec_from_file_location(
-    "prune_checkpoints", Path(__file__).resolve().parents[3] / "tools/prune_checkpoints.py")
+    "prune_checkpoints", root / "tools/prune_checkpoints.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
