@@ -200,6 +200,9 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
         type=int,
         help="tile overlap in pixels on both axes (default: 25%% of the smaller tile side)",
     )
+    parser.add_argument("--tile-source-size", type=int, help="square source window size before resizing to model width/height")
+    parser.add_argument("--tile-merge", choices=("center", "weighted-probability", "max-confidence"))
+    parser.add_argument("--tile-padding", choices=("constant", "edge"))
     parser.add_argument(
         "--preview-max-side",
         type=int,

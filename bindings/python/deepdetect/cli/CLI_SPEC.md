@@ -522,3 +522,34 @@ linked from each sample JSON's `ground_truth_overlay` field; the exact target
 values remain in the JSON prediction payload. Existing prediction masks and
 values are unchanged. Backends without this optional payload retain their
 prediction-only display; the CLI does not guess targets from source annotations.
+
+### Probability fusion and source-scale tiled segmentation
+
+`infer ... --tiled` keeps center ownership as its default. Optional settings:
+
+- `--tile-source-size N`: extract square N-pixel source windows and resize each
+  to the configured model `--width`/`--height`. `--tile-overlap` is measured in
+  source pixels; its default remains 25% of the source window's smaller side.
+- `--tile-merge weighted-probability`: average each class probability with
+  separable raised-cosine weights (each axis floored at `1e-3`) before argmax.
+- `--tile-merge max-confidence`: choose the complete class-probability vector
+  from the tile with the greatest winning-class probability. Background can
+  win; this is not a foreground union. Exact ties keep the first row-major tile.
+- `--tile-padding edge`: replicate image boundaries for undersized inputs.
+  The default remains constant black padding. Padded outputs are excluded.
+
+The source-scale/probability path requires confidence maps for **every class**;
+unsupported backends fail clearly. Image tiles are resized with Pillow bilinear
+interpolation; returned probabilities are bilinearly mapped back before fusion.
+This is distinct from training pipelines that resize floating-point pixels before
+quantization. Class ties use the lowest class ID. `--confidence-maps` controls
+saving full-resolution 16-bit confidence maps, not the probabilities internally
+required for fusion. A per-image `_tiling.json` records geometry and fusion.
+
+Python callers may use `run_tiled_image(..., source_size=1024,
+merge_modes=("weighted-probability", "max-confidence"), padding="edge")` to
+produce both outputs from the same tile predictions. Multiple modes write to
+mode-named subdirectories. Disk-backed temporary accumulators bound resident
+memory; temporary files are removed on failure as well as success. Results are
+finalized in row chunks. Whole RGB inputs, class masks, and saved confidence
+maps still require memory proportional to source dimensions.
