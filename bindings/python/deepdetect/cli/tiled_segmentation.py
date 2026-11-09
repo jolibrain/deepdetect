@@ -113,7 +113,18 @@ def run_tiled_image(
     confidence_maps: bool,
     writer: EventWriter,
     warmup: int = 0,
+    source_size: int | None = None,
+    merge_modes: tuple[str, ...] = ("center",),
+    padding: str = "constant",
 ) -> TiledImageResult:
+    if source_size is not None or merge_modes != ("center",) or padding != "constant":
+        from .probability_tiling import run_probability_tiles
+        return run_probability_tiles(
+            service=service, image_path=image_path, output_dir=output_dir,
+            predict_parameters=predict_parameters, tile_width=tile_width, tile_height=tile_height,
+            source_size=source_size, overlap=overlap, batch_size=batch_size, nclasses=nclasses,
+            preview_max_side=preview_max_side, confidence_maps=confidence_maps, writer=writer,
+            warmup=warmup, merge_modes=merge_modes, padding=padding)
     with Image.open(image_path) as source:
         source = source.convert("RGB")
     width, height = source.size

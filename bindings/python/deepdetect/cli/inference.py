@@ -56,6 +56,9 @@ def run_infer(args: Any) -> int:
         best_bbox=getattr(args, "best_bbox", None),
         tiled=getattr(args, "tiled", None),
         tile_overlap=getattr(args, "tile_overlap", None),
+        tile_source_size=getattr(args, "tile_source_size", None),
+        tile_merge=getattr(args, "tile_merge", None),
+        tile_padding=getattr(args, "tile_padding", None),
         preview_max_side=getattr(args, "preview_max_side", None),
         confidence_maps=getattr(args, "confidence_maps", None),
     )
@@ -97,6 +100,9 @@ def run_infer(args: Any) -> int:
             raise ValueError("tiled segmentation requires between 1 and 256 classes")
         validate_positive("preview_max_side", int(options["preview_max_side"]))
         smaller_tile_side = min(int(options["width"]), int(options["height"]))
+        if options.get("tile_source_size") is not None:
+            validate_positive("tile_source_size", int(options["tile_source_size"]))
+            smaller_tile_side = int(options["tile_source_size"])
         overlap = options.get("tile_overlap")
         if overlap is None:
             overlap = int(smaller_tile_side * 0.25)
@@ -180,6 +186,9 @@ def run_infer(args: Any) -> int:
                     tile_width=int(options["width"]),
                     tile_height=int(options["height"]),
                     overlap=int(options["tile_overlap"]),
+                    source_size=options.get("tile_source_size"),
+                    merge_modes=(options["tile_merge"],),
+                    padding=options["tile_padding"],
                     batch_size=batch_size,
                     nclasses=int(options["nclasses"]),
                     preview_max_side=int(options["preview_max_side"]),

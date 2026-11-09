@@ -128,6 +128,9 @@ class ModelProfile:
             "keypoint_threshold": 0.05,
             "tiled": False,
             "tile_overlap": None,
+            "tile_source_size": None,
+            "tile_merge": "center",
+            "tile_padding": "constant",
             "preview_max_side": 4096,
             "confidence_maps": False,
         }
