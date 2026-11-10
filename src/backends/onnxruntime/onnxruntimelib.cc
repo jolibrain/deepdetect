@@ -428,12 +428,8 @@ namespace dd
                 float xmax = out_data[base_idx + 5] * orig_w;
                 float ymax = out_data[base_idx + 6] * orig_h;
 
-                std::string cat = std::to_string(label_id);
-                if (label_id >= 0 && label_id < static_cast<int>(this->_mlmodel._corresp_v.size()))
-                  cat = this->_mlmodel._corresp_v[label_id];
-
                 probs.push_back(static_cast<double>(score));
-                cats.push_back(cat);
+                cats.push_back(this->_mlmodel.get_hcorresp(label_id));
 
                 APIData ad_bbox;
                 ad_bbox.add("xmin", static_cast<double>(xmin));
