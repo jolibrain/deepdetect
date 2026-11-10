@@ -27,7 +27,7 @@
   "CUDA_VERSION=@CUDA_VERSION_STRING@ "                                       \
   "CUDNN_VERSION=@DEEPDETECT_CUDNN_VERSION@ "                                 \
   "CUDA_ARCH=@CUDA_ARCH@ TENSORRT_VERSION=@TENSORRT_VERSION@ "                \
-  "ONNXRUNTIME_VERSION=@ONNXRUNTIME_VERSION"
+  "ONNXRUNTIME_VERSION=@ONNXRUNTIME_VERSION@"
 // Swagger documentation
 std::string GET_API_DOC();
 

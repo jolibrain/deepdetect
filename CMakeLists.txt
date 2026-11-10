@@ -993,19 +993,7 @@ if (USE_ONNXRUNTIME)
     set_target_properties(ort_main PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime.${ORT_EXT})
     add_dependencies(ort_main onnxruntime) # Wait for download before linking
 
-    if (APPLE OR USE_ONNXRUNTIME_CPU_ONLY)
-        set(ONNXRUNTIME_LIB_DEPS ort_main)
-    else()
-        add_library(ort_cuda SHARED IMPORTED)
-        set_target_properties(ort_cuda PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime_providers_cuda.${ORT_EXT})
-        add_dependencies(ort_cuda onnxruntime)
-
-        add_library(ort_shared SHARED IMPORTED)
-        set_target_properties(ort_shared PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime_providers_shared.${ORT_EXT})
-        add_dependencies(ort_shared onnxruntime)
-
-        set(ONNXRUNTIME_LIB_DEPS ort_main ort_cuda ort_shared)
-    endif()
+    set(ONNXRUNTIME_LIB_DEPS ort_main)
 endif()
 
 # XGBoost
