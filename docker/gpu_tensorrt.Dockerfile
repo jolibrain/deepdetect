@@ -150,6 +150,7 @@ FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_CUDA_VERSION=13.0
+ENV ORT_DISABLE_TELEMETRY=1
 
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
