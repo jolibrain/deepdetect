@@ -67,6 +67,7 @@ namespace dd
     bool _bbox = false;
     bool _regression = false;
     bool _timeserie = false;
+    bool _concurrent_predict = false;
     std::string _template;
 
     // ONNX Runtime environment and session handles
