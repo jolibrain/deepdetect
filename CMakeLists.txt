@@ -24,6 +24,7 @@ option(BUILD_SPDLOG "build SPDLOG instead of using system library" ON)
 option(BUILD_PROTOBUF "build PROTOBUF instead of using system library" ON)
 option(USE_BOOST_BACKTRACE "use boost backtrace" ON)
 option(USE_OPENMP "use OpenMP" ON)
+option(USE_ONNXRUNTIME "use ONNX Runtime backend" OFF)
 
 if (USE_CAFFE)
   add_definitions(-DUSE_CAFFE)
@@ -43,6 +44,10 @@ endif()
 
 if (USE_TF AND USE_TORCH)
   message(FATAL_ERROR "Building with tensorflow AND torch can't be build together")
+endif()
+
+if (USE_ONNXRUNTIME)
+    add_definitions(-DUSE_ONNXRUNTIME)
 endif()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -302,7 +307,7 @@ endif()
 # dependency on Boost
 if (USE_BOOST_BACKTRACE)
     add_definitions(-DUSE_BOOST_BACKTRACE)
-    find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_backtrace)
+    find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams stacktrace_basic)
     string(APPEND CMAKE_CXX_FLAGS " -DBOOST_STACKTRACE_USE_BACKTRACE -DBOOST_STACKTRACE_LINK")
 else()
     find_package(Boost 1.54 REQUIRED COMPONENTS filesystem thread system iostreams)
@@ -317,6 +322,7 @@ option(USE_CAFFE_CPU_ONLY "use CAFFE without CUDA" OFF)
 option(USE_DLIB_CPU_ONLY "use DLIB without CUDA" OFF)
 option(USE_CAFFE2_CPU_ONLY "use CAFFE2 without CUDA" OFF)
 option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
+option(USE_ONNXRUNTIME_CPU_ONLY "use ONNX Runtime without CUDA" OFF)
 
 # Dlib AVX option
 option(USE_DLIB_AVX "build dlib with AVX enabled" OFF)
@@ -334,6 +340,7 @@ if (USE_CPU_ONLY)
   set(USE_CAFFE2_CPU_ONLY ON)
   set(USE_TORCH_CPU_ONLY ON)
   set(USE_FAISS_CPU_ONLY ON)
+  set(USE_ONNXRUNTIME_CPU_ONLY ON)
   set(USE_CUDNN OFF)
 else()
   cmake_minimum_required(VERSION 3.14)
@@ -359,6 +366,9 @@ if (NOT APPLE AND NOT CUDA_FOUND)
   endif()
   if (USE_TORCH AND NOT USE_TORCH_CPU_ONLY)
       message(FATAL, "USE_TORCH=ON needs CUDA installed")
+  endif()
+  if (USE_ONNXRUNTIME AND NOT USE_ONNXRUNTIME_CPU_ONLY)
+      message(FATAL_ERROR "USE_ONNXRUNTIME=ON needs CUDA installed unless USE_ONNXRUNTIME_CPU_ONLY=ON is set")
   endif()
   if (USE_CAFFE2 AND NOT USE_CAFFE2_CPU_ONLY)
       message(FATAL, "USE_CAFFE2=ON needs CUDA installed")
@@ -966,6 +976,71 @@ if (USE_TORCH)
   list(APPEND TORCH_LIB_DEPS torchvision)
 endif()
 
+# ONNX Runtime
+if (USE_ONNXRUNTIME)
+    message(STATUS "Configuring ONNX Runtime")
+    add_definitions(-DUSE_ONNXRUNTIME)
+
+    set(ORT_VERSION "1.30.1") # Update to your exact version
+
+    # 1. Determine the exact tarball name and file extension
+    if (APPLE)
+        set(ORT_TAR_DIR "onnxruntime-osx-arm64-${ORT_VERSION}")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ORT_TAR_DIR}.tgz")
+        set(ORT_EXT "dylib")
+    elseif (USE_ONNXRUNTIME_CPU_ONLY)
+        set(ORT_TAR_DIR "onnxruntime-linux-x64-${ORT_VERSION}")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ORT_TAR_DIR}.tgz")
+        set(ORT_EXT "so")
+    else()
+        if (CUDA_VERSION MATCHES "^12\\.")
+            set(ORT_CUDA_SUFFIX "_cuda12")
+        elseif (CUDA_VERSION MATCHES "^13\\.")
+            set(ORT_CUDA_SUFFIX "_cuda13")
+        else()
+            message(FATAL_ERROR "ONNX Runtime requires CUDA 12 or 13. Found CUDA ${CUDA_VERSION}.")
+        endif()
+        set(ORT_TAR_DIR "onnxruntime-linux-x64-gpu${ORT_CUDA_SUFFIX}-${ORT_VERSION}")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ORT_TAR_DIR}.tgz")
+        set(ORT_EXT "so")
+    endif()
+
+    message(STATUS "Downloading ONNX Runtime from: ${ORT_URL}")
+
+    # 2. Download and extract
+    ExternalProject_Add(
+            onnxruntime
+            PREFIX onnxruntime
+            URL ${ORT_URL}
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+    )
+
+    # 3. Path into the extracted folder
+    set(ONNXRUNTIME_INC_DIR ${CMAKE_BINARY_DIR}/onnxruntime/src/onnxruntime/include)
+    set(ONNXRUNTIME_LIB_DIR ${CMAKE_BINARY_DIR}/onnxruntime/src/onnxruntime/lib)
+
+    # 4. Wrap the raw library files into CMake IMPORTED targets
+    add_library(ort_main SHARED IMPORTED)
+    set_target_properties(ort_main PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime.${ORT_EXT})
+    add_dependencies(ort_main onnxruntime) # Wait for download before linking
+
+    if (APPLE OR USE_ONNXRUNTIME_CPU_ONLY)
+        set(ONNXRUNTIME_LIB_DEPS ort_main)
+    else()
+        add_library(ort_cuda SHARED IMPORTED)
+        set_target_properties(ort_cuda PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime_providers_cuda.${ORT_EXT})
+        add_dependencies(ort_cuda onnxruntime)
+
+        add_library(ort_shared SHARED IMPORTED)
+        set_target_properties(ort_shared PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime_providers_shared.${ORT_EXT})
+        add_dependencies(ort_shared onnxruntime)
+
+        set(ONNXRUNTIME_LIB_DEPS ort_main ort_cuda ort_shared)
+    endif()
+endif()
+
 # XGBoost
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
@@ -1251,6 +1326,7 @@ include_directories(
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
     ${NCNN_INC_DIR}
+    ${ONNXRUNTIME_INC_DIR}
 )
 include_directories(
     SYSTEM ${TENSORRT_INC_DIR}
@@ -1280,6 +1356,7 @@ set(COMMON_INCLUDE_DIRS
     ${TORCH_INC_DIR}
     ${TENSORRT_INC_DIR}
     ${NCNN_INC_DIR}
+    ${ONNXRUNTIME_INC_DIR}
 
     ${CMAKE_SOURCE_DIR}/src/backends/caffe
     ${CMAKE_SOURCE_DIR}/backends/xgb
@@ -1303,6 +1380,7 @@ set(COMMON_LINK_DIRS
     ${NCNN_LIB_DIR}
     ${FAISS_LIB_DIR}
     ${TORCH_LIB_DIR}
+    ${ONNXRUNTIME_LIB_DIR}
 )
 
 set(COMMON_LINK_LIBS
@@ -1319,6 +1397,7 @@ set(COMMON_LINK_LIBS
     ${NCNN_LIB_DEPS}
     ${FAISS_LIB_DEPS}
     ${TORCH_LIB_DEPS}
+    ${ONNXRUNTIME_LIB_DEPS}
 )
 if (USE_HDF5)
     find_library(HDF5_LIBRARY NAMES hdf5_cpp hdf5_serial_cpp)
@@ -1418,6 +1497,8 @@ message(STATUS "USE_TF_CPU_ONLY:       ${USE_TF_CPU_ONLY}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
+message(STATUS "USE_ONNXRUNTIME:       ${USE_ONNXRUNTIME}")
+message(STATUS "USE_ONNXRUNTIME_CPU:   ${USE_ONNXRUNTIME_CPU_ONLY}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
 message(STATUS "USE_DLIB_CPU_ONLY:     ${USE_DLIB_CPU_ONLY}")
 message(STATUS "USE_DLIB_AVX:          ${USE_DLIB_AVX}")

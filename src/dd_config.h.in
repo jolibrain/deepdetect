@@ -10,6 +10,8 @@
   "USE_CAFFE2=@USE_CAFFE2@ USE_TF=@USE_TF@ USE_NCNN=@USE_NCNN@ "              \
   "USE_TORCH=@USE_TORCH@ USE_HDF5=@USE_HDF5@ USE_CAFFE=@USE_CAFFE@ "          \
   "USE_TENSORRT=@USE_TENSORRT@ USE_TENSORRT_OSS=@USE_TENSORRT_OSS@ "          \
+  "USE_ONNXRUNTIME=@USE_ONNXRUNTIME@ "                                        \
+  "USE_ONNXRUNTIME_CPU_ONLY=@USE_ONNXRUNTIME_CPU_ONLY@ "                      \
   "USE_DLIB=@USE_DLIB@ USE_CUDA_CV=@USE_CUDA_CV@ "                            \
   "USE_SIMSEARCH=@USE_SIMSEARCH@ USE_ANNOY=@USE_ANNOY@ "                      \
   "USE_FAISS=@USE_FAISS@ USE_COMMAND_LINE=@USE_COMMAND_LINE@ "                \
@@ -18,6 +20,7 @@
 #define DEPS_VERSION                                                          \
   "OPENCV_VERSION=@OpenCV_VERSION@ "                                          \
   "CUDA_VERSION=@CUDA_VERSION_STRING@ CUDNN_VERSION=@CUDNN_VERSION@ "         \
-  "CUDA_ARCH=@CUDA_ARCH@ TENSORRT_VERSION=@TENSORRT_VERSION@"
+  "CUDA_ARCH=@CUDA_ARCH@ TENSORRT_VERSION=@TENSORRT_VERSION@ "                \
+  "ONNXRUNTIME_VERSION=@ONNXRUNTIME_VERSION"
 
 #endif
