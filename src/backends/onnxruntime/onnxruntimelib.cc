@@ -170,6 +170,23 @@ namespace dd
       {
         auto name_ptr = _session->GetInputNameAllocated(i, _allocator);
         _input_node_names.push_back(name_ptr.get());
+
+        // Auto-detect dimensions from first input node
+        if (i == 0)
+          {
+            Ort::TypeInfo type_info = _session->GetInputTypeInfo(i);
+            auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
+            std::vector<int64_t> input_dims = tensor_info.GetShape();
+
+            if (input_dims.size() == 4)
+              {
+                if (this->_mlmodel._height <= 0 && input_dims[2] > 0)
+                  this->_mlmodel._height = input_dims[2];
+
+                if (this->_mlmodel._width <= 0 && input_dims[3] > 0)
+                  this->_mlmodel._width = input_dims[3];
+              }
+          }
       }
     for (const auto &name : _input_node_names)
       _input_node_names_ptr.push_back(name.c_str());
@@ -285,6 +302,22 @@ namespace dd
         throw;
       }
     this->_stats.transform_end();
+
+    if (inputc.width() != this->_mlmodel._width || inputc.height() != this->_mlmodel._height)
+      {
+#if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
+        if (this->_gpu)
+          {
+#ifdef USE_CUDA_CV
+            if (cuda_input_buf) cudaFree(cuda_input_buf);
+#endif
+            cudaStreamDestroy(cstream);
+          }
+#endif
+        throw MLLibBadParamException(
+            "Model height and/or width differ from the input data size. "
+            "Input data size should be " + std::to_string(this->_mlmodel._width) + "x" + std::to_string(this->_mlmodel._height));
+      }
 
     int batch_size = inputc.process_batch(this->_max_batch_size);
     if (batch_size <= 0)
