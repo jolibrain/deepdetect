@@ -50,6 +50,13 @@ def run(command: list[str], *, cwd: Path = REPO_ROOT, env: dict[str, str] | None
     subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
+def resolve_cmake(command: str) -> str:
+    executable = shutil.which(os.path.expanduser(command))
+    if executable is None:
+        raise SystemExit(f"CMake executable not found or not executable: {command}; pass --cmake /path/to/cmake")
+    return str(Path(executable).absolute())
+
+
 def torch_cmake_prefix(torch_mode: str) -> str:
     torch = importlib.import_module("torch")
     version = str(getattr(torch, "__version__", ""))
@@ -281,6 +288,7 @@ def project_for_wheel(
 
 def main() -> None:
     args = parse_args()
+    args.cmake = resolve_cmake(args.cmake)
     build_dir = (REPO_ROOT / args.build_dir).resolve()
     sdk_prefix = (REPO_ROOT / args.sdk_prefix).resolve()
     wheel_dir = (REPO_ROOT / args.wheel_dir).resolve()
@@ -294,7 +302,7 @@ def main() -> None:
 
     env = os.environ.copy()
     #env.setdefault("CCACHE_DISABLE", "1")
-    env["CMAKE_EXECUTABLE"] = str(Path(args.cmake).resolve())
+    env["CMAKE_EXECUTABLE"] = args.cmake
 
     if not args.skip_native_build:
         configure_command = [
