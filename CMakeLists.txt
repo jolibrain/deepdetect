@@ -25,6 +25,7 @@ option(BUILD_SPDLOG "build SPDLOG instead of using system library" ON)
 option(BUILD_PROTOBUF "build PROTOBUF instead of using system library" ON)
 option(USE_BOOST_BACKTRACE "use boost backtrace" ON)
 option(USE_OPENMP "use OpenMP" ON)
+option(USE_ONNXRUNTIME "use ONNX Runtime backend" OFF)
 
 set(TORCH_LOCATION "" CACHE PATH
   "Deprecated LibTorch prefix; use Torch_DIR or CMAKE_PREFIX_PATH")
@@ -51,6 +52,10 @@ endforeach()
 
 if (USE_TENSORRT_OSS)
   set(USE_TENSORRT ON)
+endif()
+
+if (USE_ONNXRUNTIME)
+    add_definitions(-DUSE_ONNXRUNTIME)
 endif()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -306,7 +311,7 @@ if (BUILD_SPDLOG)
         URL https://github.com/gabime/spdlog/archive/refs/tags/v1.15.3.tar.gz
         URL_HASH SHA256=15a04e69c222eb6c01094b5c7ff8a249b36bb22788d72519646fb85feb267e67
         BUILD_IN_SOURCE true
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/spdlog/build -DCMAKE_POSITION_INDEPENDENT_CODE=ON 
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/spdlog/build -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     )
     set(SPDLOG_LIB_DEPS ${CMAKE_BINARY_DIR}/spdlog/build/lib/libspdlog.a)
     set(SPDLOG_LIB_DIR ${CMAKE_BINARY_DIR}/spdlog/build/lib)
@@ -350,6 +355,7 @@ option(USE_XGBOOST_CPU_ONLY "use XGBOOST without CUDA" ON)
 option(USE_TORCH_CPU_ONLY "use TORCH without CUDA" OFF)
 option(USE_DLIB_CPU_ONLY "use DLIB without CUDA" OFF)
 option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
+option(USE_ONNXRUNTIME_CPU_ONLY "use ONNX Runtime without CUDA" OFF)
 
 # Dlib AVX option
 option(USE_DLIB_AVX "build dlib with AVX enabled" OFF)
@@ -364,6 +370,7 @@ if (USE_CPU_ONLY)
   set(USE_DLIB_CPU_ONLY ON)
   set(USE_TORCH_CPU_ONLY ON)
   set(USE_FAISS_CPU_ONLY ON)
+  set(USE_ONNXRUNTIME_CPU_ONLY ON)
   set(USE_CUDNN OFF)
 else()
   include(cmake/Cuda.cmake) # cuda + cudnn
@@ -382,6 +389,9 @@ if (NOT APPLE AND NOT CUDA_FOUND)
   endif()
   if (USE_TORCH AND NOT USE_TORCH_CPU_ONLY)
       message(FATAL, "USE_TORCH=ON needs CUDA installed")
+  endif()
+  if (USE_ONNXRUNTIME AND NOT USE_ONNXRUNTIME_CPU_ONLY)
+      message(FATAL_ERROR "USE_ONNXRUNTIME=ON needs CUDA installed unless USE_ONNXRUNTIME_CPU_ONLY=ON is set")
   endif()
   if (USE_FAISS AND NOT USE_FAISS_CPU_ONLY)
       message(FATAL, "USE_FAISS=ON needs CUDA installed")
@@ -933,6 +943,71 @@ else()
   set(FMT_LIB_DIR ${CMAKE_BINARY_DIR}/fmt/src/fmt/lib)
 endif()
 
+# ONNX Runtime
+if (USE_ONNXRUNTIME)
+    message(STATUS "Configuring ONNX Runtime")
+    add_definitions(-DUSE_ONNXRUNTIME)
+
+    set(ORT_VERSION "1.30.1") # Update to your exact version
+
+    # 1. Determine the exact tarball name and file extension
+    if (APPLE)
+        set(ORT_TAR_DIR "onnxruntime-osx-arm64-${ORT_VERSION}")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ORT_TAR_DIR}.tgz")
+        set(ORT_EXT "dylib")
+    elseif (USE_ONNXRUNTIME_CPU_ONLY)
+        set(ORT_TAR_DIR "onnxruntime-linux-x64-${ORT_VERSION}")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ORT_TAR_DIR}.tgz")
+        set(ORT_EXT "so")
+    else()
+        if (CUDA_VERSION MATCHES "^12\\.")
+            set(ORT_CUDA_SUFFIX "_cuda12")
+        elseif (CUDA_VERSION MATCHES "^13\\.")
+            set(ORT_CUDA_SUFFIX "_cuda13")
+        else()
+            message(FATAL_ERROR "ONNX Runtime requires CUDA 12 or 13. Found CUDA ${CUDA_VERSION}.")
+        endif()
+        set(ORT_TAR_DIR "onnxruntime-linux-x64-gpu${ORT_CUDA_SUFFIX}-${ORT_VERSION}")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ORT_TAR_DIR}.tgz")
+        set(ORT_EXT "so")
+    endif()
+
+    message(STATUS "Downloading ONNX Runtime from: ${ORT_URL}")
+
+    # 2. Download and extract
+    ExternalProject_Add(
+            onnxruntime
+            PREFIX onnxruntime
+            URL ${ORT_URL}
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+    )
+
+    # 3. Path into the extracted folder
+    set(ONNXRUNTIME_INC_DIR ${CMAKE_BINARY_DIR}/onnxruntime/src/onnxruntime/include)
+    set(ONNXRUNTIME_LIB_DIR ${CMAKE_BINARY_DIR}/onnxruntime/src/onnxruntime/lib)
+
+    # 4. Wrap the raw library files into CMake IMPORTED targets
+    add_library(ort_main SHARED IMPORTED)
+    set_target_properties(ort_main PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime.${ORT_EXT})
+    add_dependencies(ort_main onnxruntime) # Wait for download before linking
+
+    if (APPLE OR USE_ONNXRUNTIME_CPU_ONLY)
+        set(ONNXRUNTIME_LIB_DEPS ort_main)
+    else()
+        add_library(ort_cuda SHARED IMPORTED)
+        set_target_properties(ort_cuda PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime_providers_cuda.${ORT_EXT})
+        add_dependencies(ort_cuda onnxruntime)
+
+        add_library(ort_shared SHARED IMPORTED)
+        set_target_properties(ort_shared PROPERTIES IMPORTED_LOCATION ${ONNXRUNTIME_LIB_DIR}/libonnxruntime_providers_shared.${ORT_EXT})
+        add_dependencies(ort_shared onnxruntime)
+
+        set(ONNXRUNTIME_LIB_DEPS ort_main ort_cuda ort_shared)
+    endif()
+endif()
+
 # XGBoost
 if (USE_XGBOOST)
   message(STATUS "Configuring XGBoost")
@@ -1002,7 +1077,7 @@ if (USE_TSNE)
    )
   set(TSNE_INC_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE/multicore_tsne)
   set(TSNE_LIB_DIR ${CMAKE_BINARY_DIR}/Multicore-TSNE/src/Multicore-TSNE-build)
-    
+
 endif()
 
 if (USE_TENSORRT)
@@ -1269,6 +1344,7 @@ include_directories(
     ${TORCH_INC_DIR}
     ${NCNN_INC_DIR}
     ${FMT_INC_DIR}
+    ${ONNXRUNTIME_INC_DIR}
 )
 include_directories(BEFORE SYSTEM ${PROTOBUF_INCLUDE_DIR})
 include_directories(
@@ -1296,6 +1372,7 @@ set(COMMON_INCLUDE_DIRS
     ${TORCH_INC_DIR}
     ${TENSORRT_INC_DIR}
     ${NCNN_INC_DIR}
+    ${ONNXRUNTIME_INC_DIR}
 
     ${CMAKE_SOURCE_DIR}/backends/xgb
     ${CMAKE_SOURCE_DIR}/backends/dlib
@@ -1314,6 +1391,7 @@ set(COMMON_LINK_DIRS
     ${NCNN_LIB_DIR}
     ${FAISS_LIB_DIR}
     ${TORCH_LIB_DIR}
+    ${ONNXRUNTIME_LIB_DIR}
 )
 
 set(COMMON_LINK_LIBS
@@ -1327,6 +1405,7 @@ set(COMMON_LINK_LIBS
     ${NCNN_LIB_DEPS}
     ${FAISS_LIB_DEPS}
     ${TORCH_LIB_DEPS}
+    ${ONNXRUNTIME_LIB_DEPS}
 )
 if (USE_HDF5)
     find_library(HDF5_LIBRARY NAMES hdf5_cpp hdf5_serial_cpp)
@@ -1473,6 +1552,8 @@ message(STATUS "USE_SIMSEARCH:         ${USE_SIMSEARCH}")
 message(STATUS "USE_NCNN:              ${USE_NCNN}")
 message(STATUS "USE_HDF5:              ${USE_HDF5}")
 message(STATUS "USE_TENSORRT:          ${USE_TENSORRT}")
+message(STATUS "USE_ONNXRUNTIME:       ${USE_ONNXRUNTIME}")
+message(STATUS "USE_ONNXRUNTIME_CPU:   ${USE_ONNXRUNTIME_CPU_ONLY}")
 message(STATUS "USE_DLIB:              ${USE_DLIB}")
 message(STATUS "USE_DLIB_CPU_ONLY:     ${USE_DLIB_CPU_ONLY}")
 message(STATUS "USE_DLIB_AVX:          ${USE_DLIB_AVX}")
