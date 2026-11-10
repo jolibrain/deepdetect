@@ -99,9 +99,9 @@ namespace dd
     if (ad.has("concurrent_predict"))
       this->_concurrent_predict = ad.get("concurrent_predict").get<bool>();
 
-    if (this->_model._model.empty())
+    if (this->_mlmodel._model.empty())
       {
-        this->_logger->error("No ONNX model file found in repository {}", this->_model._repo);
+        this->_logger->error("No ONNX model file found in repository {}", this->_mlmodel._repo);
         throw MLLibBadParamException("No ONNX model file found in repository");
       }
 
@@ -113,8 +113,8 @@ namespace dd
 
     try
       {
-        this->_logger->info("Loading ONNX model from: {}", this->_model._model);
-        _session = std::make_unique<Ort::Session>(_env, this->_model._model.c_str(), _session_options);
+        this->_logger->info("Loading ONNX model from: {}", this->_mlmodel._model);
+        _session = std::make_unique<Ort::Session>(_env, this->_mlmodel._model.c_str(), _session_options);
       }
     catch (const Ort::Exception &e)
       {
@@ -429,8 +429,8 @@ namespace dd
                 float ymax = out_data[base_idx + 6] * orig_h;
 
                 std::string cat = std::to_string(label_id);
-                if (label_id >= 0 && label_id < static_cast<int>(this->_model._corresp_v.size()))
-                  cat = this->_model._corresp_v[label_id];
+                if (label_id >= 0 && label_id < static_cast<int>(this->_mlmodel._corresp_v.size()))
+                  cat = this->_mlmodel._corresp_v[label_id];
 
                 probs.push_back(static_cast<double>(score));
                 cats.push_back(cat);
@@ -458,7 +458,7 @@ namespace dd
 
     tout.add_results(vrad);
     return tout.finalize(predict_dto->parameters->output, conf,
-                         static_cast<MLModel *>(&this->_model));
+                         static_cast<MLModel *>(&this->_mlmodel));
   }
 
   // --------------------------------------------------------------------------
