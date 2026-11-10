@@ -96,6 +96,12 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN python -m pip install --break-system-packages torch==2.12.1 torchvision==0.27.1 --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA_INDEX}
 RUN python -m pip install --break-system-packages onnx onnxscript
+# Keep pip-managed test dependencies separate from Debian packages, while
+# reusing the Torch installation above through system-site-packages.
+RUN python -m venv --system-site-packages /opt/deepdetect-python-tests && \
+    /opt/deepdetect-python-tests/bin/python -m pip install \
+    'pytest>=7' 'numpy>=1.23' 'Pillow>=9' 'PyYAML>=6' \
+    'nvidia-ml-py>=12' 'rich>=13.7' 'timm>=1.0' 'tqdm>=4.66' 'matplotlib>=3.7'
 
 
 RUN apt clean -y

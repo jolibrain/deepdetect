@@ -32,6 +32,27 @@ The docker container mounts the prebuilt directory as copy-on-write volume
 
 trigger on pull request only
 
+The main pipeline (`Jenkinsfile` and `ci/Jenkinsfile.unittests`) runs the full
+regular Python bindings and CLI suite in a `Tests Python CPU` stage before
+native compilation. It uses the source package, hides GPUs, limits CPU thread
+pools, and publishes JUnit results in Jenkins. No wheel or native build is
+required for this stage. Model integration tests remain opt-in through their
+fixture environment variables; the wheel job below covers native integration.
+The existing `ci:skip-tests` PR label also skips this stage.
+
+The image installs test dependencies in `/opt/deepdetect-python-tests`, a
+virtualenv with access to system site packages so it can reuse Torch. Pip
+installs dependency upgrades inside that environment without uninstalling
+Debian-managed packages such as `pluggy`. The test stage invokes its Python
+explicitly; other build stages retain their existing Python environment.
+
+To run the same suite locally with the test dependencies installed:
+
+```bash
+CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  PYTHONPATH=bindings/python python3 -m pytest bindings/python/tests -q
+```
+
 ## deepdetect-python-wheels
 
 Build CPU and GPU Python wheels, install each wheel in a clean virtualenv, and

@@ -32,6 +32,30 @@ pipeline {
         sh '''echo ${DOCKER_IMAGE} > docker-image-name'''
       }
     }
+    stage('Tests Python CPU') {
+      when {
+        expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:skip-tests" }.size() == 0 }
+      }
+      steps {
+        script {
+          docker.image(env.DOCKER_IMAGE).inside(env.DOCKER_PARAMS) {
+            sh '''
+export CUDA_VISIBLE_DEVICES=""
+export PYTHONPATH="${PWD}/bindings/python"
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+/opt/deepdetect-python-tests/bin/python -m pytest bindings/python/tests -q --durations=10 \
+  --junitxml=test-results/python-bindings.xml
+'''
+          }
+        }
+      }
+      post {
+        always {
+          junit testResults: 'test-results/python-bindings.xml', allowEmptyResults: false
+        }
+      }
+    }
     stage('Installing prebuilt cache') {
       when {
        expression { !env.CHANGE_ID || pullRequest.labels.findAll { it == "ci:full-build" }.size() == 0 }
