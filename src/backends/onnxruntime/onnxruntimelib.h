@@ -71,7 +71,7 @@ namespace dd
     std::string _template;
 
     // ONNX Runtime environment and session handles
-    Ort::Env _env;
+    std::unique_ptr<Ort::Env> _env_ptr;
     Ort::SessionOptions _session_options;
     std::unique_ptr<Ort::Session> _session = nullptr;
     Ort::AllocatorWithDefaultOptions _allocator;

@@ -41,8 +41,7 @@ namespace dd
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
   ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::ONNXRuntimeLib(
       const ONNXRuntimeModel &model)
-      : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, ONNXRuntimeModel>(model),
-        _env(ORT_LOGGING_LEVEL_WARNING, "DeepDetect_ORT")
+      : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, ONNXRuntimeModel>(model)
   {
     this->_libname = "onnxruntime";
   }
@@ -51,7 +50,7 @@ namespace dd
   ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::ONNXRuntimeLib(
       ONNXRuntimeLib &&other) noexcept
       : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, ONNXRuntimeModel>(std::move(other)),
-        _env(std::move(other._env)),
+        _env_ptr(std::move(other._env_ptr)),
         _session_options(std::move(other._session_options)),
         _session(std::move(other._session)),
         _input_node_names(std::move(other._input_node_names)),
@@ -105,8 +104,67 @@ namespace dd
         throw MLLibBadParamException("No ONNX model file found in repository");
       }
 
+    OrtLoggingLevel log_level = ORT_LOGGING_LEVEL_WARNING; // Default to WARNING
+    if (ad.has("ort_log_level"))
+    {
+      std::string level_str = ad.get("ort_log_level").get<std::string>();
+      if (level_str == "verbose")
+        log_level = ORT_LOGGING_LEVEL_VERBOSE;
+      else if (level_str == "info")
+        log_level = ORT_LOGGING_LEVEL_INFO;
+      else if (level_str == "warning")
+        log_level = ORT_LOGGING_LEVEL_WARNING;
+      else if (level_str == "error")
+        log_level = ORT_LOGGING_LEVEL_ERROR;
+      else if (level_str == "fatal")
+        log_level = ORT_LOGGING_LEVEL_FATAL;
+      else
+        this->_logger->warn("Unknown ort_log_level '{}'. Defaulting to warning.", level_str);
+    }
+    _env_ptr = std::make_unique<Ort::Env>(log_level, "DeepDetect_ORT");
+
     _session_options = Ort::SessionOptions();
-    _session_options.SetIntraOpNumThreads(1);
+    // Default to 1 for GPU safety, but allow CPU-only users to scale up
+    int intra_op_threads = 1;
+    if (ad.has("intra_op_threads")) {
+      intra_op_threads = ad.get("intra_op_threads").get<int>();
+      if (intra_op_threads == 0)
+        {
+          this->_logger->info("intra_op_threads set to 0. ONNX Runtime will auto-detect core count");
+        }
+      else if (intra_op_threads > 128)
+        {
+          this->_logger->warn("intra_op_threads {} is excessively high", intra_op_threads);
+        }
+      else if (intra_op_threads < 0)
+        {
+          this->_logger->error("intra_op_threads cannot be negative");
+          throw MLLibBadParamException("intra_op_threads cannot be negative");
+        }
+    }
+    _session_options.SetIntraOpNumThreads(intra_op_threads);
+    this->_logger->info("ONNX Runtime: Set intra_op_num_threads to {}", intra_op_threads);
+
+    // ONNX Runtime defaults to true, which maximizes speed but burns CPU cycles busy-waiting
+    bool allow_spinning = true;
+
+    if (ad.has("allow_spinning"))
+      {
+        allow_spinning = ad.get("allow_spinning").get<bool>();
+      }
+
+    if (!allow_spinning)
+      {
+        // Disable busy-waiting for both thread pools
+        _session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
+        _session_options.AddConfigEntry("session.inter_op.allow_spinning", "0");
+        this->_logger->info("ONNX Runtime: Disabled CPU thread spinning (busy-waiting)");
+      }
+    else
+      {
+        this->_logger->info("ONNX Runtime: CPU thread spinning enabled (default)");
+      }
+
     _session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
     configure_execution_provider(ad);
@@ -114,7 +172,7 @@ namespace dd
     try
       {
         this->_logger->info("Loading ONNX model from: {}", this->_mlmodel._model);
-        _session = std::make_unique<Ort::Session>(_env, this->_mlmodel._model.c_str(), _session_options);
+        _session = std::make_unique<Ort::Session>(*_env_ptr, this->_mlmodel._model.c_str(), _session_options);
       }
     catch (const Ort::Exception &e)
       {
@@ -441,8 +499,8 @@ namespace dd
 
             if (inputc._imgs_size.find(img_id) != inputc._imgs_size.end())
               {
-                orig_w = inputc._imgs_size[img_id].first;
-                orig_h = inputc._imgs_size[img_id].second;
+                orig_h = inputc._imgs_size[img_id].first;
+                orig_w = inputc._imgs_size[img_id].second;
               }
 
             for (int d = 0; d < max_dets; ++d)
@@ -456,10 +514,10 @@ namespace dd
 
                 int label_id = static_cast<int>(out_data[base_idx + 1]);
                 float score = out_data[base_idx + 2];
-                float xmin = out_data[base_idx + 3] * orig_w;
-                float ymin = out_data[base_idx + 4] * orig_h;
-                float xmax = out_data[base_idx + 5] * orig_w;
-                float ymax = out_data[base_idx + 6] * orig_h;
+                float xmin = std::max(out_data[base_idx + 3], 0.0f) * orig_w;
+                float ymin = std::max(out_data[base_idx + 4], 0.0f) * orig_h;
+                float xmax = std::min(out_data[base_idx + 5], 1.0f) * orig_w;
+                float ymax = std::min(out_data[base_idx + 6], 1.0f) * orig_h;
 
                 probs.push_back(static_cast<double>(score));
                 cats.push_back(this->_mlmodel.get_hcorresp(label_id));
