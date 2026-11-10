@@ -948,7 +948,8 @@ if (USE_ONNXRUNTIME)
     message(STATUS "Configuring ONNX Runtime")
     add_definitions(-DUSE_ONNXRUNTIME)
 
-    set(ORT_VERSION "1.30.1") # Update to your exact version
+    set(ORT_VERSION "1.30.1")
+    set(ONNXRUNTIME_VERSION ${ORT_VERSION})
 
     # 1. Determine the exact tarball name and file extension
     if (APPLE)

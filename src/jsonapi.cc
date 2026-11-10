@@ -783,6 +783,39 @@ namespace dd
               }
           }
 #endif
+#ifdef USE_ONNXRUNTIME
+        else if (mllib == "onnxruntime")
+          {
+            ONNXRuntimeModel onnx_runtime_model(ad_model, ad, _logger);
+            read_metrics_json(onnx_runtime_model._repo, ad);
+            if (type == "supervised")
+              {
+                if (input == "image")
+                  add_service(
+                      sname,
+                      std::move(
+                          MLService<ONNXRuntimeLib, ImgONNXRuntimeInputFileConn,
+                                    SupervisedOutput, ONNXRuntimeModel>(
+                              sname, onnx_runtime_model, description)),
+                      ad);
+                else
+                  return dd_input_connector_not_found_1004();
+                if (store_config
+                    && JsonAPI::store_json_config_blob(onnx_runtime_model._repo,
+                                                       jstr))
+                  {
+                    _logger->error(
+                        "couldn't write {} file in model repository {}",
+                        JsonAPI::_json_config_blob_fname, onnx_runtime_model._repo);
+                  }
+              }
+            else
+              {
+                // unknown type
+                return dd_service_bad_request_1006();
+              }
+          }
+#endif
         else
           {
             return dd_unknown_library_1000();
