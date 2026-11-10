@@ -34,6 +34,7 @@ deepdetect train vitpose ...
 deepdetect infer yolox ...
 deepdetect infer segformer ...
 deepdetect infer vitpose ...
+deepdetect export RUN_DIR --output EXPORT_DIR
 deepdetect job status RUN_DIR
 deepdetect inspect models
 ```
@@ -553,3 +554,162 @@ mode-named subdirectories. Disk-backed temporary accumulators bound resident
 memory; temporary files are removed on failure as well as success. Results are
 finalized in row chunks. Whole RGB inputs, class masks, and saved confidence
 maps still require memory proportional to source dimensions.
+
+## Export a trained model
+
+Export selects a checkpoint and generates `inference.yaml` automatically from
+`run.json` and the effective `config.yaml`. There is no separate recipe file.
+By default it does not launch a service, deserialize weights, or require a GPU.
+It never modifies the training repository. Add `--test-inference` to verify the
+exported model with an actual inference call.
+
+```shell
+python3 -m deepdetect.cli.main export runs/my-model --output models/my-model
+python3 -m deepdetect.cli.main infer yolox image.jpg --config models/my-model/inference.yaml
+```
+
+All trainable CLI profiles support export. Native Torch exports include the
+selected `.pt`, `.npt`, and/or `.ptw` components and required graph/class mapping
+files. Worker exports contain the selected `.pt` and declared inference assets.
+Worker code and Python dependencies must be installed in the destination
+environment. File-entrypoint workers, including ViTPose, need an installed
+module declaration; export never copies arbitrary worker source trees.
+
+Options:
+
+- `SOURCE --output DESTINATION`: source run and a **new**, non-overlapping export
+  directory. Existing destinations are rejected, even when empty.
+- `--checkpoint best|latest|ITERATION`: defaults to `best`, which strictly reads
+  `best_model.txt`. `latest` selects the highest numbered checkpoint, falling
+  back to `checkpoint-latest.pt` only if numbered checkpoints are absent.
+  Missing best checkpoints are errors; solver files are never required.
+- `--model PROFILE`, `--config PATH`: supply missing profile/effective training
+  configuration. A profile conflicting with `run.json` is rejected.
+- `--worker-module PACKAGE.MODULE`: installed worker module, overriding the
+  saved file entrypoint/module. The saved interpreter path is discarded.
+- `--asset CONFIG_KEY=SOURCE`: copy a file or directory and bind its new path to
+  a scalar inference config field, e.g. `service_mllib.model_config`. CLI source
+  paths resolve from the current working directory.
+- `--set KEY=VALUE`, `--unset KEY`: adjust generated inference settings. Unlike
+  training's deep-merge overrides, export assignments **replace the addressed
+  value**, so `--set 'service_mllib.custom={}'` clears an opaque mapping.
+  Unsets are applied after assignments. Export owns the selected `weights`,
+  `repository`, `_export`, and worker checkpoint/lifecycle fields.
+- `--dry-run`: validate and print the selection/inventory without writing.
+- `--test-inference`: after export, generate one deterministic random image
+  (seed 0) at the exported width/height and run inference using the exported
+  configuration. Grayscale inputs are supported; top-down keypoint models
+  receive a full-image bounding box. The test uses a temporary copy of the
+  bundle so service-generated files do not clutter the export. It requires a
+  working native runtime and the installed worker/dependencies. It uses the
+  exported device settings (CPU by default); for GPU use, for example,
+  `--set gpu=true --set gpuid=0`. It cannot be combined with `--dry-run`.
+  This checks model loading and a prediction response, not model quality.
+  Success prints `Inference test: PASSED`; a failure returns exit code 1,
+  prints `inference test FAILED`, and retains the export for inspection.
+  `export.json` records `inference_test` with status, input dimensions/seed,
+  device and elapsed time on success, or the error on failure. JSON output
+  reports `export_test_failed` on test failure rather than `export_finished`.
+  Inference logs are routed to stderr to keep JSON stdout machine-readable.
+- `--output-format text|json|jsonl`: defaults to a concise text success message
+  identifying the destination and selected checkpoint. `--dry-run` explicitly
+  reports that no files were written and lists the planned files. JSON modes
+  emit `export_finished` with `status: success`, or `export_planned` with
+  `status: planned`, and retain the full machine-readable inventory. The full
+  completed report is also saved in `export.json`. Failures print an error on
+  stderr and return a nonzero exit code; no completion message is emitted.
+
+The generated `inference.yaml` preserves model settings and preprocessing,
+uses batch size 1 and CPU by default, and contains bundle-relative paths.
+Use `--gpu --gpuid 0` at inference to select GPU execution. Inference explicitly
+loads the YAML with `--config`; it does not discover files by name. Declared
+bundle paths resolve relative to that YAML, independently of the working
+directory, before inference CLI overrides are applied. Ordinary YAML and CLI
+path semantics remain unchanged. Keep the YAML together with its assets when
+moving or extracting an archive.
+
+`export.json` records the selected iteration, best-marker information (for best
+selection), file sizes/SHA-256 hashes, worker module/class, declared package
+requirements, and available package versions. It is provenance, not an
+exhaustive environment lockfile. If requirements were not declared, export
+attempts to identify the installed distribution providing the worker module.
+No packages are imported, downloaded, or installed by export.
+
+Only selected model components and inference assets are copied. Optimizer
+states, other checkpoints, datasets, training configs/logs/metrics, and saved
+visualizations are excluded. Output is assembled in a temporary sibling and
+published after validation. Detected changes to copied source files abort the
+export. Export from a stable checkpoint; do not modify it concurrently.
+Atomic publication uses Linux `renameat2` with no-replace semantics, including
+when another process creates the destination during export.
+
+### External worker export metadata
+
+New adapters should declare optional `export` metadata in their **existing
+training YAML**. It is retained in the effective run configuration:
+
+```yaml
+export:
+  version: 1
+  module: my_worker.worker
+  requirements: [my-worker==1.2.0]
+  inference:
+    service_mllib:
+      task: detection
+      class: DeepDetectWorker
+      backend_parameters:
+        pretrained: false
+  assets:
+    - key: service_mllib.backend_parameters.model_config
+      source: ./model-definition.yaml
+      destination: assets/model-definition.yaml
+```
+
+`inference` replaces generated values at the top level; in particular,
+`service_mllib` replaces the opaque training worker configuration. The CLI then
+applies `--set`/`--unset`, module selection, and asset mappings. Standard worker
+lifecycle fields are removed and the checkpoint/repository are supplied by
+export. Unspecified top-level inference values come from the run/profile.
+
+Each asset has `key`, `source`, and an optional bundle-relative `destination`.
+Without a destination, it goes under `assets/INDEX/BASENAME`. Metadata source
+paths resolve relative to the training YAML; training persists absolute source
+paths so a later export does not depend on the launch directory. When using a
+legacy run or explicit `--config`, relative metadata sources resolve relative
+to that configuration file. Asset fields use dotted mapping keys (not list
+indices); directory assets support workers needing several related files.
+
+Visible absolute and existing relative local paths left in generated settings
+are rejected: declare them as assets, or remove training-only settings. Export
+cannot discover dependencies embedded inside arbitrary checkpoint/config file
+formats. Such references must already be relative to the bundled asset or
+handled by the worker. Opaque worker parameters are otherwise preserved.
+File symlinks are dereferenced; symlink directories inside assets, traversal,
+missing files, and destination collisions are rejected.
+
+For the existing cracks B5 run, which embeds inference model settings in its
+checkpoint, this exports the recorded best (`checkpoint-3300.pt`) without the
+training-only segmentation configuration:
+
+```shell
+python3 -m deepdetect.cli.main export \
+  /data1/airbuscracksv2_platform/code/cracks_deepdetect_worker/runs/v5-b5-moderate-skip \
+  --output /tmp/cracks-b5-export \
+  --worker-module cracks_deepdetect_worker.worker \
+  --set 'service_mllib.segmentation={}'
+
+python3 -m deepdetect.cli.main infer external-pytorch-segmentation tile.png \
+  --config /tmp/cracks-b5-export/inference.yaml --gpu --gpuid 0
+```
+
+Install `cracks-deepdetect-worker` and its dependencies in the destination
+interpreter. Solver files and the initial pretrained encoder are unnecessary
+for this worker's explicit checkpoint inference. Other workers must declare
+their own inference requirements rather than assuming this checkpoint format.
+
+Real-model relocation smoke tests are opt-in. With the native wheel and worker
+installed in the test interpreter, set `DEEPDETECT_EXPORT_CRACKS_RUN` and/or
+`DEEPDETECT_EXPORT_NATIVE_RUN` to completed cracks/native segmentation runs and
+run `tests/test_cli_export.py -k real_model`. They compare CPU predictions
+before and after tar extraction elsewhere, using this checkout's CLI with the
+installed native engine. The worker test needs permission to bind a local socket.

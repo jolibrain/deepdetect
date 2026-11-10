@@ -125,7 +125,7 @@ def run_infer(args: Any) -> int:
             validate_positive("best_bbox", int(options["best_bbox"]))
 
     writer = EventWriter(output_format=options["output_format"], collect_events=False)
-    if options.get("weights") is not None:
+    if options.get("weights") is not None and not options.get("_export"):
         options["weights"] = stage_model(
             options["weights"], options["repository"],
             reuse_checkpoint=not (profile.backend == "pytorch" and profile.task == "segmentation"),
