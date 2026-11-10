@@ -1,6 +1,6 @@
 ---
 name: deepdetect-pytorch-worker
-description: Use when porting external PyTorch object detection models in DeepDetect through the external PyTorch worker backend.
+description: Use when porting external PyTorch models through the DeepDetect worker backend or making worker adapters exportable for inference.
 ---
 
 # External PyTorch Model Import Skill
@@ -180,3 +180,38 @@ If metrics look plausible but rendered visual results are wrong, inspect the
 saved image and JSON pairs before changing training settings. Check test-set
 ordering, sample indices, coordinate sizes, confidence thresholds, class ids,
 and whether the backend shuffled evaluation data.
+
+## Make New Workers Exportable
+
+The CLI generates a relocatable `inference.yaml` with `deepdetect export RUN
+--output DESTINATION`; do not add a separate recipe file. See
+[CLI export documentation](../cli/CLI_SPEC.md#export-a-trained-model) for the
+metadata schema and legacy-run overrides.
+
+For new adapters, declare `export` metadata in the existing training YAML:
+installed `module`, package `requirements`, inference-only settings under
+`inference`, and any auxiliary `assets` with their configuration field keys.
+Training preserves this metadata in the run's effective `config.yaml`. An
+`inference.service_mllib` mapping replaces opaque training worker settings;
+include the architecture/preprocessing parameters needed to reconstruct the
+model unless the checkpoint authoritatively stores them.
+
+Use an importable installed module for deployment. Keep a file-entrypoint shim
+for development if useful, but declare its installed module explicitly. Load
+an explicit `mllib.weights` checkpoint for inference without requiring solver
+state, training data, the original checkout, or pretrained downloads. Keep the
+existing configure/train/predict worker contract; no export hook is required.
+
+Declare auxiliary files/directories rather than retaining absolute paths in
+inference settings. References embedded inside those assets must be relative
+or resolved by the adapter; the CLI does not rewrite arbitrary file formats.
+Do not copy the upstream source tree into model exports.
+
+Validate an exported checkpoint with a tar/extract relocation test: use a
+second directory and different working directory, make original training paths
+unavailable, and compare predictions on the same inputs. Verify that only the
+selected checkpoint and declared assets are needed with the worker package
+installed. Record any precision/device requirements in the adapter README.
+Use `export --test-inference` for a basic load/run check on a random image at
+the exported dimensions; inspect `inference_test` in `export.json`. This smoke
+test does not replace comparison on real inputs or model-quality assessment.

@@ -9,6 +9,7 @@ import deepdetect
 
 from .commands import run_inspect_models, run_job_status
 from .inference import run_infer
+from .exporting import run_export
 from .profiles import PROFILES
 from .training import run_train
 from .utils import report_error
@@ -28,6 +29,23 @@ def build_parser() -> argparse.ArgumentParser:
     infer_models = infer.add_subparsers(dest="model", required=True)
     for model in PROFILES:
         _add_infer_parser(infer_models.add_parser(model, help=f"infer {model}"), model)
+
+    export = subcommands.add_parser("export", help="export a trained model for inference")
+    export.add_argument("source", type=Path)
+    export.add_argument("--output", type=Path, required=True)
+    export.add_argument("--model", choices=[name for name, p in PROFILES.items() if p.supports_training])
+    export.add_argument("--config", type=Path, help="effective training YAML (defaults to SOURCE/config.yaml)")
+    export.add_argument("--checkpoint", default="best", help="best, latest, or an iteration number")
+    export.add_argument("--worker-module", help="installed Python worker module")
+    export.add_argument("--asset", action="append", default=[], metavar="CONFIG_KEY=SOURCE")
+    export.add_argument("--set", dest="overrides", action="append", default=[], metavar="KEY=VALUE")
+    export.add_argument("--unset", action="append", default=[], metavar="KEY")
+    export.add_argument("--dry-run", action="store_true")
+    export.add_argument("--test-inference", action="store_true",
+                        help="test the exported model on a random image at its configured size")
+    export.add_argument("--output-format", choices=("json", "jsonl", "text"), default="text",
+                        help="completion report format (default: text)")
+    export.set_defaults(func=run_export)
 
     job = subcommands.add_parser("job", help="inspect CLI run manifests")
     job_subcommands = job.add_subparsers(dest="job_command", required=True)

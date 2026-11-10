@@ -38,6 +38,32 @@ class EventWriter:
 
     def _emit_text(self, record: dict[str, Any]) -> None:
         event = record.get("event", "event")
+        if event in {"export_finished", "export_planned", "export_test_failed"}:
+            if event == "export_finished":
+                print(f"Export successful: {record['destination']}", file=self.stream)
+            elif event == "export_test_failed":
+                print(f"Export created, but inference test FAILED: {record['destination']}", file=self.stream)
+            else:
+                print(f"Export dry run successful; no files written: {record['destination']}", file=self.stream)
+            print(
+                f"Model: {record['profile']} | Checkpoint: {record['iteration']} "
+                f"({record['selection']})",
+                file=self.stream,
+            )
+            if event in {"export_finished", "export_test_failed"}:
+                print(f"Inference configuration: {record['destination']}/inference.yaml", file=self.stream)
+                print(f"Full report: {record['destination']}/export.json", file=self.stream)
+                test = record.get("inference_test", {})
+                if test.get("status") == "passed":
+                    size = test["input"]
+                    print(f"Inference test: PASSED (random {size['width']}x{size['height']} image)", file=self.stream)
+            else:
+                for item in record["files"]:
+                    print(f"  {item['path']} ({item['size']} bytes)", file=self.stream)
+                print("  Will generate inference.yaml and export.json", file=self.stream)
+                if record.get("requirements"):
+                    print(f"Required packages: {', '.join(record['requirements'])}", file=self.stream)
+            return
         if event == "training_status":
             measure = record.get("measure") or {}
             iteration = measure.get("iteration", "?")

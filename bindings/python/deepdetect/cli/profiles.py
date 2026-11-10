@@ -137,7 +137,11 @@ class ModelProfile:
 
     def service_parameters(self, options: dict[str, Any]) -> dict[str, Any]:
         _validate_mapping_option(options, "service_mllib")
-        mllib = _deep_merge(self.service_mllib, options.get("service_mllib"))
+        _validate_mapping_option(options, "service_input")
+        mllib = _deep_merge({} if options.get("_export") else self.service_mllib, options.get("service_mllib"))
+        worker_options = options.get("service_mllib") or {}
+        if worker_options.get("module") and not worker_options.get("entrypoint"):
+            mllib.pop("entrypoint", None)
         mllib["gpu"] = bool(options["gpu"])
         if options.get("gpuid") is not None:
             mllib["gpuid"] = copy.deepcopy(options["gpuid"])
@@ -156,7 +160,9 @@ class ModelProfile:
             mllib["resume_from"] = str(options["resume"])
         if self.task == "keypoint":
             _sync_keypoint_model_size(mllib, options)
-        input_parameters = copy.deepcopy(self.service_input)
+        input_parameters = _deep_merge(
+            {} if options.get("_export") else self.service_input, options.get("service_input")
+        )
         input_parameters["width"] = int(options["width"])
         input_parameters["height"] = int(options["height"])
         return {
@@ -220,10 +226,16 @@ class ModelProfile:
         }
 
     def predict_parameters(self, options: dict[str, Any]) -> dict[str, Any]:
-        input_parameters = copy.deepcopy(self.predict_input)
+        _validate_mapping_option(options, "predict_input")
+        _validate_mapping_option(options, "predict_output")
+        input_parameters = _deep_merge(
+            {} if options.get("_export") else self.predict_input, options.get("predict_input")
+        )
         input_parameters["width"] = int(options["width"])
         input_parameters["height"] = int(options["height"])
-        output = copy.deepcopy(self.predict_output)
+        output = _deep_merge(
+            {} if options.get("_export") else self.predict_output, options.get("predict_output")
+        )
         if self.task == "detection":
             output["confidence_threshold"] = float(options["confidence_threshold"])
             if options.get("best_bbox") is not None:

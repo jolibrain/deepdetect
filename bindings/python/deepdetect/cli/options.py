@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import deep_merge, load_config, parse_overrides
+from .exporting import resolve_export_config
 
 
 def validate_positive(name: str, value: int | float) -> None:
@@ -73,8 +74,26 @@ def resolve_options(
     cli_values: dict[str, Any],
 ) -> dict[str, Any]:
     config = load_config(args.config)
+    if args.config is not None:
+        config = resolve_export_config(config, args.config)
+        # Save declared asset sources unambiguously in the effective training
+        # config, even when the run repository differs from the config directory.
+        metadata = config.get("export", {})
+        if isinstance(metadata, dict) and isinstance(metadata.get("assets", []), list):
+            for asset in metadata.get("assets", []):
+                if isinstance(asset, dict) and isinstance(asset.get("source"), str):
+                    path = Path(asset["source"]).expanduser()
+                    if not path.is_absolute():
+                        asset["source"] = str((args.config.resolve().parent / path).resolve())
+    if config.get("_export") and getattr(args, "model", None) != config["_export"].get("profile"):
+        raise ValueError("inference profile does not match exported configuration")
     overrides = parse_overrides(args.overrides)
     options = deep_merge(defaults, config, cli_values, overrides)
+    metadata = options.get("export", {})
+    if isinstance(metadata, dict) and isinstance(metadata.get("assets", []), list):
+        for asset in metadata.get("assets", []):
+            if isinstance(asset, dict) and isinstance(asset.get("source"), str):
+                asset["source"] = str(Path(asset["source"]).expanduser().resolve())
     for key in ("weights", "repository", "job_dir", "output", "train_data"):
         if key in options and options[key] is not None:
             options[key] = Path(options[key])
