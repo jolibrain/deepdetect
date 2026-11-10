@@ -180,11 +180,11 @@ namespace dd
 
             if (input_dims.size() == 4)
               {
-                if (this->_mlmodel._height <= 0 && input_dims[2] > 0)
-                  this->_mlmodel._height = input_dims[2];
+                if (this->_height <= 0 && input_dims[2] > 0)
+                  this->_height = input_dims[2];
 
-                if (this->_mlmodel._width <= 0 && input_dims[3] > 0)
-                  this->_mlmodel._width = input_dims[3];
+                if (this->_width <= 0 && input_dims[3] > 0)
+                  this->_width = input_dims[3];
               }
           }
       }
@@ -303,7 +303,7 @@ namespace dd
       }
     this->_stats.transform_end();
 
-    if (inputc.width() != this->_mlmodel._width || inputc.height() != this->_mlmodel._height)
+    if (inputc.width() != this->_width || inputc.height() != this->_height)
       {
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
         if (this->_gpu)
@@ -316,7 +316,7 @@ namespace dd
 #endif
         throw MLLibBadParamException(
             "Model height and/or width differ from the input data size. "
-            "Input data size should be " + std::to_string(this->_mlmodel._width) + "x" + std::to_string(this->_mlmodel._height));
+            "Input data size should be " + std::to_string(this->_width) + "x" + std::to_string(this->_height));
       }
 
     int batch_size = inputc.process_batch(this->_max_batch_size);
