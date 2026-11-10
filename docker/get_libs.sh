@@ -30,6 +30,7 @@ copy_glob "/opt/deepdetect/build/src/libdeepdetect.so*" 1
 libs=(
     "/usr/local/lib/libcurlpp.*"
     "/opt/deepdetect/build/tensorrt-oss/bin/*"
+    "/opt/deepdetect/build/onnxruntime/src/onnxruntime/lib/lib*.so*"
     "/opt/deepdetect/build/protobuf/src/protobuf-build/lib*.so*"
     "/opt/deepdetect/build/pytorch/src/pytorch-build/build/lib/lib*.so*"
     "/opt/deepdetect/build/pytorch_vision/src/pytorch_vision-install/lib/lib*.so*"
