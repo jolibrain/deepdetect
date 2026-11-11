@@ -4,7 +4,7 @@ set -e
 
 # Deepdetect architecture and build profiles
 deepdetect_arch=(cpu gpu jetson)
-deepdetect_cpu_build_profiles=(default armv7 ncnn)
+deepdetect_cpu_build_profiles=(default armv7 ncnn onnxruntime)
 deepdetect_gpu_build_profiles=(default tensorrt onnxruntime tensorrt_onnxruntime)
 deepdetect_gpu_variants=(default legacy61)
 
@@ -303,7 +303,12 @@ cpu_build() {
     "armv7"|"ncnn")
         cmake .. -DUSE_CPU_ONLY=ON -DUSE_PYTORCH_WORKER=OFF -DUSE_TENSORRT=OFF -DUSE_CUDA_CV=OFF -DUSE_PREBUILT_TORCH=OFF -DUSE_NCNN=ON -DUSE_HDF5=OFF -DUSE_TORCH=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         cmake --build . --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-2}"
-        ;; 
+        ;;
+
+    "onnxruntime")
+        cmake .. -DUSE_ONNXRUNTIME=ON -DUSE_ONNXRUNTIME_CPU_ONLY=ON -DUSE_TORCH=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
+        make -j6
+        ;;
 
     *)
         configure_prebuilt_torch
