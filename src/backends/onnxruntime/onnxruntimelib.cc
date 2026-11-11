@@ -446,6 +446,7 @@ namespace dd
       }
     catch (const Ort::Exception &e)
       {
+        std::string err_msg = e.what();
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
         if (this->_gpu)
           {
@@ -455,6 +456,32 @@ namespace dd
             cudaStreamDestroy(cstream);
           }
 #endif
+        // Intercept models that crash on zero detections (empty tensors)
+        if (err_msg.find("Input shape:{0,") != std::string::npos)
+          {
+            this->_logger->info("ONNX Runtime: 0 objects detected (caught empty tensor). Returning empty prediction.");
+
+            TOutputConnectorStrategy tout(this->_outputc);
+            std::vector<APIData> vrad;
+
+            for (int b = 0; b < batch_size; ++b)
+              {
+                APIData rad;
+                rad.add("uri", inputc._ids.at(b));
+                rad.add("loss", 0.0);
+                rad.add("probs", std::vector<double>());
+                rad.add("cats", std::vector<std::string>());
+                if (this->_bbox) rad.add("bboxes", std::vector<APIData>());
+                vrad.push_back(rad);
+              }
+
+            OutputConnectorConfig conf;
+            conf._nclasses = this->_nclasses;
+            if (this->_bbox) conf._has_bbox = true;
+            tout.add_results(vrad);
+
+            return tout.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
+          }
         this->_logger->error("Inference execution failed in ONNX Runtime: {}", e.what());
         throw MLLibInternalException(e.what());
       }
