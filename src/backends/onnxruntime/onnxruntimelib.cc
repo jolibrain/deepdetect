@@ -654,7 +654,6 @@ namespace dd
 
             std::vector<float> yolo_out;
             const float *yolo_ptr = nullptr;
-            const float *yolo_end = nullptr;
             int max_dets = 0;
 
             if (this->_template == "yolox")
@@ -679,7 +678,6 @@ namespace dd
                         static_cast<int>(out_shape[2]), this->_nclasses,
                         inputc.width(), inputc.height());
                     yolo_ptr = yolo_out.data();
-                    yolo_end = yolo_out.data() + yolo_out.size();
                   }
               }
             else
@@ -726,7 +724,7 @@ namespace dd
                   int label_id = static_cast<int>(det[1]);
                   float score = det[2];
                   if (score < conf_thresh)
-                    return;
+                    return false;
                   float xmin = std::max(det[3], 0.0f) * orig_w;
                   float ymin = std::max(det[4], 0.0f) * orig_h;
                   float xmax = std::min(det[5], 1.0f) * orig_w;
@@ -741,22 +739,23 @@ namespace dd
                   ad_bbox.add("xmax", static_cast<double>(xmax));
                   ad_bbox.add("ymax", static_cast<double>(ymax));
                   bboxes.push_back(ad_bbox);
+                  return true;
                 };
 
                 if (this->_template == "yolox")
                   {
-                    while (yolo_ptr != nullptr && yolo_ptr + 7 <= yolo_end)
+                    int num_anchors = static_cast<int>(out_shape[1]);
+                    if (yolo_ptr != nullptr)
                       {
-                        int det_batch = static_cast<int>(yolo_ptr[0]);
-                        if (det_batch < 0)
+                        const float *batch_yolo
+                            = yolo_ptr + (b * num_anchors * 7);
+                        for (int d = 0; d < num_anchors; ++d)
                           {
-                            yolo_ptr += 7;
-                            continue;
+                            const float *det = batch_yolo + (d * 7);
+                            // Sorted by descending score in parse_yolo_output
+                            if (!push_detection(det))
+                              break;
                           }
-                        if (det_batch != b)
-                          break;
-                        push_detection(yolo_ptr);
-                        yolo_ptr += 7;
                       }
                   }
                 else
@@ -774,30 +773,6 @@ namespace dd
                   }
                 if (this->_need_nms)
                   {
-                    // Sort detections by descending score before greedy NMS
-                    std::vector<size_t> order(probs.size());
-                    for (size_t i = 0; i < order.size(); ++i)
-                      order[i] = i;
-                    std::sort(order.begin(), order.end(),
-                              [&](size_t lhs, size_t rhs) {
-                                return probs[lhs] > probs[rhs];
-                              });
-                    std::vector<double> sorted_probs;
-                    std::vector<std::string> sorted_cats;
-                    std::vector<APIData> sorted_bboxes;
-                    sorted_probs.reserve(order.size());
-                    sorted_cats.reserve(order.size());
-                    sorted_bboxes.reserve(order.size());
-                    for (size_t idx : order)
-                      {
-                        sorted_probs.push_back(probs[idx]);
-                        sorted_cats.push_back(std::move(cats[idx]));
-                        sorted_bboxes.push_back(std::move(bboxes[idx]));
-                      }
-                    probs = std::move(sorted_probs);
-                    cats = std::move(sorted_cats);
-                    bboxes = std::move(sorted_bboxes);
-
                     bbox_utils::nms_sorted_bboxes(bboxes, probs, cats,
                                                   nms_thresh, best_bbox);
                   }
