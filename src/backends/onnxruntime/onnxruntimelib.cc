@@ -322,6 +322,15 @@ namespace dd
         predict_dto = ad.createSharedDTO<DTO::ServicePredict>();
       }
 
+    std::string extract_layer = "";
+    if (predict_dto->parameters->mllib && predict_dto->parameters->mllib->extract_layer)
+      {
+        extract_layer = predict_dto->parameters->mllib->extract_layer->c_str();
+      }
+
+    std::vector<APIData> vrad;
+    std::vector<UnsupervisedResult> unsup_results;
+
     TInputConnectorStrategy inputc(this->_inputc);
 
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
@@ -436,13 +445,18 @@ namespace dd
     std::vector<Ort::Value> output_tensors;
     try
       {
+        std::vector<const char*> run_output_names = _output_node_names_ptr;
+        if (!extract_layer.empty())
+          {
+            run_output_names = { extract_layer.c_str() };
+          }
         output_tensors = _session->Run(
             Ort::RunOptions{nullptr},
             _input_node_names_ptr.data(),
             &input_tensor,
             1,
-            _output_node_names_ptr.data(),
-            _output_node_names_ptr.size());
+            run_output_names.data(),
+            run_output_names.size());
       }
     catch (const Ort::Exception &e)
       {
@@ -460,30 +474,36 @@ namespace dd
         if (err_msg.find("Input shape:{0,") != std::string::npos)
           {
             this->_logger->info("ONNX Runtime: 0 objects detected (caught empty tensor). Returning empty prediction.");
-
-            TOutputConnectorStrategy tout(this->_outputc);
-            std::vector<APIData> vrad;
-
-            for (int b = 0; b < batch_size; ++b)
-              {
-                APIData rad;
-                rad.add("uri", inputc._ids.at(b));
-                rad.add("loss", 0.0);
-                rad.add("probs", std::vector<double>());
-                rad.add("cats", std::vector<std::string>());
-                if (this->_bbox) rad.add("bboxes", std::vector<APIData>());
-                vrad.push_back(rad);
-              }
-
             OutputConnectorConfig conf;
             conf._nclasses = this->_nclasses;
             if (this->_bbox) conf._has_bbox = true;
-            tout.add_results(vrad);
 
-            return tout.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
+            if (extract_layer.empty())
+              {
+                TOutputConnectorStrategy tout(this->_outputc);
+                std::vector<APIData> empty_vrad;
+                for (int b = 0; b < batch_size; ++b)
+                  {
+                    APIData rad;
+                    rad.add("uri", inputc._ids.at(b));
+                    rad.add("loss", 0.0);
+                    rad.add("probs", std::vector<double>());
+                    rad.add("cats", std::vector<std::string>());
+                    if (this->_bbox) rad.add("bboxes", std::vector<APIData>());
+                    empty_vrad.push_back(rad);
+                  }
+                tout.add_results(empty_vrad);
+                return tout.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
+              }
+            else
+              {
+                UnsupervisedOutput unsupo;
+                unsupo.set_results(std::vector<UnsupervisedResult>());
+                return unsupo.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
+              }
           }
-        this->_logger->error("Inference execution failed in ONNX Runtime: {}", e.what());
-        throw MLLibInternalException(e.what());
+        this->_logger->error("Inference execution failed in ONNX Runtime: {}", err_msg);
+        throw MLLibInternalException(err_msg);
       }
 
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
@@ -496,17 +516,34 @@ namespace dd
       }
 #endif
 
-    // Prepare DeepDetect output collections
-    TOutputConnectorStrategy tout(this->_outputc);
-    std::vector<APIData> vrad;
+    float *out_data = output_tensors.front().template GetTensorMutableData<float>();
+    auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
+    std::vector<int64_t> out_shape = tensor_info.GetShape();
 
+    // Handle extract_layer tensor extraction
+    if (!extract_layer.empty())
+    {
+      size_t elements_per_batch = 1;
+      for (size_t i = 1; i < out_shape.size(); ++i)
+        {
+          elements_per_batch *= out_shape[i];
+        }
+
+      for (int b = 0; b < batch_size; ++b)
+        {
+          UnsupervisedResult result;
+          result._uri = inputc._ids.at(b);
+          result._loss = 0.0;
+
+          float* batch_start = out_data + (b * elements_per_batch);
+          result._vals = std::vector<double>(batch_start, batch_start + elements_per_batch);
+
+          unsup_results.push_back(std::move(result));
+        }
+    }
     // Parse detection bounding boxes
-    if (this->_bbox)
+    else if (this->_bbox)
       {
-        float *out_data = output_tensors.front().template GetTensorMutableData<float>();
-        auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
-        std::vector<int64_t> out_shape = tensor_info.GetShape();
-
         // Expecting [batch, max_detections, 7] layout
         int max_dets = (out_shape.size() >= 2) ? out_shape[1] : 100;
 
@@ -570,9 +607,20 @@ namespace dd
     if (this->_bbox)
       conf._has_bbox = true;
 
-    tout.add_results(vrad);
-    return tout.finalize(predict_dto->parameters->output, conf,
-                         static_cast<MLModel *>(&this->_mlmodel));
+    if (extract_layer.empty())
+      {
+        TOutputConnectorStrategy tout(this->_outputc);
+        tout.add_results(vrad);
+        return tout.finalize(predict_dto->parameters->output, conf,
+                             static_cast<MLModel *>(&this->_mlmodel));
+      }
+    else
+      {
+        UnsupervisedOutput unsupo;
+        unsupo.set_results(std::move(unsup_results));
+        return unsupo.finalize(predict_dto->parameters->output, conf,
+                               static_cast<MLModel *>(&this->_mlmodel));
+      }
   }
 
   // --------------------------------------------------------------------------
