@@ -383,269 +383,272 @@ namespace dd
             "Input data size should be " + std::to_string(this->_width) + "x" + std::to_string(this->_height));
       }
 
-    int batch_size = inputc.process_batch(this->_max_batch_size);
-    if (batch_size <= 0)
+    int batch_size = 0;
+    while ((batch_size = inputc.process_batch(this->_max_batch_size)) > 0)
       {
-        return oatpp::Object<DTO::PredictBody>();
-      }
+        std::vector<int64_t> input_shape = {
+          static_cast<int64_t>(batch_size),
+          static_cast<int64_t>(inputc.channels()), // Using your new channels() method!
+          static_cast<int64_t>(this->_height),
+          static_cast<int64_t>(this->_width)
+        };
+        size_t input_tensor_size = batch_size * inputc.channels() * this->_height * this->_width;
 
-    std::vector<int64_t> input_shape = {
-      static_cast<int64_t>(batch_size),
-      static_cast<int64_t>(inputc.channels()),
-      static_cast<int64_t>(this->_height),
-      static_cast<int64_t>(this->_width)
-    };
-    size_t input_tensor_size = batch_size * inputc.channels() * this->_height * this->_width;
-
-    Ort::Value input_tensor{nullptr};
+        Ort::Value input_tensor{nullptr};
 
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
-    if (this->_gpu)
-      {
-        cudaStreamSynchronize(cuda_guard.stream);
-      }
+        if (this->_gpu)
+          {
+            cudaStreamSynchronize(cuda_guard.stream);
+          }
 
 #ifdef USE_CUDA_CV
-    if (this->_gpu && inputc._cuda)
-      {
-        Ort::MemoryInfo mem_info("Cuda", OrtDeviceAllocator, this->_gpuid, OrtMemTypeDefault);
-        input_tensor = Ort::Value::CreateTensor<float>(
-            mem_info,
-            static_cast<float *>(cuda_guard.buf),
-            input_tensor_size,
-            input_shape.data(),
-            input_shape.size());
-      }
-    else
-#endif
-#endif
-      {
-        Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(
-            OrtArenaAllocator, OrtMemTypeDefault);
-        input_tensor = Ort::Value::CreateTensor<float>(
-            mem_info,
-            inputc.data(),
-            input_tensor_size,
-            input_shape.data(),
-            input_shape.size());
-      }
-
-    std::vector<Ort::Value> output_tensors;
-    try
-      {
-        std::vector<const char*> run_output_names = _output_node_names_ptr;
-        if (!extract_layer.empty() && extract_layer != "last")
+        if (this->_gpu && inputc._cuda)
           {
-            run_output_names = { extract_layer.c_str() };
+            Ort::MemoryInfo mem_info("Cuda", OrtDeviceAllocator, this->_gpuid, OrtMemTypeDefault);
+            input_tensor = Ort::Value::CreateTensor<float>(
+                mem_info,
+                static_cast<float *>(cuda_guard.buf),
+                input_tensor_size,
+                input_shape.data(),
+                input_shape.size());
           }
-        output_tensors = _session->Run(
-            Ort::RunOptions{nullptr},
-            _input_node_names_ptr.data(),
-            &input_tensor,
-            1,
-            run_output_names.data(),
-            run_output_names.size());
-      }
-    catch (const Ort::Exception &e)
-      {
-        std::string err_msg = e.what();
-        // Intercept models that crash on zero detections (empty tensors)
-        if (err_msg.find("Input shape:{0,") != std::string::npos)
+        else
+#endif
+#endif
           {
-            this->_logger->info("ONNX Runtime: 0 objects detected (caught empty tensor). Returning empty prediction.");
-            OutputConnectorConfig conf;
-            conf._nclasses = this->_nclasses;
-            if (this->_bbox) conf._has_bbox = true;
+            Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(
+                OrtArenaAllocator, OrtMemTypeDefault);
+            input_tensor = Ort::Value::CreateTensor<float>(
+                mem_info,
+                inputc.data(),
+                input_tensor_size,
+                input_shape.data(),
+                input_shape.size());
+          }
+        std::vector<Ort::Value> output_tensors;
 
-            if (extract_layer.empty())
+        try
+          {
+            std::vector<const char*> run_output_names = _output_node_names_ptr;
+            if (!extract_layer.empty() && extract_layer != "last")
               {
-                TOutputConnectorStrategy tout(this->_outputc);
-                std::vector<APIData> empty_vrad;
-                for (int b = 0; b < batch_size; ++b)
+                run_output_names = { extract_layer.c_str() };
+              }
+            output_tensors = _session->Run(
+                Ort::RunOptions{nullptr},
+                _input_node_names_ptr.data(),
+                &input_tensor,
+                1,
+                run_output_names.data(),
+                run_output_names.size());
+          }
+        catch (const Ort::Exception &e)
+          {
+            std::string err_msg = e.what();
+            // Intercept models that crash on zero detections (empty tensors)
+            if (err_msg.find("Input shape:{0,") != std::string::npos)
+              {
+                this->_logger->info("ONNX Runtime: 0 objects detected (caught empty tensor). Returning empty prediction.");
+                OutputConnectorConfig conf;
+                conf._nclasses = this->_nclasses;
+                if (this->_bbox) conf._has_bbox = true;
+
+                if (extract_layer.empty())
                   {
-                    APIData rad;
-                    rad.add("uri", inputc._ids.at(b));
-                    rad.add("loss", 0.0);
-                    rad.add("probs", std::vector<double>());
-                    rad.add("cats", std::vector<std::string>());
-                    if (this->_bbox) rad.add("bboxes", std::vector<APIData>());
-                    empty_vrad.push_back(rad);
+                    TOutputConnectorStrategy tout(this->_outputc);
+                    std::vector<APIData> empty_vrad;
+                    for (int b = 0; b < batch_size; ++b)
+                      {
+                        APIData rad;
+                        rad.add("uri", inputc._ids.at(b));
+                        rad.add("loss", 0.0);
+                        rad.add("probs", std::vector<double>());
+                        rad.add("cats", std::vector<std::string>());
+                        if (this->_bbox) rad.add("bboxes", std::vector<APIData>());
+                        empty_vrad.push_back(rad);
+                      }
+                    tout.add_results(empty_vrad);
+                    return tout.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
                   }
-                tout.add_results(empty_vrad);
-                return tout.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
-              }
-            else
-              {
-                UnsupervisedOutput unsupo;
-                unsupo.set_results(std::vector<UnsupervisedResult>());
-                return unsupo.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
-              }
-          }
-        this->_logger->error("Inference execution failed in ONNX Runtime: {}", err_msg);
-        throw MLLibInternalException(err_msg);
-      }
-
-    if (output_tensors.empty())
-      {
-        this->_logger->error("ONNX Runtime: Inference returned no output tensors.");
-        throw MLLibInternalException("ONNX Runtime returned no output tensors");
-      }
-
-    // Handle extract_layer tensor extraction
-    if (!extract_layer.empty())
-    {
-      // If "last" returned multiple outputs, iterate through all and concatenate.
-      for (int b = 0; b < batch_size; ++b)
-        {
-          UnsupervisedResult result;
-          result._uri = inputc._ids.at(b);
-          result._loss = 0.0;
-
-          for (size_t t = 0; t < output_tensors.size(); ++t)
-            {
-              auto tensor_info = output_tensors[t].GetTensorTypeAndShapeInfo();
-              if (tensor_info.GetElementCount() == 0)
-                continue;
-              std::vector<int64_t> out_shape = tensor_info.GetShape();
-              ONNXTensorElementDataType type = tensor_info.GetElementType();
-
-              size_t elements_per_batch = 1;
-              for (size_t i = 1; i < out_shape.size(); ++i) {
-                elements_per_batch *= out_shape[i];
-              }
-
-              // Handle standard 32-bit floats
-              if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
-                {
-                  float* out_data = output_tensors[t].template GetTensorMutableData<float>();
-                  float* batch_start = out_data + (b * elements_per_batch);
-                  result._vals.insert(result._vals.end(), batch_start, batch_start + elements_per_batch);
-                }
-              // Handle 64-bit integers (e.g., class indices)
-              else if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
-                {
-                  int64_t* out_data = output_tensors[t].template GetTensorMutableData<int64_t>();
-                  int64_t* batch_start = out_data + (b * elements_per_batch);
-                  for(size_t i = 0; i < elements_per_batch; ++i) {
-                    result._vals.push_back(static_cast<double>(batch_start[i]));
+                else
+                  {
+                    UnsupervisedOutput unsupo;
+                    unsupo.set_results(std::vector<UnsupervisedResult>());
+                    return unsupo.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
                   }
-                }
-              // Fallback for unsupported types
-              else
-                {
-                  this->_logger->warn("ONNX Runtime: extract_layer encountered unsupported tensor type {}", static_cast<int>(type));
-                }
-            }
-          unsup_results.push_back(std::move(result));
-        }
-    }
-    // Parse detection bounding boxes
-    else if (this->_bbox)
-      {
-        float *out_data = output_tensors.front().template GetTensorMutableData<float>();
-        auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
-        std::vector<int64_t> out_shape = tensor_info.GetShape();
-        // Expecting [batch, max_detections, 7] layout
-        int max_dets = 0;
-        if (tensor_info.GetElementCount() > 0)
-          max_dets = (out_shape.size() >= 2) ? out_shape[1] : 100;
-
-        for (int b = 0; b < batch_size; ++b)
-          {
-            APIData rad;
-            std::string img_id = inputc._ids.at(b);
-            rad.add("uri", img_id);
-            rad.add("loss", 0.0);
-
-            std::vector<double> probs;
-            std::vector<std::string> cats;
-            std::vector<APIData> bboxes;
-
-            int orig_w = this->_width;
-            int orig_h = this->_height;
-
-            if (inputc._imgs_size.find(img_id) != inputc._imgs_size.end())
-              {
-                orig_h = inputc._imgs_size[img_id].first;
-                orig_w = inputc._imgs_size[img_id].second;
               }
-
-            for (int d = 0; d < max_dets; ++d)
-              {
-                int base_idx = (b * max_dets + d) * 7;
-                float batch_idx = out_data[base_idx + 0];
-
-                // Padding indicator from TRTDetectionWrapper
-                if (batch_idx < 0.0f)
-                  break;
-
-                int label_id = static_cast<int>(out_data[base_idx + 1]);
-                float score = out_data[base_idx + 2];
-                float xmin = std::max(out_data[base_idx + 3], 0.0f) * orig_w;
-                float ymin = std::max(out_data[base_idx + 4], 0.0f) * orig_h;
-                float xmax = std::min(out_data[base_idx + 5], 1.0f) * orig_w;
-                float ymax = std::min(out_data[base_idx + 6], 1.0f) * orig_h;
-
-                probs.push_back(static_cast<double>(score));
-                cats.push_back(this->_mlmodel.get_hcorresp(label_id));
-
-                APIData ad_bbox;
-                ad_bbox.add("xmin", static_cast<double>(xmin));
-                ad_bbox.add("ymin", static_cast<double>(ymin));
-                ad_bbox.add("xmax", static_cast<double>(xmax));
-                ad_bbox.add("ymax", static_cast<double>(ymax));
-                bboxes.push_back(ad_bbox);
-              }
-
-            rad.add("probs", probs);
-            rad.add("cats", cats);
-            rad.add("bboxes", bboxes);
-            vrad.push_back(rad);
-          }
-      }
-    // Parse standard classification
-    else
-      {
-        float *out_data = output_tensors.front().template GetTensorMutableData<float>();
-        auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
-        std::vector<int64_t> out_shape = tensor_info.GetShape();
-
-        size_t elements_per_batch = 1;
-        if (tensor_info.GetElementCount() > 0)
-          {
-            for (size_t i = 1; i < out_shape.size(); ++i)
-              {
-                elements_per_batch *= out_shape[i];
-              }
+            this->_logger->error("Inference execution failed in ONNX Runtime: {}", err_msg);
+            throw MLLibInternalException(err_msg);
           }
 
-        // Prevent out-of-bounds if the model returns fewer outputs than nclasses
-        int num_classes = std::min(static_cast<size_t>(this->_nclasses), elements_per_batch);
-
-        for (int b = 0; b < batch_size; ++b)
+        if (output_tensors.empty())
           {
-            APIData rad;
-            std::string img_id = inputc._ids.at(b);
-            rad.add("uri", img_id);
-            rad.add("loss", 0.0);
+            this->_logger->error("ONNX Runtime: Inference returned no output tensors.");
+            throw MLLibInternalException("ONNX Runtime returned no output tensors");
+          }
 
-            std::vector<double> probs;
-            std::vector<std::string> cats;
+        // Handle extract_layer tensor extraction
+        if (!extract_layer.empty())
+          {
+            // If "last" returned multiple outputs, iterate through all and concatenate.
+            for (int b = 0; b < batch_size; ++b)
+              {
+                UnsupervisedResult result;
+                result._uri = inputc._ids.at(b);
+                result._loss = 0.0;
 
+                for (size_t t = 0; t < output_tensors.size(); ++t)
+                  {
+                    auto tensor_info = output_tensors[t].GetTensorTypeAndShapeInfo();
+                    if (tensor_info.GetElementCount() == 0)
+                      continue;
+                    std::vector<int64_t> out_shape = tensor_info.GetShape();
+                    ONNXTensorElementDataType type = tensor_info.GetElementType();
+
+                    size_t elements_per_batch = 1;
+                    for (size_t i = 1; i < out_shape.size(); ++i) {
+                      elements_per_batch *= out_shape[i];
+                    }
+
+                    // Handle standard 32-bit floats
+                    if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+                      {
+                        float* out_data = output_tensors[t].template GetTensorMutableData<float>();
+                        float* batch_start = out_data + (b * elements_per_batch);
+                        result._vals.insert(result._vals.end(), batch_start, batch_start + elements_per_batch);
+                      }
+                    // Handle 64-bit integers (e.g., class indices)
+                    else if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
+                      {
+                        int64_t* out_data = output_tensors[t].template GetTensorMutableData<int64_t>();
+                        int64_t* batch_start = out_data + (b * elements_per_batch);
+                        for(size_t i = 0; i < elements_per_batch; ++i) {
+                          result._vals.push_back(static_cast<double>(batch_start[i]));
+                        }
+                      }
+                    // Fallback for unsupported types
+                    else
+                      {
+                        this->_logger->warn("ONNX Runtime: extract_layer encountered unsupported tensor type {}", static_cast<int>(type));
+                      }
+                  }
+                unsup_results.push_back(std::move(result));
+              }
+          }
+        // Parse detection bounding boxes
+        else if (this->_bbox)
+          {
+            float *out_data = output_tensors.front().template GetTensorMutableData<float>();
+            auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
+            std::vector<int64_t> out_shape = tensor_info.GetShape();
+            // Expecting [batch, max_detections, 7] layout
+            int max_dets = 0;
+            if (tensor_info.GetElementCount() > 0)
+              max_dets = (out_shape.size() >= 2) ? out_shape[1] : 100;
+
+            for (int b = 0; b < batch_size; ++b)
+              {
+                APIData rad;
+                std::string img_id = inputc._ids.at(b);
+                rad.add("uri", img_id);
+                rad.add("loss", 0.0);
+
+                std::vector<double> probs;
+                std::vector<std::string> cats;
+                std::vector<APIData> bboxes;
+
+                int orig_w = this->_width;
+                int orig_h = this->_height;
+
+                if (inputc._imgs_size.find(img_id) != inputc._imgs_size.end())
+                  {
+                    orig_h = inputc._imgs_size[img_id].first;
+                    orig_w = inputc._imgs_size[img_id].second;
+                  }
+
+                for (int d = 0; d < max_dets; ++d)
+                  {
+                    int base_idx = (b * max_dets + d) * 7;
+                    float batch_idx = out_data[base_idx + 0];
+
+                    // Padding indicator from TRTDetectionWrapper
+                    if (batch_idx < 0.0f)
+                      break;
+
+                    int label_id = static_cast<int>(out_data[base_idx + 1]);
+                    float score = out_data[base_idx + 2];
+                    float xmin = std::max(out_data[base_idx + 3], 0.0f) * orig_w;
+                    float ymin = std::max(out_data[base_idx + 4], 0.0f) * orig_h;
+                    float xmax = std::min(out_data[base_idx + 5], 1.0f) * orig_w;
+                    float ymax = std::min(out_data[base_idx + 6], 1.0f) * orig_h;
+
+                    probs.push_back(static_cast<double>(score));
+                    cats.push_back(this->_mlmodel.get_hcorresp(label_id));
+
+                    APIData ad_bbox;
+                    ad_bbox.add("xmin", static_cast<double>(xmin));
+                    ad_bbox.add("ymin", static_cast<double>(ymin));
+                    ad_bbox.add("xmax", static_cast<double>(xmax));
+                    ad_bbox.add("ymax", static_cast<double>(ymax));
+                    bboxes.push_back(ad_bbox);
+                  }
+
+                rad.add("probs", probs);
+                rad.add("cats", cats);
+                rad.add("bboxes", bboxes);
+                vrad.push_back(rad);
+              }
+          }
+        // Parse standard classification
+        else
+          {
+            float *out_data = output_tensors.front().template GetTensorMutableData<float>();
+            auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
+            std::vector<int64_t> out_shape = tensor_info.GetShape();
+
+            size_t elements_per_batch = 1;
             if (tensor_info.GetElementCount() > 0)
               {
-                float *batch_start = out_data + (b * elements_per_batch);
-                for (int c = 0; c < num_classes; ++c)
+                for (size_t i = 1; i < out_shape.size(); ++i)
                   {
-                    probs.push_back(static_cast<double>(batch_start[c]));
-                    cats.push_back(this->_mlmodel.get_hcorresp(c));
+                    elements_per_batch *= out_shape[i];
                   }
               }
 
-            rad.add("probs", probs);
-            rad.add("cats", cats);
-            vrad.push_back(rad);
+            // Prevent out-of-bounds if the model returns fewer outputs than nclasses
+            int num_classes = std::min(static_cast<size_t>(this->_nclasses), elements_per_batch);
+
+            for (int b = 0; b < batch_size; ++b)
+              {
+                APIData rad;
+                std::string img_id = inputc._ids.at(b);
+                rad.add("uri", img_id);
+                rad.add("loss", 0.0);
+
+                std::vector<double> probs;
+                std::vector<std::string> cats;
+
+                if (tensor_info.GetElementCount() > 0)
+                  {
+                    float *batch_start = out_data + (b * elements_per_batch);
+                    for (int c = 0; c < num_classes; ++c)
+                      {
+                        probs.push_back(static_cast<double>(batch_start[c]));
+                        cats.push_back(this->_mlmodel.get_hcorresp(c));
+                      }
+                  }
+
+                rad.add("probs", probs);
+                rad.add("cats", cats);
+                vrad.push_back(rad);
+              }
           }
+      }
+    // If the loop never ran (0 valid images), return empty
+    if (vrad.empty() && unsup_results.empty())
+      {
+        return oatpp::Object<DTO::PredictBody>();
       }
 
     // Pack into DTO response
