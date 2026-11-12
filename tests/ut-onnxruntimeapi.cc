@@ -224,12 +224,12 @@ TEST(onnxruntimeapi, service_predict_gpu)
   ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.8);
 
 #ifdef USE_CUDA_CV
-  // predict with GPU input preprocessing (GpuMatToORTBuffer) + zero-copy CUDA tensor
-  jpredictstr
-      = "{\"service\":\"" + sname
-        + "\",\"parameters\":{\"input\":{\"cuda\":true},\"output\":{"
-          "\"bbox\":true,\"confidence_threshold\":0.8}},\"data\":[\""
-        + resnet_onnx_repo + "cat.jpg\"]}";
+  // predict with GPU input preprocessing (GpuMatToORTBuffer) + zero-copy CUDA
+  // tensor
+  jpredictstr = "{\"service\":\"" + sname
+                + "\",\"parameters\":{\"input\":{\"cuda\":true},\"output\":{"
+                  "\"bbox\":true,\"confidence_threshold\":0.8}},\"data\":[\""
+                + resnet_onnx_repo + "cat.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   jd = JDoc();
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
