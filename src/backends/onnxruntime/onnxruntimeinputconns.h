@@ -1,5 +1,5 @@
 /**
-* DeepDetect
+ * DeepDetect
  * Copyright (c) 2026 Pixel Forensics, Inc.
  * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
@@ -32,7 +32,8 @@ namespace dd
     ONNXRuntimeInputInterface()
     {
     }
-    ONNXRuntimeInputInterface(const ONNXRuntimeInputInterface &i) : _buf(i._buf)
+    ONNXRuntimeInputInterface(const ONNXRuntimeInputInterface &i)
+        : _buf(i._buf)
     {
     }
 
@@ -67,7 +68,10 @@ namespace dd
     {
     }
 
-    int channels() const { return this->_bw ? 1 : 3; }
+    int channels() const
+    {
+      return this->_bw ? 1 : 3;
+    }
 
     int width() const
     {
@@ -93,7 +97,8 @@ namespace dd
     int _batch_index = 0;
     int _batch_size = 0;
     std::unordered_map<std::string, std::pair<int, int>>
-        _imgs_size; /**< Original image dimensions (rows, cols), used to rescale bounding boxes. */
+        _imgs_size; /**< Original image dimensions (rows, cols), used to
+                       rescale bounding boxes. */
 
   private:
     void CVMatToORTBuffer(cv::Mat &img, int i);

@@ -1,5 +1,5 @@
 /**
-* DeepDetect
+ * DeepDetect
  * Copyright (c) 2026 Pixel Forensics, Inc.
  * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
@@ -47,8 +47,10 @@ namespace dd
       {
         // Pick the most recently modified .onnx model if multiple exist
         // Make sure we don't try to pick up any .onnx.data files instead
-        if (file.size() >= onnx_ext.size() &&
-          file.compare(file.size() - onnx_ext.size(), onnx_ext.size(), onnx_ext) == 0)
+        if (file.size() >= onnx_ext.size()
+            && file.compare(file.size() - onnx_ext.size(), onnx_ext.size(),
+                            onnx_ext)
+                   == 0)
           {
             long int wt = fileops::file_last_modif(file);
             if (wt > model_t)

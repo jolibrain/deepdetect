@@ -69,9 +69,11 @@ TEST(onnxruntimeapi, service_predict_classification)
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
 
-  std::string cl1 = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
+  std::string cl1
+      = jd["body"]["predictions"][0]["classes"][0]["cat"].GetString();
   ASSERT_TRUE(cl1 == "n02123159 tiger cat");
-  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble() > 0.3);
+  ASSERT_TRUE(jd["body"]["predictions"][0]["classes"][0]["prob"].GetDouble()
+              > 0.3);
 
   // delete
   jstr = "{\"clear\":\"lib\"}";
@@ -110,7 +112,9 @@ TEST(onnxruntimeapi, service_predict_bbox)
   ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
 
   uint32_t cat_id = jd["body"]["predictions"][0]["uri"].GetString()
-                            == (resnet_onnx_repo + "cat.jpg") ? 0 : 1;
+                            == (resnet_onnx_repo + "cat.jpg")
+                        ? 0
+                        : 1;
   uint32_t dog_id = 1 - cat_id;
 
   // Check first prediction (cat)
@@ -122,7 +126,8 @@ TEST(onnxruntimeapi, service_predict_bbox)
 
   auto &bbox = preds[0]["bbox"];
   ASSERT_TRUE(bbox["xmin"].GetDouble() < 50 && bbox["xmax"].GetDouble() > 200
-              && bbox["ymin"].GetDouble() < 50 && bbox["ymax"].GetDouble() > 200);
+              && bbox["ymin"].GetDouble() < 50
+              && bbox["ymax"].GetDouble() > 200);
 
   // Check second prediction (dog)
   auto &preds2 = jd["body"]["predictions"][dog_id]["classes"];
@@ -144,7 +149,8 @@ TEST(onnxruntimeapi, service_predict_extract_layer)
   std::string sname = "ort_extract";
   std::string jstr
       = "{\"mllib\":\"onnxruntime\",\"description\":\"Test onnxruntime "
-        "feature extraction\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        "feature "
+        "extraction\",\"type\":\"supervised\",\"model\":{\"repository\":\""
         + cyclegan_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "360,\"width\":360},\"mllib\":{"
