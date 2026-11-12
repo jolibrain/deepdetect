@@ -617,6 +617,19 @@ namespace dd
             auto tensor_info
                 = output_tensors.front().GetTensorTypeAndShapeInfo();
             std::vector<int64_t> out_shape = tensor_info.GetShape();
+
+            if (out_shape.size() != 3 || out_shape[2] != 7)
+              {
+                this->_logger->error(
+                    "ONNX Runtime bbox output expects shape [batch, "
+                    "max_detections, 7], got rank {} with last dim {}",
+                    out_shape.size(),
+                    out_shape.empty() ? -1 : out_shape.back());
+                throw MLLibBadParamException(
+                    "ONNX Runtime bbox model output must have shape [batch, "
+                    "max_detections, 7]");
+              }
+
             // Expecting [batch, max_detections, 7] layout
             int max_dets = 0;
             if (tensor_info.GetElementCount() > 0)
