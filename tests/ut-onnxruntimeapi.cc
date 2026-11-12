@@ -159,7 +159,7 @@ TEST(onnxruntimeapi, service_predict_bbox_invalid_shape)
         + yolox_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "640,\"width\":640,\"rgb\":true},\"mllib\":{\"gpu\":false,"
-          "\"bbox\":true,\"max_batch_size\":1,\"nclasses\":81}}}";
+          "\"bbox\":true,\"max_batch_size\":2,\"nclasses\":81}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -167,7 +167,7 @@ TEST(onnxruntimeapi, service_predict_bbox_invalid_shape)
       = "{\"service\":\"" + sname
         + "\",\"parameters\":{\"input\":{},\"output\":{\"bbox\":true}},"
           "\"data\":[\""
-        + resnet_onnx_repo + "cat.jpg\"]}";
+        + resnet_onnx_repo + "cat.jpg\",\"" + yolox_onnx_repo + "dog.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
