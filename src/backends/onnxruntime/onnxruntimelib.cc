@@ -331,56 +331,53 @@ namespace dd
     std::vector<APIData> vrad;
     std::vector<UnsupervisedResult> unsup_results;
 
+#if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
+    struct CudaPredictGuard
+    {
+      cudaStream_t stream = nullptr;
+      bool has_stream = false;
+      void *buf = nullptr;
+
+      ~CudaPredictGuard()
+      {
+#ifdef USE_CUDA_CV
+        if (buf)
+          cudaFree(buf);
+#endif
+        if (has_stream)
+          cudaStreamDestroy(stream);
+      }
+    } cuda_guard;
+#ifdef USE_CUDA_CV
+    cv::cuda::Stream cv_stream;
+#endif
+#endif
+
     TInputConnectorStrategy inputc(this->_inputc);
 
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
-    cudaStream_t cstream;
-    void *cuda_input_buf = nullptr;
-
     if (this->_gpu)
       {
-        cudaStreamCreate(&cstream);
+        if (cudaStreamCreate(&cuda_guard.stream) != cudaSuccess)
+          throw MLLibInternalException("ONNX Runtime: Failed to create CUDA stream");
+        cuda_guard.has_stream = true;
 #ifdef USE_CUDA_CV
         // Dynamically allocate to ensure memory safety if concurrent_predict is true
-        cudaMalloc(&cuda_input_buf, this->_max_batch_size * 3 * this->_height * this->_width * sizeof(float));
-        inputc._cuda_buf = static_cast<float *>(cuda_input_buf);
-        auto cv_stream = cv::cuda::StreamAccessor::wrapStream(cstream);
+        if (cudaMalloc(&cuda_guard.buf, this->_max_batch_size * inputc.channels() * this->_height * this->_width * sizeof(float)) != cudaSuccess)
+          throw MLLibInternalException("ONNX Runtime: Failed to allocate CUDA input buffer");
+        inputc._cuda_buf = static_cast<float *>(cuda_guard.buf);
+        cv_stream = cv::cuda::StreamAccessor::wrapStream(cuda_guard.stream);
         inputc._cuda_stream = &cv_stream;
 #endif
       }
 #endif
 
     this->_stats.transform_start();
-    try
-      {
-        inputc.transform(predict_dto);
-      }
-    catch (...)
-      {
-#if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
-        if (this->_gpu)
-          {
-#ifdef USE_CUDA_CV
-            if (cuda_input_buf) cudaFree(cuda_input_buf);
-#endif
-            cudaStreamDestroy(cstream);
-          }
-#endif
-        throw;
-      }
+    inputc.transform(predict_dto);
     this->_stats.transform_end();
 
     if (inputc.width() != this->_width || inputc.height() != this->_height)
       {
-#if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
-        if (this->_gpu)
-          {
-#ifdef USE_CUDA_CV
-            if (cuda_input_buf) cudaFree(cuda_input_buf);
-#endif
-            cudaStreamDestroy(cstream);
-          }
-#endif
         throw MLLibBadParamException(
             "Model height and/or width differ from the input data size. "
             "Input data size should be " + std::to_string(this->_width) + "x" + std::to_string(this->_height));
@@ -389,32 +386,23 @@ namespace dd
     int batch_size = inputc.process_batch(this->_max_batch_size);
     if (batch_size <= 0)
       {
-#if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
-        if (this->_gpu)
-          {
-#ifdef USE_CUDA_CV
-            if (cuda_input_buf) cudaFree(cuda_input_buf);
-#endif
-            cudaStreamDestroy(cstream);
-          }
-#endif
         return oatpp::Object<DTO::PredictBody>();
       }
 
     std::vector<int64_t> input_shape = {
       static_cast<int64_t>(batch_size),
-      3,
+      static_cast<int64_t>(inputc.channels()),
       static_cast<int64_t>(this->_height),
       static_cast<int64_t>(this->_width)
     };
-    size_t input_tensor_size = batch_size * 3 * this->_height * this->_width;
+    size_t input_tensor_size = batch_size * inputc.channels() * this->_height * this->_width;
 
     Ort::Value input_tensor{nullptr};
 
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
     if (this->_gpu)
       {
-        cudaStreamSynchronize(cstream);
+        cudaStreamSynchronize(cuda_guard.stream);
       }
 
 #ifdef USE_CUDA_CV
@@ -423,7 +411,7 @@ namespace dd
         Ort::MemoryInfo mem_info("Cuda", OrtDeviceAllocator, this->_gpuid, OrtMemTypeDefault);
         input_tensor = Ort::Value::CreateTensor<float>(
             mem_info,
-            static_cast<float *>(cuda_input_buf),
+            static_cast<float *>(cuda_guard.buf),
             input_tensor_size,
             input_shape.data(),
             input_shape.size());
@@ -461,15 +449,6 @@ namespace dd
     catch (const Ort::Exception &e)
       {
         std::string err_msg = e.what();
-#if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
-        if (this->_gpu)
-          {
-#ifdef USE_CUDA_CV
-            if (cuda_input_buf) cudaFree(cuda_input_buf);
-#endif
-            cudaStreamDestroy(cstream);
-          }
-#endif
         // Intercept models that crash on zero detections (empty tensors)
         if (err_msg.find("Input shape:{0,") != std::string::npos)
           {
@@ -506,15 +485,11 @@ namespace dd
         throw MLLibInternalException(err_msg);
       }
 
-#if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
-    if (this->_gpu)
+    if (output_tensors.empty())
       {
-#ifdef USE_CUDA_CV
-        if (cuda_input_buf) cudaFree(cuda_input_buf);
-#endif
-        cudaStreamDestroy(cstream);
+        this->_logger->error("ONNX Runtime: Inference returned no output tensors.");
+        throw MLLibInternalException("ONNX Runtime returned no output tensors");
       }
-#endif
 
     // Handle extract_layer tensor extraction
     if (!extract_layer.empty())
@@ -529,6 +504,8 @@ namespace dd
           for (size_t t = 0; t < output_tensors.size(); ++t)
             {
               auto tensor_info = output_tensors[t].GetTensorTypeAndShapeInfo();
+              if (tensor_info.GetElementCount() == 0)
+                continue;
               std::vector<int64_t> out_shape = tensor_info.GetShape();
               ONNXTensorElementDataType type = tensor_info.GetElementType();
 
@@ -565,8 +542,13 @@ namespace dd
     // Parse detection bounding boxes
     else if (this->_bbox)
       {
+        float *out_data = output_tensors.front().template GetTensorMutableData<float>();
+        auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
+        std::vector<int64_t> out_shape = tensor_info.GetShape();
         // Expecting [batch, max_detections, 7] layout
-        int max_dets = (out_shape.size() >= 2) ? out_shape[1] : 100;
+        int max_dets = 0;
+        if (tensor_info.GetElementCount() > 0)
+          max_dets = (out_shape.size() >= 2) ? out_shape[1] : 100;
 
         for (int b = 0; b < batch_size; ++b)
           {
@@ -618,6 +600,50 @@ namespace dd
             rad.add("probs", probs);
             rad.add("cats", cats);
             rad.add("bboxes", bboxes);
+            vrad.push_back(rad);
+          }
+      }
+    // Parse standard classification
+    else
+      {
+        float *out_data = output_tensors.front().template GetTensorMutableData<float>();
+        auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
+        std::vector<int64_t> out_shape = tensor_info.GetShape();
+
+        size_t elements_per_batch = 1;
+        if (tensor_info.GetElementCount() > 0)
+          {
+            for (size_t i = 1; i < out_shape.size(); ++i)
+              {
+                elements_per_batch *= out_shape[i];
+              }
+          }
+
+        // Prevent out-of-bounds if the model returns fewer outputs than nclasses
+        int num_classes = std::min(static_cast<size_t>(this->_nclasses), elements_per_batch);
+
+        for (int b = 0; b < batch_size; ++b)
+          {
+            APIData rad;
+            std::string img_id = inputc._ids.at(b);
+            rad.add("uri", img_id);
+            rad.add("loss", 0.0);
+
+            std::vector<double> probs;
+            std::vector<std::string> cats;
+
+            if (tensor_info.GetElementCount() > 0)
+              {
+                float *batch_start = out_data + (b * elements_per_batch);
+                for (int c = 0; c < num_classes; ++c)
+                  {
+                    probs.push_back(static_cast<double>(batch_start[c]));
+                    cats.push_back(this->_mlmodel.get_hcorresp(c));
+                  }
+              }
+
+            rad.add("probs", probs);
+            rad.add("cats", cats);
             vrad.push_back(rad);
           }
       }

@@ -42,7 +42,7 @@ namespace dd
       if (ad.has("repository"))
         {
           this->_repo = ad.get("repository").get<std::string>();
-          read_from_repository(spdlog::get("api"));
+          read_from_repository(logger);
           read_corresp_file();
         }
     }

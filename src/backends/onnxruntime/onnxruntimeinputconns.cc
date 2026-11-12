@@ -111,7 +111,7 @@ namespace dd
 
     bool has_std = !_std.empty();
 
-    img.convertTo(converted, CV_32F);
+    img.convertTo(converted, CV_32F, 1.0, 0.0, *_cuda_stream);
 
     std::vector<cv::cuda::GpuMat> vec_channels;
     cv::cuda::split(converted, vec_channels, *_cuda_stream);
@@ -167,27 +167,25 @@ namespace dd
         _imgs_size.insert(std::pair<std::string, std::pair<int, int>>(
             this->_ids.at(i), this->_images_size.at(i)));
       }
-    _batch_size = this->_images.size();
+    _batch_size = img_count;
     _batch_index = 0;
   }
 
   int ImgONNXRuntimeInputFileConn::process_batch(const unsigned int batch_size)
   {
-    if (batch_size < this->_images.size())
-      this->_logger->warn("you are giving more images than max_batch_size, "
-                          "please double check");
-
-    unsigned int i;
-    if (_bw)
-      _buf.resize(batch_size * height() * width());
-    else
-      _buf.resize(batch_size * 3 * height() * width());
-
     size_t img_count =
 #ifdef USE_CUDA_CV
-        _cuda ? this->_cuda_images.size() :
+    _cuda ? this->_cuda_images.size() :
 #endif
-              this->_images.size();
+          this->_images.size();
+
+    if (img_count > batch_size)
+      {
+        this->_logger->warn("Batch size is larger than max_batch_size");
+      }
+
+    unsigned int i;
+    _buf.resize(batch_size * channels() * height() * width());
 
     for (i = 0; i < batch_size && _batch_index < (int)img_count;
          i++, _batch_index++)
