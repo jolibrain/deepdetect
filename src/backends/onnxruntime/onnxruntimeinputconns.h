@@ -23,7 +23,6 @@
 #define ONNXRUNTIMEINPUTCONNS_H
 
 #include "imginputfileconn.h"
-#include "csvtsinputfileconn.h"
 
 namespace dd
 {
@@ -68,6 +67,8 @@ namespace dd
     {
     }
 
+    int channels() const { return this->_bw ? 1 : 3; }
+
     int width() const
     {
       return _width;
@@ -92,7 +93,7 @@ namespace dd
     int _batch_index = 0;
     int _batch_size = 0;
     std::unordered_map<std::string, std::pair<int, int>>
-        _imgs_size; /**< Original image dimensions (cols, rows), used to rescale bounding boxes. */
+        _imgs_size; /**< Original image dimensions (rows, cols), used to rescale bounding boxes. */
 
   private:
     void CVMatToORTBuffer(cv::Mat &img, int i);

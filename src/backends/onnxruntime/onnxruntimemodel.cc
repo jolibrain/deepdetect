@@ -46,7 +46,9 @@ namespace dd
     for (const auto &file : lfiles)
       {
         // Pick the most recently modified .onnx model if multiple exist
-        if (file.find(onnx_ext) != std::string::npos)
+        // Make sure we don't try to pick up any .onnx.data files instead
+        if (file.size() >= onnx_ext.size() &&
+          file.compare(file.size() - onnx_ext.size(), onnx_ext.size(), onnx_ext) == 0)
           {
             long int wt = fileops::file_last_modif(file);
             if (wt > model_t)
