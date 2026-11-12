@@ -22,6 +22,8 @@
 #include "outputconnectorstrategy.h"
 #include "onnxruntimelib.h"
 #include "dto/service_predict.hpp"
+#include "utils/bbox.hpp"
+#include "../tensorrt/models/yolo.hpp"
 #include <algorithm>
 
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
@@ -72,6 +74,7 @@ namespace dd
     this->_gpuid = other._gpuid;
     this->_gpu = other._gpu;
     this->_bbox = other._bbox;
+    this->_need_nms = other._need_nms;
     this->_template = other._template;
   }
 
@@ -104,6 +107,21 @@ namespace dd
       this->_max_batch_size = ad.get("max_batch_size").get<int>();
     if (ad.has("concurrent_predict"))
       this->_concurrent_predict = ad.get("concurrent_predict").get<bool>();
+    if (ad.has("template"))
+      {
+        this->_template = ad.get("template").get<std::string>();
+        this->_logger->info("Model template is {}", this->_template);
+        if (this->_template == "yolox")
+          {
+            this->_mltype = "detection";
+            this->_bbox = true;
+            this->_need_nms = true;
+          }
+        else
+          {
+            throw MLLibBadParamException("Unknown template " + this->_template);
+          }
+      }
 
     if (this->_mlmodel._model.empty())
       {
@@ -372,6 +390,10 @@ namespace dd
         extract_layer = predict_dto->parameters->mllib->extract_layer->c_str();
       }
 
+    bool is_bbox = this->_bbox
+                   || (predict_dto->parameters->output
+                       && predict_dto->parameters->output->bbox);
+
     std::vector<APIData> vrad;
     std::vector<UnsupervisedResult> unsup_results;
 
@@ -500,7 +522,7 @@ namespace dd
                     "Returning empty prediction.");
                 OutputConnectorConfig conf;
                 conf._nclasses = this->_nclasses;
-                if (this->_bbox)
+                if (is_bbox)
                   conf._has_bbox = true;
 
                 if (extract_layer.empty())
@@ -514,7 +536,7 @@ namespace dd
                         rad.add("loss", 0.0);
                         rad.add("probs", std::vector<double>());
                         rad.add("cats", std::vector<std::string>());
-                        if (this->_bbox)
+                        if (is_bbox)
                           rad.add("bboxes", std::vector<APIData>());
                         empty_vrad.push_back(rad);
                       }
@@ -610,7 +632,7 @@ namespace dd
               }
           }
         // Parse detection bounding boxes
-        else if (this->_bbox)
+        else if (is_bbox)
           {
             float *out_data = output_tensors.front()
                                   .template GetTensorMutableData<float>();
@@ -618,22 +640,64 @@ namespace dd
                 = output_tensors.front().GetTensorTypeAndShapeInfo();
             std::vector<int64_t> out_shape = tensor_info.GetShape();
 
-            if (out_shape.size() != 3 || out_shape[2] != 7)
+            double conf_thresh = 0.0;
+            double nms_thresh = 0.45;
+            int best_bbox = -1;
+            if (predict_dto->parameters->output)
               {
-                this->_logger->error(
-                    "ONNX Runtime bbox output expects shape [batch, "
-                    "max_detections, 7], got rank {} with last dim {}",
-                    out_shape.size(),
-                    out_shape.empty() ? -1 : out_shape.back());
-                throw MLLibBadParamException(
-                    "ONNX Runtime bbox model output must have shape [batch, "
-                    "max_detections, 7]");
+                conf_thresh
+                    = predict_dto->parameters->output->confidence_threshold;
+                nms_thresh = predict_dto->parameters->output->nms_threshold;
+                best_bbox = predict_dto->parameters->output->best_bbox;
               }
 
-            // Expecting [batch, max_detections, 7] layout
+            std::vector<float> yolo_out;
+            const float *yolo_ptr = nullptr;
+            const float *yolo_end = nullptr;
             int max_dets = 0;
-            if (tensor_info.GetElementCount() > 0)
-              max_dets = (out_shape.size() >= 2) ? out_shape[1] : 100;
+
+            if (this->_template == "yolox")
+              {
+                if (out_shape.size() != 3 || out_shape[2] <= 5)
+                  {
+                    this->_logger->error(
+                        "ONNX Runtime YOLOX output expects shape [batch, "
+                        "anchors, 5 + num_classes], got rank {} with last dim {}",
+                        out_shape.size(),
+                        out_shape.empty() ? -1 : out_shape.back());
+                    throw MLLibBadParamException(
+                        "Invalid YOLOX output tensor shape");
+                  }
+                if (tensor_info.GetElementCount() > 0)
+                  {
+                    std::vector<float> raw_out(
+                        out_data, out_data + tensor_info.GetElementCount());
+                    yolo_out = yolo_utils::parse_yolo_output(
+                        raw_out, batch_size, static_cast<int>(out_shape[1]),
+                        static_cast<int>(out_shape[2]), this->_nclasses,
+                        inputc.width(), inputc.height());
+                    yolo_ptr = yolo_out.data();
+                    yolo_end = yolo_out.data() + yolo_out.size();
+                  }
+              }
+            else
+              {
+                if (out_shape.size() != 3 || out_shape[2] != 7)
+                  {
+                    this->_logger->error(
+                        "ONNX Runtime bbox output expects shape [batch, "
+                        "max_detections, 7], got rank {} with last dim {}",
+                        out_shape.size(),
+                        out_shape.empty() ? -1 : out_shape.back());
+                    throw MLLibBadParamException(
+                        "ONNX Runtime bbox model output must have shape [batch, "
+                        "max_detections, 7]");
+                  }
+
+                // Expecting [batch, max_detections, 7] layout
+                if (tensor_info.GetElementCount() > 0)
+                  max_dets = (out_shape.size() >= 2) ? out_shape[1] : 100;
+              }
 
             for (int b = 0; b < batch_size; ++b)
               {
@@ -655,35 +719,84 @@ namespace dd
                     orig_w = inputc._imgs_size[img_id].second;
                   }
 
-                for (int d = 0; d < max_dets; ++d)
+                auto push_detection = [&](const float *det) {
+                  int label_id = static_cast<int>(det[1]);
+                  float score = det[2];
+                  if (score < conf_thresh)
+                    return;
+                  float xmin = std::max(det[3], 0.0f) * orig_w;
+                  float ymin = std::max(det[4], 0.0f) * orig_h;
+                  float xmax = std::min(det[5], 1.0f) * orig_w;
+                  float ymax = std::min(det[6], 1.0f) * orig_h;
+
+                  probs.push_back(static_cast<double>(score));
+                  cats.push_back(this->_mlmodel.get_hcorresp(label_id));
+
+                  APIData ad_bbox;
+                  ad_bbox.add("xmin", static_cast<double>(xmin));
+                  ad_bbox.add("ymin", static_cast<double>(ymin));
+                  ad_bbox.add("xmax", static_cast<double>(xmax));
+                  ad_bbox.add("ymax", static_cast<double>(ymax));
+                  bboxes.push_back(ad_bbox);
+                };
+
+                if (this->_template == "yolox")
                   {
-                    int base_idx = (b * max_dets + d) * 7;
-                    float batch_idx = out_data[base_idx + 0];
+                    while (yolo_ptr != nullptr && yolo_ptr + 7 <= yolo_end)
+                      {
+                        int det_batch = static_cast<int>(yolo_ptr[0]);
+                        if (det_batch < 0)
+                          {
+                            yolo_ptr += 7;
+                            continue;
+                          }
+                        if (det_batch != b)
+                          break;
+                        push_detection(yolo_ptr);
+                        yolo_ptr += 7;
+                      }
+                  }
+                else
+                  {
+                    for (int d = 0; d < max_dets; ++d)
+                      {
+                        if (!this->_need_nms && best_bbox > 0
+                            && bboxes.size() >= static_cast<size_t>(best_bbox))
+                          break;
+                        const float *det = out_data + ((b * max_dets + d) * 7);
+                        if (det[0] < 0.0f)
+                          break;
+                        push_detection(det);
+                      }
+                  }
+                if (this->_need_nms)
+                  {
+                    // Sort detections by descending score before greedy NMS
+                    std::vector<size_t> order(probs.size());
+                    for (size_t i = 0; i < order.size(); ++i)
+                      order[i] = i;
+                    std::sort(order.begin(), order.end(),
+                              [&](size_t lhs, size_t rhs) {
+                                return probs[lhs] > probs[rhs];
+                              });
+                    std::vector<double> sorted_probs;
+                    std::vector<std::string> sorted_cats;
+                    std::vector<APIData> sorted_bboxes;
+                    sorted_probs.reserve(order.size());
+                    sorted_cats.reserve(order.size());
+                    sorted_bboxes.reserve(order.size());
+                    for (size_t idx : order)
+                      {
+                        sorted_probs.push_back(probs[idx]);
+                        sorted_cats.push_back(std::move(cats[idx]));
+                        sorted_bboxes.push_back(std::move(bboxes[idx]));
+                      }
+                    probs = std::move(sorted_probs);
+                    cats = std::move(sorted_cats);
+                    bboxes = std::move(sorted_bboxes);
 
-                    // Padding indicator from TRTDetectionWrapper
-                    if (batch_idx < 0.0f)
-                      break;
-
-                    int label_id = static_cast<int>(out_data[base_idx + 1]);
-                    float score = out_data[base_idx + 2];
-                    float xmin
-                        = std::max(out_data[base_idx + 3], 0.0f) * orig_w;
-                    float ymin
-                        = std::max(out_data[base_idx + 4], 0.0f) * orig_h;
-                    float xmax
-                        = std::min(out_data[base_idx + 5], 1.0f) * orig_w;
-                    float ymax
-                        = std::min(out_data[base_idx + 6], 1.0f) * orig_h;
-
-                    probs.push_back(static_cast<double>(score));
-                    cats.push_back(this->_mlmodel.get_hcorresp(label_id));
-
-                    APIData ad_bbox;
-                    ad_bbox.add("xmin", static_cast<double>(xmin));
-                    ad_bbox.add("ymin", static_cast<double>(ymin));
-                    ad_bbox.add("xmax", static_cast<double>(xmax));
-                    ad_bbox.add("ymax", static_cast<double>(ymax));
-                    bboxes.push_back(ad_bbox);
+                    bbox_utils::nms_sorted_bboxes(bboxes, probs, cats,
+                                                  nms_thresh, best_bbox);
                   }
 
                 rad.add("probs", probs);
@@ -750,7 +863,7 @@ namespace dd
     // Pack into DTO response
     OutputConnectorConfig conf;
     conf._nclasses = this->_nclasses;
-    if (this->_bbox)
+    if (is_bbox)
       conf._has_bbox = true;
 
     if (extract_layer.empty())
