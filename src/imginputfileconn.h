@@ -707,6 +707,10 @@ namespace dd
 #ifdef USE_CUDA_CV
       // image resizing on GPU
       _cuda |= params->cuda;
+      // Lazily create the CUDA stream only if requested
+      if (_cuda && _cuda_stream == nullptr) {
+        _cuda_stream = &cv::cuda::Stream::Null();
+      }
 #endif
     }
 
@@ -1140,7 +1144,7 @@ namespace dd
     bool _aspect_ratio_pad = false;
 #ifdef USE_CUDA_CV
     bool _cuda = false;
-    cv::cuda::Stream *_cuda_stream = &cv::cuda::Stream::Null();
+    cv::cuda::Stream *_cuda_stream = nullptr;
 #endif
   };
 }
