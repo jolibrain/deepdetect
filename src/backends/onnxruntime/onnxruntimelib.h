@@ -65,6 +65,7 @@ namespace dd
 
     // Task configuration
     bool _bbox = false;
+    bool _need_nms = false;
     bool _regression = false;
     bool _timeserie = false;
     bool _concurrent_predict = false;

@@ -21,8 +21,8 @@
 #include "deepdetect.h"
 #include "jsonapi.h"
 #include <gtest/gtest.h>
-#include <stdio.h>
-#include <iostream>
+#include <fstream>
+#include <sys/stat.h>
 
 using namespace dd;
 
@@ -82,7 +82,7 @@ TEST(onnxruntimeapi, service_predict_classification)
 
 TEST(onnxruntimeapi, service_predict_bbox)
 {
-  // create service
+  // create service with template="yolox" to decode [batch, 8400, 85] + NMS
   JsonAPI japi;
   std::string sname = "ort_det";
   std::string jstr
@@ -90,18 +90,84 @@ TEST(onnxruntimeapi, service_predict_bbox)
         "detection\",\"type\":\"supervised\",\"model\":{\"repository\":\""
         + yolox_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
-          "640,\"width\":640,\"rgb\":true},\"mllib\":{\"gpu\":false,"
-          "\"bbox\":true,\"max_batch_size\":2,\"nclasses\":81}}}";
+          "640,\"width\":640,\"rgb\":true},\"mllib\":{\"template\":\"yolox\","
+          "\"gpu\":false,\"max_batch_size\":2,\"nclasses\":81}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
-  // predict - unwrapped YOLOX outputs [batch, 8400, 85] instead of [batch,
-  // max_dets, 7]
+  // multi-batch predict
   std::string jpredictstr
       = "{\"service\":\"" + sname
         + "\",\"parameters\":{\"input\":{},\"output\":{\"bbox\":true,"
           "\"confidence_threshold\":0.8}},\"data\":[\""
         + resnet_onnx_repo + "cat.jpg\",\"" + yolox_onnx_repo + "dog.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
+
+  uint32_t cat_id = jd["body"]["predictions"][0]["uri"].GetString()
+                            == (resnet_onnx_repo + "cat.jpg")
+                        ? 0
+                        : 1;
+  uint32_t dog_id = 1 - cat_id;
+
+  // Check first prediction (cat)
+  auto &preds = jd["body"]["predictions"][cat_id]["classes"];
+  ASSERT_EQ(preds.Size(), 1);
+  std::string cl1 = preds[0]["cat"].GetString();
+  ASSERT_EQ(cl1, "16");
+  ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.8);
+
+  auto &bbox = preds[0]["bbox"];
+  ASSERT_TRUE(bbox["xmin"].GetDouble() < 50 && bbox["xmax"].GetDouble() > 200
+              && bbox["ymin"].GetDouble() < 50
+              && bbox["ymax"].GetDouble() > 200);
+
+  // Check second prediction (dog)
+  auto &preds2 = jd["body"]["predictions"][dog_id]["classes"];
+  ASSERT_EQ(preds2.Size(), 1);
+  std::string cl2 = preds2[0]["cat"].GetString();
+  ASSERT_EQ(cl2, "17");
+  ASSERT_TRUE(preds2[0]["prob"].GetDouble() > 0.8);
+
+  auto &bbox2 = preds2[0]["bbox"];
+  ASSERT_TRUE(bbox2["xmin"].GetDouble() >= 0.0
+              && bbox2["xmax"].GetDouble() > bbox2["xmin"].GetDouble()
+              && bbox2["ymin"].GetDouble() >= 0.0
+              && bbox2["ymax"].GetDouble() > bbox2["ymin"].GetDouble());
+
+  // delete
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+}
+
+TEST(onnxruntimeapi, service_predict_bbox_invalid_shape)
+{
+  // create service without template="yolox" so backend expects [batch,
+  // max_dets, 7]
+  JsonAPI japi;
+  std::string sname = "ort_det_invalid";
+  std::string jstr
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test invalid bbox "
+        "shape\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + yolox_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "640,\"width\":640,\"rgb\":true},\"mllib\":{\"gpu\":false,"
+          "\"bbox\":true,\"max_batch_size\":1,\"nclasses\":81}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{},\"output\":{\"bbox\":true}},"
+          "\"data\":[\""
+        + resnet_onnx_repo + "cat.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
@@ -168,8 +234,8 @@ TEST(onnxruntimeapi, service_predict_gpu)
         "execution\",\"type\":\"supervised\",\"model\":{\"repository\":\""
         + yolox_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
-          "640,\"width\":640,\"rgb\":true},\"mllib\":{\"gpu\":true,"
-          "\"gpuid\":0,\"bbox\":true,\"max_batch_size\":2,\"nclasses\":81}}}";
+          "640,\"width\":640,\"rgb\":true},\"mllib\":{\"template\":\"yolox\","
+          "\"gpu\":true,\"gpuid\":0,\"max_batch_size\":2,\"nclasses\":81}}}";
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   ASSERT_EQ(created_str, joutstr);
 
@@ -196,6 +262,10 @@ TEST(onnxruntimeapi, service_predict_gpu)
   ASSERT_EQ(preds.Size(), 1);
   ASSERT_EQ(std::string(preds[0]["cat"].GetString()), "16");
   ASSERT_TRUE(preds[0]["prob"].GetDouble() > 0.8);
+  auto &bbox = preds[0]["bbox"];
+  ASSERT_TRUE(bbox["xmin"].GetDouble() < 50 && bbox["xmax"].GetDouble() > 200
+              && bbox["ymin"].GetDouble() < 50
+              && bbox["ymax"].GetDouble() > 200);
 
 #ifdef USE_CUDA_CV
   // predict with GPU input preprocessing (GpuMatToORTBuffer) + zero-copy CUDA
@@ -230,3 +300,83 @@ TEST(onnxruntimeapi, service_predict_gpu)
   ASSERT_EQ(ok_str, joutstr);
 }
 #endif
+
+TEST(onnxruntimeapi, service_predict_bbox_7col)
+{
+  // Create a minimal [1, 3, 7] detection ONNX model + corresp.txt in /tmp
+  std::string repo = "/tmp/dd_ort_det_7col/";
+  mkdir(repo.c_str(), 0755);
+
+  // Constant node outputting float[1, 3, 7]:
+  //   row 0: [0.0, 1.0, 0.95, 0.1, 0.2, 0.5, 0.6] (valid detection)
+  //   row 1: [0.0, 2.0, 0.20, 0.0, 0.0, 1.0, 1.0] (below conf threshold 0.5)
+  //   row 2: [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] (padding sentinel)
+  static const uint8_t kDetOnnxModel[] = {
+    0x08, 0x07, 0x42, 0x04, 0x0a, 0x00, 0x10, 0x0b, 0x3a, 0xe3, 0x01, 0x0a,
+    0x90, 0x01, 0x12, 0x0d, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x69, 0x6f,
+    0x6e, 0x5f, 0x6f, 0x75, 0x74, 0x22, 0x08, 0x43, 0x6f, 0x6e, 0x73, 0x74,
+    0x61, 0x6e, 0x74, 0x2a, 0x75, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
+    0x2a, 0x69, 0x08, 0x01, 0x08, 0x03, 0x08, 0x07, 0x10, 0x01, 0x42, 0x09,
+    0x63, 0x6f, 0x6e, 0x73, 0x74, 0x5f, 0x6f, 0x75, 0x74, 0x4a, 0x54, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3f, 0x33, 0x33, 0x73, 0x3f, 0xcd,
+    0xcc, 0xcc, 0x3d, 0xcd, 0xcc, 0x4c, 0x3e, 0x00, 0x00, 0x00, 0x3f, 0x9a,
+    0x99, 0x19, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0xcd,
+    0xcc, 0x4c, 0x3e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x80, 0x3f, 0x00, 0x00, 0x80, 0x3f, 0x00, 0x00, 0x80, 0xbf, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa0,
+    0x01, 0x04, 0x12, 0x08, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x64, 0x65, 0x74,
+    0x5a, 0x1f, 0x0a, 0x05, 0x69, 0x6e, 0x70, 0x75, 0x74, 0x12, 0x16, 0x0a,
+    0x14, 0x08, 0x01, 0x12, 0x10, 0x0a, 0x02, 0x08, 0x01, 0x0a, 0x02, 0x08,
+    0x03, 0x0a, 0x02, 0x08, 0x08, 0x0a, 0x02, 0x08, 0x08, 0x62, 0x23, 0x0a,
+    0x0d, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6f,
+    0x75, 0x74, 0x12, 0x12, 0x0a, 0x10, 0x08, 0x01, 0x12, 0x0c, 0x0a, 0x02,
+    0x08, 0x01, 0x0a, 0x02, 0x08, 0x03, 0x0a, 0x02, 0x08, 0x07
+  };
+
+  {
+    std::ofstream mf(repo + "model.onnx", std::ios::binary);
+    mf.write(reinterpret_cast<const char *>(kDetOnnxModel),
+             sizeof(kDetOnnxModel));
+    std::ofstream cf(repo + "corresp.txt");
+    cf << "0 background\n1 cat\n2 dog\n";
+  }
+
+  JsonAPI japi;
+  std::string sname = "ort_det_7col";
+  std::string jstr
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test 7-col bbox "
+        "output\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "8,\"width\":8,\"rgb\":true},\"mllib\":{\"gpu\":false,"
+          "\"bbox\":true,\"max_batch_size\":1,\"nclasses\":3}}}";
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{},\"output\":{\"bbox\":true,"
+          "\"confidence_threshold\":0.5}},\"data\":[\""
+        + resnet_onnx_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
+  auto &preds = jd["body"]["predictions"][0]["classes"];
+  ASSERT_EQ(preds.Size(), 1);
+  ASSERT_EQ(std::string(preds[0]["cat"].GetString()), "cat");
+  ASSERT_NEAR(preds[0]["prob"].GetDouble(), 0.95, 1e-4);
+
+  auto &bbox = preds[0]["bbox"];
+  ASSERT_TRUE(bbox["xmin"].GetDouble() > 0.0
+              && bbox["xmax"].GetDouble() > bbox["xmin"].GetDouble()
+              && bbox["ymin"].GetDouble() > 0.0
+              && bbox["ymax"].GetDouble() > bbox["ymin"].GetDouble());
+
+  joutstr = japi.jrender(japi.service_delete(sname, "{\"clear\":\"lib\"}"));
+  ASSERT_EQ(ok_str, joutstr);
+  fileops::remove_dir(repo);
+}
