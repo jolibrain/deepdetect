@@ -708,9 +708,10 @@ namespace dd
       // image resizing on GPU
       _cuda |= params->cuda;
       // Lazily create the CUDA stream only if requested
-      if (_cuda && _cuda_stream == nullptr) {
-        _cuda_stream = &cv::cuda::Stream::Null();
-      }
+      if (_cuda && _cuda_stream == nullptr)
+        {
+          _cuda_stream = &cv::cuda::Stream::Null();
+        }
 #endif
     }
 

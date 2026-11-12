@@ -1,5 +1,5 @@
 /**
-* DeepDetect
+ * DeepDetect
  * Copyright (c) 2026 Pixel Forensics, Inc.
  * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
@@ -60,6 +60,5 @@ namespace dd
     std::string _model; // Path to the resolved .onnx weights file
   };
 }
-
 
 #endif // ONNXRUNTIMEMODEL_H

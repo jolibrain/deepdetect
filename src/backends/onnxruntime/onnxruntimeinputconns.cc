@@ -1,5 +1,5 @@
 /**
-* DeepDetect
+ * DeepDetect
  * Copyright (c) 2026 Pixel Forensics, Inc.
  * Author: Cheni Chadowitz <cchadowitz@pixelforensics.com>
  *
@@ -52,7 +52,8 @@ namespace dd
     boost::float32_t *fbuf = (boost::float32_t *)(_buf.data());
     boost::float32_t *cvbuf = (boost::float32_t *)converted.data;
 
-    // Convert interleaved HWC (OpenCV default) to planar CHW (ONNX / PyTorch standard)
+    // Convert interleaved HWC (OpenCV default) to planar CHW (ONNX / PyTorch
+    // standard)
     for (int c = 0; c < channels; ++c)
       for (int h = 0; h < _height; ++h)
         for (int w = 0; w < _width; ++w)
@@ -90,7 +91,8 @@ namespace dd
   }
 
 #ifdef USE_CUDA_CV
-  void ImgONNXRuntimeInputFileConn::GpuMatToORTBuffer(cv::cuda::GpuMat &img, int i)
+  void ImgONNXRuntimeInputFileConn::GpuMatToORTBuffer(cv::cuda::GpuMat &img,
+                                                      int i)
   {
     cv::cuda::GpuMat converted;
     int channels = img.channels();
@@ -175,9 +177,9 @@ namespace dd
   {
     size_t img_count =
 #ifdef USE_CUDA_CV
-    _cuda ? this->_cuda_images.size() :
+        _cuda ? this->_cuda_images.size() :
 #endif
-          this->_images.size();
+              this->_images.size();
 
     if (img_count > batch_size)
       {

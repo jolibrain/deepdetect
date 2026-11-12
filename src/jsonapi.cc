@@ -793,20 +793,21 @@ namespace dd
                 if (input == "image")
                   add_service(
                       sname,
-                      std::move(
-                          MLService<ONNXRuntimeLib, ImgONNXRuntimeInputFileConn,
-                                    SupervisedOutput, ONNXRuntimeModel>(
-                              sname, onnx_runtime_model, description)),
+                      std::move(MLService<ONNXRuntimeLib,
+                                          ImgONNXRuntimeInputFileConn,
+                                          SupervisedOutput, ONNXRuntimeModel>(
+                          sname, onnx_runtime_model, description)),
                       ad);
                 else
                   return dd_input_connector_not_found_1004();
                 if (store_config
-                    && JsonAPI::store_json_config_blob(onnx_runtime_model._repo,
-                                                       jstr))
+                    && JsonAPI::store_json_config_blob(
+                        onnx_runtime_model._repo, jstr))
                   {
                     _logger->error(
                         "couldn't write {} file in model repository {}",
-                        JsonAPI::_json_config_blob_fname, onnx_runtime_model._repo);
+                        JsonAPI::_json_config_blob_fname,
+                        onnx_runtime_model._repo);
                   }
               }
             else

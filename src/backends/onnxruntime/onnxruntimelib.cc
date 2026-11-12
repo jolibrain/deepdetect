@@ -38,18 +38,22 @@ namespace dd
   // Constructors & Destructor
   // --------------------------------------------------------------------------
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::ONNXRuntimeLib(
-      const ONNXRuntimeModel &model)
-      : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, ONNXRuntimeModel>(model)
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                 TMLModel>::ONNXRuntimeLib(const ONNXRuntimeModel &model)
+      : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+              ONNXRuntimeModel>(model)
   {
     this->_libname = "onnxruntime";
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::ONNXRuntimeLib(
-      ONNXRuntimeLib &&other) noexcept
-      : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy, ONNXRuntimeModel>(std::move(other)),
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                 TMLModel>::ONNXRuntimeLib(ONNXRuntimeLib &&other) noexcept
+      : MLLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+              ONNXRuntimeModel>(std::move(other)),
         _env_ptr(std::move(other._env_ptr)),
         _session_options(std::move(other._session_options)),
         _session(std::move(other._session)),
@@ -71,8 +75,10 @@ namespace dd
     this->_template = other._template;
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::~ONNXRuntimeLib()
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                 TMLModel>::~ONNXRuntimeLib()
   {
     clear_mllib(APIData());
   }
@@ -81,9 +87,10 @@ namespace dd
   // Lifecycle Management
   // --------------------------------------------------------------------------
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::init_mllib(
-      const APIData &ad)
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                      TMLModel>::init_mllib(const APIData &ad)
   {
     if (ad.has("gpu"))
       this->_gpu = ad.get("gpu").get<bool>();
@@ -100,52 +107,61 @@ namespace dd
 
     if (this->_mlmodel._model.empty())
       {
-        this->_logger->error("No ONNX model file found in repository {}", this->_mlmodel._repo);
+        this->_logger->error("No ONNX model file found in repository {}",
+                             this->_mlmodel._repo);
         throw MLLibBadParamException("No ONNX model file found in repository");
       }
 
-    OrtLoggingLevel log_level = ORT_LOGGING_LEVEL_WARNING; // Default to WARNING
+    OrtLoggingLevel log_level
+        = ORT_LOGGING_LEVEL_WARNING; // Default to WARNING
     if (ad.has("ort_log_level"))
-    {
-      std::string level_str = ad.get("ort_log_level").get<std::string>();
-      if (level_str == "verbose")
-        log_level = ORT_LOGGING_LEVEL_VERBOSE;
-      else if (level_str == "info")
-        log_level = ORT_LOGGING_LEVEL_INFO;
-      else if (level_str == "warning")
-        log_level = ORT_LOGGING_LEVEL_WARNING;
-      else if (level_str == "error")
-        log_level = ORT_LOGGING_LEVEL_ERROR;
-      else if (level_str == "fatal")
-        log_level = ORT_LOGGING_LEVEL_FATAL;
-      else
-        this->_logger->warn("Unknown ort_log_level '{}'. Defaulting to warning.", level_str);
-    }
+      {
+        std::string level_str = ad.get("ort_log_level").get<std::string>();
+        if (level_str == "verbose")
+          log_level = ORT_LOGGING_LEVEL_VERBOSE;
+        else if (level_str == "info")
+          log_level = ORT_LOGGING_LEVEL_INFO;
+        else if (level_str == "warning")
+          log_level = ORT_LOGGING_LEVEL_WARNING;
+        else if (level_str == "error")
+          log_level = ORT_LOGGING_LEVEL_ERROR;
+        else if (level_str == "fatal")
+          log_level = ORT_LOGGING_LEVEL_FATAL;
+        else
+          this->_logger->warn(
+              "Unknown ort_log_level '{}'. Defaulting to warning.", level_str);
+      }
     _env_ptr = std::make_unique<Ort::Env>(log_level, "DeepDetect_ORT");
 
     _session_options = Ort::SessionOptions();
     // Default to 1 for GPU safety, but allow CPU-only users to scale up
     int intra_op_threads = 1;
-    if (ad.has("intra_op_threads")) {
-      intra_op_threads = ad.get("intra_op_threads").get<int>();
-      if (intra_op_threads == 0)
-        {
-          this->_logger->info("intra_op_threads set to 0. ONNX Runtime will auto-detect core count");
-        }
-      else if (intra_op_threads > 128)
-        {
-          this->_logger->warn("intra_op_threads {} is excessively high", intra_op_threads);
-        }
-      else if (intra_op_threads < 0)
-        {
-          this->_logger->error("intra_op_threads cannot be negative");
-          throw MLLibBadParamException("intra_op_threads cannot be negative");
-        }
-    }
+    if (ad.has("intra_op_threads"))
+      {
+        intra_op_threads = ad.get("intra_op_threads").get<int>();
+        if (intra_op_threads == 0)
+          {
+            this->_logger->info("intra_op_threads set to 0. ONNX Runtime will "
+                                "auto-detect core count");
+          }
+        else if (intra_op_threads > 128)
+          {
+            this->_logger->warn("intra_op_threads {} is excessively high",
+                                intra_op_threads);
+          }
+        else if (intra_op_threads < 0)
+          {
+            this->_logger->error("intra_op_threads cannot be negative");
+            throw MLLibBadParamException(
+                "intra_op_threads cannot be negative");
+          }
+      }
     _session_options.SetIntraOpNumThreads(intra_op_threads);
-    this->_logger->info("ONNX Runtime: Set intra_op_num_threads to {}", intra_op_threads);
+    this->_logger->info("ONNX Runtime: Set intra_op_num_threads to {}",
+                        intra_op_threads);
 
-    // ONNX Runtime defaults to true, which maximizes speed but burns CPU cycles busy-waiting
+    // ONNX Runtime defaults to true, which maximizes speed but burns CPU
+    // cycles busy-waiting
     bool allow_spinning = true;
 
     if (ad.has("allow_spinning"))
@@ -156,36 +172,46 @@ namespace dd
     if (!allow_spinning)
       {
         // Disable busy-waiting for both thread pools
-        _session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
-        _session_options.AddConfigEntry("session.inter_op.allow_spinning", "0");
-        this->_logger->info("ONNX Runtime: Disabled CPU thread spinning (busy-waiting)");
+        _session_options.AddConfigEntry("session.intra_op.allow_spinning",
+                                        "0");
+        _session_options.AddConfigEntry("session.inter_op.allow_spinning",
+                                        "0");
+        this->_logger->info(
+            "ONNX Runtime: Disabled CPU thread spinning (busy-waiting)");
       }
     else
       {
-        this->_logger->info("ONNX Runtime: CPU thread spinning enabled (default)");
+        this->_logger->info(
+            "ONNX Runtime: CPU thread spinning enabled (default)");
       }
 
-    _session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    _session_options.SetGraphOptimizationLevel(
+        GraphOptimizationLevel::ORT_ENABLE_ALL);
 
     configure_execution_provider(ad);
 
     try
       {
-        this->_logger->info("Loading ONNX model from: {}", this->_mlmodel._model);
-        _session = std::make_unique<Ort::Session>(*_env_ptr, this->_mlmodel._model.c_str(), _session_options);
+        this->_logger->info("Loading ONNX model from: {}",
+                            this->_mlmodel._model);
+        _session = std::make_unique<Ort::Session>(
+            *_env_ptr, this->_mlmodel._model.c_str(), _session_options);
       }
     catch (const Ort::Exception &e)
       {
-        this->_logger->error("Failed to initialize ONNX Runtime session: {}", e.what());
+        this->_logger->error("Failed to initialize ONNX Runtime session: {}",
+                             e.what());
         throw MLLibInternalException(e.what());
       }
 
     inspect_model_io();
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::configure_execution_provider(
-      const APIData &ad)
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void
+  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                 TMLModel>::configure_execution_provider(const APIData &ad)
   {
     (void)ad;
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
@@ -196,12 +222,16 @@ namespace dd
             OrtCUDAProviderOptions cuda_options;
             cuda_options.device_id = this->_gpuid;
             _session_options.AppendExecutionProvider_CUDA(cuda_options);
-            this->_logger->info("ONNX Runtime: CUDA Execution Provider enabled on GPU device {}", this->_gpuid);
+            this->_logger->info("ONNX Runtime: CUDA Execution Provider "
+                                "enabled on GPU device {}",
+                                this->_gpuid);
           }
         catch (const Ort::Exception &e)
           {
-            this->_logger->error("ONNX Runtime: Failed to load CUDA provider: {}", e.what());
-            throw MLLibInternalException(std::string("Failed to load CUDA provider: ") + e.what());
+            this->_logger->error(
+                "ONNX Runtime: Failed to load CUDA provider: {}", e.what());
+            throw MLLibInternalException(
+                std::string("Failed to load CUDA provider: ") + e.what());
           }
       }
     else
@@ -211,15 +241,20 @@ namespace dd
 #else
     if (this->_gpu)
       {
-        this->_logger->error("ONNX Runtime: GPU execution requested but build is CPU-only or Apple");
-        throw MLLibInternalException("GPU requested but ONNX Runtime build is CPU-only or Apple");
+        this->_logger->error("ONNX Runtime: GPU execution requested but build "
+                             "is CPU-only or Apple");
+        throw MLLibInternalException(
+            "GPU requested but ONNX Runtime build is CPU-only or Apple");
       }
-    this->_logger->info("ONNX Runtime: Running on CPU (macOS / CPU-only build)");
+    this->_logger->info(
+        "ONNX Runtime: Running on CPU (macOS / CPU-only build)");
 #endif
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::inspect_model_io()
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                      TMLModel>::inspect_model_io()
   {
     _input_node_names.clear();
     _input_node_names_ptr.clear();
@@ -261,14 +296,17 @@ namespace dd
       _output_node_names_ptr.push_back(name.c_str());
 
     for (size_t i = 0; i < _input_node_names.size(); ++i)
-      this->_logger->info("Discovered input node {}: {}", i, _input_node_names[i]);
+      this->_logger->info("Discovered input node {}: {}", i,
+                          _input_node_names[i]);
     for (size_t i = 0; i < _output_node_names.size(); ++i)
-      this->_logger->info("Discovered output node {}: {}", i, _output_node_names[i]);
+      this->_logger->info("Discovered output node {}: {}", i,
+                          _output_node_names[i]);
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::clear_mllib(
-      const APIData &ad)
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                      TMLModel>::clear_mllib(const APIData &ad)
   {
     (void)ad;
     _session.reset();
@@ -278,19 +316,23 @@ namespace dd
     _output_node_names_ptr.clear();
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  int ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::train(
-      const APIData &ad, APIData &out)
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  int ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                     TMLModel>::train(const APIData &ad, APIData &out)
   {
     (void)ad;
     (void)out;
-    this->_logger->error("Training is not supported by the ONNX Runtime backend");
+    this->_logger->error(
+        "Training is not supported by the ONNX Runtime backend");
     return 1;
   }
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
-  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::model_type(
-      const std::string &param_file, std::string &mltype)
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
+  void ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                      TMLModel>::model_type(const std::string &param_file,
+                                            std::string &mltype)
   {
     (void)param_file;
     mltype = "onnxruntime";
@@ -300,10 +342,11 @@ namespace dd
   // Inference Pipeline
   // --------------------------------------------------------------------------
 
-  template <class TInputConnectorStrategy, class TOutputConnectorStrategy, class TMLModel>
+  template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
+            class TMLModel>
   oatpp::Object<DTO::PredictBody>
-  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::predict(
-      const APIData &ad)
+  ONNXRuntimeLib<TInputConnectorStrategy, TOutputConnectorStrategy,
+                 TMLModel>::predict(const APIData &ad)
   {
     std::unique_lock<std::mutex> lock(_net_mutex, std::defer_lock);
     if (!this->_concurrent_predict)
@@ -323,7 +366,8 @@ namespace dd
       }
 
     std::string extract_layer = "";
-    if (predict_dto->parameters->mllib && predict_dto->parameters->mllib->extract_layer)
+    if (predict_dto->parameters->mllib
+        && predict_dto->parameters->mllib->extract_layer)
       {
         extract_layer = predict_dto->parameters->mllib->extract_layer->c_str();
       }
@@ -359,12 +403,18 @@ namespace dd
     if (this->_gpu)
       {
         if (cudaStreamCreate(&cuda_guard.stream) != cudaSuccess)
-          throw MLLibInternalException("ONNX Runtime: Failed to create CUDA stream");
+          throw MLLibInternalException(
+              "ONNX Runtime: Failed to create CUDA stream");
         cuda_guard.has_stream = true;
 #ifdef USE_CUDA_CV
-        // Dynamically allocate to ensure memory safety if concurrent_predict is true
-        if (cudaMalloc(&cuda_guard.buf, this->_max_batch_size * inputc.channels() * this->_height * this->_width * sizeof(float)) != cudaSuccess)
-          throw MLLibInternalException("ONNX Runtime: Failed to allocate CUDA input buffer");
+        // Dynamically allocate to ensure memory safety if concurrent_predict
+        // is true
+        if (cudaMalloc(&cuda_guard.buf, this->_max_batch_size
+                                            * inputc.channels() * this->_height
+                                            * this->_width * sizeof(float))
+            != cudaSuccess)
+          throw MLLibInternalException(
+              "ONNX Runtime: Failed to allocate CUDA input buffer");
         inputc._cuda_buf = static_cast<float *>(cuda_guard.buf);
         cv_stream = cv::cuda::StreamAccessor::wrapStream(cuda_guard.stream);
         inputc._cuda_stream = &cv_stream;
@@ -380,21 +430,24 @@ namespace dd
       {
         throw MLLibBadParamException(
             "Model height and/or width differ from the input data size. "
-            "Input data size should be " + std::to_string(this->_width) + "x" + std::to_string(this->_height));
+            "Input data size should be "
+            + std::to_string(this->_width) + "x"
+            + std::to_string(this->_height));
       }
 
     int batch_size = 0;
     while ((batch_size = inputc.process_batch(this->_max_batch_size)) > 0)
       {
-        std::vector<int64_t> input_shape = {
-          static_cast<int64_t>(batch_size),
-          static_cast<int64_t>(inputc.channels()), // Using your new channels() method!
-          static_cast<int64_t>(this->_height),
-          static_cast<int64_t>(this->_width)
-        };
-        size_t input_tensor_size = batch_size * inputc.channels() * this->_height * this->_width;
+        std::vector<int64_t> input_shape
+            = { static_cast<int64_t>(batch_size),
+                static_cast<int64_t>(
+                    inputc.channels()), // Using your new channels() method!
+                static_cast<int64_t>(this->_height),
+                static_cast<int64_t>(this->_width) };
+        size_t input_tensor_size
+            = batch_size * inputc.channels() * this->_height * this->_width;
 
-        Ort::Value input_tensor{nullptr};
+        Ort::Value input_tensor{ nullptr };
 
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
         if (this->_gpu)
@@ -405,13 +458,11 @@ namespace dd
 #ifdef USE_CUDA_CV
         if (this->_gpu && inputc._cuda)
           {
-            Ort::MemoryInfo mem_info("Cuda", OrtDeviceAllocator, this->_gpuid, OrtMemTypeDefault);
+            Ort::MemoryInfo mem_info("Cuda", OrtDeviceAllocator, this->_gpuid,
+                                     OrtMemTypeDefault);
             input_tensor = Ort::Value::CreateTensor<float>(
-                mem_info,
-                static_cast<float *>(cuda_guard.buf),
-                input_tensor_size,
-                input_shape.data(),
-                input_shape.size());
+                mem_info, static_cast<float *>(cuda_guard.buf),
+                input_tensor_size, input_shape.data(), input_shape.size());
           }
         else
 #endif
@@ -420,27 +471,22 @@ namespace dd
             Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(
                 OrtArenaAllocator, OrtMemTypeDefault);
             input_tensor = Ort::Value::CreateTensor<float>(
-                mem_info,
-                inputc.data(),
-                input_tensor_size,
-                input_shape.data(),
+                mem_info, inputc.data(), input_tensor_size, input_shape.data(),
                 input_shape.size());
           }
         std::vector<Ort::Value> output_tensors;
 
         try
           {
-            std::vector<const char*> run_output_names = _output_node_names_ptr;
+            std::vector<const char *> run_output_names
+                = _output_node_names_ptr;
             if (!extract_layer.empty() && extract_layer != "last")
               {
                 run_output_names = { extract_layer.c_str() };
               }
             output_tensors = _session->Run(
-                Ort::RunOptions{nullptr},
-                _input_node_names_ptr.data(),
-                &input_tensor,
-                1,
-                run_output_names.data(),
+                Ort::RunOptions{ nullptr }, _input_node_names_ptr.data(),
+                &input_tensor, 1, run_output_names.data(),
                 run_output_names.size());
           }
         catch (const Ort::Exception &e)
@@ -449,10 +495,13 @@ namespace dd
             // Intercept models that crash on zero detections (empty tensors)
             if (err_msg.find("Input shape:{0,") != std::string::npos)
               {
-                this->_logger->info("ONNX Runtime: 0 objects detected (caught empty tensor). Returning empty prediction.");
+                this->_logger->info(
+                    "ONNX Runtime: 0 objects detected (caught empty tensor). "
+                    "Returning empty prediction.");
                 OutputConnectorConfig conf;
                 conf._nclasses = this->_nclasses;
-                if (this->_bbox) conf._has_bbox = true;
+                if (this->_bbox)
+                  conf._has_bbox = true;
 
                 if (extract_layer.empty())
                   {
@@ -465,33 +514,42 @@ namespace dd
                         rad.add("loss", 0.0);
                         rad.add("probs", std::vector<double>());
                         rad.add("cats", std::vector<std::string>());
-                        if (this->_bbox) rad.add("bboxes", std::vector<APIData>());
+                        if (this->_bbox)
+                          rad.add("bboxes", std::vector<APIData>());
                         empty_vrad.push_back(rad);
                       }
                     tout.add_results(empty_vrad);
-                    return tout.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
+                    return tout.finalize(
+                        predict_dto->parameters->output, conf,
+                        static_cast<MLModel *>(&this->_mlmodel));
                   }
                 else
                   {
                     UnsupervisedOutput unsupo;
                     unsupo.set_results(std::vector<UnsupervisedResult>());
-                    return unsupo.finalize(predict_dto->parameters->output, conf, static_cast<MLModel *>(&this->_mlmodel));
+                    return unsupo.finalize(
+                        predict_dto->parameters->output, conf,
+                        static_cast<MLModel *>(&this->_mlmodel));
                   }
               }
-            this->_logger->error("Inference execution failed in ONNX Runtime: {}", err_msg);
+            this->_logger->error(
+                "Inference execution failed in ONNX Runtime: {}", err_msg);
             throw MLLibInternalException(err_msg);
           }
 
         if (output_tensors.empty())
           {
-            this->_logger->error("ONNX Runtime: Inference returned no output tensors.");
-            throw MLLibInternalException("ONNX Runtime returned no output tensors");
+            this->_logger->error(
+                "ONNX Runtime: Inference returned no output tensors.");
+            throw MLLibInternalException(
+                "ONNX Runtime returned no output tensors");
           }
 
         // Handle extract_layer tensor extraction
         if (!extract_layer.empty())
           {
-            // If "last" returned multiple outputs, iterate through all and concatenate.
+            // If "last" returned multiple outputs, iterate through all and
+            // concatenate.
             for (int b = 0; b < batch_size; ++b)
               {
                 UnsupervisedResult result;
@@ -500,37 +558,52 @@ namespace dd
 
                 for (size_t t = 0; t < output_tensors.size(); ++t)
                   {
-                    auto tensor_info = output_tensors[t].GetTensorTypeAndShapeInfo();
+                    auto tensor_info
+                        = output_tensors[t].GetTensorTypeAndShapeInfo();
                     if (tensor_info.GetElementCount() == 0)
                       continue;
                     std::vector<int64_t> out_shape = tensor_info.GetShape();
-                    ONNXTensorElementDataType type = tensor_info.GetElementType();
+                    ONNXTensorElementDataType type
+                        = tensor_info.GetElementType();
 
                     size_t elements_per_batch = 1;
-                    for (size_t i = 1; i < out_shape.size(); ++i) {
-                      elements_per_batch *= out_shape[i];
-                    }
+                    for (size_t i = 1; i < out_shape.size(); ++i)
+                      {
+                        elements_per_batch *= out_shape[i];
+                      }
 
                     // Handle standard 32-bit floats
                     if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
                       {
-                        float* out_data = output_tensors[t].template GetTensorMutableData<float>();
-                        float* batch_start = out_data + (b * elements_per_batch);
-                        result._vals.insert(result._vals.end(), batch_start, batch_start + elements_per_batch);
+                        float *out_data
+                            = output_tensors[t]
+                                  .template GetTensorMutableData<float>();
+                        float *batch_start
+                            = out_data + (b * elements_per_batch);
+                        result._vals.insert(result._vals.end(), batch_start,
+                                            batch_start + elements_per_batch);
                       }
                     // Handle 64-bit integers (e.g., class indices)
                     else if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
                       {
-                        int64_t* out_data = output_tensors[t].template GetTensorMutableData<int64_t>();
-                        int64_t* batch_start = out_data + (b * elements_per_batch);
-                        for(size_t i = 0; i < elements_per_batch; ++i) {
-                          result._vals.push_back(static_cast<double>(batch_start[i]));
-                        }
+                        int64_t *out_data
+                            = output_tensors[t]
+                                  .template GetTensorMutableData<int64_t>();
+                        int64_t *batch_start
+                            = out_data + (b * elements_per_batch);
+                        for (size_t i = 0; i < elements_per_batch; ++i)
+                          {
+                            result._vals.push_back(
+                                static_cast<double>(batch_start[i]));
+                          }
                       }
                     // Fallback for unsupported types
                     else
                       {
-                        this->_logger->warn("ONNX Runtime: extract_layer encountered unsupported tensor type {}", static_cast<int>(type));
+                        this->_logger->warn(
+                            "ONNX Runtime: extract_layer encountered "
+                            "unsupported tensor type {}",
+                            static_cast<int>(type));
                       }
                   }
                 unsup_results.push_back(std::move(result));
@@ -539,8 +612,10 @@ namespace dd
         // Parse detection bounding boxes
         else if (this->_bbox)
           {
-            float *out_data = output_tensors.front().template GetTensorMutableData<float>();
-            auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
+            float *out_data = output_tensors.front()
+                                  .template GetTensorMutableData<float>();
+            auto tensor_info
+                = output_tensors.front().GetTensorTypeAndShapeInfo();
             std::vector<int64_t> out_shape = tensor_info.GetShape();
             // Expecting [batch, max_detections, 7] layout
             int max_dets = 0;
@@ -578,10 +653,14 @@ namespace dd
 
                     int label_id = static_cast<int>(out_data[base_idx + 1]);
                     float score = out_data[base_idx + 2];
-                    float xmin = std::max(out_data[base_idx + 3], 0.0f) * orig_w;
-                    float ymin = std::max(out_data[base_idx + 4], 0.0f) * orig_h;
-                    float xmax = std::min(out_data[base_idx + 5], 1.0f) * orig_w;
-                    float ymax = std::min(out_data[base_idx + 6], 1.0f) * orig_h;
+                    float xmin
+                        = std::max(out_data[base_idx + 3], 0.0f) * orig_w;
+                    float ymin
+                        = std::max(out_data[base_idx + 4], 0.0f) * orig_h;
+                    float xmax
+                        = std::min(out_data[base_idx + 5], 1.0f) * orig_w;
+                    float ymax
+                        = std::min(out_data[base_idx + 6], 1.0f) * orig_h;
 
                     probs.push_back(static_cast<double>(score));
                     cats.push_back(this->_mlmodel.get_hcorresp(label_id));
@@ -603,8 +682,10 @@ namespace dd
         // Parse standard classification
         else
           {
-            float *out_data = output_tensors.front().template GetTensorMutableData<float>();
-            auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
+            float *out_data = output_tensors.front()
+                                  .template GetTensorMutableData<float>();
+            auto tensor_info
+                = output_tensors.front().GetTensorTypeAndShapeInfo();
             std::vector<int64_t> out_shape = tensor_info.GetShape();
 
             size_t elements_per_batch = 1;
@@ -616,8 +697,10 @@ namespace dd
                   }
               }
 
-            // Prevent out-of-bounds if the model returns fewer outputs than nclasses
-            int num_classes = std::min(static_cast<size_t>(this->_nclasses), elements_per_batch);
+            // Prevent out-of-bounds if the model returns fewer outputs than
+            // nclasses
+            int num_classes = std::min(static_cast<size_t>(this->_nclasses),
+                                       elements_per_batch);
 
             for (int b = 0; b < batch_size; ++b)
               {
@@ -676,6 +759,7 @@ namespace dd
   // --------------------------------------------------------------------------
   // Explicit Template Instantiations
   // --------------------------------------------------------------------------
-  template class ONNXRuntimeLib<ImgONNXRuntimeInputFileConn, SupervisedOutput, ONNXRuntimeModel>;
+  template class ONNXRuntimeLib<ImgONNXRuntimeInputFileConn, SupervisedOutput,
+                                ONNXRuntimeModel>;
 
 } // namespace dd

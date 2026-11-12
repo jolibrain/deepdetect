@@ -139,8 +139,8 @@ namespace dd
     || defined(USE_TENSORRT)
       ,
 #endif
-    MLService<ONNXRuntimeLib, ImgONNXRuntimeInputFileConn, SupervisedOutput,
-              ONNXRuntimeModel>
+      MLService<ONNXRuntimeLib, ImgONNXRuntimeInputFileConn, SupervisedOutput,
+                ONNXRuntimeModel>
 #endif
       >
       mls_variant_type;
