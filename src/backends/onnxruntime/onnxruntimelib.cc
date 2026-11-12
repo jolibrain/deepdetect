@@ -446,7 +446,7 @@ namespace dd
     try
       {
         std::vector<const char*> run_output_names = _output_node_names_ptr;
-        if (!extract_layer.empty())
+        if (!extract_layer.empty() && extract_layer != "last")
           {
             run_output_names = { extract_layer.c_str() };
           }
@@ -516,28 +516,49 @@ namespace dd
       }
 #endif
 
-    float *out_data = output_tensors.front().template GetTensorMutableData<float>();
-    auto tensor_info = output_tensors.front().GetTensorTypeAndShapeInfo();
-    std::vector<int64_t> out_shape = tensor_info.GetShape();
-
     // Handle extract_layer tensor extraction
     if (!extract_layer.empty())
     {
-      size_t elements_per_batch = 1;
-      for (size_t i = 1; i < out_shape.size(); ++i)
-        {
-          elements_per_batch *= out_shape[i];
-        }
-
+      // If "last" returned multiple outputs, iterate through all and concatenate.
       for (int b = 0; b < batch_size; ++b)
         {
           UnsupervisedResult result;
           result._uri = inputc._ids.at(b);
           result._loss = 0.0;
 
-          float* batch_start = out_data + (b * elements_per_batch);
-          result._vals = std::vector<double>(batch_start, batch_start + elements_per_batch);
+          for (size_t t = 0; t < output_tensors.size(); ++t)
+            {
+              auto tensor_info = output_tensors[t].GetTensorTypeAndShapeInfo();
+              std::vector<int64_t> out_shape = tensor_info.GetShape();
+              ONNXTensorElementDataType type = tensor_info.GetElementType();
 
+              size_t elements_per_batch = 1;
+              for (size_t i = 1; i < out_shape.size(); ++i) {
+                elements_per_batch *= out_shape[i];
+              }
+
+              // Handle standard 32-bit floats
+              if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+                {
+                  float* out_data = output_tensors[t].template GetTensorMutableData<float>();
+                  float* batch_start = out_data + (b * elements_per_batch);
+                  result._vals.insert(result._vals.end(), batch_start, batch_start + elements_per_batch);
+                }
+              // Handle 64-bit integers (e.g., class indices)
+              else if (type == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
+                {
+                  int64_t* out_data = output_tensors[t].template GetTensorMutableData<int64_t>();
+                  int64_t* batch_start = out_data + (b * elements_per_batch);
+                  for(size_t i = 0; i < elements_per_batch; ++i) {
+                    result._vals.push_back(static_cast<double>(batch_start[i]));
+                  }
+                }
+              // Fallback for unsupported types
+              else
+                {
+                  this->_logger->warn("ONNX Runtime: extract_layer encountered unsupported tensor type {}", static_cast<int>(type));
+                }
+            }
           unsup_results.push_back(std::move(result));
         }
     }
