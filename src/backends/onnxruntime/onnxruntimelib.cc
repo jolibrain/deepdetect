@@ -119,7 +119,8 @@ namespace dd
           }
         else
           {
-            throw MLLibBadParamException("Unknown template " + this->_template);
+            throw MLLibBadParamException("Unknown template "
+                                         + this->_template);
           }
       }
 
@@ -662,7 +663,8 @@ namespace dd
                   {
                     this->_logger->error(
                         "ONNX Runtime YOLOX output expects shape [batch, "
-                        "anchors, 5 + num_classes], got rank {} with last dim {}",
+                        "anchors, 5 + num_classes], got rank {} with last dim "
+                        "{}",
                         out_shape.size(),
                         out_shape.empty() ? -1 : out_shape.back());
                     throw MLLibBadParamException(
@@ -690,7 +692,8 @@ namespace dd
                         out_shape.size(),
                         out_shape.empty() ? -1 : out_shape.back());
                     throw MLLibBadParamException(
-                        "ONNX Runtime bbox model output must have shape [batch, "
+                        "ONNX Runtime bbox model output must have shape "
+                        "[batch, "
                         "max_detections, 7]");
                   }
 
