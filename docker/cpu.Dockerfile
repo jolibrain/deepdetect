@@ -128,6 +128,8 @@ ARG DEEPDETECT_ARCH=cpu
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
 
+ENV ORT_DISABLE_TELEMETRY=1
+
 # Install tools and dependencies
 RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     --mount=type=cache,id=dede_apt_lib,sharing=locked,target=/var/lib/apt \
