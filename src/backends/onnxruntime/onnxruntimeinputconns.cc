@@ -94,8 +94,9 @@ namespace dd
   void ImgONNXRuntimeInputFileConn::GpuMatToORTBuffer(cv::cuda::GpuMat &img,
                                                       int i)
   {
-    cv::cuda::GpuMat converted;
     int channels = img.channels();
+    bool has_std = !_std.empty();
+    cv::cuda::GpuMat converted;
 
     if (_cuda_buf == nullptr)
       throw InputConnectorInternalException(
@@ -110,8 +111,6 @@ namespace dd
       throw InputConnectorBadParamException(
           "std vector must match the number of channels ("
           + std::to_string(channels) + ")");
-
-    bool has_std = !_std.empty();
 
     img.convertTo(converted, CV_32F, 1.0, 0.0, *_cuda_stream);
 
@@ -187,8 +186,8 @@ namespace dd
       }
 
     unsigned int i;
-    _buf.resize(batch_size * channels() * height() * width());
-
+    size_t image_elements = channels() * height() * width();
+    _buf.resize(batch_size * image_elements);
     for (i = 0; i < batch_size && _batch_index < (int)img_count;
          i++, _batch_index++)
       {
@@ -204,6 +203,23 @@ namespace dd
             cv::Mat img = this->_images.at(_batch_index);
             CVMatToORTBuffer(img, i);
           }
+      }
+    // Zero-pad the remaining uninitialized batch slots to prevent ghost
+    // inferences
+    if (i < batch_size)
+      {
+        size_t empty_elements = (batch_size - i) * image_elements;
+        std::fill(_buf.begin() + (i * image_elements), _buf.end(), 0.0f);
+#ifdef USE_CUDA_CV
+        if (_cuda)
+          {
+            cudaMemsetAsync(
+                _cuda_buf + (i * image_elements), 0,
+                empty_elements * sizeof(float),
+                cv::cuda::StreamAccessor::getStream(*_cuda_stream));
+            _cuda_stream->waitForCompletion();
+          }
+#endif
       }
     return i;
   }
