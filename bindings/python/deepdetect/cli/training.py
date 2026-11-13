@@ -677,6 +677,7 @@ def monitor_training(
                 time=status.get("time"),
                 measure=status.get("measure", {}),
                 measures=status.get("measures"),
+                onnx_export=status.get("onnx_export"),
             )
             events = write_metric_events(
                 status,
@@ -687,7 +688,8 @@ def monitor_training(
             )
             if result_visualizer is not None:
                 result_visualizer.maybe_write(status, events)
-            manifest.update(status=state or "running", last_status=status)
+            manifest.update(status=state or "running", last_status=status,
+                            onnx_export=status.get("onnx_export"))
             if state in deepdetect.TrainingJob._TERMINAL:
                 if state not in {"finished", "cancelled", "terminated"}:
                     raise RuntimeError(f"training ended with status {state!r}")

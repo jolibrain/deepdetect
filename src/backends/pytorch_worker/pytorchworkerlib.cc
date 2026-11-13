@@ -303,6 +303,9 @@ namespace dd
       throw MLLibInternalException("pytorch worker is not configured");
 
     std::lock_guard<std::mutex> lock(_worker_mutex);
+    APIData onnx_config = connector_effective_mllib(ad).getobj("onnx_export");
+    this->_onnx_export_requested.store(
+        onnx_config.has("enabled") && onnx_config.get("enabled").get<bool>());
     const bool pull_requested = connector_tensor_pull_requested(ad);
     if (pull_requested)
       {
@@ -351,6 +354,7 @@ namespace dd
               continue;
             process_worker_message(message, finished, status, out);
           }
+        this->collect_onnx_export(out);
         debug_log("train: finished with status=" + std::to_string(status));
         this->_tjob_running.store(false);
         if (pull_requested)

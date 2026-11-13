@@ -3871,3 +3871,28 @@ def test_bad_ground_truth_keeps_prediction_display(tmp_path):
                 'ground_truth':{'imgsize':{'width':3,'height':2},'vals':[1]*6}}
     with pytest.raises(ValueError,match='dimensions'):
         segmentation_ground_truth_images(p,prediction)
+
+
+@pytest.mark.parametrize("profile", ["yolox", "torchvision-detector"])
+def test_onnx_config_and_status_round_trip(monkeypatch, tmp_path, capsys, profile):
+    weights, train, test = write_training_files(tmp_path)
+    runtime = FakeRuntime()
+    export_status = {"status": "disabled", "best_iteration": 2,
+                     "exported_iteration": 1, "stale": True,
+                     "error": "unsupported operator"}
+    runtime.statuses = [{"status": "finished", "body": {
+        "measure": {"iteration": 2}, "onnx_export": export_status}}]
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    args = ["train", profile, "--train-data", str(train), "--test-data", str(test),
+            "--weights", str(weights), "--repository", str(tmp_path / 'repo'),
+            "--job-dir", str(tmp_path / 'runs'), "--run-name", "onnx-test",
+            "--iterations", "2", "--dataset-check", "none",
+            "--set", "mllib.onnx_export.enabled=true"]
+    assert cli.main(args) == 0
+    request = next(call[1] for call in runtime.calls if call[0] == 'train')
+    assert request['parameters']['mllib']['onnx_export']['enabled'] is True
+    manifest = json.loads((tmp_path/'runs/onnx-test/run.json').read_text())
+    assert manifest['onnx_export'] == export_status
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert next(e for e in events if e['event'] == 'training_status')['onnx_export'] == export_status
+    assert not any(e['event'] == 'metric' and e.get('name') == 'onnx_export' for e in events)
