@@ -200,7 +200,8 @@ Use an importable installed module for deployment. Keep a file-entrypoint shim
 for development if useful, but declare its installed module explicitly. Load
 an explicit `mllib.weights` checkpoint for inference without requiring solver
 state, training data, the original checkout, or pretrained downloads. Keep the
-existing configure/train/predict worker contract; no export hook is required.
+existing configure/train/predict worker contract; no hook is required for checkpoint-bundle export. Optional
+ONNX conversion uses the provider contract below.
 
 Declare auxiliary files/directories rather than retaining absolute paths in
 inference settings. References embedded inside those assets must be relative
@@ -215,3 +216,29 @@ installed. Record any precision/device requirements in the adapter README.
 Use `export --test-inference` for a basic load/run check on a random image at
 the exported dimensions; inspect `inference_test` in `export.json`. This smoke
 test does not replace comparison on real inputs or model-quality assessment.
+
+## Best-effort ONNX export (optional)
+
+Keep `mllib.onnx_export.enabled` false unless requested. For straightforward
+models, supply `mllib.onnx_export.provider: installed_module:function`. The
+callable receives `(checkpoint_paths, inference_configuration)` and returns
+`(cpu_eval_model, example_positional_inputs, names)` where names contains
+`input_names` and optionally `output_names`. Reconstruct the exact saved
+checkpoint without pretrained downloads or access to the live training model.
+Use fixed-shape CPU inputs and only simple inference wrappers. Do not add
+operator patches, architecture surgery, or fallback exporters to force support.
+
+The detection checkpoint manager triggers background export for aggregate best
+checkpoints. Custom loops must instantiate `deepdetect.onnx_export.BestOnnxExporter` with
+`backend="pytorch"` and use `notify(iteration, paths)`
+after saving their aggregate best, and call `close(cancellation=lambda: cancellation.requested)` on success or
+`close(cancel=True)` on cancellation/errors. Always arrange cleanup in finally.
+Only the checkpoint-writing rank should notify. Export is optional; unsupported
+models or missing dependencies disable further attempts, including after resume.
+Install the `onnx` package extra to enable conversion. Successful checker
+validation does not establish numerical parity or TensorRT compatibility.
+
+See [CLI ONNX documentation](../cli/CLI_SPEC.md#best-effort-onnx-export-during-training)
+for configuration, provider inputs, lifecycle, and artifact provenance. Validate
+providers with a tiny real export; do not enable them based only on checkpoint
+loading. Record export limitations in the adapter README.

@@ -72,6 +72,7 @@ if (USE_TORCH)
 	generators/net_caffe_recurrent.cc
     backends/torch/torchlib.cc
     backends/torch/torchmodel.cc
+    utils/onnx_export.cc
     backends/torch/torchloss.cc
     backends/torch/torchdataset.cc
     backends/torch/torchinputconns.cc

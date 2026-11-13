@@ -24,6 +24,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+onnx = ["onnx>=1.16"]
 build = ["auditwheel>=6"]
 observability = ["matplotlib>=3.7"]
 test = ["pytest>=7"]

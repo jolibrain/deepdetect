@@ -104,7 +104,8 @@ namespace dd
      * \brief move-constructor
      */
     MLLib(MLLib &&mll) noexcept
-        : _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
+        : _onnx_export_requested(mll._onnx_export_requested.load()),
+          _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
           _mlmodel(mll._mlmodel), _meas(mll._meas),
           _meas_per_iter(mll._meas_per_iter),
           _status_payloads(mll._status_payloads), _stats(mll._stats),
@@ -352,6 +353,7 @@ namespace dd
      */
     void collect_measures(APIData &ad) const
     {
+      collect_onnx_export(ad);
       APIData meas;
 
       {
@@ -391,6 +393,33 @@ namespace dd
 
       ad.add("measure", meas);
     }
+
+    // Export state is an atomic file shared by both backends, never a metric.
+    void collect_onnx_export(APIData &ad) const
+    {
+      if (!_onnx_export_requested.load())
+        return;
+      try
+        {
+          std::ifstream stream(_mlmodel._repo + "/onnx/state.json");
+          if (!stream)
+            return;
+          std::string text((std::istreambuf_iterator<char>(stream)), {});
+          rapidjson::Document doc;
+          doc.Parse(text.c_str());
+          if (!doc.HasParseError() && doc.IsObject())
+            {
+              APIData state;
+              state.fromRapidJson(doc);
+              ad.add("onnx_export", state);
+            }
+        }
+      catch (...)
+        {
+        } // Observability cannot fail a training status request.
+    }
+
+    std::atomic<bool> _onnx_export_requested{ false };
 
     void add_status_payload(const std::string &key, const APIData &payload)
     {
