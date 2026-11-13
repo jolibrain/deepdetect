@@ -273,7 +273,8 @@ TEST(onnxruntimeapi, service_predict_gpu)
   jpredictstr = "{\"service\":\"" + sname
                 + "\",\"parameters\":{\"input\":{\"cuda\":true},\"output\":{"
                   "\"bbox\":true,\"confidence_threshold\":0.8}},\"data\":[\""
-                + resnet_onnx_repo + "cat.jpg\"]}";
+                + resnet_onnx_repo + "cat.jpg\",\"" + yolox_onnx_repo
+                + "dog.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   jd = JDoc();
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
@@ -281,9 +282,15 @@ TEST(onnxruntimeapi, service_predict_gpu)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_EQ(200, jd["status"]["code"].GetInt());
   ASSERT_TRUE(jd["body"]["predictions"].IsArray());
-  ASSERT_EQ(jd["body"]["predictions"].Size(), 1);
+  ASSERT_EQ(jd["body"]["predictions"].Size(), 2);
 
-  auto &preds_cat = jd["body"]["predictions"][0]["classes"];
+  cat_id = jd["body"]["predictions"][0]["uri"].GetString()
+                   == (resnet_onnx_repo + "cat.jpg")
+               ? 0
+               : 1;
+  uint32_t dog_id2 = 1 - cat_id;
+
+  auto &preds_cat = jd["body"]["predictions"][cat_id]["classes"];
   ASSERT_EQ(preds_cat.Size(), 1);
   ASSERT_EQ(std::string(preds_cat[0]["cat"].GetString()), "16");
   ASSERT_TRUE(preds_cat[0]["prob"].GetDouble() > 0.8);
@@ -292,6 +299,11 @@ TEST(onnxruntimeapi, service_predict_gpu)
               && bbox_cat["xmax"].GetDouble() > 200
               && bbox_cat["ymin"].GetDouble() < 50
               && bbox_cat["ymax"].GetDouble() > 200);
+
+  auto &preds_dog = jd["body"]["predictions"][dog_id2]["classes"];
+  ASSERT_GE(preds_dog.Size(), 1);
+  ASSERT_EQ(std::string(preds_dog[0]["cat"].GetString()), "17");
+  ASSERT_TRUE(preds_dog[0]["prob"].GetDouble() > 0.8);
 #endif
 
   // delete

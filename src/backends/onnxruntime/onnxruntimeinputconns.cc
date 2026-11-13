@@ -208,11 +208,11 @@ namespace dd
     // inferences
     if (i < batch_size)
       {
-        size_t empty_elements = (batch_size - i) * image_elements;
         std::fill(_buf.begin() + (i * image_elements), _buf.end(), 0.0f);
 #ifdef USE_CUDA_CV
         if (_cuda)
           {
+            size_t empty_elements = (batch_size - i) * image_elements;
             cudaMemsetAsync(
                 _cuda_buf + (i * image_elements), 0,
                 empty_elements * sizeof(float),
