@@ -416,7 +416,7 @@ namespace dd
       }
     } cuda_guard;
 #ifdef USE_CUDA_CV
-    cv::cuda::Stream cv_stream;
+    std::unique_ptr<cv::cuda::Stream> cv_stream;
 #endif
 #endif
 
@@ -439,8 +439,10 @@ namespace dd
           throw MLLibInternalException(
               "ONNX Runtime: Failed to allocate CUDA input buffer");
         inputc._cuda_buf = static_cast<float *>(cuda_guard.buf);
-        cv_stream = cv::cuda::StreamAccessor::wrapStream(cuda_guard.stream);
-        inputc._cuda_stream = &cv_stream;
+        // Dynamically initialize only when a GPU is active
+        cv_stream = std::make_unique<cv::cuda::Stream>(
+            cv::cuda::StreamAccessor::wrapStream(cuda_guard.stream));
+        inputc._cuda_stream = cv_stream.get();
 #endif
       }
 #endif
