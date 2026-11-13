@@ -1493,6 +1493,7 @@ def test_reference_torch_detector_resume_keeps_global_iteration(tmp_path):
                             "solver": {
                                 "iterations": iterations,
                                 "test_interval": 1,
+                                "snapshot": 1,
                                 "base_lr": 0.001,
                             },
                             "net": {"batch_size": 1},
@@ -1588,6 +1589,7 @@ def test_connector_pull_detector_resume_keeps_global_iteration(tmp_path):
                             "solver": {
                                 "iterations": iterations,
                                 "test_interval": 1,
+                                "snapshot": 1,
                                 "base_lr": 0.001,
                             },
                             "net": {"batch_size": 1},
