@@ -105,6 +105,8 @@ namespace dd
       this->_bbox = ad.get("bbox").get<bool>();
     if (ad.has("max_batch_size"))
       this->_max_batch_size = ad.get("max_batch_size").get<int>();
+    else if (ad.has("maxBatchSize"))
+      this->_max_batch_size = ad.get("maxBatchSize").get<int>();
     if (ad.has("concurrent_predict"))
       this->_concurrent_predict = ad.get("concurrent_predict").get<bool>();
     if (ad.has("template"))
@@ -425,6 +427,9 @@ namespace dd
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
     if (this->_gpu)
       {
+        if (cudaSetDevice(this->_gpuid) != cudaSuccess)
+          throw MLLibInternalException(
+              "ONNX Runtime: Failed to set CUDA device");
         if (cudaStreamCreate(&cuda_guard.stream) != cudaSuccess)
           throw MLLibInternalException(
               "ONNX Runtime: Failed to create CUDA stream");
@@ -450,6 +455,7 @@ namespace dd
     this->_stats.transform_start();
     inputc.transform(predict_dto);
     this->_stats.transform_end();
+    this->_stats.inc_inference_count(inputc._batch_size);
 
     if (inputc.width() != this->_width || inputc.height() != this->_height)
       {
@@ -460,6 +466,7 @@ namespace dd
             + std::to_string(this->_height));
       }
 
+    int idoffset = 0;
     int batch_size = 0;
     while ((batch_size = inputc.process_batch(this->_max_batch_size)) > 0)
       {
@@ -535,7 +542,7 @@ namespace dd
                     for (int b = 0; b < batch_size; ++b)
                       {
                         APIData rad;
-                        rad.add("uri", inputc._ids.at(b));
+                        rad.add("uri", inputc._ids.at(idoffset + b));
                         rad.add("loss", 0.0);
                         rad.add("probs", std::vector<double>());
                         rad.add("cats", std::vector<std::string>());
@@ -578,7 +585,7 @@ namespace dd
             for (int b = 0; b < batch_size; ++b)
               {
                 UnsupervisedResult result;
-                result._uri = inputc._ids.at(b);
+                result._uri = inputc._ids.at(idoffset + b);
                 result._loss = 0.0;
 
                 for (size_t t = 0; t < output_tensors.size(); ++t)
@@ -705,7 +712,7 @@ namespace dd
             for (int b = 0; b < batch_size; ++b)
               {
                 APIData rad;
-                std::string img_id = inputc._ids.at(b);
+                std::string img_id = inputc._ids.at(idoffset + b);
                 rad.add("uri", img_id);
                 rad.add("loss", 0.0);
 
@@ -793,7 +800,12 @@ namespace dd
             auto tensor_info
                 = output_tensors.front().GetTensorTypeAndShapeInfo();
             std::vector<int64_t> out_shape = tensor_info.GetShape();
-
+            double conf_thresh = 0.0;
+            if (predict_dto->parameters->output)
+              {
+                conf_thresh
+                    = predict_dto->parameters->output->confidence_threshold;
+              }
             size_t elements_per_batch = 1;
             if (tensor_info.GetElementCount() > 0)
               {
@@ -811,7 +823,7 @@ namespace dd
             for (int b = 0; b < batch_size; ++b)
               {
                 APIData rad;
-                std::string img_id = inputc._ids.at(b);
+                std::string img_id = inputc._ids.at(idoffset + b);
                 rad.add("uri", img_id);
                 rad.add("loss", 0.0);
 
@@ -823,7 +835,10 @@ namespace dd
                     float *batch_start = out_data + (b * elements_per_batch);
                     for (int c = 0; c < num_classes; ++c)
                       {
-                        probs.push_back(static_cast<double>(batch_start[c]));
+                        double prob = static_cast<double>(batch_start[c]);
+                        if (prob < conf_thresh)
+                          continue;
+                        probs.push_back(prob);
                         cats.push_back(this->_mlmodel.get_hcorresp(c));
                       }
                   }
@@ -833,6 +848,7 @@ namespace dd
                 vrad.push_back(rad);
               }
           }
+        idoffset += batch_size;
       }
     // If the loop never ran (0 valid images), return empty
     if (vrad.empty() && unsup_results.empty())
