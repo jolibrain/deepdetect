@@ -25,6 +25,7 @@ class DetectionTrainOptions:
     batch_size: int
     iter_size: int
     base_lr: float
+    snapshot: int = 0
 
     @classmethod
     def from_mllib(cls, mllib: dict[str, Any]) -> "DetectionTrainOptions":
@@ -33,7 +34,11 @@ class DetectionTrainOptions:
         )
         net = dict(mllib.get("net", {}) if isinstance(mllib.get("net"), dict) else {})
         iterations = positive_int(solver.get("iterations", 1), "iterations")
+        snapshot = solver.get("snapshot", 0)
+        if isinstance(snapshot, bool) or not isinstance(snapshot, int) or snapshot < 0:
+            raise DatasetContractError("snapshot must be a non-negative integer")
         return cls(
+            snapshot=snapshot,
             iterations=iterations,
             test_interval=positive_int(
                 solver.get("test_interval", iterations), "test_interval"

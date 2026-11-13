@@ -988,9 +988,8 @@ def save_checkpoint(
         model_payload,
         context.artifact_path(f"checkpoint-{iteration}.pt"),
     )
-    _atomic_torch_save(
-        torch,
-        model_payload,
+    _atomic_checkpoint_alias(
+        context.artifact_path(f"checkpoint-{iteration}.pt"),
         context.artifact_path("checkpoint-latest.pt"),
     )
     _atomic_torch_save(
@@ -998,9 +997,8 @@ def save_checkpoint(
         solver_payload,
         context.artifact_path(f"solver-{iteration}.pt"),
     )
-    _atomic_torch_save(
-        torch,
-        solver_payload,
+    _atomic_checkpoint_alias(
+        context.artifact_path(f"solver-{iteration}.pt"),
         context.artifact_path("solver-latest.pt"),
     )
 
@@ -1065,3 +1063,20 @@ def debug(message: str, *, tag: str = "detection-worker") -> None:
             file=sys.stderr,
             flush=True,
         )
+
+
+def _atomic_checkpoint_alias(source: Path, destination: Path) -> None:
+    import os
+    import shutil
+    fd, temporary = tempfile.mkstemp(dir=destination.parent, prefix=f".{destination.name}.")
+    os.close(fd)
+    try:
+        os.unlink(temporary)
+        try:
+            os.link(source, temporary)
+        except OSError:
+            shutil.copyfile(source, temporary)
+        os.replace(temporary, destination)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)

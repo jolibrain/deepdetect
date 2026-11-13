@@ -14,6 +14,7 @@ from ....sdk import (
     WorkerContext,
     WorkerReporter,
 )
+from ....checkpoints import CheckpointManager, CheckpointMetricReporter
 from ....tensors import parse_tensor_batch_ref
 
 from .common import (
@@ -175,6 +176,15 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: entering training loop")
 
         start_time = time.monotonic()
+        retention = CheckpointManager(
+            self.context.repository_path if self.context else None,
+            snapshot=train_request.effective_mllib.get("solver", {}).get("snapshot", 0),
+            resume=bool(train_request.effective_mllib.get("resume")),
+            log=lambda message: reporter.log("warning", message),
+        )
+        def save_managed(iteration):
+            return self.save_training_checkpoint(checkpoint_manager, self.model, optimizer, iteration)
+
         optimizer_steps = start_iteration
         accumulated = 0
         latest_loss = 0.0
@@ -184,12 +194,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     iteration=optimizer_steps,
                     iterations=options.iterations,
                 )
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
-                )
+                retention.step(optimizer_steps, save_managed, final=True)
                 return {"status": "cancelled", "iteration": optimizer_steps}
 
             try:
@@ -233,31 +238,23 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 optimizer_steps % options.test_interval == 0
                 or optimizer_steps == options.iterations
             )
+            evaluation_reporter = CheckpointMetricReporter(reporter)
             if should_test:
                 self.debug(f"train: evaluating at iteration {optimizer_steps}")
                 self.evaluate(
                     test_datasets,
-                    reporter=reporter,
+                    reporter=evaluation_reporter,
                     iteration=optimizer_steps,
                     request_params=train_request.request_params,
                     torch=torch,
                     cancellation=cancellation,
                 )
                 self.model.train()
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
-                )
+                retention.step(optimizer_steps, save_managed, metrics={} if cancellation.requested else evaluation_reporter.scores(len(test_datasets)))
                 self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
+            retention.step(optimizer_steps, save_managed)
 
-        self.save_training_checkpoint(
-            checkpoint_manager,
-            self.model,
-            optimizer,
-            options.iterations,
-        )
+        retention.step(options.iterations, save_managed, final=True)
         self.debug("train: finished")
         progress.finished(iteration=options.iterations, iterations=options.iterations)
         return {
@@ -331,6 +328,15 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: entering connector pull training loop")
 
         start_time = time.monotonic()
+        retention = CheckpointManager(
+            self.context.repository_path if self.context else None,
+            snapshot=train_request.effective_mllib.get("solver", {}).get("snapshot", 0),
+            resume=bool(train_request.effective_mllib.get("resume")),
+            log=lambda message: reporter.log("warning", message),
+        )
+        def save_managed(iteration):
+            return self.save_training_checkpoint(checkpoint_manager, self.model, optimizer, iteration)
+
         optimizer_steps = start_iteration
         accumulated = 0
         latest_loss = 0.0
@@ -349,12 +355,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     iteration=optimizer_steps,
                     iterations=options.iterations,
                 )
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
-                )
+                retention.step(optimizer_steps, save_managed, final=True)
                 return {"status": "cancelled", "iteration": optimizer_steps}
 
             batch = prefetcher.next()
@@ -406,6 +407,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 optimizer_steps % options.test_interval == 0
                 or optimizer_steps == options.iterations
             )
+            evaluation_reporter = CheckpointMetricReporter(reporter)
             if should_test:
                 self.debug(
                     f"train: evaluating connector at iteration {optimizer_steps}"
@@ -413,7 +415,7 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                 self.evaluate_connector_pull(
                     test_samples,
                     connector=connector,
-                    reporter=reporter,
+                    reporter=evaluation_reporter,
                     iteration=optimizer_steps,
                     request_params=train_request.request_params,
                     torch=torch,
@@ -424,20 +426,11 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
                     ),
                 )
                 self.model.train()
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
-                )
+                retention.step(optimizer_steps, save_managed, metrics={} if cancellation.requested else evaluation_reporter.scores(len(test_samples)))
                 self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
+            retention.step(optimizer_steps, save_managed)
 
-        self.save_training_checkpoint(
-            checkpoint_manager,
-            self.model,
-            optimizer,
-            options.iterations,
-        )
+        retention.step(options.iterations, save_managed, final=True)
         prefetcher.close()
         self.debug("train: finished")
         progress.finished(iteration=options.iterations, iterations=options.iterations)
