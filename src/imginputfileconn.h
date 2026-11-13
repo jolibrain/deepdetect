@@ -1011,7 +1011,12 @@ namespace dd
                   std::make_move_iterator(dimg._ctype._labels.end()));
             if (!_ids.empty())
               uris.push_back(_ids.at(i));
-            else if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
+            else if (!dimg._ctype._b64
+                     && (dimg._ctype._imgs.size() == 1
+#ifdef USE_CUDA_CV
+                         || dimg._ctype._cuda_imgs.size() == 1
+#endif
+                         ))
               uris.push_back(u);
             else if (!dimg._ctype._img_files.empty())
               uris.insert(
