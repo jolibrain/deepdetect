@@ -4,8 +4,8 @@ set -e
 
 # Deepdetect architecture and build profiles
 deepdetect_arch=(cpu gpu jetson)
-deepdetect_cpu_build_profiles=(default armv7)
-deepdetect_gpu_build_profiles=(default tensorrt)
+deepdetect_cpu_build_profiles=(default armv7 onnxruntime)
+deepdetect_gpu_build_profiles=(default tensorrt onnxruntime tensorrt_onnxruntime)
 deepdetect_gpu_variants=(default legacy61)
 
 DEEPDETECT_GPU_VARIANT=${DEEPDETECT_GPU_VARIANT:-default}
@@ -303,7 +303,12 @@ cpu_build() {
     "armv7")
         cmake .. -DUSE_NCNN=ON -DRPI3=ON -DUSE_HDF5=OFF -DUSE_TORCH=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
         make -j6
-        ;; 
+        ;;
+
+    "onnxruntime")
+        cmake .. -DUSE_ONNXRUNTIME=ON -DUSE_ONNXRUNTIME_CPU_ONLY=ON -DUSE_TORCH=OFF -DUSE_XGBOOST=OFF -DUSE_CPU_ONLY=ON -DUSE_SIMSEARCH=OFF -DUSE_TSNE=OFF -DUSE_NCNN=OFF -DRELEASE=${DEEPDETECT_RELEASE} -DBUILD_TESTS=${BUILD_TESTS} -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}
+        make -j6
+        ;;
 
     *)
         configure_prebuilt_torch
@@ -327,6 +332,15 @@ gpu_build() {
                 extra_flags="${extra_flags} -DTENSORRT_VERSION=${DEEPDETECT_TENSORRT_VERSION}"
             fi
             ;;
+        "onnxruntime")
+                    extra_flags="-DUSE_ONNXRUNTIME=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
+                    ;;
+        "tensorrt_onnxruntime")
+                    extra_flags="-DUSE_TENSORRT=ON -DUSE_ONNXRUNTIME=ON -DUSE_TORCH=OFF -DUSE_CUDA_CV=ON -DUSE_OPENCV_VERSION=4 -DOpenCV_DIR=${DEEPDETECT_OPENCV4_BUILD_PATH}"
+                    if [ "${DEEPDETECT_TENSORRT_VERSION}" ] && [ "${DEEPDETECT_TENSORRT_VERSION}" != "null" ]; then
+                        extra_flags="${extra_flags} -DTENSORRT_VERSION=${DEEPDETECT_TENSORRT_VERSION}"
+                    fi
+                    ;;
         *)
             configure_prebuilt_torch
             extra_flags="$default_flags -DUSE_PYTORCH_WORKER=${USE_PYTORCH_WORKER:-OFF}"

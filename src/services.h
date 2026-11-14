@@ -66,6 +66,9 @@
 #ifdef USE_TENSORRT
 #include "backends/tensorrt/tensorrtlib.h"
 #endif
+#ifdef USE_ONNXRUNTIME
+#include "backends/onnxruntime/onnxruntimelib.h"
+#endif
 #include "dd_spdlog.h"
 #include <vector>
 #include <mutex>
@@ -129,6 +132,15 @@ namespace dd
 #endif
       MLService<TensorRTLib, ImgTensorRTInputFileConn, SupervisedOutput,
                 TensorRTModel>
+#endif
+#ifdef USE_ONNXRUNTIME
+#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
+    || defined(USE_NCNN) || defined(USE_TORCH) || defined(USE_PYTORCH_WORKER) \
+    || defined(USE_TENSORRT)
+      ,
+#endif
+      MLService<ONNXRuntimeLib, ImgONNXRuntimeInputFileConn, SupervisedOutput,
+                ONNXRuntimeModel>
 #endif
       >
       mls_variant_type;

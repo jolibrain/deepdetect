@@ -707,6 +707,11 @@ namespace dd
 #ifdef USE_CUDA_CV
       // image resizing on GPU
       _cuda |= params->cuda;
+      // Lazily create the CUDA stream only if requested
+      if (_cuda && _cuda_stream == nullptr)
+        {
+          _cuda_stream = &cv::cuda::Stream::Null();
+        }
 #endif
     }
 
@@ -1006,7 +1011,12 @@ namespace dd
                   std::make_move_iterator(dimg._ctype._labels.end()));
             if (!_ids.empty())
               uris.push_back(_ids.at(i));
-            else if (!dimg._ctype._b64 && dimg._ctype._imgs.size() == 1)
+            else if (!dimg._ctype._b64
+                     && (dimg._ctype._imgs.size() == 1
+#ifdef USE_CUDA_CV
+                         || dimg._ctype._cuda_imgs.size() == 1
+#endif
+                         ))
               uris.push_back(u);
             else if (!dimg._ctype._img_files.empty())
               uris.insert(
@@ -1140,7 +1150,7 @@ namespace dd
     bool _aspect_ratio_pad = false;
 #ifdef USE_CUDA_CV
     bool _cuda = false;
-    cv::cuda::Stream *_cuda_stream = &cv::cuda::Stream::Null();
+    cv::cuda::Stream *_cuda_stream = nullptr;
 #endif
   };
 }

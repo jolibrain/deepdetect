@@ -121,6 +121,17 @@ if (USE_TENSORRT)
   )
 endif()
 
+if (USE_ONNXRUNTIME)
+  list(APPEND ddetect_SOURCES
+          backends/onnxruntime/onnxruntimemodel.h
+          backends/onnxruntime/onnxruntimemodel.cc
+          backends/onnxruntime/onnxruntimeinputconns.h
+          backends/onnxruntime/onnxruntimeinputconns.cc
+          backends/onnxruntime/onnxruntimelib.h
+          backends/onnxruntime/onnxruntimelib.cc
+  )
+endif()
+
 
 add_library(ddetect SHARED ${ddetect_SOURCES})
 add_library(DeepDetect::ddetect ALIAS ddetect)
@@ -167,6 +178,9 @@ if (USE_SIMSEARCH)
 endif()
 if (USE_TENSORRT)
   add_dependencies(ddetect tensorrt-oss)
+endif()
+if (USE_ONNXRUNTIME)
+  add_dependencies(ddetect onnxruntime)
 endif()
 if (USE_XGBOOST)
   add_dependencies(ddetect xgboost)
