@@ -713,3 +713,79 @@ installed in the test interpreter, set `DEEPDETECT_EXPORT_CRACKS_RUN` and/or
 run `tests/test_cli_export.py -k real_model`. They compare CPU predictions
 before and after tar extraction elsewhere, using this checkout's CLI with the
 installed native engine. The worker test needs permission to bind a local socket.
+
+### Best-effort ONNX export during training
+
+ONNX conversion is optional and **off by default**. Both native Torch and Python
+worker training accept this YAML configuration through the existing `mllib`
+pass-through (direct API: `parameters.mllib.onnx_export`):
+
+```yaml
+mllib:
+  onnx_export:
+    enabled: true
+    timeout_seconds: 120
+    opset_version: 17
+    # python: /absolute/path/to/python
+    # provider: installed_module:build_onnx_model
+```
+
+Install the Python package's `onnx` extra in the export interpreter. Native Torch
+uses `python`, then `DEEPDETECT_PYTHON`, then `python3`; Python workers default to
+their current interpreter. Dependencies are never installed automatically.
+
+After saving the aggregate best checkpoint (`best_model.txt`), training copies
+its model components to an export-owned snapshot. Conversion runs in a separate
+CPU process while training continues. There is one active attempt and one pending
+candidate; newer best checkpoints replace the pending candidate. Per-test-set
+best checkpoints do not trigger export. Normal training completion drains the
+active and latest pending attempts; cancellation kills conversion and discards
+pending work. Snapshot copying still adds checkpoint I/O overhead.
+
+The first export failure disables all subsequent attempts for that run, including
+resume. Missing dependencies/providers, unsupported models, process crashes,
+timeouts, and publication errors are nonfatal export failures. Fresh non-resumed
+training resets the latch. Explicit cancellation does not latch a failure; an
+unexplained interrupted conversion does. Resume requeues an unexported current
+best checkpoint if export has not been disabled.
+
+Native Torch directly attempts only self-contained TorchScript `.pt` checkpoints
+with one fixed-shape image tensor (batch size one, inference width/height/channels).
+Native `.npt`, graph archives, split heads, and other input signatures need an
+explicit provider. Worker export always requires a provider; arbitrary state
+dictionaries cannot be reconstructed generically. The shared detection training
+base integrates best-checkpoint notifications; custom worker loops must integrate
+the SDK helper described below.
+
+A provider is an installed `module:function` callable receiving
+`(checkpoint_paths, inference_configuration)` and returning
+`(cpu_eval_model, example_positional_inputs, names)`. Inputs must be a tuple of CPU
+tensors. `names` may contain `input_names` and `output_names`. Load the exact saved
+checkpoint without training data, pretrained downloads, or the live model. Native
+configuration includes `width`, `height`, `channels`, and request `parameters`;
+worker configuration includes `service`, effective `mllib`, and request
+`parameters`. The provider's module must be importable in the export interpreter.
+
+Custom workers can use `deepdetect.onnx_export.BestOnnxExporter`, passing
+`backend="pytorch"`, the repository, export config, inference config, and resume
+flag. Call `notify(iteration, model_checkpoint_paths)` only after committing an
+aggregate best checkpoint, and only on the checkpoint-writing rank. Call
+`close(cancellation=lambda: cancellation.requested)` to drain at completion and
+`close(cancel=True)` on cancellation or exceptions. Always arrange cleanup with
+`try/finally`. Existing `configure/train/predict` contracts do not change.
+
+`REPOSITORY/onnx/state.json` is the atomic manifest for the latest successful
+bundle and current export status. Its `bundle` directory contains `model.onnx`,
+any external tensor data, and `metadata.json` recording iteration, checkpoint
+hashes, input signatures, and export settings. Do not assume the ONNX artifact
+matches the latest best checkpoint: compare `exported_iteration` with
+`best_iteration` or inspect `stale`. Earlier successful output is retained when a
+later attempt fails. Backend training status and CLI `training_status` events
+expose `onnx_export` separately from metrics; `run.json` preserves it as well.
+
+Conversion uses one fixed-shape `torch.onnx.export(..., dynamo=False)` attempt and
+ONNX checker validation. DeepDetect does not provide architecture surgery,
+operator patches, fallback exporters, numerical parity guarantees, or TensorRT
+compatibility guarantees. Preprocessing and postprocessing are included only if
+present in the exported model. Existing `deepdetect export` packages checkpoints;
+it is separate from this ONNX conversion facility.

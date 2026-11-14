@@ -128,7 +128,7 @@ class CheckpointManager:
     """Opt-in retention for adapter-owned, complete checkpoint pairs."""
 
     def __init__(self, repository, *, snapshot=0, metric="map", maximize=True,
-                 resume=False, log=None):
+                 resume=False, log=None, onnx_export=None, inference=None):
         import json
         if isinstance(snapshot, bool) or not isinstance(snapshot, int) or snapshot < 0:
             raise ValueError("snapshot must be a non-negative integer")
@@ -137,6 +137,9 @@ class CheckpointManager:
         self.log = log or (lambda message: None)
         self.state = {"version": 1, "metric": metric, "maximize": maximize,
                       "files": {}, "best": {}, "periodic": [], "latest": None}
+        from ..onnx_export import BestOnnxExporter
+        self.onnx_exporter = BestOnnxExporter(self.repository or ".", onnx_export,
+            inference=inference, resume=resume, log=self.log, backend="pytorch")
         self.cleanup = True
         self.saved = set()
         if resume and self.repository:
@@ -209,6 +212,8 @@ class CheckpointManager:
                                         f"iteration:{iteration}\n{self.metric}:{value}\n")
         _atomic_checkpoint_text(self.repository / "checkpoint-state.json", json.dumps(state))
         self.state = state
+        if state["best"].get("best_model.txt", [None])[0] == iteration:
+            self.onnx_exporter.notify(iteration, paths[:1])
         self.saved.add(iteration)
         retained = set(state["periodic"]) | {state["latest"]} | {v[0] for v in state["best"].values()}
         if self.cleanup:
@@ -226,6 +231,9 @@ class CheckpointManager:
                     self.log(f"Checkpoint cleanup failed: {error}")
             _atomic_checkpoint_text(self.repository / "checkpoint-state.json", json.dumps(state))
 
+
+    def close(self, *, cancel=False, cancellation=None):
+        self.onnx_exporter.close(cancel=cancel, cancellation=cancellation)
 
 def _atomic_checkpoint_text(path, value):
     import os

@@ -469,6 +469,7 @@ namespace dd
                 }
               const std::string result_status = training_job_result_name(st);
               out.add("status", result_status);
+              this->collect_onnx_export(out);
               if (st == static_cast<int>(TrainingJobResult::finished))
                 {
                   this->_has_predict = true;
