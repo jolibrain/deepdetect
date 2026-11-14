@@ -5,7 +5,6 @@ ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=cpu
 ARG DEEPDETECT_BUILD=default
 ARG USE_PYTORCH_WORKER=ON
-ARG DEEPDETECT_DEFAULT_MODELS=true
 
 # Install build dependencies
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
@@ -124,6 +123,7 @@ RUN ./docker/get_libs.sh
 FROM ubuntu:24.04 AS runtime
 
 ARG DEEPDETECT_ARCH=cpu
+ARG DEEPDETECT_DEFAULT_MODELS=true
 
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
@@ -139,25 +139,24 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     curl \
     libopenblas0-pthread \
     liblmdb0 \
-    libleveldb-dev \
-    libboost-atomic-dev \
-    libboost-chrono-dev \
-    libboost-date-time-dev \
-    libboost-filesystem-dev \
-    libboost-thread-dev \
-    libboost-iostreams-dev \
-    libboost-regex-dev \
-    libboost-stacktrace-dev \
-    libboost-system-dev \
-    libgoogle-glog-dev \
+    libleveldb1d \
+    libboost-atomic1.83.0 \
+    libboost-chrono1.83.0 \
+    libboost-date-time1.83.0 \
+    libboost-filesystem1.83.0 \
+    libboost-thread1.83.0 \
+    libboost-iostreams1.83.0 \
+    libboost-regex1.83.0 \
+    libboost-stacktrace1.83.0 \
+    libboost-system1.83.0 \
+    libgoogle-glog0v6 \
     libopencv-dev \
     libgflags2.2 \
     libcurl4 \
-    libcurlpp-dev \
-    libhdf5-dev \
-    libarchive-dev \
+    libcurlpp0 \
+    libhdf5-103-1t64 \
+    libarchive13 \
     libtcmalloc-minimal4 \
-    libomp-dev \
     libomp5
 
 # Worker runtime and SDK from the same revision as the native server.
