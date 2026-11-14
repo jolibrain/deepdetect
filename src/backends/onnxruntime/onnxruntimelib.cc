@@ -76,6 +76,9 @@ namespace dd
     this->_bbox = other._bbox;
     this->_need_nms = other._need_nms;
     this->_template = other._template;
+    this->_regression = other._regression;
+    this->_timeserie = other._timeserie;
+    this->_concurrent_predict = other._concurrent_predict;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
