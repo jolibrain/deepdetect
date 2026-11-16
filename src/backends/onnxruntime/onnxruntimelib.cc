@@ -79,6 +79,7 @@ namespace dd
     this->_regression = other._regression;
     this->_timeserie = other._timeserie;
     this->_concurrent_predict = other._concurrent_predict;
+    this->_extract_layer = other._extract_layer;
   }
 
   template <class TInputConnectorStrategy, class TOutputConnectorStrategy,
@@ -112,6 +113,10 @@ namespace dd
       this->_max_batch_size = ad.get("maxBatchSize").get<int>();
     if (ad.has("concurrent_predict"))
       this->_concurrent_predict = ad.get("concurrent_predict").get<bool>();
+    if (ad.has("extract_layer")) {
+      this->_extract_layer = ad.get("extract_layer").get<std::string>();
+      this->_logger->info("Service configured to extract layer: {}", this->_extract_layer);
+    }
     if (ad.has("template"))
       {
         this->_template = ad.get("template").get<std::string>();
@@ -389,7 +394,7 @@ namespace dd
         predict_dto = ad.createSharedDTO<DTO::ServicePredict>();
       }
 
-    std::string extract_layer = "";
+    std::string extract_layer = this->_extract_layer;
     if (predict_dto->parameters->mllib
         && predict_dto->parameters->mllib->extract_layer)
       {
