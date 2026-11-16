@@ -113,10 +113,12 @@ namespace dd
       this->_max_batch_size = ad.get("maxBatchSize").get<int>();
     if (ad.has("concurrent_predict"))
       this->_concurrent_predict = ad.get("concurrent_predict").get<bool>();
-    if (ad.has("extract_layer")) {
-      this->_extract_layer = ad.get("extract_layer").get<std::string>();
-      this->_logger->info("Service configured to extract layer: {}", this->_extract_layer);
-    }
+    if (ad.has("extract_layer"))
+      {
+        this->_extract_layer = ad.get("extract_layer").get<std::string>();
+        this->_logger->info("Service configured to extract layer: {}",
+                            this->_extract_layer);
+      }
     if (ad.has("template"))
       {
         this->_template = ad.get("template").get<std::string>();
