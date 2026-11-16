@@ -149,12 +149,13 @@ RUN --mount=type=cache,id=dede_cache_lib,sharing=locked,target=/var/cache/apt \
     libboost-regex1.83.0 \
     libboost-stacktrace1.83.0 \
     libboost-system1.83.0 \
-    libgoogle-glog0v6 \
+    libgoogle-glog0v6t64 \
     libopencv-dev \
     libgflags2.2 \
     libcurl4 \
     libcurlpp0 \
     libhdf5-103-1t64 \
+    libhdf5-cpp-103-1t64 \
     libarchive13 \
     libtcmalloc-minimal4 \
     libomp5
