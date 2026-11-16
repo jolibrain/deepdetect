@@ -70,6 +70,7 @@ namespace dd
     bool _timeserie = false;
     bool _concurrent_predict = false;
     std::string _template;
+    std::string _extract_layer;
 
     // ONNX Runtime environment and session handles
     std::unique_ptr<Ort::Env> _env_ptr;
