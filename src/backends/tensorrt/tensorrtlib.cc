@@ -266,6 +266,10 @@ namespace dd
       {
         _nclasses = ad.get("nclasses").get<int>();
       }
+    if (ad.has("extract_layer"))
+      {
+        _extract_layer = ad.get("extract_layer").get<std::string>();
+      }
 
     if (ad.has("dla"))
       _dla = ad.get("dla").get<int>();
@@ -683,6 +687,10 @@ namespace dd
 
     std::string out_blob = "prob";
     std::string extract_layer = predict_dto->parameters->mllib->extract_layer;
+    if (extract_layer.empty() && !_extract_layer.empty())
+      {
+        extract_layer = _extract_layer;
+      }
     bool calibration = predict_dto->parameters->mllib->calibration;
 
     TInputConnectorStrategy inputc(this->_inputc);
