@@ -347,8 +347,8 @@ namespace dd
                   }
                 else
                   {
-                    if (strat == "same_as_requested") arena_strat_str = "1";
-                    else if (strat == "next_power_of_two") arena_strat_str = "0";
+                    if (strat == "kSameAsRequested" || strat == "kNextPowerOfTwo")
+                      arena_strat_str = strat;
                     else
                       {
                         this->_logger->error("ONNX Runtime: Unknown arena_extend_strategy: '{}'.", strat);
@@ -370,6 +370,9 @@ namespace dd
                 std::string algo = ad.get("cudnn_conv_algo_search").get<std::string>();
                 if (algo == "heuristic" || algo == "HEURISTIC") cudnn_algo_str = "HEURISTIC";
                 else if (algo == "exhaustive" || algo == "EXHAUSTIVE") cudnn_algo_str = "EXHAUSTIVE";
+                // Confusingly, "default" here is the default cudnn algorithm (CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM),
+                // not the ONNX Runtime default setting (EXHAUSTIVE)
+                // source: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#cudnn_conv_algo_search
                 else if (algo == "default" || algo == "DEFAULT") cudnn_algo_str = "DEFAULT";
                 else
                   {

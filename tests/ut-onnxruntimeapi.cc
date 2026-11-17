@@ -323,7 +323,7 @@ TEST(onnxruntimeapi, service_predict_gpu_params)
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "640,\"width\":640,\"rgb\":true},\"mllib\":{\"template\":\"yolox\","
           "\"gpu\":true,\"gpuid\":0,\"max_batch_size\":2,\"nclasses\":81,"
-          "\"arena_extend_strategy\":\"same_as_requested\","
+          "\"arena_extend_strategy\":\"kSameAsRequested\","
           "\"cudnn_conv_algo_search\":\"heuristic\","
           "\"gpu_mem_limit\":2048,"
           "\"enable_cuda_graph\":true,"
