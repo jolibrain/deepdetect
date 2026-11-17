@@ -947,7 +947,7 @@ if (USE_ONNXRUNTIME)
         add_definitions(-DUSE_ONNXRUNTIME_CPU_ONLY)
     endif()
 
-    set(ORT_VERSION "1.30.1")
+    set(ORT_VERSION "1.32.0")
     set(ONNXRUNTIME_VERSION ${ORT_VERSION})
 
     # 1. Determine the exact tarball name and file extension
