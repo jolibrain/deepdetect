@@ -325,7 +325,7 @@ TEST(onnxruntimeapi, service_predict_gpu_params)
           "\"gpu\":true,\"gpuid\":0,\"max_batch_size\":2,\"nclasses\":81,"
           "\"arena_extend_strategy\":\"same_as_requested\","
           "\"cudnn_conv_algo_search\":\"heuristic\","
-          "\"gpu_mem_limit\":2147483648,"
+          "\"gpu_mem_limit\":2048,"
           "\"enable_cuda_graph\":true,"
           "\"cudnn_conv_use_max_workspace\":false}}}";
 
