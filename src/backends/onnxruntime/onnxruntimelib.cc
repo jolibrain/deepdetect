@@ -240,37 +240,50 @@ namespace dd
         if (enable_pattern)
           {
             _session_options.EnableMemPattern();
-            this->_logger->info("ONNX Runtime: Memory Pattern Optimization enabled");
+            this->_logger->info(
+                "ONNX Runtime: Memory Pattern Optimization enabled");
           }
         else
           {
             _session_options.DisableMemPattern();
-            this->_logger->info("ONNX Runtime: Memory Pattern Optimization disabled");
+            this->_logger->info(
+                "ONNX Runtime: Memory Pattern Optimization disabled");
           }
       }
 
     // Set Inter-Op Threads (if explicitly requested)
-    if (ad.has("inter_op_threads")) {
-      int inter_threads = ad.get("inter_op_threads").get<int>();
-      _session_options.SetInterOpNumThreads(inter_threads);
-    }
+    if (ad.has("inter_op_threads"))
+      {
+        int inter_threads = ad.get("inter_op_threads").get<int>();
+        _session_options.SetInterOpNumThreads(inter_threads);
+      }
 
     // Set Execution Mode (Parallel vs Sequential)
-    if (ad.has("execution_mode")) {
-      std::string exec_mode = ad.get("execution_mode").get<std::string>();
+    if (ad.has("execution_mode"))
+      {
+        std::string exec_mode = ad.get("execution_mode").get<std::string>();
 
-      if (exec_mode == "parallel") {
-        _session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-        this->_logger->info("ONNX Runtime: Execution mode set to PARALLEL");
-      } else if (exec_mode == "sequential") {
-        _session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
-        this->_logger->info("ONNX Runtime: Execution mode set to SEQUENTIAL");
-      } else {
-        this->_logger->error("ONNX Runtime: Unknown execution_mode '{}'.", exec_mode);
-        throw MLLibInternalException(
-                      std::string("ONNX Runtime: Unknown execution mode: ") + exec_mode);
+        if (exec_mode == "parallel")
+          {
+            _session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+            this->_logger->info(
+                "ONNX Runtime: Execution mode set to PARALLEL");
+          }
+        else if (exec_mode == "sequential")
+          {
+            _session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+            this->_logger->info(
+                "ONNX Runtime: Execution mode set to SEQUENTIAL");
+          }
+        else
+          {
+            this->_logger->error("ONNX Runtime: Unknown execution_mode '{}'.",
+                                 exec_mode);
+            throw MLLibInternalException(
+                std::string("ONNX Runtime: Unknown execution mode: ")
+                + exec_mode);
+          }
       }
-    }
 
     configure_execution_provider(ad);
 
@@ -304,13 +317,15 @@ namespace dd
         try
           {
             // Create a V2 Options instance
-            OrtCUDAProviderOptionsV2* cuda_options = nullptr;
-            Ort::ThrowOnError(Ort::GetApi().CreateCUDAProviderOptions(&cuda_options));
+            OrtCUDAProviderOptionsV2 *cuda_options = nullptr;
+            Ort::ThrowOnError(
+                Ort::GetApi().CreateCUDAProviderOptions(&cuda_options));
 
-            std::vector<const char*> keys;
-            std::vector<const char*> values;
+            std::vector<const char *> keys;
+            std::vector<const char *> values;
 
-            // Note: Strings must be stored in variables that outlive the Update call
+            // Note: Strings must be stored in variables that outlive the
+            // Update call
             std::string device_id_str = std::to_string(this->_gpuid);
             keys.push_back("device_id");
             values.push_back(device_id_str.c_str());
@@ -320,73 +335,98 @@ namespace dd
             // CUDA Graphs (V2 Only)
             if (ad.has("enable_cuda_graph"))
               {
-                bool enable_cuda_graph = ad.get("enable_cuda_graph").get<bool>();
+                bool enable_cuda_graph
+                    = ad.get("enable_cuda_graph").get<bool>();
                 keys.push_back("enable_cuda_graph");
                 values.push_back(enable_cuda_graph ? "1" : "0");
-                this->_logger->info("ONNX Runtime: CUDA Graphs explicitly set to {}",
-                  enable_cuda_graph ? "1" : "0");
+                this->_logger->info(
+                    "ONNX Runtime: CUDA Graphs explicitly set to {}",
+                    enable_cuda_graph ? "1" : "0");
               }
 
             // cuDNN Max Workspace (V2 Only)
             if (ad.has("cudnn_conv_use_max_workspace"))
               {
-                bool use_max = ad.get("cudnn_conv_use_max_workspace").get<bool>();
+                bool use_max
+                    = ad.get("cudnn_conv_use_max_workspace").get<bool>();
                 keys.push_back("cudnn_conv_use_max_workspace");
                 values.push_back(use_max ? "1" : "0");
-                this->_logger->info("ONNX Runtime: cuDNN Max Workspace explicitly set to {}",
-                                    use_max ? "1" : "0");
+                this->_logger->info(
+                    "ONNX Runtime: cuDNN Max Workspace explicitly set to {}",
+                    use_max ? "1" : "0");
               }
 
             std::string arena_strat_str;
             if (ad.has("arena_extend_strategy"))
               {
-                std::string strat = ad.get("arena_extend_strategy").get<std::string>();
+                std::string strat
+                    = ad.get("arena_extend_strategy").get<std::string>();
                 if (strat == "default")
                   {
-                    this->_logger->info("ONNX Runtime: arena_extend_strategy parsed as {}, letting ONNX Runtime configure it to the default.", strat);
+                    this->_logger->info(
+                        "ONNX Runtime: arena_extend_strategy parsed as {}, "
+                        "letting ONNX Runtime configure it to the default.",
+                        strat);
                   }
                 else
                   {
-                    if (strat == "kSameAsRequested" || strat == "kNextPowerOfTwo")
+                    if (strat == "kSameAsRequested"
+                        || strat == "kNextPowerOfTwo")
                       arena_strat_str = strat;
                     else
                       {
-                        this->_logger->error("ONNX Runtime: Unknown arena_extend_strategy: '{}'.", strat);
+                        this->_logger->error("ONNX Runtime: Unknown "
+                                             "arena_extend_strategy: '{}'.",
+                                             strat);
                         throw MLLibInternalException(
-                          std::string("ONNX Runtime: Unknown arena_extend_strategy: ") + strat);
+                            std::string("ONNX Runtime: Unknown "
+                                        "arena_extend_strategy: ")
+                            + strat);
                       }
                   }
                 if (!arena_strat_str.empty())
                   {
                     keys.push_back("arena_extend_strategy");
                     values.push_back(arena_strat_str.c_str());
-                    this->_logger->info("ONNX Runtime: arena_extend_strategy parsed as {}", strat);
+                    this->_logger->info(
+                        "ONNX Runtime: arena_extend_strategy parsed as {}",
+                        strat);
                   }
               }
 
             std::string cudnn_algo_str;
             if (ad.has("cudnn_conv_algo_search"))
               {
-                std::string algo = ad.get("cudnn_conv_algo_search").get<std::string>();
-                if (algo == "heuristic" || algo == "HEURISTIC") cudnn_algo_str = "HEURISTIC";
-                else if (algo == "exhaustive" || algo == "EXHAUSTIVE") cudnn_algo_str = "EXHAUSTIVE";
-                // Confusingly, "default" here is the default cudnn algorithm (CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM),
-                // not the ONNX Runtime default setting (EXHAUSTIVE)
-                // source: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#cudnn_conv_algo_search
-                else if (algo == "default" || algo == "DEFAULT") cudnn_algo_str = "DEFAULT";
+                std::string algo
+                    = ad.get("cudnn_conv_algo_search").get<std::string>();
+                if (algo == "heuristic" || algo == "HEURISTIC")
+                  cudnn_algo_str = "HEURISTIC";
+                else if (algo == "exhaustive" || algo == "EXHAUSTIVE")
+                  cudnn_algo_str = "EXHAUSTIVE";
+                // Confusingly, "default" here is the default cudnn algorithm
+                // (CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM), not the
+                // ONNX Runtime default setting (EXHAUSTIVE) source:
+                // https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#cudnn_conv_algo_search
+                else if (algo == "default" || algo == "DEFAULT")
+                  cudnn_algo_str = "DEFAULT";
                 else
                   {
-                    this->_logger->error("ONNX Runtime: Unknown cudnn_conv_algo_search: '{}'.", algo);
+                    this->_logger->error(
+                        "ONNX Runtime: Unknown cudnn_conv_algo_search: '{}'.",
+                        algo);
                     throw MLLibInternalException(
-                      std::string("ONNX Runtime: Unknown cudnn_conv_algo_search: ") + algo);
+                        std::string(
+                            "ONNX Runtime: Unknown cudnn_conv_algo_search: ")
+                        + algo);
                   }
                 if (!cudnn_algo_str.empty())
                   {
                     keys.push_back("cudnn_conv_algo_search");
                     values.push_back(cudnn_algo_str.c_str());
-                    this->_logger->info("ONNX Runtime: cudnn_conv_algo_search parsed as {}", algo);
+                    this->_logger->info(
+                        "ONNX Runtime: cudnn_conv_algo_search parsed as {}",
+                        algo);
                   }
-
               }
 
             std::string gpu_mem_str;
@@ -398,8 +438,9 @@ namespace dd
                 gpu_mem_str = std::to_string(bytes_limit);
                 keys.push_back("gpu_mem_limit");
                 values.push_back(gpu_mem_str.c_str());
-                this->_logger->info("ONNX Runtime: gpu_mem_limit set to {} bytes",
-                                    gpu_mem_str);
+                this->_logger->info(
+                    "ONNX Runtime: gpu_mem_limit set to {} bytes",
+                    gpu_mem_str);
               }
 
             // Apply the V2 dictionary options
@@ -411,8 +452,10 @@ namespace dd
 
             // Free the V2 object (the session has safely copied it)
             Ort::GetApi().ReleaseCUDAProviderOptions(cuda_options);
-            this->_logger->info("ONNX Runtime: CUDA Execution Provider (V2 API) "
-                                "enabled on GPU device {}", this->_gpuid);
+            this->_logger->info(
+                "ONNX Runtime: CUDA Execution Provider (V2 API) "
+                "enabled on GPU device {}",
+                this->_gpuid);
           }
         catch (const Ort::Exception &e)
           {
