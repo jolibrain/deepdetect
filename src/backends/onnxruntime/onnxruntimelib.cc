@@ -297,8 +297,7 @@ namespace dd
           }
         else
           {
-            this->_logger->info(
-                "ONNX Runtime: Profiling explicitly disabled");
+            this->_logger->info("ONNX Runtime: Profiling explicitly disabled");
           }
       }
 
