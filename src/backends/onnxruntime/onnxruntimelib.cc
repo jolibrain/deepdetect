@@ -389,7 +389,10 @@ namespace dd
             std::string gpu_mem_str;
             if (ad.has("gpu_mem_limit"))
               {
-                gpu_mem_str = std::to_string(ad.get("gpu_mem_limit").get<long long>());
+                int mb_limit = ad.get("gpu_mem_limit").get<int>();
+                size_t meg = 1 << 20;
+                size_t bytes_limit = mb_limit * meg;
+                gpu_mem_str = std::to_string(bytes_limit);
                 keys.push_back("gpu_mem_limit");
                 values.push_back(gpu_mem_str.c_str());
                 this->_logger->info("ONNX Runtime: gpu_mem_limit set to {} bytes",
