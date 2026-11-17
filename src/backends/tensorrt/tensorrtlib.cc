@@ -198,6 +198,7 @@ namespace dd
     _timeserie = tl._timeserie;
     _regression = tl._regression;
     _need_nms = tl._need_nms;
+    _extract_layer = tl._extract_layer;
     _template = tl._template;
     _inputNames = tl._inputNames;
     _inputIndices = tl._inputIndices;
