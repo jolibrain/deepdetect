@@ -318,7 +318,8 @@ TEST(onnxruntimeapi, service_predict_gpu_params)
   std::string sname = "ort_gpu_params";
   std::string jstr
       = "{\"mllib\":\"onnxruntime\",\"description\":\"Test onnxruntime GPU "
-        "tuning parameters\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        "tuning "
+        "parameters\",\"type\":\"supervised\",\"model\":{\"repository\":\""
         + yolox_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "640,\"width\":640,\"rgb\":true},\"mllib\":{\"template\":\"yolox\","
@@ -356,7 +357,8 @@ TEST(onnxruntimeapi, service_predict_invalid_cuda_params)
   JsonAPI japi;
   std::string sname = "ort_invalid_cuda";
   std::string jstr
-      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test invalid CUDA params\","
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test invalid CUDA "
+        "params\","
         "\"type\":\"supervised\",\"model\":{\"repository\":\""
         + resnet_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
@@ -371,7 +373,8 @@ TEST(onnxruntimeapi, service_predict_invalid_cuda_params)
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_NE(201, jd["status"]["code"].GetInt());
 
-  // Cleanup: attempt to delete the service just in case partial state was registered
+  // Cleanup: attempt to delete the service just in case partial state was
+  // registered
   jstr = "{\"clear\":\"lib\"}";
   japi.service_delete(sname, jstr);
 }
@@ -464,7 +467,8 @@ TEST(onnxruntimeapi, service_predict_cpu_params)
   std::string sname = "ort_cpu_params";
   std::string jstr
       = "{\"mllib\":\"onnxruntime\",\"description\":\"Test onnxruntime "
-        "CPU configuration params\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        "CPU configuration "
+        "params\",\"type\":\"supervised\",\"model\":{\"repository\":\""
         + resnet_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
@@ -500,21 +504,24 @@ TEST(onnxruntimeapi, service_predict_invalid_exec_mode)
   JsonAPI japi;
   std::string sname = "ort_invalid_exec";
   std::string jstr
-      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test invalid exec mode\","
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test invalid exec "
+        "mode\","
         "\"type\":\"supervised\",\"model\":{\"repository\":\""
         + resnet_onnx_repo
         + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
           "224,\"width\":224},\"mllib\":{\"gpu\":false,"
           "\"execution_mode\":\"invalid_mode\"}}}";
 
-  // service creation should fail with 400 BadRequest or 500 InternalError due to MLLibInternalException
+  // service creation should fail with 400 BadRequest or 500 InternalError due
+  // to MLLibInternalException
   std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
   JDoc jd;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
   ASSERT_TRUE(!jd.HasParseError());
   ASSERT_NE(201, jd["status"]["code"].GetInt());
 
-  // Cleanup: attempt to delete the service just in case partial state was registered
+  // Cleanup: attempt to delete the service just in case partial state was
+  // registered
   jstr = "{\"clear\":\"lib\"}";
   japi.service_delete(sname, jstr);
 }
