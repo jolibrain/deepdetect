@@ -11,8 +11,14 @@ from .commands import run_inspect_models, run_job_status
 from .inference import run_infer
 from .exporting import run_export
 from .profiles import PROFILES
-from .training import run_train
 from .utils import report_error
+
+
+def run_train(args: argparse.Namespace) -> int:
+    # Training observability is not needed by inference or other CLI commands.
+    from .training import run_train as train
+
+    return train(args)
 
 
 def build_parser() -> argparse.ArgumentParser:
