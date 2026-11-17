@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 #include <fstream>
 #include <sys/stat.h>
+#include "utils/fileops.hpp"
 
 using namespace dd;
 
@@ -524,4 +525,74 @@ TEST(onnxruntimeapi, service_predict_invalid_exec_mode)
   // registered
   jstr = "{\"clear\":\"lib\"}";
   japi.service_delete(sname, jstr);
+}
+
+TEST(onnxruntimeapi, service_predict_profiling)
+{
+  JsonAPI japi;
+  std::string sname = "ort_profiling";
+
+  // 1. Create service with profiling enabled
+  std::string jstr
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test onnxruntime "
+        "profiling execution\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + resnet_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224},\"mllib\":{\"gpu\":false,\"max_batch_size\":1,"
+          "\"enable_profiling\":true}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // 2. Run a prediction to populate the trace buffer
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"height\":224,"
+          "\"width\":224}},\"data\":[\""
+        + resnet_onnx_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
+
+  // 3. Delete the service to destroy Ort::Session and flush the profile to disk
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+
+  // 4. Find the dynamically named profile file using DeepDetect's fileops
+  std::unordered_set<std::string> lfiles;
+  // list_directory(repo, files_only=true, dirs=false, sub_files=false, out_set)
+  fileops::list_directory(".", true, false, false, lfiles);
+
+  std::string profile_file = "";
+  for (const auto& fname : lfiles)
+    {
+      // Extract just the filename from the path returned by boost::filesystem
+      std::string short_name = fileops::shortname(fname);
+      if (short_name.find("dede_profile_") == 0 && short_name.find(".json") != std::string::npos)
+        {
+          profile_file = fname;
+          break;
+        }
+    }
+
+  // Assert the file was actually created
+  ASSERT_FALSE(profile_file.empty());
+
+  // 5. Read and validate the JSON trace
+  std::ifstream ifs(profile_file);
+  std::string content((std::istreambuf_iterator<char>(ifs)),
+                       (std::istreambuf_iterator<char>()));
+
+  JDoc jd_prof;
+  jd_prof.Parse<rapidjson::kParseNanAndInfFlag>(content.c_str());
+
+  // Assert the file is valid JSON (ORT traces are usually an array of events)
+  ASSERT_TRUE(!jd_prof.HasParseError());
+
+  // 6. Clean up the file so it doesn't pollute the test environment
+  fileops::remove_file(".", fileops::shortname(profile_file));
 }

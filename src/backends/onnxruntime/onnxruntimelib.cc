@@ -285,6 +285,23 @@ namespace dd
           }
       }
 
+    // Profiling: default in ONNX is disabled
+    if (ad.has("enable_profiling"))
+      {
+        bool enable_profiling = ad.get("enable_profiling").get<bool>();
+        if (enable_profiling)
+          {
+            _session_options.EnableProfiling("dede_profile_");
+            this->_logger->info(
+                "ONNX Runtime: Profiling enabled with prefix 'dede_profile_'");
+          }
+        else
+          {
+            this->_logger->info(
+                "ONNX Runtime: Profiling explicitly disabled");
+          }
+      }
+
     configure_execution_provider(ad);
 
     try
