@@ -337,7 +337,7 @@ TEST(onnxruntimeapi, service_predict_gpu_params)
       = "{\"service\":\"" + sname
         + "\",\"parameters\":{\"input\":{},\"output\":{\"bbox\":true,"
           "\"confidence_threshold\":0.8}},\"data\":[\""
-        + resnet_onnx_repo + "cat.jpg\"]}";
+        + resnet_onnx_repo + "cat.jpg\",\"" + yolox_onnx_repo + "dog.jpg\"]}";
   joutstr = japi.jrender(japi.service_predict(jpredictstr));
   JDoc jd;
   jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
