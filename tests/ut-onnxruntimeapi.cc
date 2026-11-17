@@ -311,6 +311,70 @@ TEST(onnxruntimeapi, service_predict_gpu)
   joutstr = japi.jrender(japi.service_delete(sname, jstr));
   ASSERT_EQ(ok_str, joutstr);
 }
+TEST(onnxruntimeapi, service_predict_gpu_params)
+{
+  // create GPU service with CUDA specific tuning parameters
+  JsonAPI japi;
+  std::string sname = "ort_gpu_params";
+  std::string jstr
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test onnxruntime GPU "
+        "tuning parameters\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + yolox_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "640,\"width\":640,\"rgb\":true},\"mllib\":{\"template\":\"yolox\","
+          "\"gpu\":true,\"gpuid\":0,\"max_batch_size\":2,\"nclasses\":81,"
+          "\"arena_extend_strategy\":\"same_as_requested\","
+          "\"cudnn_conv_algo_search\":\"heuristic\","
+          "\"gpu_mem_limit\":2147483648,"
+          "\"enable_cuda_graph\":true,"
+          "\"cudnn_conv_use_max_workspace\":false}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict to verify CUDA options don't crash cuDNN initialization
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{},\"output\":{\"bbox\":true,"
+          "\"confidence_threshold\":0.8}},\"data\":[\""
+        + resnet_onnx_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  // delete
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+}
+TEST(onnxruntimeapi, service_predict_invalid_cuda_params)
+{
+  JsonAPI japi;
+  std::string sname = "ort_invalid_cuda";
+  std::string jstr
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test invalid CUDA params\","
+        "\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + resnet_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224},\"mllib\":{\"gpu\":true,"
+          "\"arena_extend_strategy\":\"bad_strategy\","
+          "\"cudnn_conv_algo_search\":\"bad_search\"}}}";
+
+  // service creation should fail due to MLLibInternalException
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_NE(201, jd["status"]["code"].GetInt());
+
+  // Cleanup: attempt to delete the service just in case partial state was registered
+  jstr = "{\"clear\":\"lib\"}";
+  japi.service_delete(sname, jstr);
+}
 #endif
 
 TEST(onnxruntimeapi, service_predict_bbox_7col)
@@ -391,4 +455,66 @@ TEST(onnxruntimeapi, service_predict_bbox_7col)
   joutstr = japi.jrender(japi.service_delete(sname, "{\"clear\":\"lib\"}"));
   ASSERT_EQ(ok_str, joutstr);
   fileops::remove_dir(repo);
+}
+
+TEST(onnxruntimeapi, service_predict_cpu_params)
+{
+  // create service with explicit CPU and global session configuration flags
+  JsonAPI japi;
+  std::string sname = "ort_cpu_params";
+  std::string jstr
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test onnxruntime "
+        "CPU configuration params\",\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + resnet_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224,\"rgb\":true,\"scale\":0.0039},\"mllib\":{"
+          "\"gpu\":false,\"max_batch_size\":1,\"nclasses\":1000,"
+          "\"ort_log_level\":\"info\",\"enable_cpu_mem_arena\":false,"
+          "\"enable_mem_pattern\":false,\"execution_mode\":\"parallel\","
+          "\"inter_op_threads\":2,\"allow_spinning\":false}}}";
+
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  ASSERT_EQ(created_str, joutstr);
+
+  // predict to verify session executes successfully with these flags
+  std::string jpredictstr
+      = "{\"service\":\"" + sname
+        + "\",\"parameters\":{\"input\":{\"height\":224,"
+          "\"width\":224},\"output\":{\"best\":1}},\"data\":[\""
+        + resnet_onnx_repo + "cat.jpg\"]}";
+  joutstr = japi.jrender(japi.service_predict(jpredictstr));
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_EQ(200, jd["status"]["code"].GetInt());
+  ASSERT_TRUE(jd["body"]["predictions"].IsArray());
+
+  // delete
+  jstr = "{\"clear\":\"lib\"}";
+  joutstr = japi.jrender(japi.service_delete(sname, jstr));
+  ASSERT_EQ(ok_str, joutstr);
+}
+TEST(onnxruntimeapi, service_predict_invalid_exec_mode)
+{
+  JsonAPI japi;
+  std::string sname = "ort_invalid_exec";
+  std::string jstr
+      = "{\"mllib\":\"onnxruntime\",\"description\":\"Test invalid exec mode\","
+        "\"type\":\"supervised\",\"model\":{\"repository\":\""
+        + resnet_onnx_repo
+        + "\"},\"parameters\":{\"input\":{\"connector\":\"image\",\"height\":"
+          "224,\"width\":224},\"mllib\":{\"gpu\":false,"
+          "\"execution_mode\":\"invalid_mode\"}}}";
+
+  // service creation should fail with 400 BadRequest or 500 InternalError due to MLLibInternalException
+  std::string joutstr = japi.jrender(japi.service_create(sname, jstr));
+  JDoc jd;
+  jd.Parse<rapidjson::kParseNanAndInfFlag>(joutstr.c_str());
+  ASSERT_TRUE(!jd.HasParseError());
+  ASSERT_NE(201, jd["status"]["code"].GetInt());
+
+  // Cleanup: attempt to delete the service just in case partial state was registered
+  jstr = "{\"clear\":\"lib\"}";
+  japi.service_delete(sname, jstr);
 }
