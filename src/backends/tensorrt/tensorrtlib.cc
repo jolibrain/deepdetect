@@ -1201,10 +1201,19 @@ namespace dd
               };
 
             const int det_size = 7;
+            const bool use_keep_count
+                = this->_mlmodel.is_onnx_source() && _template.empty();
 
             for (int j = 0; j < num_processed; j++)
               {
                 int k = 0;
+                int max_k = top_k;
+                if (use_keep_count)
+                  {
+                    outr = _floatOut.data() + j * _results_height * det_size;
+                    max_k = std::max(0, std::min(top_k, _keepCount[j]));
+                  }
+
                 std::vector<double> probs;
                 std::vector<std::string> cats;
                 std::vector<APIData> bboxes;
@@ -1227,7 +1236,7 @@ namespace dd
                 bool leave = false;
                 int curi = -1;
 
-                while (true && k < top_k)
+                while (true && k < max_k)
                   {
                     if (!_need_nms && output_params->best_bbox > 0
                         && bboxes.size() >= static_cast<size_t>(
@@ -1243,10 +1252,13 @@ namespace dd
                         break;
                       }
                     std::vector<float> detection(outr, outr + det_size);
-                    if (curi == -1)
-                      curi = detection[0]; // first pass
-                    else if (curi != detection[0])
-                      break; // this belongs to next image
+                    if (!use_keep_count)
+                      {
+                        if (curi == -1)
+                          curi = detection[0]; // first pass
+                        else if (curi != detection[0])
+                          break; // this belongs to next image
+                      }
                     ++k;
                     outr += det_size;
 
