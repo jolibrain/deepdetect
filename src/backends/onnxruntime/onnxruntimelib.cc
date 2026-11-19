@@ -650,6 +650,9 @@ namespace dd
 
     TInputConnectorStrategy inputc(this->_inputc);
 
+    int target_width = this->_width;
+    int target_height = this->_height;
+
 #if !defined(APPLE) && !defined(USE_ONNXRUNTIME_CPU_ONLY)
     if (this->_gpu)
       {
@@ -661,11 +664,41 @@ namespace dd
               "ONNX Runtime: Failed to create CUDA stream");
         cuda_guard.has_stream = true;
 #ifdef USE_CUDA_CV
+        if (target_width <= 0)
+          {
+            if (predict_dto->parameters->input
+                && predict_dto->parameters->input->width
+                && predict_dto->parameters->input->width > 0)
+              {
+                target_width = predict_dto->parameters->input->width;
+              }
+            else
+              {
+                target_width = inputc.width();
+              }
+          }
+        if (target_height <= 0)
+          {
+            if (predict_dto->parameters->input
+                && predict_dto->parameters->input->height
+                && predict_dto->parameters->input->height > 0)
+              {
+                target_height = predict_dto->parameters->input->height;
+              }
+            else
+              {
+                target_height = inputc.height();
+              }
+          }
+        if (target_width <= 0 || target_height <= 0)
+          throw MLLibBadParamException(
+              "Input width and height must be specified for dynamic ONNX "
+              "models when USE_CUDA_CV is enabled");
         // Dynamically allocate to ensure memory safety if concurrent_predict
         // is true
         if (cudaMalloc(&cuda_guard.buf, this->_max_batch_size
-                                            * inputc.channels() * this->_height
-                                            * this->_width * sizeof(float))
+                                            * inputc.channels() * target_height
+                                            * target_width * sizeof(float))
             != cudaSuccess)
           throw MLLibInternalException(
               "ONNX Runtime: Failed to allocate CUDA input buffer");
@@ -683,7 +716,9 @@ namespace dd
     this->_stats.transform_end();
     this->_stats.inc_inference_count(inputc._batch_size);
 
-    if (inputc.width() != this->_width || inputc.height() != this->_height)
+    // Enforce fixed model dimensions only when the ONNX graph itself is static
+    if ((this->_width > 0 && inputc.width() != this->_width)
+        || (this->_height > 0 && inputc.height() != this->_height))
       {
         throw MLLibBadParamException(
             "Model height and/or width differ from the input data size. "
@@ -692,18 +727,29 @@ namespace dd
             + std::to_string(this->_height));
       }
 
+    // Sync with actual post-transform dimensions (handles unresized CPU
+    // inputs)
+    if (this->_width <= 0)
+      target_width = inputc.width();
+    if (this->_height <= 0)
+      target_height = inputc.height();
+    if (target_width <= 0 || target_height <= 0)
+      {
+        throw MLLibBadParamException(
+            "Input data width and height must be > 0 for dynamic ONNX models");
+      }
+
     int idoffset = 0;
     int batch_size = 0;
     while ((batch_size = inputc.process_batch(this->_max_batch_size)) > 0)
       {
         std::vector<int64_t> input_shape
             = { static_cast<int64_t>(batch_size),
-                static_cast<int64_t>(
-                    inputc.channels()), // Using your new channels() method!
-                static_cast<int64_t>(this->_height),
-                static_cast<int64_t>(this->_width) };
+                static_cast<int64_t>(inputc.channels()),
+                static_cast<int64_t>(target_height),
+                static_cast<int64_t>(target_width) };
         size_t input_tensor_size
-            = batch_size * inputc.channels() * this->_height * this->_width;
+            = batch_size * inputc.channels() * target_height * target_width;
 
         Ort::Value input_tensor{ nullptr };
 
@@ -946,8 +992,8 @@ namespace dd
                 std::vector<std::string> cats;
                 std::vector<APIData> bboxes;
 
-                int orig_w = this->_width;
-                int orig_h = this->_height;
+                int orig_w = target_width;
+                int orig_h = target_height;
 
                 if (inputc._imgs_size.find(img_id) != inputc._imgs_size.end())
                   {
