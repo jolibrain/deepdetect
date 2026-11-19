@@ -4,7 +4,6 @@ FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS build
 ARG DEEPDETECT_RELEASE=OFF
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_BUILD=tensorrt
-ARG DEEPDETECT_DEFAULT_MODELS=true
 ARG DEEPDETECT_OPENCV4_BUILD_PATH=/tmp/opencv/opencv-4.13.0/build
 ARG DEEPDETECT_TENSORRT_VERSION=
 
@@ -150,6 +149,8 @@ FROM nvcr.io/nvidia/tensorrt:26.02-py3 AS runtime
 
 ARG DEEPDETECT_ARCH=gpu
 ARG DEEPDETECT_CUDA_VERSION=13.0
+ARG DEEPDETECT_DEFAULT_MODELS=true
+ENV ORT_DISABLE_TELEMETRY=1
 
 LABEL description="DeepDetect deep learning server & API / ${DEEPDETECT_ARCH} version"
 LABEL maintainer="emmanuel.benazera@jolibrain.com"
