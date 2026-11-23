@@ -253,6 +253,27 @@ class ModelProfile:
 
 
 PROFILES = {
+    "classification": ModelProfile(
+        name="classification",
+        task="classification",
+        description="TorchScript image classification",
+        backend="torch",
+        default_weights=None,
+        default_repository=Path("deepdetect-models/classification"),
+        default_service_name="python-classification-train",
+        default_nclasses=2,
+        requires_weights=True,
+        service_input={"connector": "image", "width": 224, "height": 224,
+                       "rgb": True, "db": False, "scale": 1 / 255,
+                       "mean": [0.485, 0.456, 0.406], "std": [0.229, 0.224, 0.225]},
+        service_mllib={},
+        train_input={"seed": 42, "shuffle": True, "db": False},
+        train_mllib={"solver": {"solver_type": "ADAMW"}, "net": {"test_batch_size": 2}},
+        train_output={"measure": ["acc", "f1", "cmdiag", "cmfull", "cmraw"]},
+        predict_input={},
+        predict_output={},
+        default_visdom_results=False,
+    ),
     "external-pytorch-segmentation": ModelProfile(
         name="external-pytorch-segmentation",
         task="segmentation",
