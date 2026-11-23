@@ -25,12 +25,12 @@ The software defines a very simple flow, from data to the statistical model and 
 * `input connector`: entry point for data into DeepDetect. Specialized versions handle different data types (e.g. images, text, CSV, ...)
 * `model`: repository that holds all the files necessary for building and usage of a statistical model such as a neural net
 * `service`: the central holder of models and connectors, living in memory and servicing the machine learning capabilities through the API. While the `model` can be held permanently on disk, a `service` is spawn around it and destroyed at will
-* `mllib`: the machine learning library used for operations. Use `torch` for training and inference, or `tensorrt` for optimized inference with exported or compatible models. Optional legacy backends such as `ncnn`, `dlib`, `xgboost`, and `tsne` are build-dependent and may not be available in current packages.
-
-Caffe, Caffe2, TensorFlow, and the `tf` alias are retired. Convert existing services to Torch or ONNX/TensorRT before upgrading; retired names return HTTP 400 with DeepDetect error code 1006.
+* `mllib`: the machine learning library used for operations. Use `torch` for training and inference, or `tensorrt` for optimized inference with exported or compatible models. Optional legacy backends such as `ncnn`, `dlib`, and `tsne` are build-dependent and may not be available in current packages.
 * `training`: the computational phase that uses a dataset to build a statistical model with predictive abilities on statistically relevant data
 * `prediction`: the computational phase that uses a trained statistical model in order to make a guess about one or more samples of data
 * `output connector`: the DeepDetect output, that supports templates so that the output can be easily customized by the user in order to fit in the final application
+
+Creating a service with `mllib` set to `xgboost`, `caffe`, `caffe2`, `tf`, or `tensorflow` returns HTTP 400 with DeepDetect error code 1006. Keep existing XGBoost-enabled deployments running until you migrate inference. For Caffe, Caffe2, and TensorFlow services, convert the models to Torch or ONNX/TensorRT before upgrading.
 
 ### API Principles
 
@@ -178,7 +178,7 @@ Creates a new machine learning service on the server.
 
 Parameter   | Type   | Optional | Default      | Description
 ---------   | ----   | -------- | -------      | -----------
-mllib       | string | No       | N/A          | Name of the machine learning library. Recommended values are `torch` and `tensorrt`; optional legacy/build-dependent values include `ncnn`, `dlib`, `xgboost`, and `tsne`. Removed values `caffe`, `caffe2`, `tf`, and `tensorflow` return error 1006.
+mllib       | string | No       | N/A          | Name of the machine learning library. Recommended values are `torch` and `tensorrt`; optional legacy/build-dependent values include `ncnn`, `dlib`, and `tsne`. Removed values `caffe`, `caffe2`, `tf`, `tensorflow`, and `xgboost` return error 1006.
 type        | string | No       | `supervised` | Machine Learning service type: `supervised` yields a series of metrics related to a supervised objective, or `unsupervised`, typically for state-space compression or accessing neural network's inner layers.
 description | string | yes      | empty        | Service description
 model       | object | No       | N/A          | Information for the statistical model to be built and/or used by the service
@@ -304,17 +304,6 @@ timesteps          | int          | yes      | -1      | Number of output timest
 embedding_size     | int          | yes      | 768     | Embedding size for NLP models
 self_supervised    | string       | yes      | empty   | Self-supervised mode, for example `mask`
 jit_compiler_params | object      | yes      | empty   | Experimental Torch JIT compiler settings
-
-- XGBoost (optional legacy backend)
-
-XGBoost remains available only in builds compiled with XGBoost support. Prefer
-Torch for new deep learning services.
-
-Parameter  | Type | Optional                 | Default | Description
----------  | ---- | --------                 | ------- | -----------
-nclasses   | int  | no (classification only) | N/A     | Number of output classes (`supervised` service type)
-ntargets   | int  | no (regression only)     | N/A     | Number of regression targets (only 1 supported by XGBoost)
-regression | bool | yes                      | false   | Whether to train a regressor
 
 - NCNN (optional legacy backend)
 
@@ -672,43 +661,6 @@ noise              | object | yes      | empty   | Noise augmentation options
 distort            | object | yes      | empty   | Distortion augmentation options
 dataloader_threads | int    | yes      | backend default | Number of dataloader threads
 
-- XGBoost (optional legacy backend)
-
-XGBoost remains available only in builds compiled with XGBoost support.
-
-General:
-
-Parameter     | Type   | Optional | Default                | Description
----------     | ----   | -------- | -------                | -----------
-objective     | string | yes      | multi:softprob         | objective function, among multi:softprob, binary:logistic, reg:linear, reg:logistic
-booster       | string | yes      | gbtree                 | which booster to use, gbtree or gblinear
-num_feature   | int    | yes      | set by xgbbost         | maximum dimension of the feature
-eval_metric   | string | yes      | according to objective | evaluation metric internal to XGBoost
-base_score    | double | yes      | 0.5                    | initial prediction score, global bias
-seed          | int    | yes      | 0                      | random number seed
-iterations    | int    | no       | N/A                    | number of boosting iterations
-test_interval | int    | yes      | 1                      | number of iterations between each testing pass
-save_period   | int    | yes      | 0                      | number of iterations between model saving to disk
-
-Booster_params:
-
-Parameter        | Type   | Optional | Default | Description
----------        | ----   | -------- | ------- | -----------
-eta              | double | yes      | 0.3     | step size shrinkage
-gamma            | double | yes      | 0       | minimum loss reduction
-max_depth        | int    | yes      | 6       | maximum depth of a tree
-min_child_weight | int    | yes      | 1       | minimum sum of instance weight
-max_delta_step   | int    | yes      | 0       | maximum delta step
-subsample        | double | yes      | 1.0     | subsample ratio of training instances
-colsample        | double | yes      | 1.0     | subsample ratio of columns when constructing each tree
-lambda           | double | yes      | 1.0     | L2 regularization term on weights
-alpha            | double | yes      | 0.0     | L1 regularization term on weights
-lambda_bias      | double | yes      | 0.0     | L2 regularization for linear booster
-tree_method      | string | yes      | auto    | tree construction algorithm, from auto, exact, approx
-scale_pos_weight | double | yes      | 1.0     | control the balance of positive and negative weights
-
-For more details on all XGBoost parameters see the XGBoost documentation.
-
 - TSNE (optional legacy backend)
 
 TSNE remains available only in builds compiled with TSNE support.
@@ -975,10 +927,6 @@ Parameter     | Type   | Optional | Default | Description
 ---------     | ----   | -------- |---------| -----------
 gpuid         | int    | yes      | 0       | GPU id. TensorRT accepts a single GPU id for inference.
 calibration   | bool   | yes      | false   | Use this prediction request as INT8 calibration data.
-
-- XGBoost (optional legacy backend)
-
-No parameter required.
 
 - NCNN (optional legacy backend)
 

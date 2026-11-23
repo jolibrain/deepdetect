@@ -35,9 +35,6 @@
 #endif
 #include "imginputfileconn.h"
 #include "outputconnectorstrategy.h"
-#ifdef USE_XGBOOST
-#include <rabit/rabit.h>
-#endif
 #include <gflags/gflags.h>
 
 using namespace dd;
@@ -71,10 +68,6 @@ void invalid_jsonapi_flag(const std::string option)
 int main(int argc, char *argv[])
 {
   google::ParseCommandLineFlags(&argc, &argv, true);
-#ifdef USE_XGBOOST
-  rabit::Init(argc, argv);
-#endif // USE_XGBOOST
-
   switch (FLAGS_jsonapi)
     {
     case 0:
@@ -133,8 +126,5 @@ int main(int argc, char *argv[])
       std::cerr << "--jsonapi value is invalid" << std::endl;
       return 1;
     }
-#ifdef USE_XGBOOST
-  rabit::Finalize();
-#endif
   return 0;
 }

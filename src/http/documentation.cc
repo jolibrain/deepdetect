@@ -149,40 +149,6 @@ zoom_in          | bool   | yes      | true     | distance changee, look from cl
 zoom_factor      | float  | yes      | 0.25     | 0.25 means that image can be \*1.25 or /1.25
 persp_factor     | float  | yes      | 0.25     | 0.25 means that new image corners  be in \*1.25 or 0.75
 pad_mode         | string | yes      | mirrored | filling around image, from `mirrored` / `constant` (black) / `repeat_nearest`
-
-
-### XGBoost
-
-Parameter     | Type   | Optional | Default                | Description
----------     | ----   | -------- | -------                | -----------
-objective     | string | yes      | multi:softprob         | objective function, among multi:softprob, binary:logistic, reg:linear, reg:logistic
-booster       | string | yes      | gbtree                 | which booster to use, gbtree or gblinear
-num_feature   | int    | yes      | set by xgbbost         | maximum dimension of the feature
-eval_metric   | string | yes      | according to objective | evaluation metric internal to xgboost
-base_score    | double | yes      | 0.5                    | initial prediction score, global bias
-seed          | int    | yes      | 0                      | random number seed
-iterations    | int    | no       | N/A                    | number of boosting iterations
-test_interval | int    | yes      | 1                      | number of iterations between each testing pass
-save_period   | int    | yes      | 0                      | number of iterations between model saving to disk
-
-Booster_params:
-
-Parameter        | Type   | Optional | Default | Description
----------        | ----   | -------- | ------- | -----------
-eta              | double | yes      | 0.3     | step size shrinkage
-gamma            | double | yes      | 0       | minimum loss reduction
-max_depth        | int    | yes      | 6       | maximum depth of a tree
-min_child_weight | int    | yes      | 1       | minimum sum of instance weight
-max_delta_step   | int    | yes      | 0       | maximum delta step
-subsample        | double | yes      | 1.0     | subsample ratio of traning instance
-colsample        | double | yes      | 1.0     | subsample ratio of columns when contructing each tree
-lambda           | double | yes      | 1.0     | L2 regularization term on weights
-alpha            | double | yes      | 0.0     | L1 regularization term on weights
-lambda_bias      | double | yes      | 0.0     | L2 regularization for linear booster
-tree_method      | string | yes      | auto    | tree construction algorithm, from auto, exact, approx
-scale_pos_weight | double | yes      | 1.0     | control the balance of positive and negative weights
-
-For more details on all XGBoost parameters see the dedicated page at https://github.com/dmlc/xgboost/blob/master/doc/parameter.md
         )trainparams";
     return TRAIN_PARAMS;
   }

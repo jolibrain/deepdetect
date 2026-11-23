@@ -14,6 +14,9 @@ Retired backends are not buildable. Do not pass `USE_CAFFE`, `USE_CAFFE2`,
 `USE_TF`, or `USE_TF_CPU_ONLY`; CMake rejects those options. Use Torch or
 ONNX/TensorRT instead.
 
+CMake rejects `USE_XGBOOST=ON` and `USE_XGBOOST_GPU=ON` because the XGBoost
+backend was removed. Existing caches with XGBoost disabled can be reused.
+
 ## Build Layout
 
 Run all commands from the repository root unless a step says otherwise:
@@ -365,7 +368,6 @@ cmake -S . -B build \
   -DUSE_TORCH=ON \
   -DUSE_CPU_ONLY=ON \
   -DUSE_TORCH_CPU_ONLY=ON \
-  -DUSE_XGBOOST=OFF \
   -DUSE_SIMSEARCH=OFF \
   -DUSE_TSNE=OFF \
   -DUSE_NCNN=OFF \
@@ -392,7 +394,6 @@ cmake -S . -B build \
   -DUSE_TORCH=ON \
   -DUSE_CUDNN=ON \
   -DUSE_FAISS=OFF \
-  -DUSE_XGBOOST=OFF \
   -DUSE_SIMSEARCH=OFF \
   -DUSE_TSNE=OFF \
   -DUSE_OPENCV_VERSION=4 \

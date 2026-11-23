@@ -30,7 +30,6 @@ cmake ..  \
     -DUSE_FAISS=OFF  \
     -DUSE_SIMSEARCH=OFF  \
     -DUSE_TSNE=OFF  \
-    -DUSE_XGBOOST=OFF  \
     -DUSE_TORCH=ON  \
     -DUSE_PREBUILT_TORCH=ON  \
     -DUSE_NCNN=OFF  \

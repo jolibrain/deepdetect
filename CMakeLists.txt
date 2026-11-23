@@ -13,7 +13,6 @@ option(USE_PREBUILT_TORCH "use an installed LibTorch package" OFF)
 option(USE_HDF5 "use HDF5" ON)
 option(USE_TENSORRT "use TensorRT backend" OFF)
 option(USE_TENSORRT_OSS "alias of USE_TENSORRT" OFF)
-option(USE_XGBOOST "use XGBOOST backend" OFF)
 option(USE_DLIB "use Dlib backend" OFF)
 option(USE_CUDNN "enable CUDNN" ON)
 option(USE_TSNE "enable TSNE" OFF)
@@ -48,6 +47,12 @@ foreach(RETIRED_BACKEND_FLAG
       "ONNX/TensorRT before upgrading.")
   endif()
 endforeach()
+
+if (USE_XGBOOST OR USE_XGBOOST_GPU)
+  message(FATAL_ERROR
+    "The XGBoost backend was removed from DeepDetect. Remove USE_XGBOOST "
+    "and USE_XGBOOST_GPU from the build configuration.")
+endif()
 
 if (USE_TENSORRT_OSS)
   set(USE_TENSORRT ON)
@@ -346,7 +351,6 @@ endif()
 
 
 # CUDA OR CPU options
-option(USE_XGBOOST_CPU_ONLY "use XGBOOST without CUDA" ON)
 option(USE_TORCH_CPU_ONLY "use TORCH without CUDA" OFF)
 option(USE_DLIB_CPU_ONLY "use DLIB without CUDA" OFF)
 option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
@@ -354,13 +358,7 @@ option(USE_FAISS_CPU_ONLY "use FAISS without CUDA" OFF)
 # Dlib AVX option
 option(USE_DLIB_AVX "build dlib with AVX enabled" OFF)
 
-# Deprecated flag
-if (USE_XGBOOST_GPU)
-  set(USE_XGBOOST_CPU_ONLY OFF)
-endif()
-
 if (USE_CPU_ONLY)
-  set(USE_XGBOOST_CPU_ONLY ON)
   set(USE_DLIB_CPU_ONLY ON)
   set(USE_TORCH_CPU_ONLY ON)
   set(USE_FAISS_CPU_ONLY ON)
@@ -933,60 +931,6 @@ else()
   set(FMT_LIB_DIR ${CMAKE_BINARY_DIR}/fmt/src/fmt/lib)
 endif()
 
-# XGBoost
-if (USE_XGBOOST)
-  message(STATUS "Configuring XGBoost")
-  add_definitions(-DUSE_XGBOOST)
-  set(XGBOOST_LIB_DEPS -Wl,--whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/libxgboost.a -Wl,--no-whole-archive ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/dmlc-core/libdmlc.a ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/librabit.a)
-
-  if (NOT USE_XGBOOST_CPU_ONLY)
-    add_definitions(-DUSE_XGBOOST_GPU)
-    list(APPEND XGBOOST_LIB_DEPS ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/CMakeFiles/gpuxgboost.dir/plugin/updater_gpu/src/gpuxgboost_generated_updater_gpu.cu.o ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/build/nccl/libnccl.a)
-    ExternalProject_Add(
-      xgboost_cub
-      PREFIX xgboost_cub
-      URL https://github.com/NVlabs/cub/archive/1.6.4.zip
-      URL_HASH SHA256=4198e9c447a1e2a963b9e0e4d861df48baa47fb02e5e4fc507d1834afc99185a
-      INSTALL_COMMAND ""
-      BUILD_COMMAND ""
-      CONFIGURE_COMMAND ""
-    )
-    ExternalProject_Add(
-      xgboost
-      PREFIX xgboost
-      GIT_REPOSITORY https://github.com/dmlc/xgboost.git
-      GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
-      GIT_CONFIG advice.detachedHead=false
-      PATCH_COMMAND
-        git reset --hard &&
-        patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
-        cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b
-      CMAKE_ARGS
-        -DPLUGIN_UPDATER_GPU=ON
-        -DCUB_DIRECTORY=${CMAKE_BINARY_DIR}/xgboost_cub/src/xgboost_cub
-        -DCUDA_NVCC_FLAGS="-Xcompiler -fPIC --expt-extended-lambda $CUDA_ARCH_FLAGS"
-      INSTALL_COMMAND ""
-      DEPENDS xgboost_cub
-    )
-  else()
-    ExternalProject_Add(
-      xgboost
-      PREFIX xgboost
-      GIT_REPOSITORY https://github.com/dmlc/xgboost.git
-      GIT_TAG 84d992babcc370bff6cf4fe89985f072b0b91a64
-      GIT_CONFIG advice.detachedHead=false
-      UPDATE_DISCONNECTED 1
-      PATCH_COMMAND
-        git reset --hard &&
-        patch -p1 < ${CMAKE_SOURCE_DIR}/patches/xgboost/static-lib.patch &&
-        cd dmlc-core && git checkout 13d5acb8ba7e79550bbf2f730f1a3944ff0fa68b
-      INSTALL_COMMAND ""
-    )
-  endif()
-  set(XGBOOST_INC_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/src ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/rabit/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/include ${CMAKE_BINARY_DIR}/xgboost/src/xgboost/dmlc-core/src/)
-  set(XGBOOST_LIB_DIR ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/lib ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/ ${CMAKE_BINARY_DIR}/xgboost/src/xgboost-build/dmlc-core)
-endif()
-
 if (USE_TSNE)
   message(STATUS "Configuring T-SNE")
   add_definitions(-DUSE_TSNE)
@@ -1264,7 +1208,6 @@ include_directories("${PROJECT_BINARY_DIR}")
 include_directories(${CMAKE_BINARY_DIR}/src)
 
 include_directories(
-    ${XGBOOST_INC_DIR}
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
     ${NCNN_INC_DIR}
@@ -1275,7 +1218,6 @@ include_directories(
     SYSTEM ${TENSORRT_INC_DIR}
 )
 include_directories(
-    ${CMAKE_SOURCE_DIR}/backends/xgb
     ${CMAKE_SOURCE_DIR}/backends/dlib
     ${CMAKE_SOURCE_DIR}/backends/tsne
 )
@@ -1291,13 +1233,11 @@ set(COMMON_INCLUDE_DIRS
     ${HTTP_INCLUDE_DIR}
     ${PROTOBUF_INCLUDE_DIR}
     ${SPDLOG_INCLUDE_DIR}
-    ${XGBOOST_INC_DIR}
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
     ${TENSORRT_INC_DIR}
     ${NCNN_INC_DIR}
 
-    ${CMAKE_SOURCE_DIR}/backends/xgb
     ${CMAKE_SOURCE_DIR}/backends/dlib
     ${CMAKE_SOURCE_DIR}/backends/tsne
 )
@@ -1309,7 +1249,6 @@ endif()
 set(COMMON_LINK_DIRS
     ${DLIB_LIB_DIR}
     ${TENSORRT_LIB_DIR}
-    ${XGBOOST_LIB_DIR}
     ${TSNE_LIB_DIR}
     ${NCNN_LIB_DIR}
     ${FAISS_LIB_DIR}
@@ -1322,7 +1261,6 @@ set(COMMON_LINK_LIBS
     ${HTTP_LIB_DEPS}
     ${SPDLOG_LIB_DEPS}
     ${OATPP_LIB_DEPS}
-    ${XGBOOST_LIB_DEPS}
     ${TSNE_LIB_DEPS}
     ${NCNN_LIB_DEPS}
     ${FAISS_LIB_DEPS}
@@ -1483,8 +1421,6 @@ message(STATUS "USE_CUDNN:             ${USE_CUDNN}")
 if (USE_CUDNN)
   message(STATUS "CUDNN_VERSION:          ${DEEPDETECT_CUDNN_VERSION}")
 endif()
-message(STATUS "USE_XGBOOST:           ${USE_XGBOOST}")
-message(STATUS "USE_XGBOOST_CPU_ONLY:  ${USE_XGBOOST_CPU_ONLY}")
 message(STATUS "USE_TSNE:              ${USE_TSNE}")
 message(STATUS "USE_BOOST_BACKTRACE:   ${USE_BOOST_BACKTRACE}")
 message(STATUS "USE_OPENMP:            ${USE_OPENMP}")

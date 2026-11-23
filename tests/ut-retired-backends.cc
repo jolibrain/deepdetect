@@ -33,3 +33,22 @@ TEST(jsonapi, retired_backends_are_rejected)
   JDoc info = japi.info("");
   ASSERT_EQ(0U, info["head"]["services"].Size());
 }
+
+TEST(jsonapi, retired_xgboost_csv_service_is_rejected)
+{
+  JsonAPI japi;
+  const std::string request = R"({
+    "mllib": "xgboost",
+    "model": {"repository": "/tmp/retired_xgboost"},
+    "parameters": {"input": {"connector": "csv"}}
+  })";
+  JDoc response = japi.service_create("retired_xgboost", request);
+  ASSERT_EQ(400, response["status"]["code"].GetInt());
+  ASSERT_EQ(1006, response["status"]["dd_code"].GetInt());
+  ASSERT_STREQ("Service Bad Request Error: The XGBoost backend was removed "
+               "from DeepDetect.",
+               response["status"]["dd_msg"].GetString());
+
+  JDoc info = japi.info("");
+  ASSERT_EQ(0U, info["head"]["services"].Size());
+}

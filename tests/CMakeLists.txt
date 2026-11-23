@@ -168,13 +168,6 @@ if (USE_JSON_API)
 endif()
 
 DOWNLOAD_DATASET(
-  "CSV (test) dataset"
-  "http://www.deepdetect.com/dd/examples/all/forest_type/train.csv.tar.bz2"
-  "examples/all/forest_type"
-  "train.csv.tar.bz2"
-  "train.csv"
-  )
-DOWNLOAD_DATASET(
   "SVM (test) dataset"
   "http://www.deepdetect.com/dd/examples/all/farm_ads/farm-ads.svm"
   "examples/all/farm_ads"
@@ -182,13 +175,6 @@ DOWNLOAD_DATASET(
   "farm-ads.svm"
   )
 
-DOWNLOAD_DATASET(
-  "Text (test) dataset"
-  "http://www.deepdetect.com/dd/examples/all/n20/news20.tar.bz2"
-  "examples/all/n20"
-  "news20.tar.bz2"
-  "news20"
-  )
 DOWNLOAD_DATASET(
   "Test videos"
   "http://www.deepdetect.com/dd/examples/all/video/video1.tar.gz"
@@ -222,14 +208,6 @@ if (NOT EXISTS ${SINUS_EXAMPLE_TRAIN_OUT})
 else()
   message(STATUS "Reusing generated sinu data for time series tests")
 endif()
-
-DOWNLOAD_DATASET(
-  "Regression test model"
-  "http://www.deepdetect.com/dd/examples/all/sflare/flare.csv"
-  "examples/all/sflare"
-  "flare.csv"
-  "flare.csv"
-)
 
 if (USE_HTTP_SERVER_OATPP)
   REGISTER_TEST(ut_oatpp ut-oatpp.cc ut-oatpp.h)
@@ -479,11 +457,6 @@ endif()
 if(USE_TORCH OR USE_TENSORRT)
   REGISTER_TEST(ut_chain ut-chain.cc)
   REGISTER_TEST(ut_video ut-video.cc)
-endif()
-
-
-if (USE_XGBOOST)
-  REGISTER_TEST(ut_xgbapi ut-xgbapi.cc)
 endif()
 
 if (USE_SIMSEARCH)

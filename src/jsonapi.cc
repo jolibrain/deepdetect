@@ -511,6 +511,11 @@ namespace dd
                 "the requested backend was removed; migrate the service to "
                 "Torch or ONNX/TensorRT");
           }
+        else if (mllib == "xgboost")
+          {
+            return dd_service_bad_request_1006(
+                "The XGBoost backend was removed from DeepDetect.");
+          }
 
 #ifdef USE_NCNN
         else if (mllib == "ncnn")
@@ -691,37 +696,6 @@ namespace dd
               _logger->error("couldn't write {} file in model repository {}",
                              JsonAPI::_json_config_blob_fname,
                              dlibmodel._repo);
-          }
-#endif
-#ifdef USE_XGBOOST
-        else if (mllib == "xgboost")
-          {
-            XGBModel xmodel(ad_model, ad, _logger);
-            read_metrics_json(xmodel._repo, ad);
-            if (input == "csv")
-              add_service(sname,
-                          std::move(MLService<XGBLib, CSVXGBInputFileConn,
-                                              SupervisedOutput, XGBModel>(
-                              sname, xmodel, description)),
-                          ad);
-            else if (input == "svm")
-              add_service(sname,
-                          std::move(MLService<XGBLib, SVMXGBInputFileConn,
-                                              SupervisedOutput, XGBModel>(
-                              sname, xmodel, description)),
-                          ad);
-            else if (input == "txt")
-              add_service(sname,
-                          std::move(MLService<XGBLib, TxtXGBInputFileConn,
-                                              SupervisedOutput, XGBModel>(
-                              sname, xmodel, description)),
-                          ad);
-            else
-              return dd_input_connector_not_found_1004();
-            if (store_config
-                && JsonAPI::store_json_config_blob(xmodel._repo, jstr))
-              _logger->error("couldn't write {} file in model repository {}",
-                             JsonAPI::_json_config_blob_fname, xmodel._repo);
           }
 #endif
 #ifdef USE_TSNE
