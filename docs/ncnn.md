@@ -2,6 +2,8 @@
 
 DeepDetect runs standard NCNN image models through the C++ server and the embedded C++ runtime. Conversion runs on a separate Linux host. The target needs DeepDetect and its native dependencies. PyTorch, PNNX and Python are only needed for workflows that use them on the host.
 
+For standalone image inference, the [YOLOX-S and SegFormer-B0 C++ examples](../tools/ncnn/README.md) include model export, build and run commands.
+
 ## Build on Ubuntu
 
 Use the [source build prerequisites](source.md). The following builds the server and the self-contained NCNN tests on x86-64 or AArch64.
