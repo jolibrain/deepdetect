@@ -29,6 +29,13 @@ PNNX_DIGESTS = {
 
 
 def _check_output(shape, fmt, classes):
+    if fmt == "segmentation":
+        if len(shape) == 4 and shape[0] in (1, None):
+            shape = shape[1:]
+        if (len(shape) != 3 or shape[0] != classes or
+                any(side is not None and side <= 0 for side in shape[1:])):
+            raise ValueError(f"expected segmentation logits [classes,height,width], got {shape}")
+        return
     expected_rank = 2 if fmt in ("yolox", "ssd", "rtdetrv4") else 1
     if len(shape) == expected_rank + 1 and shape[0] in (None, 1):
         shape = shape[1:]
@@ -140,7 +147,7 @@ def _run_graph(run, selected, identities, iteration, backend, saved, config, wor
     return work / "bundle/model.onnx"
 
 
-def _convert(graph, binary, shapes, stage, output_width=None):
+def _convert(graph, binary, shapes, stage, output_shape=None):
     from .ncnn_topk import lower_topk
     inputshape = ",".join("[" + ",".join(map(str, shape)) + "]" for shape in shapes)
     log = subprocess.run(
@@ -152,7 +159,7 @@ def _convert(graph, binary, shapes, stage, output_width=None):
     if log.returncode or diagnostics:
         raise ValueError("PNNX conversion failed: " + ("\n".join(diagnostics) or log.stdout[-2000:]))
     params = graph.parent / "model.ncnn.param"
-    lower_topk(params, graph.with_suffix(".pnnx.param"), shapes[0], output_width)
+    lower_topk(params, graph.with_suffix(".pnnx.param"), shapes[0], output_shape)
     lines = params.read_text().splitlines()
     if not lines or lines[0].strip() != "7767517":
         raise ValueError("PNNX did not emit a valid NCNN graph")
@@ -167,9 +174,14 @@ def _convert(graph, binary, shapes, stage, output_width=None):
 
 def _portable_config(config):
     fmt = config.get("service_mllib", {}).get("ncnn_output")
-    if fmt not in ("logits", "probabilities", "yolox", "ssd", "rtdetrv4"):
-        raise ValueError("set service_mllib.ncnn_output to logits, probabilities, yolox, ssd or rtdetrv4")
-    profile = get_profile("ncnn-detector" if fmt in ("yolox", "ssd", "rtdetrv4") else "ncnn-classifier")
+    if fmt not in ("logits", "probabilities", "yolox", "ssd", "rtdetrv4", "segmentation"):
+        raise ValueError("set service_mllib.ncnn_output to logits, probabilities, yolox, ssd, rtdetrv4 or segmentation")
+    if fmt == "segmentation":
+        profile = get_profile("ncnn-segmenter")
+    elif fmt in ("yolox", "ssd", "rtdetrv4"):
+        profile = get_profile("ncnn-detector")
+    else:
+        profile = get_profile("ncnn-classifier")
     dimensions = ("width", "height", "nclasses")
     if any(key not in config for key in dimensions):
         raise ValueError("NCNN export requires width, height and nclasses")
@@ -201,17 +213,29 @@ def _portable_config(config):
         raise ValueError("YOLOX nclasses includes background and at least one foreground class")
     shape = [1, channels, height, width]
     mllib = {"ncnn_output": fmt, "datatype": "fp32"}
+    if fmt == "segmentation":
+        resize = config["service_mllib"].get("ncnn_segmentation_resize", "class_ids")
+        if resize not in ("class_ids", "logits"):
+            raise ValueError("ncnn_segmentation_resize must be class_ids or logits")
+        if image.get("ncnn_letterbox"):
+            raise ValueError("NCNN segmentation requires stretch resize")
+        mllib["ncnn_segmentation_resize"] = resize
     if "threads" in config["service_mllib"]:
         mllib["threads"] = int(config["service_mllib"]["threads"])
         if mllib["threads"] < 1:
             raise ValueError("NCNN threads must be positive")
     prediction = {k: v for k, v in (config.get("predict_output") or {}).items()
                   if k in ("best", "confidence_threshold", "nms_threshold", "best_bbox")}
+    if fmt == "segmentation" and "confidences" in (config.get("predict_output") or {}):
+        prediction["confidences"] = config["predict_output"]["confidences"]
     if profile.task == "detection":
         prediction["bbox"] = True
+    threshold = config.get("confidence_threshold", prediction.get("confidence_threshold"))
+    if threshold is None:
+        threshold = 0.0 if fmt == "segmentation" else 0.25
     portable = dict(repository=".", width=width, height=height, nclasses=classes, gpu=False,
                     service_input=image, service_mllib=mllib, predict_output=prediction,
-                    confidence_threshold=config.get("confidence_threshold", prediction.get("confidence_threshold", 0.25)),
+                    confidence_threshold=threshold,
                     _export={"version": EXPORT_VERSION, "profile": profile.name, "paths": ["repository"]})
     return portable, profile, shape
 
@@ -245,6 +269,8 @@ def export_ncnn(args):
         backend = profile.backend
         iteration, selected, _ = _select_checkpoint(source, args.checkpoint, backend)
         config = _inference_config(profile, saved, source)
+        if profile.name == "segformer":
+            config["service_mllib"].setdefault("ncnn_output", "segmentation")
         # Fold prediction-time preprocessing into the portable service defaults.
         config["service_input"] = deep_merge(config["service_input"], config.pop("predict_input"))
         config = deep_merge(config, (saved.get("export") or {}).get("inference"))
@@ -300,8 +326,9 @@ def export_ncnn(args):
             from .ncnn_rtdetrv4 import convert_rtdetrv4
             convert_rtdetrv4(prepared, binary, shape, classes, stage, _convert)
         else:
-            widths = {"ssd": 6, "yolox": 4 + classes}
-            _convert(prepared, binary, [shape], stage, widths.get(mllib["ncnn_output"], 0))
+            output_shapes = {"ssd": ["0=6", "1=-1"], "yolox": [f"0={4 + classes}", "1=-1"],
+                             "segmentation": ["0=0", "1=0", f"2={classes}"]}
+            _convert(prepared, binary, [shape], stage, output_shapes.get(mllib["ncnn_output"], []))
         if labels:
             shutil.copyfile(labels, stage / "corresp.txt")
         save_config(stage / "inference.yaml", portable)

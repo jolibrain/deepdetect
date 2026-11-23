@@ -27,7 +27,7 @@ def keep_topk_outputs(model):
     return changed
 
 
-def lower_topk(param, intermediate, image_shape, output_width):
+def lower_topk(param, intermediate, image_shape, output_shape):
     layers = read_layers(param)
     if not any(n.op in ("TopK", "torch.topk") for n in layers):
         return
@@ -100,7 +100,7 @@ def lower_topk(param, intermediate, image_shape, output_width):
         kept.append(n)
         live.update(n.inputs)
     layers = list(reversed(kept))
-    if output_width is not None:
+    if output_shape is not None:
         # Some PNNX graphs retain the leading singleton batch as a physical
         # dimension. The NCNN image connector always feeds a three-dimensional Mat.
         wrapper = intermediate.with_name(
@@ -127,11 +127,11 @@ def lower_topk(param, intermediate, image_shape, output_width):
         result.outputs[result.outputs.index("out0")] = "dd_result"
         layers.append(
             Layer(
-                "Reshape" if output_width else "Flatten",
+                "Reshape" if output_shape else "Flatten",
                 "dd_output_shape",
                 ["dd_result"],
                 ["out0"],
-                [f"0={output_width}", "1=-1"] if output_width else [],
+                output_shape,
             )
         )
     write_layers(param, layers)

@@ -21,6 +21,8 @@
 
 #include "outputconnectorstrategy.h"
 #include "ncnnlib.h"
+#include "segmentation.h"
+#include "unsupervisedoutputconnector.h"
 #include "ops/ops.h"
 #include "ncnninputconns.h"
 #include "dto/service_predict.hpp"
@@ -62,22 +64,21 @@ namespace dd
                 { r[0] - r[2] / 2, r[1] - r[3] / 2, r[2], r[3] } });
         }
       std::stable_sort(candidates.begin(), candidates.end(),
-                       [](const Detection &a, const Detection &b)
-                         { return a.score > b.score; });
+                       [](const Detection &a, const Detection &b) {
+                         return a.score > b.score;
+                       });
       for (const auto &candidate : candidates)
         {
           bool overlaps = std::any_of(
-              selected.begin(), selected.end(),
-              [&](const Detection &other)
-                {
-                  if (candidate.label != other.label)
-                    return false;
-                  float intersection = (candidate.box & other.box).area();
-                  return intersection
-                         > nms
-                               * (candidate.box.area() + other.box.area()
-                                  - intersection);
-                });
+              selected.begin(), selected.end(), [&](const Detection &other) {
+                if (candidate.label != other.label)
+                  return false;
+                float intersection = (candidate.box & other.box).area();
+                return intersection
+                       > nms
+                             * (candidate.box.area() + other.box.area()
+                                - intersection);
+              });
           if (!overlaps)
             selected.push_back(candidate);
           if (limit > 0 && int(selected.size()) == limit)
@@ -159,12 +160,24 @@ namespace dd
     _input = endpoint(_net->input_names(), _init_dto->inputBlob);
     _output = endpoint(_net->output_names(), _init_dto->outputBlob);
     if (_input != _net->input_names().front()
-        || std::none_of(_net->blobs().begin(), _net->blobs().end(),
-                        [&](const ncnn::Blob &b)
-                          { return b.name == _output; }))
+        || std::none_of(
+            _net->blobs().begin(), _net->blobs().end(),
+            [&](const ncnn::Blob &b) { return b.name == _output; }))
       throw MLLibBadParamException("unknown NCNN input or output blob name");
     _format = _init_dto->ncnn_output ? *_init_dto->ncnn_output
                                      : (ssd ? "ssd" : "probabilities");
+    if (_format == "segmentation")
+      {
+        if (*_init_dto->nclasses < 1 || !this->_inputc.uses_stretch_resize())
+          throw MLLibBadParamException("NCNN segmentation requires a positive "
+                                       "class count and stretch resize");
+        if (_init_dto->ncnn_segmentation_resize != "logits"
+            && _init_dto->ncnn_segmentation_resize != "class_ids")
+          throw MLLibBadParamException(
+              "ncnn_segmentation_resize must be logits or class_ids");
+        this->_mltype = "segmentation";
+        return;
+      }
     if (_format != "logits" && _format != "probabilities" && _format != "ssd"
         && _format != "yolox" && _format != "rtdetrv4")
       throw MLLibBadParamException("unknown ncnn_output");
@@ -202,6 +215,24 @@ namespace dd
       throw MLLibBadParamException(
           "bbox requires a detection output contract");
     const int classes = *_init_dto->nclasses;
+    const bool segmentation = _format == "segmentation";
+    const bool with_confidence
+        = output->confidences && !output->confidences->empty();
+    if (segmentation)
+      {
+        if (!input.uses_stretch_resize())
+          throw MLLibBadParamException(
+              "NCNN segmentation requires stretch resize");
+        if (with_confidence
+            && (output->confidences->size() != 1
+                || output->confidences[0] != "best"))
+          throw MLLibBadParamException(
+              "NCNN segmentation supports confidences [best]");
+        if (!(*output->confidence_threshold >= 0
+              && *output->confidence_threshold <= 1))
+          throw MLLibBadParamException(
+              "segmentation confidence threshold must be between 0 and 1");
+      }
     for (size_t i = 0; i < input._in.size(); ++i)
       {
         auto ex = _net->create_extractor();
@@ -226,14 +257,45 @@ namespace dd
         std::vector<APIData> boxes;
         APIData result;
         const auto &names = this->_mlmodel._hcorresp;
-        auto add = [&](int label, float score)
+        auto add = [&](int label, float score) {
+          auto it = names.find(label);
+          labels.push_back(it == names.end() ? std::to_string(label)
+                                             : it->second);
+          scores.push_back(score);
+        };
+        if (segmentation)
           {
-            auto it = names.find(label);
-            labels.push_back(it == names.end() ? std::to_string(label)
-                                               : it->second);
-            scores.push_back(score);
-          };
-        if (detector)
+            const auto [height, width] = input._images_size.at(i);
+            NCNNSegmentation mask;
+            try
+              {
+                mask = decode_segmentation(
+                    out, classes, { width, height },
+                    _init_dto->ncnn_segmentation_resize == "logits",
+                    with_confidence, *output->confidence_threshold);
+              }
+            catch (const std::invalid_argument &e)
+              {
+                throw MLLibBadParamException(e.what());
+              }
+            APIData size;
+            size.add("width", width);
+            size.add("height", height);
+            result.add("imgsize", size);
+            const int *ids = mask.ids.ptr<int>();
+            result.add("vals",
+                       std::vector<double>(ids, ids + mask.ids.total()));
+            if (with_confidence)
+              {
+                APIData confidences;
+                const float *prob = mask.confidence.ptr<float>();
+                confidences.add(
+                    "best",
+                    std::vector<double>(prob, prob + mask.confidence.total()));
+                result.add("confidences", confidences);
+              }
+          }
+        else if (detector)
           {
             std::vector<Detection> detections;
             if (_format == "yolox")
@@ -281,16 +343,14 @@ namespace dd
             for (const auto &d : detections)
               {
                 APIData box;
-                auto x = [&](float v)
-                  {
-                    return double(
-                        std::clamp(v * sx, 0.f, float(original.second - 1)));
-                  };
-                auto y = [&](float v)
-                  {
-                    return double(
-                        std::clamp(v * sy, 0.f, float(original.first - 1)));
-                  };
+                auto x = [&](float v) {
+                  return double(
+                      std::clamp(v * sx, 0.f, float(original.second - 1)));
+                };
+                auto y = [&](float v) {
+                  return double(
+                      std::clamp(v * sy, 0.f, float(original.first - 1)));
+                };
                 box.add("xmin", x(d.box.x));
                 box.add("xmax", x(d.box.br().x));
                 box.add("ymin", y(d.box.y));
@@ -350,31 +410,44 @@ namespace dd
             std::vector<int> ids(out.w);
             std::iota(ids.begin(), ids.end(), 0);
             std::partial_sort(ids.begin(), ids.begin() + count, ids.end(),
-                              [&](int a, int b)
-                                {
-                                  return values[a] == values[b]
-                                             ? a < b
-                                             : values[a] > values[b];
-                                });
+                              [&](int a, int b) {
+                                return values[a] == values[b]
+                                           ? a < b
+                                           : values[a] > values[b];
+                              });
             for (int j = 0; j < count; ++j)
               if (values[ids[j]] >= output->confidence_threshold)
                 add(ids[j], values[ids[j]]);
           }
         result.add("uri", input._uris.at(i));
         result.add("loss", 0.0);
-        result.add("probs", scores);
-        result.add("cats", labels);
+        if (!segmentation)
+          {
+            result.add("probs", scores);
+            result.add("cats", labels);
+          }
         results.push_back(std::move(result));
       }
-    connector.add_results(results);
     OutputConnectorConfig conf;
     conf._nclasses = classes;
     conf._has_bbox = detector;
     if ((_format == "yolox" || _format == "rtdetrv4")
         && output->best == nullptr)
       output->best = classes;
-    auto body = connector.finalize(output, conf,
-                                   static_cast<MLModel *>(&this->_mlmodel));
+    oatpp::Object<DTO::PredictBody> body;
+    if (segmentation)
+      {
+        UnsupervisedOutput masks;
+        masks.add_results(results, true);
+        body = masks.finalize(output, conf,
+                              static_cast<MLModel *>(&this->_mlmodel));
+      }
+    else
+      {
+        connector.add_results(results);
+        body = connector.finalize(output, conf,
+                                  static_cast<MLModel *>(&this->_mlmodel));
+      }
     if (ad.has("chain") && ad.get("chain").get<bool>())
       {
         body->_chain_input._imgs

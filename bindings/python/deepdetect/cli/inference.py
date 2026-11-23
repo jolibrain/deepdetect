@@ -112,7 +112,7 @@ def run_infer(args: Any) -> int:
             raise ValueError(
                 "tile_overlap must satisfy 0 <= overlap < min(width, height)"
             )
-    if profile.task in {"detection", "keypoint"}:
+    if profile.task in {"detection", "keypoint"} or profile.name == "ncnn-segmenter":
         threshold = float(options["confidence_threshold"])
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("confidence threshold must be between 0 and 1")
