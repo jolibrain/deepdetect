@@ -273,10 +273,12 @@ namespace dd
 
       DTO_FIELD_INFO(outputBlob)
       {
-        info->description = "network output blob name (default: unique graph output)";
+        info->description
+            = "network output blob name (default: unique graph output)";
       };
       DTO_FIELD(String, outputBlob);
-      DTO_FIELD(String, ncnn_output); // probabilities, logits, ssd or yolox
+      DTO_FIELD(String,
+                ncnn_output); // probabilities, logits, ssd, yolox or rtdetrv4
     };
 #include OATPP_CODEGEN_END(DTO) ///< End DTO codegen section
 

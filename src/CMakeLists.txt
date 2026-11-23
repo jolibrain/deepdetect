@@ -55,7 +55,8 @@ if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h backends/dlib/dlib_actions.cpp backends/dlib/dlib_actions.h)
 endif()
 if (USE_NCNN)
-  list(APPEND ddetect_SOURCES backends/ncnn/ncnnlib.cc backends/ncnn/ncnnmodel.cc)
+  list(APPEND ddetect_SOURCES backends/ncnn/ncnnlib.cc backends/ncnn/ncnnmodel.cc
+    backends/ncnn/ops/ops.cc backends/ncnn/ops/topk.cc)
 endif()
 if (USE_PYTORCH_WORKER)
   list(APPEND ddetect_SOURCES

@@ -4,6 +4,8 @@ This adapter lets DeepDetect use an external RT-DETRv4 checkout through the
 generic `external-pytorch-detector` CLI profile. The adapter code is local to
 this directory; the upstream RT-DETRv4 model code is not vendored here.
 
+For RT-DETRv4-S CPU deployment, the [NCNN export guide](../../../docs/ncnn.md#rt-detrv4-s-worker-checkpoint) covers the worker provider, model conversion and service configuration.
+
 ## Files
 
 - `worker.py`: DeepDetect worker adapter.

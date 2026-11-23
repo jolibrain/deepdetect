@@ -4,6 +4,9 @@
 
 Read the relevant skill before starting work in its scope:
 
+- [NCNN export](tools/ncnn/ncnn-export/SKILL.md):
+  use to export worker checkpoints and image models to NCNN, diagnose PNNX
+  lowering, or implement reusable native operator workarounds.
 - [Training observability](bindings/python/training-observability/SKILL.md):
   use to inspect live or completed training runs, compare metric trends,
   review saved prediction images, and diagnose model quality. This workflow

@@ -21,6 +21,7 @@
 
 #include "outputconnectorstrategy.h"
 #include "ncnnlib.h"
+#include "ops/ops.h"
 #include "ncnninputconns.h"
 #include "dto/service_predict.hpp"
 #include <cmath>
@@ -147,6 +148,7 @@ namespace dd
         if (layer == "DetectionOutput")
           ssd = true;
       }
+    ncnn_ops::register_layers(*_net);
     if (_net->load_param(this->_mlmodel._params.c_str())
         || _net->load_model(this->_mlmodel._weights.c_str()))
       throw MLLibBadParamException(
@@ -164,11 +166,12 @@ namespace dd
     _format = _init_dto->ncnn_output ? *_init_dto->ncnn_output
                                      : (ssd ? "ssd" : "probabilities");
     if (_format != "logits" && _format != "probabilities" && _format != "ssd"
-        && _format != "yolox")
+        && _format != "yolox" && _format != "rtdetrv4")
       throw MLLibBadParamException("unknown ncnn_output");
-    this->_mltype = (_format == "yolox" || _format == "ssd")
-                        ? "detection"
-                        : "classification";
+    this->_mltype
+        = (_format == "yolox" || _format == "ssd" || _format == "rtdetrv4")
+              ? "detection"
+              : "classification";
   }
 
   template <class I, class O, class M>
@@ -197,7 +200,7 @@ namespace dd
     const bool detector = this->_mltype == "detection";
     if (*output->bbox && !detector)
       throw MLLibBadParamException(
-          "bbox requires an SSD or YOLOX output contract");
+          "bbox requires a detection output contract");
     const int classes = *_init_dto->nclasses;
     for (size_t i = 0; i < input._in.size(); ++i)
       {
@@ -241,7 +244,7 @@ namespace dd
               {
                 if (out.dims != 2 || out.w != 6)
                   throw MLLibInternalException(
-                      "expected six columns in SSD DetectionOutput");
+                      "expected six detection columns");
                 for (int j = 0; j < out.h; ++j)
                   {
                     const float *row = out.row(j);
@@ -250,7 +253,7 @@ namespace dd
                     if (row[0] >= float(std::numeric_limits<int>::max())
                         || std::floor(row[0]) != row[0])
                       throw MLLibInternalException(
-                          "invalid class in SSD output");
+                          "invalid class in detection output");
                     detections.push_back({ int(row[0]),
                                            row[1],
                                            { row[2], row[3], row[4] - row[2],
@@ -270,6 +273,11 @@ namespace dd
                            ? float(original.first - 1) * input._in[i].h
                                  / content.height
                            : float(original.first) / content.height;
+            if (_format == "rtdetrv4")
+              {
+                sx *= input._in[i].w;
+                sy *= input._in[i].h;
+              }
             for (const auto &d : detections)
               {
                 APIData box;
@@ -362,7 +370,8 @@ namespace dd
     OutputConnectorConfig conf;
     conf._nclasses = classes;
     conf._has_bbox = detector;
-    if (_format == "yolox" && output->best == nullptr)
+    if ((_format == "yolox" || _format == "rtdetrv4")
+        && output->best == nullptr)
       output->best = classes;
     auto body = connector.finalize(output, conf,
                                    static_cast<MLModel *>(&this->_mlmodel));

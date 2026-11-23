@@ -20,6 +20,7 @@
  */
 
 #include "deepdetect/runtime.h"
+#include "backends/ncnn/ops/ops.h"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <opencv2/imgcodecs.hpp>
@@ -168,6 +169,80 @@ namespace
     EXPECT_STREQ(
         response["body"]["predictions"][0]["classes"][0]["cat"].GetString(),
         "AAB");
+  }
+
+  TEST(NCNNTopK, SmallestAlongChannelsPreservesTiesAndPadding)
+  {
+    ncnn::Net net;
+    dd::ncnn_ops::register_layers(net);
+    net.opt.num_threads = 1;
+    ASSERT_EQ(
+        net.load_param_mem(
+            "7767517\n2 3\nInput input 0 1 x\n"
+            "DeepDetectTopK select 1 2 x values indices 0=2 1=0 2=0 3=2\n"),
+        0);
+    ncnn::Mat input(3, 1, 3);
+    const float data[][3] = { { 3, 1, 5 }, { 2, 1, 4 }, { 1, 2, 6 } };
+    for (int c = 0; c < 3; ++c)
+      std::copy_n(data[c], 3, (float *)input.channel(c));
+    auto ex = net.create_extractor();
+    ASSERT_EQ(ex.input("x", input), 0);
+    ncnn::Mat values, indices;
+    ASSERT_EQ(ex.extract("values", values), 0);
+    ASSERT_EQ(ex.extract("indices", indices), 0);
+    ASSERT_EQ(values.c, 2);
+    ASSERT_EQ(indices.c, 2);
+    const int expected[][3] = { { 2, 0, 1 }, { 1, 1, 0 } };
+    for (int c = 0; c < 2; ++c)
+      for (int x = 0; x < 3; ++x)
+        {
+          auto id = ((const int *)indices.channel(c).data)[x];
+          EXPECT_EQ(id, expected[c][x]);
+          EXPECT_EQ(values.channel(c)[x], data[expected[c][x]][x]);
+        }
+  }
+
+  TEST(NCNNTopK, RejectsLargerKThanAxis)
+  {
+    ncnn::Net net;
+    dd::ncnn_ops::register_layers(net);
+    ASSERT_EQ(
+        net.load_param_mem("7767517\n2 2\nInput input 0 1 x\n"
+                           "DeepDetectTopK select 1 1 x values 0=4 3=0\n"),
+        0);
+    auto ex = net.create_extractor();
+    ncnn::Mat input(3), output;
+    input.fill(0.f);
+    ASSERT_EQ(ex.input("x", input), 0);
+    EXPECT_NE(ex.extract("values", output), 0);
+  }
+
+  TEST_F(NCNNService, TopKRegisteredForImageServices)
+  {
+    std::ofstream(repo / "net.param")
+        << "7767517\n4 4\nInput input 0 1 image\nPooling avg 1 1 image pool "
+           "0=1 4=1\n"
+           "Flatten flatten 1 1 pool scores\nDeepDetectTopK ranked 1 1 scores "
+           "result 0=3 3=0\n";
+    ASSERT_EQ(create()["status"]["code"].GetInt(), 201);
+    auto response = predict(R"("best":1)");
+    ASSERT_EQ(response["status"]["code"].GetInt(), 200);
+    for (const auto &prediction : response["body"]["predictions"].GetArray())
+      EXPECT_STREQ(prediction["classes"][0]["cat"].GetString(), "0");
+  }
+
+  TEST_F(NCNNService, RTDETRKeepsRankedClassesSharingOneBox)
+  {
+    fixed_rows(
+        6, { 1, .9f, .125f, .25f, .75f, .5f, 2, .8f, .125f, .25f, .75f, .5f });
+    ASSERT_EQ(create(R"("ncnn_output":"rtdetrv4")")["status"]["code"].GetInt(),
+              201);
+    auto response = predict(R"("bbox":true)");
+    ASSERT_EQ(response["status"]["code"].GetInt(), 200);
+    auto &rows = response["body"]["predictions"][0]["classes"];
+    ASSERT_EQ(rows.Size(), 2u);
+    EXPECT_DOUBLE_EQ(rows[0]["bbox"]["xmin"].GetDouble(), 1.);
+    EXPECT_DOUBLE_EQ(rows[0]["bbox"]["ymin"].GetDouble(), 2.);
   }
 
   TEST_F(NCNNService, StandardSSDRows)
