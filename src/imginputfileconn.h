@@ -932,7 +932,7 @@ namespace dd
       std::vector<std::string> meta_uris;
       std::vector<std::string> index_uris;
       std::vector<std::string> failed_uris;
-#pragma omp parallel for if(parallel_decode)
+#pragma omp parallel for if (parallel_decode)
       for (size_t i = 0; i < _uris.size(); i++)
         {
           bool no_img = false;

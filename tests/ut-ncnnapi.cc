@@ -21,6 +21,7 @@
 
 #include "deepdetect/runtime.h"
 #include "backends/ncnn/ops/ops.h"
+#include "backends/ncnn/segmentation.h"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <opencv2/imgcodecs.hpp>
@@ -60,13 +61,15 @@ namespace
       return (repo / (std::to_string(i) + ".png")).string();
     }
     rapidjson::Document create(std::string options
-                               = R"("ncnn_output":"logits")")
+                               = R"("ncnn_output":"logits")",
+                               bool letterbox = true)
     {
       auto json = runtime.create_service(
           "net",
           R"({"mllib":"ncnn","model":{"repository":")" + repo.string()
-              + R"("},"parameters":{"input":{"connector":"image","width":4,"height":4,"ncnn_letterbox":true},"mllib":{"nclasses":3,"threads":1,)"
-              + options + "}}}");
+              + R"("},"parameters":{"input":{"connector":"image","width":4,"height":4,"ncnn_letterbox":)"
+              + (letterbox ? "true" : "false")
+              + R"(},"mllib":{"nclasses":3,"threads":1,)" + options + "}}}");
       rapidjson::Document doc;
       doc.Parse(json.c_str());
       return doc;
@@ -106,23 +109,22 @@ namespace
     std::ofstream(repo / "irrelevant.pnnx.param") << "conversion intermediate";
     auto created = create();
     ASSERT_EQ(created["status"]["code"].GetInt(), 201);
-    auto check = [&]()
-      {
-        auto response = predict(R"("best":3)");
-        ASSERT_EQ(response["status"]["code"].GetInt(), 200);
-        auto &p = response["body"]["predictions"];
-        ASSERT_EQ(p.Size(), 2U);
-        for (unsigned i = 0; i < 2; ++i)
-          {
-            EXPECT_EQ(p[i]["uri"].GetString(), image(1 - i));
-            ASSERT_EQ(p[i]["classes"].Size(), 3U);
-            EXPECT_STREQ(p[i]["classes"][0]["cat"].GetString(), i ? "0" : "2");
-            // Half the image is letterbox padding shared by all three
-            // channels.
-            EXPECT_NEAR(p[i]["classes"][0]["prob"].GetDouble(),
-                        1. / (1. + std::exp(-.5) + std::exp(-1.)), 1e-5);
-          }
-      };
+    auto check = [&]() {
+      auto response = predict(R"("best":3)");
+      ASSERT_EQ(response["status"]["code"].GetInt(), 200);
+      auto &p = response["body"]["predictions"];
+      ASSERT_EQ(p.Size(), 2U);
+      for (unsigned i = 0; i < 2; ++i)
+        {
+          EXPECT_EQ(p[i]["uri"].GetString(), image(1 - i));
+          ASSERT_EQ(p[i]["classes"].Size(), 3U);
+          EXPECT_STREQ(p[i]["classes"][0]["cat"].GetString(), i ? "0" : "2");
+          // Half the image is letterbox padding shared by all three
+          // channels.
+          EXPECT_NEAR(p[i]["classes"][0]["prob"].GetDouble(),
+                      1. / (1. + std::exp(-.5) + std::exp(-1.)), 1e-5);
+        }
+    };
     auto other = std::async(std::launch::async, check);
     check();
     other.get();
@@ -157,6 +159,68 @@ namespace
     ASSERT_EQ(create(R"("ncnn_output":"yolox")")["status"]["code"].GetInt(),
               201);
     EXPECT_EQ(predict(R"("bbox":true)")["status"]["code"].GetInt(), 400);
+  }
+
+  TEST_F(NCNNService, OriginalSizeSegmentationWithConfidence)
+  {
+    std::ofstream(repo / "net.param")
+        << "7767517\n2 2\nInput input 0 1 image\n"
+           "Pooling avg 1 1 image mask 0=1 1=2 2=2\n";
+    ASSERT_EQ(
+        create(R"("ncnn_output":"segmentation")", false)["status"]["code"]
+            .GetInt(),
+        201);
+    auto response = predict(R"("confidences":["best"])");
+    ASSERT_EQ(response["status"]["code"].GetInt(), 200);
+    const auto &predictions = response["body"]["predictions"];
+    ASSERT_EQ(predictions.Size(), 2U);
+    for (unsigned i = 0; i < 2; ++i)
+      {
+        const auto &p = predictions[i];
+        EXPECT_EQ(p["uri"].GetString(), image(1 - i));
+        EXPECT_EQ(p["imgsize"]["width"].GetInt(), 8);
+        EXPECT_EQ(p["imgsize"]["height"].GetInt(), 4);
+        ASSERT_EQ(p["vals"].Size(), 32U);
+        ASSERT_EQ(p["confidences"]["best"].Size(), 32U);
+        for (const auto &id : p["vals"].GetArray())
+          EXPECT_EQ(id.GetDouble(), i ? 0 : 2);
+        for (const auto &prob : p["confidences"]["best"].GetArray())
+          EXPECT_NEAR(prob.GetDouble(),
+                      1. / (1. + std::exp(-1.) + std::exp(-2.)), 1e-6);
+      }
+    auto filtered = predict(R"("confidence_threshold":0.9)");
+    ASSERT_EQ(filtered["status"]["code"].GetInt(), 200);
+    for (const auto &p : filtered["body"]["predictions"].GetArray())
+      for (const auto &id : p["vals"].GetArray())
+        EXPECT_EQ(id.GetDouble(), 0);
+  }
+
+  TEST_F(NCNNService, RejectsSegmentationLetterbox)
+  {
+    EXPECT_EQ(
+        create(R"("ncnn_output":"segmentation")")["status"]["code"].GetInt(),
+        400);
+  }
+
+  TEST(NCNNSegmentation, ResizeOrderChangesClassBoundary)
+  {
+    ncnn::Mat scores(2, 1, 2);
+    scores.channel(0).fill(1.f);
+    scores.channel(1)[0] = 0.f;
+    scores.channel(1)[1] = 5.f;
+    auto ids = dd::decode_segmentation(scores, 2, { 8, 1 }, false);
+    auto logits = dd::decode_segmentation(scores, 2, { 8, 1 }, true);
+    for (int x = 0; x < 8; ++x)
+      {
+        EXPECT_EQ(ids.ids.at<int>(0, x), x >= 4);
+        EXPECT_EQ(logits.ids.at<int>(0, x), x >= 3);
+      }
+    scores.channel(1).fill(1.f);
+    EXPECT_EQ(cv::countNonZero(
+                  dd::decode_segmentation(scores, 2, { 8, 1 }, true).ids),
+              0);
+    EXPECT_THROW(dd::decode_segmentation(scores, 3, { 8, 1 }, false),
+                 std::invalid_argument);
   }
 
   TEST_F(NCNNService, StandardCTCWithLabels)

@@ -31,12 +31,41 @@ def test_cached_onnx_requires_matching_checkpoint(tmp_path):
 
 @pytest.mark.parametrize("shape,fmt,classes", [
     ([1, 1000], "logits", 1000), ([None, 3], "probabilities", 3),
+    ([1, 2, 4, 6], "segmentation", 2), ([150, None, None], "segmentation", 150),
     ([1, 6], "ssd", 3), ([1, 8400, 85], "yolox", 81),
 ])
 def test_single_image_outputs(shape, fmt, classes):
     ncnn_export._check_output(shape, fmt, classes)
     with pytest.raises(ValueError):
         ncnn_export._check_output([2] + shape, fmt, classes)
+
+
+@pytest.mark.parametrize("shape", [[1, 8, 8, 2], [1, 3, 8, 8], [2, 8, 0], [1, 2]])
+def test_segmentation_requires_spatial_class_logits(shape):
+    with pytest.raises(ValueError, match="segmentation logits"):
+        ncnn_export._check_output(shape, "segmentation", 2)
+
+
+def test_segmentation_bundle_contract():
+    config = {"width": 512, "height": 512, "nclasses": 150,
+              "service_mllib": {"ncnn_output": "segmentation"},
+              "predict_output": {"confidences": ["best"]}}
+    for mode in ("class_ids", "logits"):
+        portable, profile, shape = ncnn_export._portable_config(config)
+        assert shape == [1, 3, 512, 512]
+        assert profile.name == portable["_export"]["profile"] == "ncnn-segmenter"
+        assert portable["service_mllib"]["ncnn_segmentation_resize"] == mode
+        options = {**profile.infer_defaults(), **portable}
+        assert profile.predict_parameters(options)["output_parameters"] == {
+            "confidences": ["best"], "confidence_threshold": 0.0}
+        config["service_mllib"]["ncnn_segmentation_resize"] = "logits"
+    config["service_input"] = {"ncnn_letterbox": True}
+    with pytest.raises(ValueError, match="stretch"):
+        ncnn_export._portable_config(config)
+    config["service_input"] = {}
+    config["service_mllib"]["ncnn_segmentation_resize"] = "unknown"
+    with pytest.raises(ValueError, match="class_ids or logits"):
+        ncnn_export._portable_config(config)
 
 
 def test_onnx_export_and_relocation(tmp_path):

@@ -278,7 +278,8 @@ namespace dd
       };
       DTO_FIELD(String, outputBlob);
       DTO_FIELD(String,
-                ncnn_output); // probabilities, logits, ssd, yolox or rtdetrv4
+                ncnn_output); // image output contract
+      DTO_FIELD(String, ncnn_segmentation_resize) = "class_ids";
     };
 #include OATPP_CODEGEN_END(DTO) ///< End DTO codegen section
 

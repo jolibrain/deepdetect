@@ -43,7 +43,7 @@ image=/path/to/photo.jpg
 | `deepdetect` | Two-class DeepDetect B0, 480×480 BGR, cubic resize, scale 0.0039 | Argmax over the two logits, then resize class IDs with nearest-neighbor interpolation. |
 | `ade20k` | NVIDIA ADE20K B0, 512×512 RGB, linear resize, scale 1/255 | Bilinearly resize each of the 150 logit planes to the original image dimensions, then take argmax. |
 
-Both SegFormer profiles subtract ImageNet means and divide by ImageNet standard deviations after scaling. The ADE20K runner keeps the current best score and class for each pixel as it processes each plane. These examples run standalone. For YOLOX inference via the DeepDetect service or CLI, use a DeepDetect-exported detector bundle as described in the [service guide](../../docs/ncnn.md#use-a-bundle-from-c).
+Both SegFormer profiles subtract ImageNet means and divide by ImageNet standard deviations after scaling. The ADE20K runner keeps the current best score and class for each pixel as it processes each plane. For DeepDetect service and CLI inference, see the [SegFormer bundle commands](../../docs/ncnn.md#run-segformer-through-the-service-and-cli) and the [YOLOX service guide](../../docs/ncnn.md#use-a-bundle-from-c).
 
 ## Export models
 

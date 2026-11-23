@@ -1,7 +1,7 @@
 #include "inference.h"
+#include "segmentation.h"
 #include <opencv2/imgproc.hpp>
 #include <iostream>
-#include <limits>
 
 namespace
 {
@@ -25,34 +25,6 @@ namespace
       }
     return input;
   }
-
-  cv::Mat class_mask(const ncnn::Mat &logits, cv::Size original_size,
-                     bool ade20k)
-  {
-    const int classes = ade20k ? 150 : 2;
-    if (logits.dims != 3 || logits.c != classes)
-      throw std::runtime_error(
-          "Unexpected class count or shape for the selected SegFormer model");
-    // ADE20K upsamples logits before argmax. Process one class at a time.
-    // DeepDetect computes argmax on the output grid and resizes the class IDs.
-    cv::Size grid = ade20k ? original_size : cv::Size(logits.w, logits.h);
-    cv::Mat mask(grid, CV_8U, cv::Scalar(0));
-    cv::Mat best(grid, CV_32F,
-                 cv::Scalar(-std::numeric_limits<float>::infinity()));
-    for (int c = 0; c < classes; ++c)
-      {
-        cv::Mat scores(logits.h, logits.w, CV_32F, logits.channel(c).data);
-        cv::Mat values = scores;
-        if (scores.size() != grid)
-          cv::resize(scores, values, grid, 0, 0, cv::INTER_LINEAR);
-        cv::Mat wins = values > best;
-        values.copyTo(best, wins);
-        mask.setTo(c, wins);
-      }
-    if (mask.size() != original_size)
-      cv::resize(mask, mask, original_size, 0, 0, cv::INTER_NEAREST);
-    return mask;
-  }
 }
 
 int main(int argc, char **argv)
@@ -75,7 +47,10 @@ int main(int argc, char **argv)
       cv::setNumThreads(1);
       auto image = example::read_image(argv[3]);
       auto logits = example::infer(argv[2], prepare_image(image, ade20k));
-      if (!cv::imwrite(argv[4], class_mask(logits, image.size(), ade20k)))
+      cv::Mat ids;
+      dd::decode_segmentation(logits, ade20k ? 150 : 2, image.size(), ade20k)
+          .ids.convertTo(ids, CV_8U);
+      if (!cv::imwrite(argv[4], ids))
         throw std::runtime_error("Could not write mask");
     }
   catch (const std::exception &e)

@@ -1,0 +1,13 @@
+width: 480
+height: 480
+nclasses: 2
+service_input:
+  rgb: false
+  interp: cubic
+  scale: 0.0039
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+service_mllib:
+  ncnn_output: segmentation
+  ncnn_segmentation_resize: class_ids
+  threads: 1

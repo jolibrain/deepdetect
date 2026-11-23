@@ -39,6 +39,11 @@ namespace dd
     {
       return _height;
     }
+    bool uses_stretch_resize() const
+    {
+      return !_letterbox && !_crop_width && !_crop_height && !_scaled
+             && !_aspect_ratio_pad;
+    }
     void init(const APIData &ad)
     {
       ImgInputFileConn::init(ad);

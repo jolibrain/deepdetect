@@ -241,7 +241,7 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
         default=None,
         help="write full-resolution 16-bit confidence maps in tiled mode",
     )
-    if PROFILES[model].task in {"detection", "keypoint"}:
+    if PROFILES[model].task in {"detection", "keypoint"} or model == "ncnn-segmenter":
         parser.add_argument("--confidence-threshold", type=float)
     if PROFILES[model].task == "detection":
         parser.add_argument("--best-bbox", type=int)

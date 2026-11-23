@@ -120,7 +120,7 @@ class ModelProfile:
             "benchmark": False,
             "warmup": 0,
             "output_format": "json",
-            "confidence_threshold": 0.25,
+            "confidence_threshold": 0.0 if self.name == "ncnn-segmenter" else 0.25,
             "best_bbox": None,
             "bbox_files": None,
             "images_file": None,
@@ -236,6 +236,10 @@ class ModelProfile:
         output = _deep_merge(
             {} if options.get("_export") else self.predict_output, options.get("predict_output")
         )
+        if self.name == "ncnn-segmenter":
+            output["confidence_threshold"] = float(options["confidence_threshold"])
+            if options.get("confidence_maps"):
+                output["confidences"] = ["best"]
         if self.task == "detection":
             output["confidence_threshold"] = float(options["confidence_threshold"])
             if options.get("best_bbox") is not None:
@@ -597,14 +601,16 @@ PROFILES = {
 }
 
 
-for name, task in (("ncnn-classifier", "classification"), ("ncnn-detector", "detection")):
-    size = 640 if task == "detection" else 224
+for name, task, size in (("ncnn-classifier", "classification", 224),
+                         ("ncnn-detector", "detection", 640),
+                         ("ncnn-segmenter", "segmentation", 480)):
     PROFILES[name] = ModelProfile(
         name=name, task=task, description=f"NCNN CPU {task}", backend="ncnn",
         default_weights=None, default_repository=Path("deepdetect-models") / name,
-        default_service_name=name, default_nclasses=0, requires_weights=False,
+        default_service_name=name, default_nclasses=2 if task == "segmentation" else 0, requires_weights=False,
         service_input={"connector": "image", "width": size, "height": size},
-        service_mllib={}, train_input={}, train_mllib={}, train_output={},
+        service_mllib={"ncnn_output": "segmentation"} if task == "segmentation" else {},
+        train_input={}, train_mllib={}, train_output={},
         predict_input={}, predict_output={"bbox": True} if task == "detection" else {},
         supports_training=False,
     )

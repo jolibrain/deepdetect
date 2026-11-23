@@ -67,19 +67,19 @@ namespace dd::ncnn_ops
       for (size_t base = 0; base < count; base += size_t(width) * stride)
         for (int lane = 0; lane < stride; ++lane)
           {
-            auto value = [&](int i)
-              { return input[base + size_t(i) * stride + lane]; };
+            auto value = [&](int i) {
+              return input[base + size_t(i) * stride + lane];
+            };
             std::iota(order.begin(), order.end(), 0);
             std::partial_sort(order.begin(), order.begin() + k, order.end(),
-                              [&](int a, int b)
-                                {
-                                  float lhs = value(a), rhs = value(b);
-                                  if (std::isnan(lhs) != std::isnan(rhs))
-                                    return std::isnan(lhs) == bool(largest);
-                                  if (lhs == rhs || std::isnan(lhs))
-                                    return a < b;
-                                  return largest ? lhs > rhs : lhs < rhs;
-                                });
+                              [&](int a, int b) {
+                                float lhs = value(a), rhs = value(b);
+                                if (std::isnan(lhs) != std::isnan(rhs))
+                                  return std::isnan(lhs) == bool(largest);
+                                if (lhs == rhs || std::isnan(lhs))
+                                  return a < b;
+                                return largest ? lhs > rhs : lhs < rhs;
+                              });
             for (int i = 0; i < k; ++i)
               {
                 size_t j = base / width * k + size_t(i) * stride + lane;
