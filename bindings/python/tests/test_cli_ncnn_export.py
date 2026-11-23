@@ -74,3 +74,36 @@ def test_onnx_export_and_relocation(tmp_path):
     config.write_text(config.read_text().replace("nclasses: 3", "nclasses: 2"))
     assert main(args) == 1
     assert not dest.exists()
+
+
+@pytest.mark.parametrize("extension,indices", [("ts", False), ("onnx", False), ("onnx", True)])
+def test_topk_export(tmp_path, extension, indices):
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("onnx")
+    pnnx = shutil.which("pnnx")
+    if not pnnx:
+        pytest.skip("put the pinned PNNX executable on PATH")
+    from deepdetect.cli.ncnn_graph import read_layers
+
+    class Select(torch.nn.Module):
+        def forward(self, image):
+            ranked = torch.topk(image.mean((2, 3)), 2, dim=1, largest=False)
+            return ranked.indices.float() if indices else ranked.values
+
+    graph, bundle = tmp_path / ("select." + extension), tmp_path / "bundle"
+    model, image = Select().eval(), torch.zeros(1, 3, 4, 4)
+    if extension == "ts":
+        torch.jit.trace(model, image).save(str(graph))
+    else:
+        torch.onnx.export(model, (image,), str(graph), opset_version=17, dynamo=False)
+    config = tmp_path / "config.yaml"
+    config.write_text(yaml.safe_dump({"width": 4, "height": 4, "nclasses": 2,
+                                      "service_mllib": {"ncnn_output": "logits"}}))
+    assert main(["export", str(graph), "--config", str(config), "--format", "ncnn",
+                 "--pnnx", pnnx, "--output", str(bundle)]) == 0
+    assert json.loads((bundle / "export.json").read_text())["graph_sha256"] == hashlib.sha256(graph.read_bytes()).hexdigest()
+    layers = read_layers(bundle / "model.ncnn.param")
+    rank, = [n for n in layers if n.op == "DeepDetectTopK"]
+    assert set(rank.params) >= {"0=2", "1=-1", "2=0", f"3={int(indices)}"}
+    assert {s for n in layers for s in n.outputs} - {s for n in layers for s in n.inputs} == {"out0"}
+    assert any(n.op == "DeepDetectIndicesToFloat" for n in layers) == indices

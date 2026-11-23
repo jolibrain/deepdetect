@@ -29,15 +29,15 @@ PNNX_DIGESTS = {
 
 
 def _check_output(shape, fmt, classes):
-    expected_rank = 2 if fmt in ("yolox", "ssd") else 1
+    expected_rank = 2 if fmt in ("yolox", "ssd", "rtdetrv4") else 1
     if len(shape) == expected_rank + 1 and shape[0] in (None, 1):
         shape = shape[1:]
     if fmt == "yolox":
         if len(shape) != 2 or shape[-1] != 5 + classes - 1:
             raise ValueError("expected decoded YOLOX rows of 5 + foreground classes")
-    elif fmt == "ssd":
-        if len(shape) != 2 or shape[-1] != 6:
-            raise ValueError("expected SSD output with six columns")
+    elif fmt in ("ssd", "rtdetrv4"):
+        if len(shape) != 2 or (shape[-1] != 6 and not (fmt == "rtdetrv4" and shape[-1] is None)):
+            raise ValueError("expected detection output with six columns")
     elif len(shape) != 1 or shape[0] != classes:
         raise ValueError(f"classification output must contain {classes} scores, got {shape}")
 
@@ -74,6 +74,12 @@ def _prepare_graph(source, work, shape, fmt, classes):
         _check_output(dimensions(outputs[0]), fmt, classes)
         target = work / "graph.onnx"
         onnx.save(graph, target)
+        digest = _sha256(target)
+        if fmt != "rtdetrv4":
+            from .ncnn_topk import keep_topk_outputs
+            if keep_topk_outputs(graph):
+                onnx.save(graph, target)
+        return target, digest
     elif source.suffix.lower() in (".pt", ".torchscript", ".ts"):
         import torch
 
@@ -87,7 +93,7 @@ def _prepare_graph(source, work, shape, fmt, classes):
         _check_output(list(out.shape), fmt, classes)
     else:
         raise ValueError("expected a standalone ONNX or TorchScript inference graph")
-    return target
+    return target, _sha256(target)
 
 
 def _run_graph(run, selected, identities, iteration, backend, saved, config, work):
@@ -134,9 +140,11 @@ def _run_graph(run, selected, identities, iteration, backend, saved, config, wor
     return work / "bundle/model.onnx"
 
 
-def _convert(graph, binary, shape, stage):
+def _convert(graph, binary, shapes, stage, output_width=None):
+    from .ncnn_topk import lower_topk
+    inputshape = ",".join("[" + ",".join(map(str, shape)) + "]" for shape in shapes)
     log = subprocess.run(
-        [binary, graph.name, f"inputshape=[{','.join(map(str, shape))}]", "fp16=0",
+        [binary, graph.name, f"inputshape={inputshape}", "fp16=0",
          "device=cpu", "ncnnparam=model.ncnn.param", "ncnnbin=model.ncnn.bin"],
         cwd=graph.parent, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     diagnostics = [line for line in log.stdout.splitlines()
@@ -144,22 +152,24 @@ def _convert(graph, binary, shape, stage):
     if log.returncode or diagnostics:
         raise ValueError("PNNX conversion failed: " + ("\n".join(diagnostics) or log.stdout[-2000:]))
     params = graph.parent / "model.ncnn.param"
+    lower_topk(params, graph.with_suffix(".pnnx.param"), shapes[0], output_width)
     lines = params.read_text().splitlines()
     if not lines or lines[0].strip() != "7767517":
         raise ValueError("PNNX did not emit a valid NCNN graph")
     for line in lines[2:]:
         op = line.split()[0]
-        if "." in op or "::" in op:
+        if "." in op or "::" in op or op == "GatherElements":
             raise ValueError(f"operator {op} could not be lowered to NCNN")
     for name in ("model.ncnn.param", "model.ncnn.bin"):
-        shutil.move(graph.parent / name, stage / name)
+        if graph.parent != stage:
+            shutil.move(graph.parent / name, stage / name)
 
 
 def _portable_config(config):
     fmt = config.get("service_mllib", {}).get("ncnn_output")
-    if fmt not in ("logits", "probabilities", "yolox", "ssd"):
-        raise ValueError("set service_mllib.ncnn_output to logits, probabilities, yolox, or ssd")
-    profile = get_profile("ncnn-detector" if fmt in ("yolox", "ssd") else "ncnn-classifier")
+    if fmt not in ("logits", "probabilities", "yolox", "ssd", "rtdetrv4"):
+        raise ValueError("set service_mllib.ncnn_output to logits, probabilities, yolox, ssd or rtdetrv4")
+    profile = get_profile("ncnn-detector" if fmt in ("yolox", "ssd", "rtdetrv4") else "ncnn-classifier")
     dimensions = ("width", "height", "nclasses")
     if any(key not in config for key in dimensions):
         raise ValueError("NCNN export requires width, height and nclasses")
@@ -281,12 +291,17 @@ def export_ncnn(args):
         snapshot = _stat(graph)
         mllib = portable["service_mllib"]
         classes = portable["nclasses"]
-        prepared = _prepare_graph(graph, work, shape, mllib["ncnn_output"], classes)
+        prepared, graph_digest = _prepare_graph(graph, work, shape, mllib["ncnn_output"], classes)
         if _stat(graph) != snapshot:
             raise RuntimeError("source graph changed during export")
-        report["graph_sha256"] = _sha256(prepared)
+        report["graph_sha256"] = graph_digest
         report["pnnx_sha256"] = _sha256(Path(binary))
-        _convert(prepared, binary, shape, stage)
+        if mllib["ncnn_output"] == "rtdetrv4":
+            from .ncnn_rtdetrv4 import convert_rtdetrv4
+            convert_rtdetrv4(prepared, binary, shape, classes, stage, _convert)
+        else:
+            widths = {"ssd": 6, "yolox": 4 + classes}
+            _convert(prepared, binary, [shape], stage, widths.get(mllib["ncnn_output"], 0))
         if labels:
             shutil.copyfile(labels, stage / "corresp.txt")
         save_config(stage / "inference.yaml", portable)

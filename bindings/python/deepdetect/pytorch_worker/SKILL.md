@@ -217,6 +217,9 @@ Use `export --test-inference` for a basic load/run check on a random image at
 the exported dimensions; inspect `inference_test` in `export.json`. This smoke
 test does not replace comparison on real inputs or model-quality assessment.
 
+For NCNN deployment and native operator workarounds, follow the repository
+[NCNN export skill](../../../../tools/ncnn/ncnn-export/SKILL.md).
+
 ## Best-effort ONNX export (optional)
 
 Keep `mllib.onnx_export.enabled` false unless requested. For straightforward

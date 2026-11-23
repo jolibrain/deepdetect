@@ -512,3 +512,44 @@ class DeepDetectWorker(DetectionTrainingWorkerBase):
                 "RT-DETRv4 checkpoint did not contain a model state dict"
             )
         return state
+
+
+def ncnn_export(checkpoint_paths, inference):
+    """ONNX provider for the fixed 640x640 RT-DETRv4-S deployment graph."""
+    import torch
+    from deepdetect.pytorch_worker.sdk import WorkerContext
+
+    if len(checkpoint_paths) != 1 or (inference["height"], inference["width"]) != (640, 640):
+        raise ValueError("RT-DETRv4-S export expects one checkpoint and a 640x640 image")
+    settings = dict(inference["mllib"], gpu=False)
+    options = dict(settings.get("rtdetrv4", {}))
+    if options.get("remap_mscoco_category"):
+        raise ValueError("NCNN detection labels use contiguous one-based class IDs")
+    options.update(disable_teacher=True, pretrained_backbone=False)
+    settings["rtdetrv4"] = options
+    worker = DeepDetectWorker()
+    worker.configure(WorkerContext.from_configure_params(dict(mllib=settings)))
+    model = worker.create_model(settings["nclasses"], torch)
+    weights = torch.load(checkpoint_paths[0], map_location="cpu", weights_only=True)
+    if "ema" in weights:
+        state = weights["ema"]["module"]
+    else:
+        state = weights.get("model_state", weights.get("state_dict", weights.get("model", weights)))
+    # Official EMA checkpoints retain this training-only distillation head.
+    if model.encoder.feature_projector is None:
+        state = {k: v for k, v in state.items() if not k.startswith("encoder.feature_projector.")}
+    model.load_state_dict(state, strict=True)
+
+    class Detector(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.network = model.eval().deploy()
+            self.post = worker._postprocessor.deploy()
+            self.register_buffer("size", torch.ones(1, 2))
+
+        def forward(self, image):
+            labels, boxes, scores = self.post(self.network(image), self.size)
+            return torch.cat(((labels + 1).float().unsqueeze(-1), scores.unsqueeze(-1), boxes), dim=-1)
+
+    return (Detector().eval(), (torch.zeros(1, 3, 640, 640),),
+            {"input_names": ["image"], "output_names": ["rows"]})

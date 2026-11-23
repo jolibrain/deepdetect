@@ -60,6 +60,26 @@ python3 -m deepdetect.cli.main export resnet18.ts --format ncnn \
 
 Use `--labels corresp.txt` for an optional text file containing `class_id label` on each line. `--test-inference` exercises a relocated copy using the installed NCNN-enabled DeepDetect Python binding. The published directory contains one native parameter/weight pair, `service.json`, `inference.yaml`, `export.json` with hashes, and any labels supplied.
 
+### RT-DETRv4-S worker checkpoint
+
+The integrated adapter uses the upstream S deployment model at 640×640 with 300 queries and contiguous foreground IDs starting at 1. Set the run's foreground class count plus background in `nclasses`. From the repository root, use the export environment with the worker dependencies and the matching upstream checkout:
+
+```sh
+export RTDETRV4_REPO=/path/to/RT-DETRv4
+export PYTHONPATH="$PWD/extern/pytorch_workers${PYTHONPATH:+:$PYTHONPATH}"
+python3 -m deepdetect.cli.main export /path/to/run --format ncnn --checkpoint best \
+  --output /path/to/rtdetrv4-ncnn \
+  --set service_mllib.onnx_export.provider=rtdetrv4.worker:ncnn_export \
+  --set service_mllib.rtdetrv4.config_path=configs/rtv4/rtv4_hgnetv2_s_coco.yml \
+  --set service_mllib.ncnn_output=rtdetrv4 --set service_mllib.threads=1 \
+  --set service_input.rgb=true --set service_input.interp=linear \
+  --set service_input.scale=0.00392156862745098 --set service_input.ncnn_letterbox=false
+```
+
+These preprocessing values match the official checkpoint. Preserve the training contract for fine-tuned weights. For a standalone ONNX graph produced by this provider, use the same service settings in a YAML config and pass the ONNX file and `--config` to the exporter. The output is one NCNN parameter/weight pair. The DeepDetect backend registers the custom CPU layers, runs the encoder and all decoder blocks, and applies the request's confidence threshold and box limit. The detector needs no ONNX Runtime on the target.
+
+The exporter also lowers fixed-K FP32 TopK in other TorchScript and ONNX image models. It supports largest/smallest selection along a physical tensor axis. Consumers of indices need compatible int32 semantics. Dynamic K and unrelated unsupported decoder operations require additional lowering. See the [NCNN export skill](../tools/ncnn/ncnn-export/SKILL.md) for the layer interface and extension instructions.
+
 ## Use a bundle from C++
 
 Set `model.repository` in the generated `service.json` to the bundle directory visible to the server or embedded process. Its default `.` resolves against the process working directory. Pass that JSON to `deepdetect::Runtime::create_service` or the service HTTP endpoint, then call predict with ordinary image paths. For example, with the server running from the bundle directory and the image available to the server:
@@ -79,6 +99,7 @@ The Python CLI can use the same bundle via `infer ncnn-classifier` or `infer ncn
 | `logits` | One FP32 score per class. DeepDetect applies softmax. |
 | `probabilities` | One FP32 probability per class. DeepDetect preserves the scores. |
 | `yolox` | Decoded rows of center x, center y, width, height, objectness and foreground scores. Box geometry uses network-input pixels. DeepDetect multiplies objectness by the best class score, applies class-aware NMS and maps boxes back to source pixels. |
+| `rtdetrv4` | Ranked class, score and normalized xyxy rows. Boxes are scaled to original image pixels. Multiple classes can share a box. |
 | `ssd` | Standard six-column DetectionOutput rows containing class, score and normalized corners. |
 
 Export targets a fixed spatial shape and one FP32 image input. A graph with multiple outputs needs an inference wrapper that selects the intended tensor. Unsupported operators or a different YOLO head layout require an export adapter. The optional YOLOX letterbox resizes with linear interpolation and pads the bottom and right with 114. Exported normalization is `(pixel * scale - mean) / std` in the configured channel order.
