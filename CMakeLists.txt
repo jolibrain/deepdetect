@@ -68,6 +68,7 @@ include(CheckLibraryExists)
 
 # options
 OPTION(BUILD_TESTS "Should the tests be built")
+option(BUILD_NCNN_TESTS "Build the standalone NCNN API tests" OFF)
 OPTION(BUILD_TOOLS "Should the tools be built")
 OPTION(USE_COMMAND_LINE "build command line JSON API" ON)
 OPTION(USE_JSON_API "build internal JSON API" ON)
@@ -552,44 +553,11 @@ if (USE_NCNN)
   message(STATUS "Configuring NCNN")
   add_definitions(-DUSE_NCNN)
 
-  set(NCNN_PATCHES_PATH ${CMAKE_BINARY_DIR}/patches/ncnn)
-  set(NCNN_PATCHES
-    ${NCNN_PATCHES_PATH}/ncnn_inner_keep_h.patch
-    ${NCNN_PATCHES_PATH}/ncnn_lstm_cont.patch
-    ${NCNN_PATCHES_PATH}/ncnn_variable_h.patch
-    ${NCNN_PATCHES_PATH}/ncnn_flatten_axis.patch
-    ${NCNN_PATCHES_PATH}/ncnn_cont_indic.patch
-    )
-
-  set(NCNN_VERSION "20201218")
-  set(NCNN_TARBALL_HASH "1dac4571168b83ee99efaba969c01e8054cd8e3d9b67ca4893f32b767ab4ec48")
-  set(NCNN_BUILD_FLAGS -DCMAKE_BUILD_TYPE=Release -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_TESTS=OFF)
-
-  if (RPI3)
-    ExternalProject_Add(
-      ncnn
-      PREFIX ncnn
-      URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
-      URL_HASH SHA256=${NCNN_TARBALL_HASH}
-      PATCH_COMMAND ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
-      CMAKE_ARGS -DPI3=ON -DCMAKE_TOOLCHAIN_FILE=../toolchains/pi3.toolchain.cmake ${NCNN_BUILD_FLAGS}
-      INSTALL_COMMAND ""
-    )
-  else ()
-    ExternalProject_Add(
-      ncnn
-      PREFIX ncnn
-      URL https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-full-source.zip
-      URL_HASH SHA256=${NCNN_TARBALL_HASH}
-      PATCH_COMMAND  ${CMAKE_SOURCE_DIR}/cmake/patches-apply.sh ${NCNN_PATCHES}
-      CMAKE_ARGS ${NCNN_BUILD_FLAGS}
-      INSTALL_COMMAND ""
-      )
+  find_package(ncnn 20261020 EXACT CONFIG QUIET)
+  if (NOT ncnn_FOUND)
+    add_subdirectory(cmake/ncnn)
   endif()
-
-  set(NCNN_LIB_DEPS ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src/libncnn.a)
-  set(NCNN_INC_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn/src ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
-  set(NCNN_LIB_DIR ${CMAKE_BINARY_DIR}/ncnn/src/ncnn-build/src)
+  set(NCNN_LIB_DEPS ncnn)
 endif()
 
 if (USE_PYTORCH_WORKER)
@@ -1210,7 +1178,6 @@ include_directories(${CMAKE_BINARY_DIR}/src)
 include_directories(
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
-    ${NCNN_INC_DIR}
     ${FMT_INC_DIR}
 )
 include_directories(BEFORE SYSTEM ${PROTOBUF_INCLUDE_DIR})
@@ -1236,7 +1203,6 @@ set(COMMON_INCLUDE_DIRS
     ${TSNE_INC_DIR}
     ${TORCH_INC_DIR}
     ${TENSORRT_INC_DIR}
-    ${NCNN_INC_DIR}
 
     ${CMAKE_SOURCE_DIR}/backends/dlib
     ${CMAKE_SOURCE_DIR}/backends/tsne
@@ -1250,7 +1216,6 @@ set(COMMON_LINK_DIRS
     ${DLIB_LIB_DIR}
     ${TENSORRT_LIB_DIR}
     ${TSNE_LIB_DIR}
-    ${NCNN_LIB_DIR}
     ${FAISS_LIB_DIR}
     ${TORCH_LIB_DIR}
 )
@@ -1335,7 +1300,10 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/e
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/patches/ ${CMAKE_BINARY_DIR}/patches)
 
 # unit testing
-if (BUILD_TESTS)
+if (BUILD_NCNN_TESTS AND NOT (USE_NCNN AND USE_JSON_API))
+  message(FATAL_ERROR "BUILD_NCNN_TESTS requires USE_NCNN and USE_JSON_API")
+endif()
+if (BUILD_TESTS OR BUILD_NCNN_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
