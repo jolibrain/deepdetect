@@ -33,7 +33,8 @@ TRAINING_KEYS = {
 }
 INPUT_KEYS = {
     "connector", "width", "height", "rgb", "bw", "segmentation", "bbox",
-    "keypoints", "scale", "mean", "std", "channels", "keep_orig", "interpolation",
+    "keypoints", "scale", "mean", "std", "channels", "keep_orig", "interpolation", "interp",
+    "ncnn_letterbox", "crop_width", "crop_height", "scaled", "aspect_ratio_pad",
 }
 
 
@@ -301,6 +302,11 @@ def _save_report(destination: Path, report: dict[str, Any]) -> None:
 def run_export(args: Any) -> int:
     if args.test_inference and args.dry_run:
         raise ValueError("--test-inference cannot be combined with --dry-run")
+    if getattr(args, "format", "bundle") == "ncnn":
+        from .ncnn_export import export_ncnn
+        return export_ncnn(args)
+    if getattr(args, "labels", None) or getattr(args, "pnnx", None):
+        raise ValueError("--labels and --pnnx require --format ncnn")
     source = args.source.expanduser().resolve()
     destination = args.output.expanduser().resolve()
     if not source.is_dir():

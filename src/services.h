@@ -88,7 +88,6 @@ namespace dd
 #if defined(USE_DLIB) || defined(USE_TSNE)
       ,
 #endif
-      MLService<NCNNLib, CSVTSNCNNInputFileConn, SupervisedOutput, NCNNModel>,
       MLService<NCNNLib, ImgNCNNInputFileConn, SupervisedOutput, NCNNModel>
 #endif
 #ifdef USE_TORCH

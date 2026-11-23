@@ -41,7 +41,7 @@ namespace dd
   public:
     NCNNLib(const NCNNModel &tmodel);
     NCNNLib(NCNNLib &&tl) noexcept;
-    ~NCNNLib();
+    ~NCNNLib() = default;
 
     /*- from mllib -*/
     void init_mllib(const APIData &ad);
@@ -52,21 +52,10 @@ namespace dd
 
     oatpp::Object<DTO::PredictBody> predict(const APIData &ad);
 
-    void model_type(const std::string &param_file, std::string &mltype);
-
-  public:
-    ncnn::Net *_net = nullptr;
-    bool _timeserie = false;
-
   private:
+    std::unique_ptr<ncnn::Net> _net;
     oatpp::Object<DTO::MLLib> _init_dto;
-    static ncnn::UnlockedPoolAllocator _blob_pool_allocator;
-    static ncnn::PoolAllocator _workspace_pool_allocator;
-
-  protected:
-    int _old_height = -1;
+    std::string _input, _output, _format;
   };
-
 }
-
 #endif

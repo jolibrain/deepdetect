@@ -555,3 +555,7 @@ Run clang-format through CMake:
 ```bash
 cmake --build build --target clang-format
 ```
+
+## NCNN CPU build
+
+Build the C++ image inference backend and export PyTorch models for Ubuntu x86-64 or ARM64 using the [NCNN instructions](ncnn.md).

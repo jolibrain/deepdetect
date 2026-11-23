@@ -520,6 +520,10 @@ namespace dd
 #ifdef USE_NCNN
         else if (mllib == "ncnn")
           {
+            if (input == "csv_ts" || input == "csvts")
+              return dd_service_bad_request_1006(
+                  "Legacy NCNN time-series models require the previous "
+                  "DeepDetect build.");
             NCNNModel ncnnmodel(ad_model, ad, _logger);
             read_metrics_json(ncnnmodel._repo, ad);
             if (type == "supervised")
@@ -528,13 +532,6 @@ namespace dd
                   add_service(
                       sname,
                       std::move(MLService<NCNNLib, ImgNCNNInputFileConn,
-                                          SupervisedOutput, NCNNModel>(
-                          sname, ncnnmodel, description)),
-                      ad);
-                else if (input == "csv_ts" || input == "csvts")
-                  add_service(
-                      sname,
-                      std::move(MLService<NCNNLib, CSVTSNCNNInputFileConn,
                                           SupervisedOutput, NCNNModel>(
                           sname, ncnnmodel, description)),
                       ad);

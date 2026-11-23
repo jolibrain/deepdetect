@@ -44,7 +44,7 @@ namespace dd
 
       if (model_dto->repository)
         this->_repo = model_dto->repository;
-      read_from_repository(spdlog::get("api"));
+      read_from_repository();
       read_corresp_file();
     }
     NCNNModel(const std::string &repo) : MLModel(repo)
@@ -54,7 +54,7 @@ namespace dd
     {
     }
 
-    int read_from_repository(const std::shared_ptr<spdlog::logger> &logger);
+    void read_from_repository();
 
   public:
     std::string _weights;

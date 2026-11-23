@@ -579,7 +579,7 @@ namespace dd
         : InputConnectorStrategy(i), _width(i._width), _height(i._height),
           _crop_width(i._crop_width), _crop_height(i._crop_height), _bw(i._bw),
           _rgb(i._rgb), _unchanged_data(i._unchanged_data),
-          _test_split(i._test_split), _mean(i._mean),
+          _test_split(i._test_split), _mean(i._mean), _std(i._std),
           _has_mean_scalar(i._has_mean_scalar), _scale(i._scale),
           _scaled(i._scaled), _scale_min(i._scale_min),
           _scale_max(i._scale_max), _keep_orig(i._keep_orig),
@@ -907,7 +907,8 @@ namespace dd
       transform(nullptr);
     }
 
-    void transform(oatpp::Object<DTO::ServicePredict> input_dto)
+    void transform(oatpp::Object<DTO::ServicePredict> input_dto,
+                   [[maybe_unused]] bool parallel_decode = true)
     {
 
       if (input_dto != nullptr) // [temporary] == nullptr if called from
@@ -931,7 +932,7 @@ namespace dd
       std::vector<std::string> meta_uris;
       std::vector<std::string> index_uris;
       std::vector<std::string> failed_uris;
-#pragma omp parallel for
+#pragma omp parallel for if(parallel_decode)
       for (size_t i = 0; i < _uris.size(); i++)
         {
           bool no_img = false;

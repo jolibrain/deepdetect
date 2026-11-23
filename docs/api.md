@@ -25,7 +25,7 @@ The software defines a very simple flow, from data to the statistical model and 
 * `input connector`: entry point for data into DeepDetect. Specialized versions handle different data types (e.g. images, text, CSV, ...)
 * `model`: repository that holds all the files necessary for building and usage of a statistical model such as a neural net
 * `service`: the central holder of models and connectors, living in memory and servicing the machine learning capabilities through the API. While the `model` can be held permanently on disk, a `service` is spawn around it and destroyed at will
-* `mllib`: the machine learning library used for operations. Use `torch` for training and inference, or `tensorrt` for optimized inference with exported or compatible models. Optional legacy backends such as `ncnn`, `dlib`, and `tsne` are build-dependent and may not be available in current packages.
+* `mllib`: the machine learning library used for operations. Use `torch` for training and inference, or `tensorrt` for optimized inference with exported or compatible models. Use `ncnn` for optional C++ CPU image inference. Other optional backends such as `dlib` and `tsne` are build-dependent and may not be available in current packages.
 * `training`: the computational phase that uses a dataset to build a statistical model with predictive abilities on statistically relevant data
 * `prediction`: the computational phase that uses a trained statistical model in order to make a guess about one or more samples of data
 * `output connector`: the DeepDetect output, that supports templates so that the output can be easily customized by the user in order to fit in the final application
@@ -178,7 +178,7 @@ Creates a new machine learning service on the server.
 
 Parameter   | Type   | Optional | Default      | Description
 ---------   | ----   | -------- | -------      | -----------
-mllib       | string | No       | N/A          | Name of the machine learning library. Recommended values are `torch` and `tensorrt`; optional legacy/build-dependent values include `ncnn`, `dlib`, and `tsne`. Removed values `caffe`, `caffe2`, `tf`, `tensorflow`, and `xgboost` return error 1006.
+mllib       | string | No       | N/A          | Name of the machine learning library. Supported values depend on the build and include `torch`, `tensorrt`, `ncnn`, `dlib` and `tsne`. Removed values `caffe`, `caffe2`, `tf`, `tensorflow`, and `xgboost` return error 1006.
 type        | string | No       | `supervised` | Machine Learning service type: `supervised` yields a series of metrics related to a supervised objective, or `unsupervised`, typically for state-space compression or accessing neural network's inner layers.
 description | string | yes      | empty        | Service description
 model       | object | No       | N/A          | Information for the statistical model to be built and/or used by the service
@@ -305,14 +305,16 @@ embedding_size     | int          | yes      | 768     | Embedding size for NLP 
 self_supervised    | string       | yes      | empty   | Self-supervised mode, for example `mask`
 jit_compiler_params | object      | yes      | empty   | Experimental Torch JIT compiler settings
 
-- NCNN (optional legacy backend)
+- NCNN CPU inference
 
-NCNN is build-dependent and retained for compatibility with existing deployments.
+Set these service parameters for native CPU image inference. See the [build and model export instructions](ncnn.md).
 
-Parameter  | Type   | Optional | Default                                                                 | Description
----------  | ----   | -------- | -------                                                                 | -----------
-inputblob  | string | yes      | data                                                                    | network input blob name
-outputblob | string | yes      | depends on network type (ie prob or rnn_pred or probs or detection_out) | network output blob name
+Parameter | Type | Default | Description
+--- | --- | --- | ---
+inputBlob | string | unique graph input | Name of the image input
+outputBlob | string | unique graph output | Name of the output or intermediate blob to extract
+ncnn_output | string | `ssd` for DetectionOutput, otherwise `probabilities` | Output layout, one of `probabilities`, `logits`, `ssd`, `yolox`
+threads | int | hardware concurrency | Positive number of NCNN inference threads
 
 - TensorRT
 
@@ -928,12 +930,9 @@ Parameter     | Type   | Optional | Default | Description
 gpuid         | int    | yes      | 0       | GPU id. TensorRT accepts a single GPU id for inference.
 calibration   | bool   | yes      | false   | Use this prediction request as INT8 calibration data.
 
-- NCNN (optional legacy backend)
+- NCNN CPU inference
 
-Parameter  | Type   | Optional | Default                                                                 | Description
----------  | ----   | -------- | -------                                                                 | -----------
-inputblob  | string | yes      | data                                                                    | network input blob name
-outputblob | string | yes      | depends on network type (ie prob or rnn_pred or probs or detection_out) | network output blob name
+Use `parameters.output.best` for classification. For detection, set `confidence_threshold` and optionally `best_bbox`. The YOLOX decoder also accepts `nms_threshold` (default 0.45).
 
 # Connectors
 

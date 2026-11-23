@@ -597,6 +597,19 @@ PROFILES = {
 }
 
 
+for name, task in (("ncnn-classifier", "classification"), ("ncnn-detector", "detection")):
+    size = 640 if task == "detection" else 224
+    PROFILES[name] = ModelProfile(
+        name=name, task=task, description=f"NCNN CPU {task}", backend="ncnn",
+        default_weights=None, default_repository=Path("deepdetect-models") / name,
+        default_service_name=name, default_nclasses=0, requires_weights=False,
+        service_input={"connector": "image", "width": size, "height": size},
+        service_mllib={}, train_input={}, train_mllib={}, train_output={},
+        predict_input={}, predict_output={"bbox": True} if task == "detection" else {},
+        supports_training=False,
+    )
+
+
 def get_profile(name: str) -> ModelProfile:
     try:
         return PROFILES[name]

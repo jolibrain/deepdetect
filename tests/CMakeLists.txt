@@ -143,6 +143,13 @@ function (DOWNLOAD_FILES _BASEURL _DEST)
   endforeach()
 endfunction()
 
+if (USE_NCNN AND USE_JSON_API)
+  REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
+endif()
+if (NOT BUILD_TESTS)
+  return()
+endif()
+
 find_package(PythonInterp 3 REQUIRED)
 
 REGISTER_TEST(ut_common ut-common.cc)
@@ -244,36 +251,6 @@ if (USE_DLIB)
   )
 
   REGISTER_TEST(ut_dlibapi ut-dlibapi.cc)
-endif()
-
-if (USE_NCNN)
-  DOWNLOAD_DATASET(
-    "NCNN test Squeezenet SSD model"
-    "https://www.deepdetect.com/dd/examples/ncnn/squeezenet-ssd-ncnn-caffe.tar.gz"
-    "examples/ncnn"
-    "squeezenet-ssd-ncnn-caffe.tar.gz"
-    "squeezenet_ssd_ncnn"
-    )
-
-    DOWNLOAD_DATASET(
-    "NCNN test Squeezenet classification model"
-    "https://www.deepdetect.com/dd/examples/ncnn/squeezenet-ncnn-caffe.tar.gz"
-    "examples/ncnn"
-    "squeezenet-ncnn-caffe.tar.gz"
-    "squeezenet_ncnn"
-    )
-
-  DOWNLOAD_DATASET(
-    "NCNN OCR model"
-    "https://www.deepdetect.com/dd/examples/ncnn/multiword_ocr_ncnn.tar.gz"
-    "examples/ncnn"
-    "multiword_ocr_ncnn.tar.gz"
-    "ocr"
-    )
-
-  if(USE_JSON_API)
-    REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
-  endif()
 endif()
 
 if (USE_TENSORRT)
