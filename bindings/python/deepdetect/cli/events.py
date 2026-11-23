@@ -108,6 +108,13 @@ def metric_events(status: dict[str, Any]) -> list[dict[str, Any]]:
 class MetricEventExtractor:
     def __init__(self) -> None:
         self._history_iterations: dict[str, float] = {}
+        self._last_matrices = {}
+
+    def new_confusion_matrices(self, status):
+        for key, matrix in status.get("confusion_matrices", {}).items():
+            if matrix != self._last_matrices.get(key):
+                self._last_matrices[key] = matrix
+                yield key, matrix
 
     def prime(self, events: list[dict[str, Any]]) -> None:
         for event in events:

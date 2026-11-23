@@ -2459,6 +2459,45 @@ def test_explicit_run_name_collision_fails_before_training(
     assert "FileExistsError" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("enabled", [False, True])
+def test_classification_confusion_matrix_is_client_rendered(monkeypatch, tmp_path, enabled):
+    from unittest.mock import Mock
+
+    matrix = {"labels": ["A&B", "B"], "rows": [{"counts": [0, 3]}, {"counts": [0, 1]}],
+              "iteration": 17, "test_name": "<validation>"}
+    body = {"confusion_matrices": {"test0": matrix}}
+    runtime = FakeRuntime()
+    runtime.statuses = [{"status": state, "body": body} for state in ("running", "finished")]
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    vis = Mock(server="http://localhost", port=8098, base_url="/experiments")
+    monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=lambda **kw: vis))
+    weights = tmp_path / "model.pt"
+    weights.write_bytes(b"model")
+    samples = tmp_path / "samples.txt"
+    samples.write_text("sample.jpg 0\n")
+    args = [
+        "train", "classification", "--weights", str(weights),
+        "--train-data", str(samples), "--test-data", str(samples),
+        "--repository", str(tmp_path / "model"), "--run-name", "severity",
+        "--visdom-port", "8098", "--visdom-base-url", "/experiments",
+        "--visdom" if enabled else "--no-visdom",
+    ]
+    assert cli.main(args) == 0
+    request = next(call[1] for call in runtime.calls if call[0] == "train")
+    destination = request["parameters"]["output"].get("visdom")
+    assert destination is None
+    assert "cmraw" in request["parameters"]["output"]["measure"]
+    if enabled:
+        vis.text.assert_called_once()
+        html = vis.text.call_args.args[0]
+        assert "&lt;validation&gt;" in html and "A&amp;B" in html
+        assert "<strong>0</strong></td><td>3</td>" in html
+        assert vis.text.call_args.kwargs["win"] == "confusion-test0"
+    else:
+        vis.text.assert_not_called()
+
+
 def test_train_visdom_sink_plots_losses_and_metrics(monkeypatch, tmp_path, capsys):
     class FakeVisdom:
         instances = []

@@ -5,6 +5,8 @@ import math
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
+from .confusion import write_confusion_table
+
 import numpy as np
 from training_observability.plots import metric_plot_key
 
@@ -115,6 +117,9 @@ class VisdomMetricSink:
             )
 
     def write(self, event: dict[str, Any]) -> None:
+        if event.get("event") == "confusion_matrix":
+            write_confusion_table(self.client, event["test_set"], event["matrix"])
+            return
         name = str(event.get("name", "metric"))
         if self._skip_metric(name):
             return

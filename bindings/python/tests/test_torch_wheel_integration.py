@@ -340,3 +340,42 @@ def test_segformer_segmentation_training_from_wheel(tmp_path: Path) -> None:
         assert prediction["predictions"]
     finally:
         cleanup_service(service)
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+def test_classification_final_response_contains_raw_counts(tmp_path, asynchronous):
+    from importlib.util import find_spec
+
+    if find_spec("deepdetect._native") is None:
+        pytest.skip("requires a built native wheel")
+    import torch
+    from PIL import Image
+
+    # A constant prediction for class 1 makes a transposed or normalized
+    # matrix distinguishable from the expected integer counts.
+    head = torch.nn.Linear(3, 2)
+    with torch.no_grad():
+        head.weight.zero_()
+        head.bias.copy_(torch.tensor([0.0, 10.0]))
+    model = torch.nn.Sequential(torch.nn.AdaptiveAvgPool2d(1), torch.nn.Flatten(), head)
+    torch.jit.script(model).save(str(tmp_path / "constant.pt"))
+    image = tmp_path / "image.png"
+    Image.new("RGB", (16, 16)).save(image)
+    samples = tmp_path / "samples.txt"
+    samples.write_text("".join(f"{image} {label}\n" for label in [0, 0, 1]))
+    with deepdetect.DeepDetect().create_service(
+        "raw-counts", model={"repository": str(tmp_path)}, mllib="torch",
+        input_parameters={"connector": "image", "width": 16, "height": 16, "db": False},
+        mllib_parameters={"nclasses": 2},
+    ) as service:
+        result = service.train(
+            [str(samples), str(samples)], asynchronous=asynchronous,
+            input_parameters={"db": False},
+            mllib_parameters={"solver": {"iterations": 1, "test_interval": 1,
+                                         "base_lr": 1e-5}, "net": {"batch_size": 1}},
+            output_parameters={"measure": ["cmraw"]},
+        )
+        body = result.wait(timeout=30) if asynchronous else result
+        matrix = body["confusion_matrices"]["test0"]
+        assert matrix["iteration"] == 1
+        assert [row["counts"] for row in matrix["rows"]] == [[0, 2], [0, 1]]

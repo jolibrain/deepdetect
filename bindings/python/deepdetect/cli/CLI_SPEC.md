@@ -349,6 +349,8 @@ Visdom options:
 - `--visdom-results-seed`: random seed for deterministic result-image
   resampling.
 
+Classification training with `--visdom` refreshes a confusion table for each test set after evaluation. Rows are actual classes, columns are predicted classes, and each cell contains an integer count. The diagonal is highlighted. The classification profile requests the native `cmraw` measure. C++ and REST callers can request it in `parameters.output.measure`. Training status and completion responses expose `body.confusion_matrices.testN` with class labels, evaluation iteration, test name, and one `{"counts": [...]}` row per actual class. To visualize a REST job from a client with the DeepDetect Python package installed, run `python tools/plot_visdom.py --dd_service SERVICE --visdom_env ENV --follow`. Use this as the job's status poller since fetching a finished job consumes its final response.
+
 The Visdom environment name is the training `run_name`. Loss-like metrics
 whose names contain `loss` are each sent to their own line plot. mAP metrics
 are split by metric name, for example `map`, `map-05`, `map-50`, and `map-90`

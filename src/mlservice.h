@@ -372,6 +372,7 @@ namespace dd
                                // start in requested order
                                boost::unique_lock<boost::shared_mutex> lock(
                                    _train_or_predict_mutex);
+                               this->set_status_job(local_tcounter);
                                APIData out;
                                int run_code = this->train(ad, out);
                                std::pair<int, APIData> p(local_tcounter,
@@ -389,6 +390,7 @@ namespace dd
           boost::unique_lock<boost::shared_mutex> lock(
               _train_or_predict_mutex);
           this->_has_predict = false;
+          this->set_status_job(0);
           int status = this->train(ad, out);
           APIData ad_params_out = ad.getobj("parameters").getobj("output");
           if (ad_params_out.has("measure_hist")
@@ -427,6 +429,7 @@ namespace dd
               jmrepo.add("repository", this->_mlmodel._repo);
               out.add("model", jmrepo);
               this->collect_measures(out);
+              this->collect_status_payload(out, "confusion_matrices", j);
               if (output_parameter_enabled(ad_params_out, "test_predictions"))
                 this->collect_status_payload(out, "test_predictions");
               std::chrono::time_point<std::chrono::system_clock> trun

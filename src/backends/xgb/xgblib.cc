@@ -348,6 +348,9 @@ namespace dd
           {
             APIData meas_out;
             test(ad, learner, eval_datasets.at(0).get(), meas_out);
+            if (meas_out.has("confusion_matrices"))
+              this->add_status_payload("confusion_matrices",
+                                       meas_out.getobj("confusion_matrices"));
             APIData meas_obj = meas_out.getobj("measure");
             std::vector<std::string> meas_str = meas_obj.list_keys();
             for (auto m : meas_str)

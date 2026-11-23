@@ -547,6 +547,11 @@ def write_metric_events(
     metric_sink: CompositeMetricSink,
     extractor: MetricEventExtractor | None = None,
 ) -> list[dict[str, Any]]:
+    matrices = (extractor or MetricEventExtractor()).new_confusion_matrices(status)
+    for key, matrix in matrices:
+        event = writer.emit("confusion_matrix", run_id=manifest.data["run_id"],
+                            test_set=key, matrix=matrix)
+        metric_sink.write(event)
     metrics = extractor.events(status) if extractor is not None else metric_events(status)
     events = []
     for metric in metrics:
