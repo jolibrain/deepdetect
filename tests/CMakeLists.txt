@@ -496,6 +496,34 @@ if (USE_SIMSEARCH)
 
 endif()
 
+if (USE_ONNXRUNTIME)
+  DOWNLOAD_DATASET(
+          "ONNX resnet model"
+          "https://deepdetect.com/models/init/desktop/images/classification/resnet_onnx_trt.tar.gz"
+          "examples/trt"
+          "resnet_onnx_trt.tar.gz"
+          "resnet_onnx_trt"
+  )
+  DOWNLOAD_DATASET(
+          "ONNX yolox model without wrapper"
+          "https://deepdetect.com/models/init/desktop/images/detection/yolox_onnx_trt_nowrap.tar.gz"
+          "examples/trt"
+          "yolox_onnx_trt_nowrap.tar.gz"
+          "yolox_onnx_trt_nowrap"
+  )
+  DOWNLOAD_DATASET(
+          "ONNX CycleGAN model"
+          "https://deepdetect.com/dd/examples/tensorrt/cyclegan_resnet_attn_onnx_trt.tar.gz"
+          "examples/trt"
+          "cyclegan_resnet_attn_onnx_trt.tar.gz"
+          "cyclegan_resnet_attn_onnx_trt"
+  )
+
+  if(USE_JSON_API)
+    REGISTER_TEST(ut_onnxruntimeapi ut-onnxruntimeapi.cc)
+  endif()
+endif()
+
 # Python tests
 add_test(NAME ut_python
        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/tests"

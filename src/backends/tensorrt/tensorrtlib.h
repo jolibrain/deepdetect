@@ -119,6 +119,7 @@ namespace dd
     size_t _max_workspace_size = 1 << 30; // 1GB
     int _results_height = -1;
     std::string _engineFileName = "TRTengine";
+    std::string _extract_layer = "";
     bool _readEngine = true;
     bool _writeEngine = true;
     std::string _arch;
