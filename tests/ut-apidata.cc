@@ -184,3 +184,29 @@ TEST(apidata, supervised_output_keypoints_to_dto)
   EXPECT_DOUBLE_EQ(-1.0, cls->keypoints->at(1)->get("x").get<double>());
   EXPECT_FALSE(cls->keypoints->at(1)->get("valid").get<bool>());
 }
+
+TEST(apidata, classification_confusion_counts)
+{
+  APIData results, options, out;
+  results.add("nclasses", 2);
+  results.add("clnames", std::vector<std::string>{ "A", "B" });
+  results.add("batch_size", 3);
+  results.add("iteration", 7.0);
+  for (int i = 0; i < 3; ++i)
+    {
+      APIData sample;
+      sample.add("target", i == 0 ? 1.0 : 0.0);
+      sample.add("pred", std::vector<double>{ 0.2, 0.8 });
+      results.add(std::to_string(i), sample);
+    }
+  options.add("measure", std::vector<std::string>{ "cmraw" });
+  SupervisedOutput::measure(results, options, out, 0, "holdout");
+  const auto matrix = out.getobj("confusion_matrices").getobj("test0");
+  const auto rows = matrix.getv("rows");
+  ASSERT_EQ(rows.size(), 2U);
+  EXPECT_EQ(rows[0].get("counts").get<std::vector<int>>(),
+            (std::vector<int>{ 0, 2 }));
+  EXPECT_EQ(rows[1].get("counts").get<std::vector<int>>(),
+            (std::vector<int>{ 0, 1 }));
+  EXPECT_EQ(matrix.get("test_name").get<std::string>(), "holdout");
+}

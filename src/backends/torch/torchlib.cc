@@ -1455,6 +1455,9 @@ namespace dd
 
                 out.add("measure", meas_out.getobj("measure"));
                 out.add("measures", meas_out.getv("measures"));
+                if (meas_out.has("confusion_matrices"))
+                  out.add("confusion_matrices",
+                          meas_out.get("confusion_matrices"));
               }
 
             train_loss = 0;
@@ -2228,6 +2231,9 @@ namespace dd
         = _bbox && detection_map_version(ad_out) == 2;
     SupervisedOutput::aggregate_multiple_testsets(
         out, average_per_class_map_where_present);
+    if (out.has("confusion_matrices"))
+      this->add_status_payload("confusion_matrices",
+                               out.getobj("confusion_matrices"));
     this->add_meas("test_active", 0.0);
     return 0;
   }
@@ -2280,6 +2286,7 @@ namespace dd
           meas.erase(it);
         if ((it = std::find(meas.begin(), meas.end(), "cmdiag")) != meas.end())
           meas.erase(it);
+        meas.erase(std::remove(meas.begin(), meas.end(), "cmraw"), meas.end());
         ad_out.add("measure", meas);
       }
 
