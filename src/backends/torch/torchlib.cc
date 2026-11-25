@@ -675,7 +675,8 @@ namespace dd
             class TMLModel>
   void TorchLib<TInputConnectorStrategy, TOutputConnectorStrategy, TMLModel>::
       save_if_best(APIData &ad_out, int64_t elapsed_it, TorchSolver &tsolver,
-                   std::vector<int64_t> &best_iteration_numbers)
+                   std::vector<int64_t> &best_iteration_numbers,
+                   OnnxExport *onnx_export)
   {
     for (size_t i = 0; i < best_iteration_numbers.size(); ++i)
       {
@@ -741,6 +742,18 @@ namespace dd
                     bestfile << std::endl;
                   }
                 bestfile.close();
+                if (i == 0 && bestfile && onnx_export)
+                  {
+                    std::vector<std::string> paths;
+                    for (const auto &ext : { ".pt", ".ptw", ".npt" })
+                      {
+                        auto path = this->_mlmodel._repo + "/checkpoint-"
+                                    + std::to_string(elapsed_it) + ext;
+                        if (fileops::file_exists(path))
+                          paths.push_back(path);
+                      }
+                    onnx_export->notify(elapsed_it, paths);
+                  }
               }
             catch (std::exception &e)
               {
@@ -984,6 +997,55 @@ namespace dd
     int it = tsolver.resume(ad_mllib, this->_mlmodel, _main_device,
                             _best_metric_values, best_iteration_numbers,
                             eval_dataset.names());
+
+    std::unique_ptr<OnnxExport> onnx_export;
+    APIData onnx_config = ad_mllib.getobj("onnx_export");
+    this->_onnx_export_requested.store(
+        onnx_config.has("enabled") && onnx_config.get("enabled").get<bool>());
+    if (this->_onnx_export_requested.load())
+      {
+        APIData start, inference;
+        start.add("command", std::string("start"));
+        start.add("repository", this->_mlmodel._repo);
+        start.add("config", onnx_config);
+        start.add("resume", ad_mllib.has("resume")
+                                && ad_mllib.get("resume").get<bool>());
+        inference.add("width", inputc.width());
+        inference.add("height", inputc.height());
+        int channels = 3;
+        if (typeid(inputc) == typeid(ImgTorchInputFileConn))
+          channels = reinterpret_cast<ImgTorchInputFileConn *>(&inputc)->_bw
+                         ? 1
+                         : 3;
+        inference.add("channels", channels);
+        inference.add("parameters", ad.getobj("parameters"));
+        start.add("inference", inference);
+        const char *env_python = std::getenv("DEEPDETECT_PYTHON");
+        std::string python
+            = onnx_config.has("python")
+                  ? onnx_config.get("python").get<std::string>()
+                  : (env_python && *env_python ? env_python : "python3");
+        double timeout = 120;
+        if (onnx_config.has("timeout_seconds"))
+          {
+            try
+              {
+                timeout = onnx_config.get("timeout_seconds").get<double>();
+              }
+            catch (...)
+              {
+                timeout = onnx_config.get("timeout_seconds").get<int>();
+              }
+          }
+        if (!std::isfinite(timeout) || timeout <= 0)
+          timeout = 120;
+        onnx_export = std::make_unique<OnnxExport>(
+            this->_mlmodel._repo, python, start.toJSONString(), timeout,
+            [this]() { return !this->_tjob_running.load(); },
+            [this](const std::string &message) {
+              this->_logger->warn(message);
+            });
+      }
 
     bool skip_training = it >= iterations;
     if (skip_training)
@@ -1326,7 +1388,7 @@ namespace dd
                 meas_out.add("measure", meas_obj);
 
                 save_if_best(meas_out, elapsed_it, tsolver,
-                             best_iteration_numbers);
+                             best_iteration_numbers, onnx_export.get());
 
                 // print metrics
                 for (size_t i = 0; i < eval_dataset.size() + 1; ++i)
@@ -1393,6 +1455,9 @@ namespace dd
 
                 out.add("measure", meas_out.getobj("measure"));
                 out.add("measures", meas_out.getv("measures"));
+                if (meas_out.has("confusion_matrices"))
+                  out.add("confusion_matrices",
+                          meas_out.get("confusion_matrices"));
               }
 
             train_loss = 0;
@@ -1461,6 +1526,9 @@ namespace dd
     this->_mlmodel.read_corresp_file();
 
     inputc.response_params(out);
+    if (onnx_export)
+      onnx_export->finish();
+    this->collect_onnx_export(out);
     this->_logger->info("Training done.");
 
     return 0;
@@ -2163,6 +2231,9 @@ namespace dd
         = _bbox && detection_map_version(ad_out) == 2;
     SupervisedOutput::aggregate_multiple_testsets(
         out, average_per_class_map_where_present);
+    if (out.has("confusion_matrices"))
+      this->add_status_payload("confusion_matrices",
+                               out.getobj("confusion_matrices"));
     this->add_meas("test_active", 0.0);
     return 0;
   }
@@ -2215,6 +2286,7 @@ namespace dd
           meas.erase(it);
         if ((it = std::find(meas.begin(), meas.end(), "cmdiag")) != meas.end())
           meas.erase(it);
+        meas.erase(std::remove(meas.begin(), meas.end(), "cmraw"), meas.end());
         ad_out.add("measure", meas);
       }
 

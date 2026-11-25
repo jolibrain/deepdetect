@@ -316,7 +316,6 @@ def main() -> None:
             "-DUSE_PYTORCH_WORKER=ON",
             "-DUSE_PREBUILT_TORCH=ON",
             "-DUSE_TENSORRT=OFF",
-            "-DUSE_XGBOOST=OFF",
             "-DUSE_DLIB=OFF",
             "-DUSE_NCNN=OFF",
             "-DUSE_SIMSEARCH=OFF",

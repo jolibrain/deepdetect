@@ -47,9 +47,6 @@
 #ifdef USE_DLIB
 #include "backends/dlib/dliblib.h"
 #endif
-#ifdef USE_XGBOOST
-#include "backends/xgb/xgblib.h"
-#endif
 #ifdef USE_TSNE
 #include "backends/tsne/tsnelib.h"
 #endif
@@ -83,31 +80,21 @@ namespace dd
       MLService<DlibLib, ImgDlibInputFileConn, SupervisedOutput, DlibModel>,
       MLService<DlibLib, ImgDlibInputFileConn, UnsupervisedOutput, DlibModel>
 #endif
-#ifdef USE_XGBOOST
-#ifdef USE_DLIB
-      ,
-#endif
-      MLService<XGBLib, CSVXGBInputFileConn, SupervisedOutput, XGBModel>,
-      MLService<XGBLib, SVMXGBInputFileConn, SupervisedOutput, XGBModel>,
-      MLService<XGBLib, TxtXGBInputFileConn, SupervisedOutput, XGBModel>
-#endif
 #ifdef USE_TSNE
-#if defined(USE_DLIB) || defined(USE_XGBOOST)
+#ifdef USE_DLIB
       ,
 #endif
       MLService<TSNELib, CSVTSNEInputFileConn, UnsupervisedOutput, TSNEModel>,
       MLService<TSNELib, TxtTSNEInputFileConn, UnsupervisedOutput, TSNEModel>
 #endif
 #ifdef USE_NCNN
-#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)
+#if defined(USE_DLIB) || defined(USE_TSNE)
       ,
 #endif
-      MLService<NCNNLib, CSVTSNCNNInputFileConn, SupervisedOutput, NCNNModel>,
       MLService<NCNNLib, ImgNCNNInputFileConn, SupervisedOutput, NCNNModel>
 #endif
 #ifdef USE_TORCH
-#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
-    || defined(USE_NCNN)
+#if defined(USE_DLIB) || defined(USE_TSNE) || defined(USE_NCNN)
       ,
 #endif
       MLService<TorchLib, ImgTorchInputFileConn, SupervisedOutput, TorchModel>,
@@ -118,16 +105,16 @@ namespace dd
                 TorchModel>
 #endif
 #ifdef USE_PYTORCH_WORKER
-#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
-    || defined(USE_NCNN) || defined(USE_TORCH)
+#if defined(USE_DLIB) || defined(USE_TSNE) || defined(USE_NCNN)               \
+    || defined(USE_TORCH)
       ,
 #endif
       MLService<PytorchWorkerLib, ImgPytorchInputFileConn, SupervisedOutput,
                 PytorchWorkerModel>
 #endif
 #ifdef USE_TENSORRT
-#if defined(USE_DLIB) || defined(USE_XGBOOST) || defined(USE_TSNE)            \
-    || defined(USE_NCNN) || defined(USE_TORCH) || defined(USE_PYTORCH_WORKER)
+#if defined(USE_DLIB) || defined(USE_TSNE) || defined(USE_NCNN)               \
+    || defined(USE_TORCH) || defined(USE_PYTORCH_WORKER)
       ,
 #endif
       MLService<TensorRTLib, ImgTensorRTInputFileConn, SupervisedOutput,

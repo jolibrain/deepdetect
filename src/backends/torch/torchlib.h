@@ -45,6 +45,7 @@
 #include "native/native_net.h"
 #include "torchmodule.h"
 #include "torchsolver.h"
+#include "utils/onnx_export.h"
 
 namespace dd
 {
@@ -148,7 +149,8 @@ namespace dd
      */
     void save_if_best(APIData &ad_out, int64_t elapsed_it,
                       TorchSolver &tsolver,
-                      std::vector<int64_t> &best_iteration_numbers);
+                      std::vector<int64_t> &best_iteration_numbers,
+                      OnnxExport *onnx_export);
 
     /**
      * snapshop current optimizer state

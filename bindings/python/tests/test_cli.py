@@ -2459,6 +2459,45 @@ def test_explicit_run_name_collision_fails_before_training(
     assert "FileExistsError" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("enabled", [False, True])
+def test_classification_confusion_matrix_is_client_rendered(monkeypatch, tmp_path, enabled):
+    from unittest.mock import Mock
+
+    matrix = {"labels": ["A&B", "B"], "rows": [{"counts": [0, 3]}, {"counts": [0, 1]}],
+              "iteration": 17, "test_name": "<validation>"}
+    body = {"confusion_matrices": {"test0": matrix}}
+    runtime = FakeRuntime()
+    runtime.statuses = [{"status": state, "body": body} for state in ("running", "finished")]
+    monkeypatch.setattr(training.time, "sleep", lambda _: None)
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    vis = Mock(server="http://localhost", port=8098, base_url="/experiments")
+    monkeypatch.setitem(sys.modules, "visdom", SimpleNamespace(Visdom=lambda **kw: vis))
+    weights = tmp_path / "model.pt"
+    weights.write_bytes(b"model")
+    samples = tmp_path / "samples.txt"
+    samples.write_text("sample.jpg 0\n")
+    args = [
+        "train", "classification", "--weights", str(weights),
+        "--train-data", str(samples), "--test-data", str(samples),
+        "--repository", str(tmp_path / "model"), "--run-name", "severity",
+        "--visdom-port", "8098", "--visdom-base-url", "/experiments",
+        "--visdom" if enabled else "--no-visdom",
+    ]
+    assert cli.main(args) == 0
+    request = next(call[1] for call in runtime.calls if call[0] == "train")
+    destination = request["parameters"]["output"].get("visdom")
+    assert destination is None
+    assert "cmraw" in request["parameters"]["output"]["measure"]
+    if enabled:
+        vis.text.assert_called_once()
+        html = vis.text.call_args.args[0]
+        assert "&lt;validation&gt;" in html and "A&amp;B" in html
+        assert "<strong>0</strong></td><td>3</td>" in html
+        assert vis.text.call_args.kwargs["win"] == "confusion-test0"
+    else:
+        vis.text.assert_not_called()
+
+
 def test_train_visdom_sink_plots_losses_and_metrics(monkeypatch, tmp_path, capsys):
     class FakeVisdom:
         instances = []
@@ -3871,3 +3910,28 @@ def test_bad_ground_truth_keeps_prediction_display(tmp_path):
                 'ground_truth':{'imgsize':{'width':3,'height':2},'vals':[1]*6}}
     with pytest.raises(ValueError,match='dimensions'):
         segmentation_ground_truth_images(p,prediction)
+
+
+@pytest.mark.parametrize("profile", ["yolox", "torchvision-detector"])
+def test_onnx_config_and_status_round_trip(monkeypatch, tmp_path, capsys, profile):
+    weights, train, test = write_training_files(tmp_path)
+    runtime = FakeRuntime()
+    export_status = {"status": "disabled", "best_iteration": 2,
+                     "exported_iteration": 1, "stale": True,
+                     "error": "unsupported operator"}
+    runtime.statuses = [{"status": "finished", "body": {
+        "measure": {"iteration": 2}, "onnx_export": export_status}}]
+    monkeypatch.setattr(training.deepdetect, "DeepDetect", lambda: DeepDetect(_runtime=runtime))
+    args = ["train", profile, "--train-data", str(train), "--test-data", str(test),
+            "--weights", str(weights), "--repository", str(tmp_path / 'repo'),
+            "--job-dir", str(tmp_path / 'runs'), "--run-name", "onnx-test",
+            "--iterations", "2", "--dataset-check", "none",
+            "--set", "mllib.onnx_export.enabled=true"]
+    assert cli.main(args) == 0
+    request = next(call[1] for call in runtime.calls if call[0] == 'train')
+    assert request['parameters']['mllib']['onnx_export']['enabled'] is True
+    manifest = json.loads((tmp_path/'runs/onnx-test/run.json').read_text())
+    assert manifest['onnx_export'] == export_status
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert next(e for e in events if e['event'] == 'training_status')['onnx_export'] == export_status
+    assert not any(e['event'] == 'metric' and e.get('name') == 'onnx_export' for e in events)

@@ -1,24 +1,14 @@
 import argparse
-import visdom
+import time
+
 import requests
-from dd_client import DD
+import visdom
+
+from deepdetect.cli.confusion import write_confusion_table
+from deepdetect.cli.events import MetricEventExtractor
 
 
-def get_measures(args):
-    dd = DD(args.dd_host, args.dd_port)
-    dd.set_return_format(dd.RETURN_PYTHON)
-    sinfo = dd.get_train(args.dd_service, measure_hist=True)
-    measures = sinfo["body"]["measure_hist"]
-    return measures
-
-
-def plot_measures(args, measures):
-    vis = visdom.Visdom(
-        server=args.visdom_host,
-        port=args.visdom_port,
-        env=args.visdom_env,
-        raise_exceptions=True,
-    )
+def plot_measures(vis, measures):
     for title, y in measures.items():
         title = title.removesuffix("_hist")
         x = list(range(len(y)))
@@ -36,19 +26,38 @@ def parse_args():
     parser.add_argument(
         "--dd_service", required=True, help="DeepDetect train service to plot"
     )
-    parser.add_argument("--visdom_host", default="localhost", help="Visdom host")
+    parser.add_argument("--visdom_host", default="http://localhost", help="Visdom host")
     parser.add_argument("--visdom_port", type=int, default=8097, help="Visdom port")
     parser.add_argument(
         "--visdom_env", type=str, required=True, help="Visdom destination environment"
     )
+    parser.add_argument("--visdom-base-url", default="/", help="Visdom server base path")
+    parser.add_argument("--job", type=int, default=1)
+    parser.add_argument("--follow", action="store_true", help="poll until the training job finishes")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    measures = get_measures(args)
-    plot_measures(args, measures)
-    print(f"http://{args.visdom_host}:{args.visdom_port}/env/{args.visdom_env}")
+    endpoint = f"http://{args.dd_host}:{args.dd_port}/train"
+    vis = visdom.Visdom(server=args.visdom_host, port=args.visdom_port, env=args.visdom_env,
+                        base_url=args.visdom_base_url, raise_exceptions=True)
+    extractor = MetricEventExtractor()
+    while True:
+        response = requests.get(endpoint, params={
+            "service": args.dd_service, "job": args.job,
+            "parameters.output.measure_hist": "true",
+        }, timeout=30)
+        response.raise_for_status()
+        status = response.json()
+        body = status["body"]
+        plot_measures(vis, body.get("measure_hist", {}))
+        for key, matrix in extractor.new_confusion_matrices(body):
+            write_confusion_table(vis, key, matrix)
+        if not args.follow or status["head"]["status"] != "running":
+            break
+        time.sleep(1)
+    print(f"{vis.server}:{vis.port}{vis.base_url}/env/{args.visdom_env}")
 
 
 if __name__ == "__main__":

@@ -141,3 +141,37 @@ python -m pip wheel ./bindings/python \
 Set `--config-settings=cmake.define.DEEPDETECT_PYTHON_BUNDLE_NATIVE=OFF` to
 produce the old thin wheel that requires an external DeepDetect SDK and
 runtime library path configuration.
+
+### External worker checkpoint retention
+
+Built-in detection workers retain the latest checkpoint and best checkpoints
+(aggregate mAP and each test set). Evaluations refresh the rolling latest;
+completion and graceful cancellation also save it. `mllib.solver.snapshot`
+defaults to `0`. A positive integer additionally preserves every checkpoint at
+that optimizer-step interval, independently of evaluation frequency.
+`best_model.txt` selects the aggregate best for existing resume/export commands.
+Older, untracked checkpoint files are not automatically deleted.
+
+Standalone workers keep their existing behavior. They can opt into
+`deepdetect.pytorch_worker.checkpoints.CheckpointManager` without changing their
+checkpoint serialization format:
+
+```python
+manager = CheckpointManager(repository, snapshot=0, metric="foreground_iou",
+                            maximize=True, resume=resume,
+                            log=lambda message: reporter.log("warning", message))
+# Call after each completed optimizer step. save_pair(iteration) writes the
+# adapter's complete model/optimizer pair and returns their two repository paths.
+manager.step(iteration, save_pair,
+             metrics={"aggregate": foreground_iou} if evaluated else None)
+# On completion or graceful cancellation:
+manager.step(iteration, save_pair, final=True)
+```
+
+Metric scopes are `aggregate` or numeric test-set indices. Supply only completed
+evaluation results. The manager persists ownership and scores in
+`checkpoint-state.json`; it deletes only registered, superseded pairs. Keep the
+standard `checkpoint-N.pt` / `solver-N.pt` names when using the existing resume
+resolvers. Custom save hooks with unregistered layouts remain callable, but do
+not receive automatic retention. The SDK does not impose this policy on workers
+that do not adopt it.

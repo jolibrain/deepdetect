@@ -34,7 +34,8 @@ backend. The new backend must not change existing `torch` service behavior.
 
 - No GPU zero-copy implementation.
 - No multi-node distributed training.
-- No automatic production export to TensorRT, ONNX, or AOTInductor.
+- No guaranteed production export to TensorRT or AOTInductor. Optional
+  best-effort ONNX export is described in the CLI documentation and worker skill.
 - No concurrent prediction against a model while offline training is active.
 - No requirement that Python workers implement raw socket/protocol handling.
 - No replacement or deprecation of the existing C++ libtorch backend.

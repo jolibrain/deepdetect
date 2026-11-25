@@ -1137,17 +1137,48 @@ namespace dd
                 }
             }
 
-          if (!multilabel && !segmentation && !bbox && (bf1 || bf1full))
+          const bool raw_counts
+              = !regression && !timeserie && !autoencoder && !net_meas
+                && std::find(measures.begin(), measures.end(), "cmraw")
+                       != measures.end();
+          if (!multilabel && !segmentation && !bbox
+              && (bf1 || bf1full || raw_counts))
             {
               double f1, precision, recall, acc;
-              dMat conf_diag, conf_matrix;
+              dMat conf_diag, conf_matrix, counts;
               dVec precisionV, recallV, f1V;
               f1 = mf1(ad_res, precision, recall, acc, precisionV, recallV,
-                       f1V, conf_diag, conf_matrix);
-              meas_out.add("f1", f1);
-              meas_out.add("precision", precision);
-              meas_out.add("recall", recall);
-              meas_out.add("accp", acc);
+                       f1V, conf_diag, conf_matrix,
+                       raw_counts ? &counts : nullptr);
+              if (raw_counts)
+                {
+                  APIData matrix;
+                  matrix.add("labels", ad_res.get("clnames"));
+                  matrix.add("test_name", test_name);
+                  if (iter)
+                    matrix.add("iteration", ad_res.get("iteration"));
+                  std::vector<APIData> rows;
+                  for (int actual = 0; actual < counts.cols(); ++actual)
+                    {
+                      APIData row;
+                      const auto column = counts.col(actual);
+                      row.add("counts",
+                              std::vector<int>(column.data(),
+                                               column.data() + column.size()));
+                      rows.push_back(row);
+                    }
+                  matrix.add("rows", rows);
+                  auto matrices = out.getobj("confusion_matrices");
+                  matrices.add("test" + std::to_string(test_id), matrix);
+                  out.add("confusion_matrices", matrices);
+                }
+              if (bf1 || bf1full)
+                {
+                  meas_out.add("f1", f1);
+                  meas_out.add("precision", precision);
+                  meas_out.add("recall", recall);
+                  meas_out.add("accp", acc);
+                }
               if (std::find(measures.begin(), measures.end(), "f1full")
                   != measures.end())
                 {
@@ -2416,7 +2447,8 @@ namespace dd
     // measure: F1
     static double mf1(const APIData &ad, double &precision, double &recall,
                       double &acc, dVec &precisionV, dVec &recallV, dVec &f1V,
-                      dMat &conf_diag, dMat &conf_matrix)
+                      dMat &conf_diag, dMat &conf_matrix,
+                      dMat *counts = nullptr)
     {
       int nclasses = ad.get("nclasses").get<int>();
       double f1 = 0.0;
@@ -2443,6 +2475,8 @@ namespace dd
                 + " (e.g. wrong number of classes specified with nclasses");
           conf_matrix(maxpr, static_cast<int>(target)) += 1.0;
         }
+      if (counts)
+        *counts = conf_matrix;
       conf_diag = conf_matrix.diagonal();
       dMat conf_csum = conf_matrix.colwise().sum();
       dMat conf_rsum = conf_matrix.rowwise().sum();

@@ -45,9 +45,6 @@ endif()
 if (USE_COMMAND_LINE AND USE_JSON_API)
   list(APPEND ddetect_SOURCES commandlinejsonapi.h commandlinejsonapi.cc)
 endif()
-if (USE_XGBOOST)
-  list(APPEND ddetect_SOURCES backends/xgb/xgblib.cc backends/xgb/xgblib.h backends/xgb/xgbmodel.cc backends/xgb/xgbmodel.h backends/xgb/xgbinputconns.cc backends/xgb/xgbinputconns.h)
-endif()
 if (USE_TSNE)
   list(APPEND ddetect_SOURCES backends/tsne/tsneinputconns.h backends/tsne/tsneinputconns.cc backends/tsne/tsnemodel.h backends/tsne/tsnelib.h backends/tsne/tsnelib.cc)
 endif()
@@ -58,7 +55,8 @@ if (USE_DLIB)
   list(APPEND ddetect_SOURCES backends/dlib/DNNStructures.h backends/dlib/dliblib.cc backends/dlib/dliblib.h backends/dlib/dlibmodel.cc backends/dlib/dlibmodel.h backends/dlib/dlibinputconns.h backends/dlib/dlib_actions.cpp backends/dlib/dlib_actions.h)
 endif()
 if (USE_NCNN)
-  list(APPEND ddetect_SOURCES backends/ncnn/ncnnlib.cc backends/ncnn/ncnnmodel.cc backends/ncnn/caffe2ncnn.cc backends/ncnn/upgrade_proto.cpp)
+  list(APPEND ddetect_SOURCES backends/ncnn/ncnnlib.cc backends/ncnn/ncnnmodel.cc
+    backends/ncnn/ops/ops.cc backends/ncnn/ops/topk.cc)
 endif()
 if (USE_PYTORCH_WORKER)
   list(APPEND ddetect_SOURCES
@@ -72,6 +70,7 @@ if (USE_TORCH)
 	generators/net_caffe_recurrent.cc
     backends/torch/torchlib.cc
     backends/torch/torchmodel.cc
+    utils/onnx_export.cc
     backends/torch/torchloss.cc
     backends/torch/torchdataset.cc
     backends/torch/torchinputconns.cc
@@ -154,9 +153,6 @@ endif()
 if (USE_DLIB)
   add_dependencies(ddetect dlib)
 endif()
-if (USE_NCNN)
-  add_dependencies(ddetect ncnn)
-endif()
 if (USE_TENSORRT)
   add_dependencies(ddetect onnx_pb_h)
 endif()
@@ -181,9 +177,6 @@ if (USE_TENSORRT)
 endif()
 if (USE_ONNXRUNTIME)
   add_dependencies(ddetect onnxruntime)
-endif()
-if (USE_XGBOOST)
-  add_dependencies(ddetect xgboost)
 endif()
 if (USE_TNSE)
   add_dependencies(ddetect Multicore-TSNE)

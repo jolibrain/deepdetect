@@ -547,6 +547,11 @@ def write_metric_events(
     metric_sink: CompositeMetricSink,
     extractor: MetricEventExtractor | None = None,
 ) -> list[dict[str, Any]]:
+    matrices = (extractor or MetricEventExtractor()).new_confusion_matrices(status)
+    for key, matrix in matrices:
+        event = writer.emit("confusion_matrix", run_id=manifest.data["run_id"],
+                            test_set=key, matrix=matrix)
+        metric_sink.write(event)
     metrics = extractor.events(status) if extractor is not None else metric_events(status)
     events = []
     for metric in metrics:
@@ -677,6 +682,7 @@ def monitor_training(
                 time=status.get("time"),
                 measure=status.get("measure", {}),
                 measures=status.get("measures"),
+                onnx_export=status.get("onnx_export"),
             )
             events = write_metric_events(
                 status,
@@ -687,7 +693,8 @@ def monitor_training(
             )
             if result_visualizer is not None:
                 result_visualizer.maybe_write(status, events)
-            manifest.update(status=state or "running", last_status=status)
+            manifest.update(status=state or "running", last_status=status,
+                            onnx_export=status.get("onnx_export"))
             if state in deepdetect.TrainingJob._TERMINAL:
                 if state not in {"finished", "cancelled", "terminated"}:
                     raise RuntimeError(f"training ended with status {state!r}")

@@ -104,9 +104,10 @@ namespace dd
      * \brief move-constructor
      */
     MLLib(MLLib &&mll) noexcept
-        : _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
+        : _onnx_export_requested(mll._onnx_export_requested.load()),
+          _inputc(mll._inputc), _outputc(mll._outputc), _mltype(mll._mltype),
           _mlmodel(mll._mlmodel), _meas(mll._meas),
-          _meas_per_iter(mll._meas_per_iter),
+          _meas_per_iter(mll._meas_per_iter), _status_job(mll._status_job),
           _status_payloads(mll._status_payloads), _stats(mll._stats),
           _tjob_running(mll._tjob_running.load()),
           _tjob_force_stop(mll._tjob_force_stop.load()), _logger(mll._logger),
@@ -352,6 +353,7 @@ namespace dd
      */
     void collect_measures(APIData &ad) const
     {
+      collect_onnx_export(ad);
       APIData meas;
 
       {
@@ -392,16 +394,51 @@ namespace dd
       ad.add("measure", meas);
     }
 
+    // Export state is an atomic file shared by both backends, never a metric.
+    void collect_onnx_export(APIData &ad) const
+    {
+      if (!_onnx_export_requested.load())
+        return;
+      try
+        {
+          std::ifstream stream(_mlmodel._repo + "/onnx/state.json");
+          if (!stream)
+            return;
+          std::string text((std::istreambuf_iterator<char>(stream)), {});
+          rapidjson::Document doc;
+          doc.Parse(text.c_str());
+          if (!doc.HasParseError() && doc.IsObject())
+            {
+              APIData state;
+              state.fromRapidJson(doc);
+              ad.add("onnx_export", state);
+            }
+        }
+      catch (...)
+        {
+        } // Observability cannot fail a training status request.
+    }
+
+    std::atomic<bool> _onnx_export_requested{ false };
+
     void add_status_payload(const std::string &key, const APIData &payload)
     {
       std::lock_guard<std::mutex> lock(_status_payloads_mutex);
       _status_payloads.add(key, payload);
     }
 
-    void collect_status_payload(APIData &ad, const std::string &key) const
+    void set_status_job(int job)
     {
       std::lock_guard<std::mutex> lock(_status_payloads_mutex);
-      if (_status_payloads.has(key))
+      _status_job = job;
+      _status_payloads = APIData();
+    }
+
+    void collect_status_payload(APIData &ad, const std::string &key,
+                                int job = 0) const
+    {
+      std::lock_guard<std::mutex> lock(_status_payloads_mutex);
+      if ((!job || job == _status_job) && _status_payloads.has(key))
         ad.add(key, _status_payloads.getobj(key));
     }
 
@@ -421,7 +458,8 @@ namespace dd
     std::unordered_map<std::string, double>
         _meas; /**< model measures, used as a per service value. */
     std::unordered_map<std::string, std::vector<double>>
-        _meas_per_iter;       /**< model measures per iteration. */
+        _meas_per_iter; /**< model measures per iteration. */
+    int _status_job = 0;
     APIData _status_payloads; /**< structured status payloads. */
     std::vector<std::string> _test_names;
 

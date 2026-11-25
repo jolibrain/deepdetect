@@ -143,6 +143,13 @@ function (DOWNLOAD_FILES _BASEURL _DEST)
   endforeach()
 endfunction()
 
+if (USE_NCNN AND USE_JSON_API)
+  REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
+endif()
+if (NOT BUILD_TESTS)
+  return()
+endif()
+
 find_package(PythonInterp 3 REQUIRED)
 
 REGISTER_TEST(ut_common ut-common.cc)
@@ -168,13 +175,6 @@ if (USE_JSON_API)
 endif()
 
 DOWNLOAD_DATASET(
-  "CSV (test) dataset"
-  "http://www.deepdetect.com/dd/examples/all/forest_type/train.csv.tar.bz2"
-  "examples/all/forest_type"
-  "train.csv.tar.bz2"
-  "train.csv"
-  )
-DOWNLOAD_DATASET(
   "SVM (test) dataset"
   "http://www.deepdetect.com/dd/examples/all/farm_ads/farm-ads.svm"
   "examples/all/farm_ads"
@@ -182,13 +182,6 @@ DOWNLOAD_DATASET(
   "farm-ads.svm"
   )
 
-DOWNLOAD_DATASET(
-  "Text (test) dataset"
-  "http://www.deepdetect.com/dd/examples/all/n20/news20.tar.bz2"
-  "examples/all/n20"
-  "news20.tar.bz2"
-  "news20"
-  )
 DOWNLOAD_DATASET(
   "Test videos"
   "http://www.deepdetect.com/dd/examples/all/video/video1.tar.gz"
@@ -222,14 +215,6 @@ if (NOT EXISTS ${SINUS_EXAMPLE_TRAIN_OUT})
 else()
   message(STATUS "Reusing generated sinu data for time series tests")
 endif()
-
-DOWNLOAD_DATASET(
-  "Regression test model"
-  "http://www.deepdetect.com/dd/examples/all/sflare/flare.csv"
-  "examples/all/sflare"
-  "flare.csv"
-  "flare.csv"
-)
 
 if (USE_HTTP_SERVER_OATPP)
   REGISTER_TEST(ut_oatpp ut-oatpp.cc ut-oatpp.h)
@@ -266,36 +251,6 @@ if (USE_DLIB)
   )
 
   REGISTER_TEST(ut_dlibapi ut-dlibapi.cc)
-endif()
-
-if (USE_NCNN)
-  DOWNLOAD_DATASET(
-    "NCNN test Squeezenet SSD model"
-    "https://www.deepdetect.com/dd/examples/ncnn/squeezenet-ssd-ncnn-caffe.tar.gz"
-    "examples/ncnn"
-    "squeezenet-ssd-ncnn-caffe.tar.gz"
-    "squeezenet_ssd_ncnn"
-    )
-
-    DOWNLOAD_DATASET(
-    "NCNN test Squeezenet classification model"
-    "https://www.deepdetect.com/dd/examples/ncnn/squeezenet-ncnn-caffe.tar.gz"
-    "examples/ncnn"
-    "squeezenet-ncnn-caffe.tar.gz"
-    "squeezenet_ncnn"
-    )
-
-  DOWNLOAD_DATASET(
-    "NCNN OCR model"
-    "https://www.deepdetect.com/dd/examples/ncnn/multiword_ocr_ncnn.tar.gz"
-    "examples/ncnn"
-    "multiword_ocr_ncnn.tar.gz"
-    "ocr"
-    )
-
-  if(USE_JSON_API)
-    REGISTER_TEST(ut_ncnnapi ut-ncnnapi.cc)
-  endif()
 endif()
 
 if (USE_TENSORRT)
@@ -479,11 +434,6 @@ endif()
 if(USE_TORCH OR USE_TENSORRT)
   REGISTER_TEST(ut_chain ut-chain.cc)
   REGISTER_TEST(ut_video ut-video.cc)
-endif()
-
-
-if (USE_XGBOOST)
-  REGISTER_TEST(ut_xgbapi ut-xgbapi.cc)
 endif()
 
 if (USE_SIMSEARCH)

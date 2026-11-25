@@ -14,6 +14,7 @@ from ....sdk import (
     WorkerContext,
     WorkerReporter,
 )
+from ....checkpoints import CheckpointManager, CheckpointMetricReporter
 from ....tensors import parse_tensor_batch_ref
 
 from .common import (
@@ -175,96 +176,102 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: entering training loop")
 
         start_time = time.monotonic()
-        optimizer_steps = start_iteration
-        accumulated = 0
-        latest_loss = 0.0
-        while optimizer_steps < options.iterations:
-            if cancellation.requested:
-                progress.cancelled(
+        retention = CheckpointManager(
+            self.context.repository_path if self.context else None,
+            snapshot=train_request.effective_mllib.get("solver", {}).get("snapshot", 0),
+            resume=bool(train_request.effective_mllib.get("resume")),
+            onnx_export=train_request.effective_mllib.get("onnx_export"),
+            inference={"service": dict(self.context.raw) if self.context else {},
+                       "mllib": dict(train_request.effective_mllib),
+                       "parameters": dict(train_request.request_params)},
+            log=lambda message: reporter.log("warning", message),
+        )
+        try:
+            def save_managed(iteration):
+                return self.save_training_checkpoint(checkpoint_manager, self.model, optimizer, iteration)
+
+            optimizer_steps = start_iteration
+            accumulated = 0
+            latest_loss = 0.0
+            while optimizer_steps < options.iterations:
+                if cancellation.requested:
+                    progress.cancelled(
+                        iteration=optimizer_steps,
+                        iterations=options.iterations,
+                    )
+                    retention.step(optimizer_steps, save_managed, final=True)
+                    retention.close(cancel=True)
+                    return {"status": "cancelled", "iteration": optimizer_steps}
+
+                try:
+                    if optimizer_steps == start_iteration and accumulated == 0:
+                        self.debug("train: loading first batch")
+                    images, targets, _meta = next(train_batches)
+                except StopIteration:
+                    train_batches = iter(train_loader)
+                    images, targets, _meta = next(train_batches)
+                images, targets = self.prepare_training_batch(images, targets, _meta)
+                if optimizer_steps == start_iteration and accumulated == 0:
+                    self.debug("train: running first forward/backward")
+                loss_dict = self.training_losses(self.model, images, targets)
+                total_loss = sum(loss for loss in loss_dict.values())
+                (total_loss / float(options.iter_size)).backward()
+                accumulated += 1
+                latest_loss = float(total_loss.detach().cpu().item())
+
+                if accumulated < options.iter_size:
+                    continue
+
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
+                accumulated = 0
+                optimizer_steps += 1
+                loss_values = {
+                    name: float(value.detach().cpu().item())
+                    for name, value in loss_dict.items()
+                }
+                progress.train_step(
                     iteration=optimizer_steps,
                     iterations=options.iterations,
+                    start_time=start_time,
+                    base_lr=options.base_lr,
+                    train_loss=latest_loss,
+                    losses=loss_values,
+                    start_iteration=start_iteration,
                 )
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
+
+                should_test = test_datasets and (
+                    optimizer_steps % options.test_interval == 0
+                    or optimizer_steps == options.iterations
                 )
-                return {"status": "cancelled", "iteration": optimizer_steps}
+                evaluation_reporter = CheckpointMetricReporter(reporter)
+                if should_test:
+                    self.debug(f"train: evaluating at iteration {optimizer_steps}")
+                    self.evaluate(
+                        test_datasets,
+                        reporter=evaluation_reporter,
+                        iteration=optimizer_steps,
+                        request_params=train_request.request_params,
+                        torch=torch,
+                        cancellation=cancellation,
+                    )
+                    self.model.train()
+                    retention.step(optimizer_steps, save_managed, metrics={} if cancellation.requested else evaluation_reporter.scores(len(test_datasets)))
+                    self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
+                retention.step(optimizer_steps, save_managed)
 
-            try:
-                if optimizer_steps == start_iteration and accumulated == 0:
-                    self.debug("train: loading first batch")
-                images, targets, _meta = next(train_batches)
-            except StopIteration:
-                train_batches = iter(train_loader)
-                images, targets, _meta = next(train_batches)
-            images, targets = self.prepare_training_batch(images, targets, _meta)
-            if optimizer_steps == start_iteration and accumulated == 0:
-                self.debug("train: running first forward/backward")
-            loss_dict = self.training_losses(self.model, images, targets)
-            total_loss = sum(loss for loss in loss_dict.values())
-            (total_loss / float(options.iter_size)).backward()
-            accumulated += 1
-            latest_loss = float(total_loss.detach().cpu().item())
-
-            if accumulated < options.iter_size:
-                continue
-
-            optimizer.step()
-            optimizer.zero_grad(set_to_none=True)
-            accumulated = 0
-            optimizer_steps += 1
-            loss_values = {
-                name: float(value.detach().cpu().item())
-                for name, value in loss_dict.items()
+            retention.step(options.iterations, save_managed, final=True)
+            retention.close(cancellation=lambda: cancellation.requested)
+            self.debug("train: finished")
+            progress.finished(iteration=options.iterations, iterations=options.iterations)
+            return {
+                "status": "finished",
+                "iteration": options.iterations,
+                "train_loss": latest_loss,
             }
-            progress.train_step(
-                iteration=optimizer_steps,
-                iterations=options.iterations,
-                start_time=start_time,
-                base_lr=options.base_lr,
-                train_loss=latest_loss,
-                losses=loss_values,
-                start_iteration=start_iteration,
-            )
-
-            should_test = test_datasets and (
-                optimizer_steps % options.test_interval == 0
-                or optimizer_steps == options.iterations
-            )
-            if should_test:
-                self.debug(f"train: evaluating at iteration {optimizer_steps}")
-                self.evaluate(
-                    test_datasets,
-                    reporter=reporter,
-                    iteration=optimizer_steps,
-                    request_params=train_request.request_params,
-                    torch=torch,
-                    cancellation=cancellation,
-                )
-                self.model.train()
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
-                )
-                self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
-
-        self.save_training_checkpoint(
-            checkpoint_manager,
-            self.model,
-            optimizer,
-            options.iterations,
-        )
-        self.debug("train: finished")
-        progress.finished(iteration=options.iterations, iterations=options.iterations)
-        return {
-            "status": "finished",
-            "iteration": options.iterations,
-            "train_loss": latest_loss,
-        }
+        finally:
+            if not retention.onnx_exporter.closing:
+                retention.close(cancel=True)
 
     def train_connector_pull(
         self,
@@ -331,121 +338,127 @@ class DetectionTrainingWorkerBase(DeepDetectWorkerBase):
         self.debug("train: entering connector pull training loop")
 
         start_time = time.monotonic()
-        optimizer_steps = start_iteration
-        accumulated = 0
-        latest_loss = 0.0
-        prefetcher = self.connector_batch_prefetcher(
-            split="train",
-            batch_size=options.batch_size,
-            connector=connector,
-            torch=torch,
-            reset_epoch=True,
-            prefetch_batches=connector_prefetch_batches(train_request.effective_mllib),
+        retention = CheckpointManager(
+            self.context.repository_path if self.context else None,
+            snapshot=train_request.effective_mllib.get("solver", {}).get("snapshot", 0),
+            resume=bool(train_request.effective_mllib.get("resume")),
+            onnx_export=train_request.effective_mllib.get("onnx_export"),
+            inference={"service": dict(self.context.raw) if self.context else {},
+                       "mllib": dict(train_request.effective_mllib),
+                       "parameters": dict(train_request.request_params)},
+            log=lambda message: reporter.log("warning", message),
         )
-        while optimizer_steps < options.iterations:
-            if cancellation.requested:
-                prefetcher.close()
-                progress.cancelled(
+        try:
+            def save_managed(iteration):
+                return self.save_training_checkpoint(checkpoint_manager, self.model, optimizer, iteration)
+
+            optimizer_steps = start_iteration
+            accumulated = 0
+            latest_loss = 0.0
+            prefetcher = self.connector_batch_prefetcher(
+                split="train",
+                batch_size=options.batch_size,
+                connector=connector,
+                torch=torch,
+                reset_epoch=True,
+                prefetch_batches=connector_prefetch_batches(train_request.effective_mllib),
+            )
+            while optimizer_steps < options.iterations:
+                if cancellation.requested:
+                    prefetcher.close()
+                    progress.cancelled(
+                        iteration=optimizer_steps,
+                        iterations=options.iterations,
+                    )
+                    retention.step(optimizer_steps, save_managed, final=True)
+                    retention.close(cancel=True)
+                    return {"status": "cancelled", "iteration": optimizer_steps}
+
+                batch = prefetcher.next()
+                if batch is None:
+                    prefetcher.close()
+                    prefetcher = self.connector_batch_prefetcher(
+                        split="train",
+                        batch_size=options.batch_size,
+                        connector=connector,
+                        torch=torch,
+                        reset_epoch=True,
+                        prefetch_batches=connector_prefetch_batches(
+                            train_request.effective_mllib
+                        ),
+                    )
+                    continue
+                images, targets, _metas = batch
+                images, targets = self.prepare_training_batch(images, targets, _metas)
+                if optimizer_steps == start_iteration and accumulated == 0:
+                    self.debug("train: running first connector forward/backward")
+                loss_dict = self.training_losses(self.model, images, targets)
+                total_loss = sum(loss for loss in loss_dict.values())
+                (total_loss / float(options.iter_size)).backward()
+                accumulated += 1
+                latest_loss = float(total_loss.detach().cpu().item())
+
+                if accumulated < options.iter_size:
+                    continue
+
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
+                accumulated = 0
+                optimizer_steps += 1
+                loss_values = {
+                    name: float(value.detach().cpu().item())
+                    for name, value in loss_dict.items()
+                }
+                progress.train_step(
                     iteration=optimizer_steps,
                     iterations=options.iterations,
+                    start_time=start_time,
+                    base_lr=options.base_lr,
+                    train_loss=latest_loss,
+                    losses=loss_values,
+                    start_iteration=start_iteration,
                 )
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
+
+                should_test = bool(test_samples) and (
+                    optimizer_steps % options.test_interval == 0
+                    or optimizer_steps == options.iterations
                 )
-                return {"status": "cancelled", "iteration": optimizer_steps}
+                evaluation_reporter = CheckpointMetricReporter(reporter)
+                if should_test:
+                    self.debug(
+                        f"train: evaluating connector at iteration {optimizer_steps}"
+                    )
+                    self.evaluate_connector_pull(
+                        test_samples,
+                        connector=connector,
+                        reporter=evaluation_reporter,
+                        iteration=optimizer_steps,
+                        request_params=train_request.request_params,
+                        torch=torch,
+                        cancellation=cancellation,
+                        batch_size=options.batch_size,
+                        prefetch_batches=connector_prefetch_batches(
+                            train_request.effective_mllib
+                        ),
+                    )
+                    self.model.train()
+                    retention.step(optimizer_steps, save_managed, metrics={} if cancellation.requested else evaluation_reporter.scores(len(test_samples)))
+                    self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
+                retention.step(optimizer_steps, save_managed)
 
-            batch = prefetcher.next()
-            if batch is None:
-                prefetcher.close()
-                prefetcher = self.connector_batch_prefetcher(
-                    split="train",
-                    batch_size=options.batch_size,
-                    connector=connector,
-                    torch=torch,
-                    reset_epoch=True,
-                    prefetch_batches=connector_prefetch_batches(
-                        train_request.effective_mllib
-                    ),
-                )
-                continue
-            images, targets, _metas = batch
-            images, targets = self.prepare_training_batch(images, targets, _metas)
-            if optimizer_steps == start_iteration and accumulated == 0:
-                self.debug("train: running first connector forward/backward")
-            loss_dict = self.training_losses(self.model, images, targets)
-            total_loss = sum(loss for loss in loss_dict.values())
-            (total_loss / float(options.iter_size)).backward()
-            accumulated += 1
-            latest_loss = float(total_loss.detach().cpu().item())
-
-            if accumulated < options.iter_size:
-                continue
-
-            optimizer.step()
-            optimizer.zero_grad(set_to_none=True)
-            accumulated = 0
-            optimizer_steps += 1
-            loss_values = {
-                name: float(value.detach().cpu().item())
-                for name, value in loss_dict.items()
+            retention.step(options.iterations, save_managed, final=True)
+            retention.close(cancellation=lambda: cancellation.requested)
+            prefetcher.close()
+            self.debug("train: finished")
+            progress.finished(iteration=options.iterations, iterations=options.iterations)
+            return {
+                "status": "finished",
+                "iteration": options.iterations,
+                "train_loss": latest_loss,
             }
-            progress.train_step(
-                iteration=optimizer_steps,
-                iterations=options.iterations,
-                start_time=start_time,
-                base_lr=options.base_lr,
-                train_loss=latest_loss,
-                losses=loss_values,
-                start_iteration=start_iteration,
-            )
-
-            should_test = bool(test_samples) and (
-                optimizer_steps % options.test_interval == 0
-                or optimizer_steps == options.iterations
-            )
-            if should_test:
-                self.debug(
-                    f"train: evaluating connector at iteration {optimizer_steps}"
-                )
-                self.evaluate_connector_pull(
-                    test_samples,
-                    connector=connector,
-                    reporter=reporter,
-                    iteration=optimizer_steps,
-                    request_params=train_request.request_params,
-                    torch=torch,
-                    cancellation=cancellation,
-                    batch_size=options.batch_size,
-                    prefetch_batches=connector_prefetch_batches(
-                        train_request.effective_mllib
-                    ),
-                )
-                self.model.train()
-                self.save_training_checkpoint(
-                    checkpoint_manager,
-                    self.model,
-                    optimizer,
-                    optimizer_steps,
-                )
-                self.debug(f"train: checkpoint saved at iteration {optimizer_steps}")
-
-        self.save_training_checkpoint(
-            checkpoint_manager,
-            self.model,
-            optimizer,
-            options.iterations,
-        )
-        prefetcher.close()
-        self.debug("train: finished")
-        progress.finished(iteration=options.iterations, iterations=options.iterations)
-        return {
-            "status": "finished",
-            "iteration": options.iterations,
-            "train_loss": latest_loss,
-        }
+        finally:
+            if not retention.onnx_exporter.closing:
+                retention.close(cancel=True)
 
     def evaluate_connector_pull(
         self,

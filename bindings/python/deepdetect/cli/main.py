@@ -11,8 +11,14 @@ from .commands import run_inspect_models, run_job_status
 from .inference import run_infer
 from .exporting import run_export
 from .profiles import PROFILES
-from .training import run_train
 from .utils import report_error
+
+
+def run_train(args: argparse.Namespace) -> int:
+    # Training observability is not needed by inference or other CLI commands.
+    from .training import run_train as train
+
+    return train(args)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,7 +40,10 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("source", type=Path)
     export.add_argument("--output", type=Path, required=True)
     export.add_argument("--model", choices=[name for name, p in PROFILES.items() if p.supports_training])
-    export.add_argument("--config", type=Path, help="effective training YAML (defaults to SOURCE/config.yaml)")
+    export.add_argument("--config", type=Path, help="training YAML (defaults to SOURCE/config.yaml), or inference YAML for a standalone graph")
+    export.add_argument("--format", choices=("bundle", "ncnn"), default="bundle")
+    export.add_argument("--pnnx", type=Path, help="PNNX 20261020 executable (default: pnnx on PATH)")
+    export.add_argument("--labels", type=Path, help="NCNN class correspondence file")
     export.add_argument("--checkpoint", default="best", help="best, latest, or an iteration number")
     export.add_argument("--worker-module", help="installed Python worker module")
     export.add_argument("--asset", action="append", default=[], metavar="CONFIG_KEY=SOURCE")
@@ -232,7 +241,7 @@ def _add_infer_parser(parser: argparse.ArgumentParser, model: str) -> None:
         default=None,
         help="write full-resolution 16-bit confidence maps in tiled mode",
     )
-    if PROFILES[model].task in {"detection", "keypoint"}:
+    if PROFILES[model].task in {"detection", "keypoint"} or model == "ncnn-segmenter":
         parser.add_argument("--confidence-threshold", type=float)
     if PROFILES[model].task == "detection":
         parser.add_argument("--best-bbox", type=int)

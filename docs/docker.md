@@ -14,6 +14,10 @@ The retired `caffe`, `caffe2`, `tf`, and `tensorflow` backends are rejected by
 the server. Do not use old Docker examples that create services with
 `"mllib":"caffe"`.
 
+Creating an `xgboost` service returns HTTP 400 with DeepDetect error code
+1006. If your deployment serves XGBoost models, keep its XGBoost-enabled
+image until you migrate inference.
+
 ## Images
 
 Official images are published at `docker.jolibrain.com`:

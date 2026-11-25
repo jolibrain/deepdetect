@@ -1,0 +1,29 @@
+name: NCNN CPU inference
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+jobs:
+  native:
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'mllib:NCNN') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'mllib:NCNN')
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ git pkg-config libarchive-dev libboost-all-dev \
+            libcurlpp-dev libeigen3-dev libgflags-dev libgoogle-perftools-dev \
+            libgtest-dev liblmdb-dev libmapbox-variant-dev libopencv-dev libssl-dev \
+            libutfcpp-dev libprotobuf-dev protobuf-compiler rapidjson-dev zlib1g-dev
+      - name: Build and run native API tests
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWARNING=OFF \
+            -DUSE_CPU_ONLY=ON -DUSE_TORCH=OFF -DUSE_HDF5=OFF \
+            -DUSE_NCNN=ON -DBUILD_PROTOBUF=OFF -DBUILD_NCNN_TESTS=ON
+          cmake --build build --target ut_ncnnapi --parallel 2
+          ctest --test-dir build -R '^ut_ncnnapi$' --output-on-failure

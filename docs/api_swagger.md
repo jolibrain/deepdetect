@@ -2,7 +2,7 @@
 
 Welcome to the DeepDetect API!
 
-DeepDetect is a Machine Learning server. At this stage, it provides a flexible API to train deep neural networks and gradient boosted trees, and use them where they are needed, in both development and production.
+DeepDetect provides an API for training deep neural networks and serving predictions in development and production.
 
 ## Principles
 
@@ -16,12 +16,12 @@ The software defines a very simple flow, from data to the statistical model and 
 * `input connector`: entry point for data into DeepDetect. Specialized versions handle different data types (e.g. images, text, CSV, ...)
 * `model`: repository that holds all the files necessary for building and usage of a statistical model such as a neural net
 * `service`: the central holder of models and connectors, living in memory and servicing the machine learning capabilities through the API. While the `model` can be held permanently on disk, a `service` is spawn around it and destroyed at will
-* `mllib`: the machine learning library used for operations: Torch, TensorRT, NCNN, Dlib, XGBoost, or T-SNE
-
-Caffe, Caffe2, TensorFlow, and the `tf` alias are retired. Convert existing services to Torch or ONNX/TensorRT before upgrading; retired names return HTTP 400 with DeepDetect error code 1006.
+* `mllib`: the machine learning library used for operations: Torch, TensorRT, NCNN, Dlib, or T-SNE
 * `training`: the computational phase that uses a dataset to build a statistical model with predictive abilities on statistically relevant data
 * `prediction`: the computational phase that uses a trained statistical model in order to make a guess about one or more samples of data
 * `output connector`: the DeepDetect output, that supports templates so that the output can be easily customized by the user in order to fit in the final application
+
+Creating a service with `mllib` set to `xgboost`, `caffe`, `caffe2`, `tf`, or `tensorflow` returns HTTP 400 with DeepDetect error code 1006. Keep existing XGBoost-enabled deployments running until you migrate inference. For Caffe, Caffe2, and TensorFlow services, convert the models to Torch or ONNX/TensorRT before upgrading.
 
 ### API Principles
 
@@ -304,7 +304,7 @@ Examples include:
 
 * Text: neural networks, from words or low-level characters
 * Images: neural networks, visual search
-* Generic Data: neural networks, gradient boosted trees, sparse data, ...
+* Generic Data: neural networks, sparse data, ...
 
 Demos include:
 
